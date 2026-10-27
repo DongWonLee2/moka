@@ -19,10 +19,17 @@
       "Bash(git push * --force*)",
       "Bash(git push * -f)",
       "Bash(git push * -f *)",
+      "Bash(git push * main)",
+      "Bash(git push * main *)",
+      "Bash(git push * *:main)",
+      "Bash(git push * *:main *)",
+      "Bash(git push *refs/heads/main*)",
+      "Bash(git push * +*)",
+      "Bash(git push *--all*)",
+      "Bash(git push *--mirror*)",
       "Bash(gh repo delete *)"
     ],
     "ask": [
-      "Bash(git push *)",
       "Bash(gh issue create *)",
       "Bash(gh api *)"
     ]
