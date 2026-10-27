@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# ADR-0002: 필수 검사 = job 이름(core-test, tuning-test, app-build, secrets-scan). 경로 필터를 두지 않는다.
+jobs:
+  core-test:
+    name: core-test
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    container: swift:6.3.3-noble
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Install SQLite headers
+        run: apt-get update && apt-get install -y --no-install-recommends libsqlite3-dev
+      - name: Test
+        shell: bash
+        run: |
+          set -euo pipefail
+          swift --version
+          swift test
+
+  tuning-test:
+    name: tuning-test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+        working-directory: tuning
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Test
+        run: |
+          set -euo pipefail
+          python -m pip install -r requirements-dev.txt
+          python -m pytest -p no:cacheprovider
+
+  app-build:
+    name: app-build
+    runs-on: macos-26
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Build
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          xcodegen --version
+          xcodegen generate
+          xcodebuild build -scheme Moka -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO
+
+  secrets-scan:
+    name: secrets-scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: gitleaks/gitleaks-action@v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ADR-0002: 경고만 한다(필수 검사 아님). 로컬 Xcode와 CI의 swift-format 버전이 다르다.
+  format-lint:
+    name: format-lint
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 10
+    continue-on-error: true
+    container: swift:6.3.3-noble
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Lint
+        shell: bash
+        run: |
+          set -euo pipefail
+          swift format lint --strict --recursive Sources Tests App/Sources

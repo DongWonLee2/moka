@@ -2,4 +2,4 @@
 
 
 def health() -> str:
-    return ""
+    return "ok"

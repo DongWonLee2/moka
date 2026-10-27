@@ -7,6 +7,6 @@ public enum MokaDatabase {
     }
 
     public static func healthCheck(_ db: DatabaseQueue) throws -> Bool {
-        false
+        try db.read { try Int.fetchOne($0, sql: "SELECT 1") } == 1
     }
 }

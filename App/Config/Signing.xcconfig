@@ -1,0 +1,2 @@
+// 개인 팀 서명(ADR-0005). DEVELOPMENT_TEAM은 커밋하지 않는 Signing.local.xcconfig에 둔다.
+#include? "Signing.local.xcconfig"

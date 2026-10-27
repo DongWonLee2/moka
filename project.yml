@@ -1,0 +1,28 @@
+name: Moka
+options:
+  bundleIdPrefix: dev.dongwon
+  deploymentTarget:
+    macOS: "14.0"
+packages:
+  Moka:
+    path: .
+configFiles:
+  Debug: App/Config/Signing.xcconfig
+  Release: App/Config/Signing.xcconfig
+targets:
+  Moka:
+    type: application
+    platform: macOS
+    sources: [App/Sources]
+    dependencies:
+      - package: Moka
+        product: MokaCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.dongwon.moka
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_LSUIElement: YES
+        ENABLE_APP_SANDBOX: NO
+        ENABLE_HARDENED_RUNTIME: NO
+        CODE_SIGN_STYLE: Automatic
