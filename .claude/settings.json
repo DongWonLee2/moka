@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Edit(.env)",
+      "Edit(.env.*)",
+      "Read(~/Dev/ai-platform/projects/moka/labels*.csv)",
+      "Read(~/Library/Application Support/Moka/**)",
+      "Read(~/Library/Application Support/dev.dongwon.moka/**)",
+      "Bash(security find-generic-password *)",
+      "Bash(security find-internet-password *)",
+      "Bash(security dump-keychain *)",
+      "Bash(gh pr merge *)",
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(git push --force-with-lease *)",
+      "Bash(git push * --force*)",
+      "Bash(git push * -f)",
+      "Bash(git push * -f *)",
+      "Bash(gh repo delete *)"
+    ],
+    "ask": [
+      "Bash(git push *)",
+      "Bash(gh issue create *)",
+      "Bash(gh api *)"
+    ]
+  }
+}
