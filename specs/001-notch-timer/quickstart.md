@@ -13,7 +13,7 @@ swift test
 리눅스 컨테이너에서도 같은 결과인지 확인(D1 보강):
 
 ```
-docker run --rm -v "$PWD":/w -w /w swift:6.3.3-noble bash -c "apt-get update -qq && apt-get install -y -qq libsqlite3-dev >/dev/null && swift test"
+docker run --rm -v "$PWD":/w -w /w swift:6.3.3-noble bash -c "apt-get update -qq && apt-get install -y -qq --no-install-recommends libsqlite3-dev >/dev/null && swift test --scratch-path /tmp/.build-linux"
 ```
 
 ## 2. 시뮬레이터
@@ -56,4 +56,5 @@ xcodegen generate && TEST_RUNNER_MOKA_SNAPSHOT_DIR="$PWD/.verify/snapshots/001" 
 - 다른 앱에서 타이핑하며 마우스로 노치를 지나가도 글자가 노치로 0자(SC-003, R-002)
 - 1분 타이머로 시간 끝 자동 펼침, 그동안 다른 앱에 타이핑한 글자가 노치로 0자(SC-003), 마우스를 넣었다 빼도 펼친 채 유지(R-009)
 - 덮개를 닫고 외부 모니터만: 메뉴 막대 아래 중앙 떠 있는 창, 타이머 끊김 없음(R-011, SC-005)
+- 타이머가 도는 중 앱을 종료하고 다시 켬 → 빈 상태(회색 점)로 시작(R-014)
 - 설정에서 45분으로 바꾸고 앱 재시작 → 기본값 45, DB 파일이 `~/Library/Application Support/dev.dongwon.moka/moka.sqlite`에 생김(ADR-0005 결정 검증)

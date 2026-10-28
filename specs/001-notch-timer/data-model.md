@@ -121,7 +121,7 @@ MokaStore 공개 이름:
 
 ```swift
 public enum MokaMigrations {
-    public static var migrator: DatabaseMigrator     // "v1_settings" 등록
+    public static let migrator: DatabaseMigrator     // "v1_settings" 등록(DatabaseMigrator는 Sendable, 전역 가변 var는 Swift 6에서 오류)
 }
 extension MokaDatabase {
     public static func open(at url: URL) throws -> DatabaseQueue   // 상위 폴더를 createDirectory(withIntermediateDirectories: true) → DatabaseQueue(path:) → migrate

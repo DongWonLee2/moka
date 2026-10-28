@@ -105,11 +105,11 @@ EGM 금붕어 리뷰(2026-10-28)와 승인 항목 토론 뒤 보강했다. 보�
   - 상태 표의 "2" 칸(예: 빈 상태에서 `start`) → 입력 오류
   - 오류 픽스처는 `Tests/MokaCoreTests/Fixtures/sim/errors/`에 두고, 파일마다 기대 오류 종류를 시험 코드의 표로 둔다
   〔단위 1b〕
-- [ ] T011 [P] [US1] `Tests/MokaCoreTests/SimGoldenTests.swift`에 golden 시험을 쓴다: `Tests/MokaCoreTests/Fixtures/sim/` 바로 아래(`errors/` 제외)의 `*.json` 중 같은 이름의 `*.expected.jsonl`이 있는 것마다 실행기 출력을 바이트 단위로 비교한다. 출력 규칙은 계약 "출력" 절(키 순서 `seq, at, event, timer_state, chip_min, remaining_s`, 공백 없음, `null` 리터럴, 줄마다 `\n`, `at`은 UTC `Z`, 제목 출력 안 함). 픽스처 `us1-basic.json`(기본 25분 시작 → 끝 시각 `tick`에서 `expired`, `remaining_s` 0, `chip_min` 기본값 → `complete`)과 기대 출력을 함께 커밋한다 〔단위 1b〕
+- [ ] T011 [P] [US1] `Tests/MokaCoreTests/SimGoldenTests.swift`에 golden 시험을 쓴다: `Tests/MokaCoreTests/Fixtures/sim/` 바로 아래(`errors/` 제외)의 `*.json`마다 같은 이름의 `*.expected.jsonl`이 **반드시 있어야 하고**(없으면 FAIL), 실행기 출력을 그것과 바이트 단위로 비교한다. 출력 규칙은 계약 "출력" 절(키 순서 `seq, at, event, timer_state, chip_min, remaining_s`, 공백 없음, `null` 리터럴, 줄마다 `\n`, `at`은 UTC `Z`, 제목 출력 안 함). 픽스처 `us1-basic.json`(기본 25분 시작 → 끝 시각 `tick`에서 `expired`, `remaining_s` 0, `chip_min` 기본값 → `complete`)과 기대 출력을 함께 커밋한다 〔단위 1b〕
 
 ### Implementation (Green)
 
-- [ ] T012 [US1] `Sources/MokaCore/Sim/`에 시나리오 타입·디코더(`SimScenario.swift`, 날짜 파싱은 지역 `ISO8601DateFormatter` 또는 `Date.ISO8601FormatStyle`), 실행기(`SimRunner.swift`: 이벤트마다 `NotchTimer.apply`, rejected는 입력 오류, `set_default_quantum`은 `QuantumSettings.writeDefault`로 `InMemorySettingsStore`에 쓰기, 이벤트 뒤 `invariantViolation`), 출력(`SimOutput.swift`: 문자열 직접 조립, `JSONEncoder` 안 씀), 종료 코드 매핑 순수 함수(`SimExitCode.swift`)를 구현한다. 결과는 출력 줄 전체 또는 오류 값 하나다(오류면 출력 없음). `SimExitCode`에 깨진 상태로 만든 불변식 위반을 넣어 1이 나오는 단위 시험을 더한다. T010·T011 PASS 〔단위 1b〕
+- [ ] T012 [US1] `Sources/MokaCore/Sim/`에 시나리오 타입·디코더(`SimScenario.swift`, 날짜 파싱은 지역 `ISO8601DateFormatter` 또는 `Date.ISO8601FormatStyle`), 실행기(`SimRunner.swift`: 모든 입력 이벤트에 대해 먼저 `apply(.tick, at:)`(암묵 tick, `set_default_quantum` 포함), 그다음 타이머 이벤트는 `NotchTimer.apply`, rejected는 입력 오류, `set_default_quantum`은 `QuantumSettings.writeDefault`로 `InMemorySettingsStore`에 쓰기, 이벤트 뒤 `invariantViolation`). 정수 판정(`45`는 받고 `45.0`·`1.0`은 거부)은 `JSONDecoder`에 맡기지 않고 숫자 원문 토큰으로 한다(예: `JSONSerialization` 뒤 원문 검사 또는 작은 자체 스캐너), 출력(`SimOutput.swift`: 문자열 직접 조립, `JSONEncoder` 안 씀), 종료 코드 매핑 순수 함수(`SimExitCode.swift`)를 구현한다. 결과는 출력 줄 전체 또는 오류 값 하나다(오류면 출력 없음). `SimExitCode`에 깨진 상태로 만든 불변식 위반을 넣어 1이 나오는 단위 시험을 더한다. T010·T011 PASS 〔단위 1b〕
 - [ ] T013 [US1] `Sources/moka-sim/main.swift`를 `moka-sim run <file>`로 바꾼다: 파일 읽기 → 실행기 → 성공이면 표준 출력, 오류면 표준 오류 한 줄 → `SimExitCode`로 종료(인자 없음·모르는 하위 명령·파일 없음도 2). DB·네트워크·Keychain·환경 변수·`Date()`·`TimeZone.current`를 쓰지 않고 DB 경로 인자를 두지 않는다. `swift run moka-sim run Tests/MokaCoreTests/Fixtures/sim/us1-basic.json`의 출력과 종료 코드를 PR "완료 증거"에 붙인다 〔단위 1b〕
 - [ ] T014 🔒 [US1] `App/Sources/AppState.swift`에 `@Observable @MainActor final class AppState`를 둔다(data-model §6). `running` 동안만 도는 1초 주기 화면 갱신 타이머와 `NSWorkspace.shared.notificationCenter`의 `didWakeNotification`에서 `apply(.tick, …)`를 부를 뿐 상태를 직접 바꾸지 않는다(research R1). 현재 시각은 `MokaClock`, 기본값은 주입받은 `SettingsStore`에서 읽는다. `os.Logger`(subsystem `dev.dongwon.moka`)로 상태 전이 이름만 남기고 제목은 남기지 않는다(R7) 〔단위 4〕
 - [ ] T015 🔒 [US1] `App/Sources/Notch/NotchHost.swift`(DynamicNotchKit을 import하는 유일한 파일, T008 6번으로 제거하면 직접 만든 패널)에서 접힘·펼침 뷰를 띄운다. 마우스를 올리면 펼치되 key window로 만들지 않는다. 펼친 판을 클릭하면 key window가 되고 빈 상태면 제목 칸에 포커스를 준다(data-model §6 포커스 표). 접힘은 `shouldStayExpanded`로 정한다. `project.yml`에 DynamicNotchKit 패키지(T008과 같은 revision, 유지할 때만)와 `MokaStore` 의존을 더한다 〔단위 4〕
@@ -222,7 +222,7 @@ EGM 금붕어 리뷰(2026-10-28)와 승인 항목 토론 뒤 보강했다. 보�
 - [ ] T039 🔒 모은 PNG를 `~/Dev/ai-platform/projects/moka/design/pr-<번호>/index.html`에 시안과 나란히 두고 PR "완료 증거"에 경로를 적는다(저장소 밖, 커밋 안 함) 〔단위 5〕
 - [ ] T040 quickstart 3 오류 주입: golden 기대값 하나, 마이그레이션 열 하나, 가짜 마이그레이션 등록 하나를 일부러 넣어 `swift test`가 FAIL하고 종료 코드가 0이 아닌지 확인한 뒤 되돌린다. 커밋하지 않고 결과만 PR에 적는다 〔단위 1·2〕
 - [ ] T041 단위 1a·1b·2 PR마다 quickstart 1~3 결과 표(PASS/FAIL/SKIP/NOT_RUN)를 붙인다 〔단위 1·2〕
-- [ ] T042 🔒 사람이 quickstart 4~6을 돌려 결과 표를 마지막 PR에 붙인다 〔단위 4·5〕
+- [ ] T042 🔒 사람이 quickstart 4~6을 돌려 결과 표를 마지막 PR에 붙인다(R-014 재시작 뒤 빈 상태 포함) 〔단위 4·5〕
 
 ---
 

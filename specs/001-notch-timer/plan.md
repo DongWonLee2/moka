@@ -6,7 +6,7 @@
 
 ## Summary
 
-노치(없으면 직접 만든 떠 있는 창)에 수동 입력한 할 일 하나와 사용자가 고른 시간의 타이머를 띄운다. 타이머·칩·설정 규칙·표시 위치 선택은 MokaCore 값 타입과 순수 함수로 두고 리눅스 `swift test`와 `moka-sim`으로 화면 없이 검증한다. 기본 작업 시간은 GRDB `settings` 테이블에 저장하며, 이 PR 묶음에서 첫 마이그레이션과 스키마 스냅샷이 시작된다. 화면은 HTML 시안을 사용자가 확정한 뒤 만들고, 그 전에 DynamicNotchKit spike로 미확인 동작 5가지를 확인한다. 결정 근거는 [research.md](research.md).
+노치(없으면 직접 만든 떠 있는 창)에 수동 입력한 할 일 하나와 사용자가 고른 시간의 타이머를 띄운다. 타이머·칩·설정 규칙·표시 위치 선택은 MokaCore 값 타입과 순수 함수로 두고 리눅스 `swift test`와 `moka-sim`으로 화면 없이 검증한다. 기본 작업 시간은 GRDB `settings` 테이블에 저장하며, 이 PR 묶음에서 첫 마이그레이션과 스키마 스냅샷이 시작된다. 화면은 HTML 시안을 사용자가 확정한 뒤 만들고, 그 전에 DynamicNotchKit spike로 미확인 동작 6가지를 확인한다. 결정 근거는 [research.md](research.md).
 
 ## Technical Context
 
@@ -79,7 +79,7 @@ Sources/MokaCore/
 └── Sim/                              # moka-sim v1 시나리오 타입·디코더·실행기·출력
 Sources/MokaStore/
 ├── MokaDatabase.swift                # 기존 + 경로 주입 열기
-├── Migrations.swift                  # 이름 배열 상수 ["v1_settings"]
+├── Migrations.swift                  # MokaMigrations.migrator(DatabaseMigrator에 v1_settings 등록, 시험은 ADR-0007대로 리터럴과 migrator.migrations 비교)
 └── GRDBSettingsStore.swift           # SettingsStore 구현
 Sources/moka-sim/main.swift           # `run <file>` → 실행기 → stdout, 종료 코드
 Tests/MokaCoreTests/                  # 타이머·칩·설정 규칙·표시 위치·Sim golden
@@ -127,6 +127,6 @@ project.yml                           # DynamicNotchKit 패키지, MokaStore 의
 ## 다음 단계
 
 1. HTML 시안 v3.4 확정(완료, 2026-10-28)
-2. `/speckit-tasks`(완료, 41개)
+2. `/speckit-tasks`(완료, EGM 반영 뒤 42개)
 3. EGM 금붕어 리뷰(완료, uninterrupted 5단계, `.audit/egm/consolidated_review_report.md`, 커밋 안 함). 승인 항목은 토론(`.audit/debate/20261028-1225-spec001-egm-approvals.md`) 뒤 사용자 승인, 나머지 🔴·🟡 지적은 이 문서들에 반영
 4. Issue 큐(작업 단위 1·2를 먼저, 3은 사람 세션, 4·5는 spike 뒤)
