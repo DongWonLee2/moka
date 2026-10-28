@@ -40,7 +40,7 @@
 | 추가 | 펼친 상태에서 노치 옆 메뉴 막대 클릭을 가로채지 않음 | PASS | |
 | 관찰 | 이 맥의 메뉴 막대가 넘쳐 다른 앱 아이콘이 노치 뒤로 숨음 | — | macOS 동작, 공식 문서 없음. spec R-012 우클릭 메뉴로 대비 |
 
-- **Rationale**: 2·4는 라이브러리 기능이 아니라 직접 구현이거나 `.nonactivatingPanel`의 동작이고, 6이 PASS했다(T008의 제거 조건). 라이브러리 1.1.0은 화면이 바뀔 때마다 첫 화면으로 창을 다시 만든다(`DynamicNotch.swift:144-153` `initializeWindow(screen: NSScreen.screens.first)`, `:350-352` 기존 창 닫기, `:387-389` `orderFrontRegardless()`, `:173`·`:219` 기본 인자 `NSScreen.screens[0]`). 이는 R-011(우리가 고른 화면, 타이머·고정 상태 유지)과 다툰다. 호스트를 하나로 두면 포커스 규칙(data-model §6)을 한 번 구현하고 한 번 확인한다.
+- **Rationale**: 사람이 spike 끝에 결정했다. 2는 직접 구현이고, 4는 라이브러리 기본 동작이지만 같은 동작을 직접 만든 패널에서도 확인했다(spike 5·6). 라이브러리 1.1.0은 화면이 바뀔 때마다 첫 화면으로 창을 다시 만든다(`DynamicNotch.swift:144-153` `initializeWindow(screen: NSScreen.screens.first)`, `:350-352` 기존 창 닫기, `:387-389` `orderFrontRegardless()`, `:173`·`:219` 기본 인자 `NSScreen.screens[0]`). 이는 R-011(우리가 고른 화면, 타이머·고정 상태 유지)과 다툰다. 호스트를 하나로 두면 포커스 규칙(data-model §6)을 한 번 구현하고 한 번 확인한다.
 - **Alternatives**: 유지(노치는 라이브러리, 노치 없는 화면은 직접 패널), 유지하되 기한(문제가 생기면 제거). 둘 다 ADR-0008 대안 표.
 - **직접 만드는 몫**: 모양은 시안 v3.5 치수대로(위쪽 양 끝 안쪽 오목 곡선 8pt, 아래 둥근 모서리). 라이브러리 `NotchShape`는 MIT라 옮겨 쓸 수 있고 옮기면 출처 주석. 애니메이션은 SwiftUI 크기 전환으로 시작하고 손질은 사람 확인(SC-004).
 - **되돌림 조건**: 모양·애니메이션이 같은 원인으로 두 번 사람 확인에 미달하면 라이브러리로 되돌린다(헌법 IV). 그때 `style: .notch`를 명시하고 화면은 직접 넘긴다. 의존성 추가라 사람 승인이 다시 필요하다.
@@ -58,6 +58,9 @@
 - **Decision**:
   - `@Observable @MainActor final class AppState` 하나가 화면 상태(펼침 여부, 자동 펼침 고정 여부, 입력 중 제목, 고른 분)와 MokaCore 타이머 값을 가진다. 타이머 규칙은 MokaCore 값 타입이고 AppState는 이벤트를 전달할 뿐이다(설계서 §1 "AppCoordinator(타이머·트리거·하루 경계를 Core에 전달)"와 같은 역할, 이름은 AppState 하나로 줄인다).
   - 패널은 `App/Sources/Notch/NotchPanelHost.swift` 한 파일이 맡는다. 노치 위치(노치 모양)와 떠 있는 창(메뉴 막대 아래 중앙) 둘 다 이 파일의 직접 만든 `.nonactivatingPanel`이고, 같은 SwiftUI 뷰(`App/Sources/Views/`)를 띄운다. 외부 노치 라이브러리는 import하지 않는다(ADR-0008).
+  - 패널 구성: `NSPanel` 하위 클래스(`canBecomeKey = true`), styleMask `[.borderless, .nonactivatingPanel]`, `backgroundColor = .clear`, `hasShadow = false`, `collectionBehavior = [.canJoinAllSpaces, .stationary]`. level은 노치 위치 `.screenSaver`, 떠 있는 창 `.statusBar`(둘 다 spike PASS 설정). 프레임은 내용 크기(접힘 크기 ↔ 펼침 크기)로 `setFrame(_:display:animate:)`, 큰 투명 패널을 쓰지 않는다. 띄우기는 `orderFrontRegardless()`(key를 가져가지 않음). 펼친 판 클릭 → `makeKey()`, 시작·완료 → `resignKey()`(이전 앱으로 key가 돌아가는지는 사람 확인, T015).
+  - hover: 전역 모니터(spike 2) 대신 호스팅 뷰의 `NSTrackingArea`(`.mouseEnteredAndExited`, `.activeAlways`, `.inVisibleRect`). 접힌 패널이 노치 자리에 늘 있으므로 들어옴·나감을 같은 방식으로 받는다.
+  - 화면: `ScreenWatcher`가 `NSScreen` 목록 → `[ScreenInfo]` → `chooseDisplayTarget`으로 고르고(`NSScreen.screens.first`를 직접 쓰지 않는다), 화면 변경 때 `NotchPanelHost.move(to:)`를 부른다. 호스트는 `setFrame`으로 옮기고 창을 다시 만들지 않는다(ADR-0008 결함 사유).
   - MokaStore는 GRDB `DatabaseQueue`가 직렬화를 맡으므로 actor로 감싸지 않는다. Store를 actor로 할지는 동시 접근이 생기는 spec에서 정한다.
 - **Rationale**: 패널·포커스·hover 코드를 한 파일에 모아 포커스 규칙을 한 번만 구현한다. ADR-0008 되돌림 조건으로 라이브러리를 다시 쓰게 되어도 고칠 곳이 이 파일 하나다(설계서 §1의 초안 ADR-0005 "NotchHost 한 파일"을 받음). 뷰를 `App/Sources/Views/`에 모아야 스냅샷 테스트 번들이 앱 호스트 없이 뷰 소스를 직접 컴파일한다(D4).
 - **Alternatives**: AppCoordinator + AppState 둘(이번 범위에는 과함), Store actor(지금 동시 접근 없음).

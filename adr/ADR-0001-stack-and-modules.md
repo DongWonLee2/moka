@@ -29,7 +29,7 @@ B를 추천한다(추천안 토론 3:0).
 - URLSession으로 실제 decision API를 부르는 공급자는 앱 타깃에만 둔다. 테스트 타깃과 `moka-sim`은 그것을 링크하지 않으므로 헌법 VIII을 빌드 구조가 지킨다.
 - 앱 타깃(노치 UI, Keychain, GRDB 연결)은 얇게 둔다. 프로젝트 파일은 XcodeGen `project.yml`로 생성하고 `.pbxproj`는 커밋하지 않는다.
 - `swift-tools-version: 6.0`. Package 타깃은 Swift 6 언어 모드(엄격한 동시성).
-- 앱 타깃도 Swift 6 모드로 시작한다. DynamicNotchKit 등으로 동시성 오류가 나면 **첫 실패에서** 앱 타깃만 `SWIFT_VERSION: 5.0`으로 내리고 이 ADR에 적는다(같은 원인 2회 실패로 멈추는 일을 피한다). 나중에 6으로 올리는 diff는 크므로 처음부터 6으로 둔다. (정정: DynamicNotchKit은 ADR-0008로 제외)
+- 앱 타깃도 Swift 6 모드로 시작한다. DynamicNotchKit 등 (정정: DynamicNotchKit은 ADR-0008로 제외)으로 동시성 오류가 나면 **첫 실패에서** 앱 타깃만 `SWIFT_VERSION: 5.0`으로 내리고 이 ADR에 적는다(같은 원인 2회 실패로 멈추는 일을 피한다). 나중에 6으로 올리는 diff는 크므로 처음부터 6으로 둔다.
 - Xcode: CI는 `macos-26` 러너의 Xcode 26.6, 로컬은 Xcode 27.1. 리눅스 이미지는 `swift:6.3.3-noble`.
 
 ## 사람의 최종 결정과 실제 판단 이유

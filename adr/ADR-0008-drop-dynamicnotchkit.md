@@ -26,7 +26,7 @@ spike 결과(사람이 직접 확인, 2026-10-28):
 
 그 밖 spike 메모: `LSUIElement` 앱에서 SwiftUI `Window` scene은 실행 시 자동으로 열리지 않았다(spike에서는 AppKit 창으로 대체).
 
-2·4는 라이브러리 기능이 아니라 직접 구현이거나 `.nonactivatingPanel`의 동작이고, 6이 PASS했다. 라이브러리 소스에서 확인한 결함(1.1.0, `Sources/DynamicNotchKit/DynamicNotch.swift`):
+사람이 spike 끝에 결정했다. 2는 직접 구현이고, 4는 라이브러리 기본 동작이지만 같은 동작을 직접 만든 패널에서도 확인했다(spike 5·6). 라이브러리 소스에서 확인한 결함(1.1.0, `Sources/DynamicNotchKit/DynamicNotch.swift`):
 
 - `:144-153` `observeScreenParameters()`가 `NSApplication.didChangeScreenParametersNotification`마다 `initializeWindow(screen: NSScreen.screens.first)`를 부른다. 우리가 고른 화면(R-011, `chooseDisplayTarget`)과 상관없이 첫 화면으로 창을 다시 만든다.
 - `:350-352` `initializeWindow`의 첫 줄이 `deinitializeWindow()`로 기존 창을 닫는다. 입력 중 포커스와 `isPinnedOpen`(R-009)을 잃을 수 있다.
@@ -51,7 +51,7 @@ spike 결과(사람이 직접 확인, 2026-10-28):
 
 B를 추천한다(추천안 토론 3:0, 2라운드, 소수 의견 없음. 1라운드에 B 자리(실행)가 C였다가 2라운드에 B로 바꿨다. 바꾼 이유: 제거 조건으로 두었던 화면 변경 결함이 소스로 이미 확정이고, 호스트 둘은 포커스 규칙의 구현과 사람 확인을 두 배로 만든다).
 - `App/Sources/Notch/NotchPanelHost.swift` 하나가 직접 만든 `.nonactivatingPanel`을 노치 위치(노치 화면) 또는 메뉴 막대 아래 중앙(노치 없는 화면)에 띄운다. 화면은 `ScreenWatcher`가 `chooseDisplayTarget`으로 고른 값을 받는다.
-- 펼침은 코드에서 `orderFrontRegardless()`로 띄우고 key window로 만들지 않는다(spike 4). hover는 `NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved)`(spike 2).
+- 펼침은 코드에서 `orderFrontRegardless()`로 띄우고 key window로 만들지 않는다(spike 4). 화면 변경 때는 창을 다시 만들지 않고 `move(to:)`에서 `setFrame`으로 옮긴다. hover는 호스팅 뷰의 `NSTrackingArea`로 받는다(접힌 패널이 노치 자리에 늘 있으므로, spike 2의 전역 모니터 대신). 패널 구성은 research R6.
 - 모양은 시안 v3.5 치수대로 직접 그린다: 위쪽 양 끝은 안쪽으로 오목한 곡선 8pt, 아래는 둥근 모서리. 라이브러리 `NotchShape`는 MIT라 옮겨 쓸 수 있고, 옮기면 파일에 출처(저장소 URL, revision, 라이선스) 주석을 단다.
 - 애니메이션은 SwiftUI의 단순한 크기 전환으로 시작한다. 손질은 사람 확인 항목(SC-004)이다.
 
