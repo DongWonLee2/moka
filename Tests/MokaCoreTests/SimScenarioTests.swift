@@ -163,7 +163,8 @@ func commandUsageErrors(arguments: [String]) {
 func commandRunSuccess() {
     let path = simFixturesURL.appendingPathComponent("us1-basic.json").path
     let result = SimCommand.run(arguments: ["run", path], readFile: readFixture)
-    let expected = FileManager.default.contents(atPath: simFixturesURL.appendingPathComponent("us1-basic.expected.jsonl").path)
+    let expected = FileManager.default.contents(
+        atPath: simFixturesURL.appendingPathComponent("us1-basic.expected.jsonl").path)
     #expect(Data(result.stdout.utf8) == expected)
     #expect(result.stderr.isEmpty)
     #expect(result.exitCode == 0)
