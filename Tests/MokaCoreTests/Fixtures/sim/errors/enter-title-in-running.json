@@ -1,0 +1,5 @@
+{ "version": 1, "timezone": "Asia/Seoul", "events": [
+    { "at": "2026-11-02T09:00:00+09:00", "type": "enter_title", "title": "가짜 할 일 A" },
+    { "at": "2026-11-02T09:00:01+09:00", "type": "start" },
+    { "at": "2026-11-02T09:00:02+09:00", "type": "enter_title", "title": "가짜 할 일 B" }
+  ] }

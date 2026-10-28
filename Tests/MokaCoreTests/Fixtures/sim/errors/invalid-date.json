@@ -1,0 +1,3 @@
+{ "version": 1, "timezone": "Asia/Seoul", "events": [
+    { "at": "2026-02-30T09:00:00+09:00", "type": "tick" }
+  ] }

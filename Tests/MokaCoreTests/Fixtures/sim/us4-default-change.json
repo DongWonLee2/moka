@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "timezone": "Asia/Seoul",
+  "settings": { "default_quantum_min": 20 },
+  "events": [
+    { "at": "2026-11-02T09:00:00+09:00", "type": "enter_title", "title": "가짜 할 일 E" },
+    { "at": "2026-11-02T09:00:05+09:00", "type": "set_default_quantum", "quantum_min": 30 },
+    { "at": "2026-11-02T09:00:10+09:00", "type": "start" },
+    { "at": "2026-11-02T09:05:10+09:00", "type": "set_default_quantum", "quantum_min": 45 },
+    { "at": "2026-11-02T09:20:10+09:00", "type": "tick" },
+    { "at": "2026-11-02T09:21:00+09:00", "type": "set_default_quantum", "quantum_min": 60 },
+    { "at": "2026-11-02T09:22:00+09:00", "type": "complete" },
+    { "at": "2026-11-02T09:23:00+09:00", "type": "set_default_quantum", "quantum_min": 15 },
+    { "at": "2026-11-02T09:24:00+09:00", "type": "enter_title", "title": "가짜 할 일 F" },
+    { "at": "2026-11-02T09:24:05+09:00", "type": "start" },
+    { "at": "2026-11-02T09:30:00+09:00", "type": "complete" }
+  ]
+}
