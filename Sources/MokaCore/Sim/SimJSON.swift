@@ -82,7 +82,7 @@ struct SimJSONParser {
             guard current == UInt8(ascii: "\"") else { throw invalid("키 문자열이 와야 한다") }
             let key = try parseString()
             guard seen.insert(key).inserted else {
-                throw SimError(kind: .duplicateKey, seq: nil, message: "키 \"\(key)\"가 두 번 나온다")
+                throw SimError(kind: .duplicateKey, seq: nil, message: "키 \(SimError.quoted(key))가 두 번 나온다")
             }
             skipWhitespace()
             try expect(UInt8(ascii: ":"))
