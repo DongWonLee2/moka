@@ -9,11 +9,20 @@ public enum QuantumChip {
 }
 
 public enum RemainingFormat {
-    /// "M:SS", 분은 0을 채우지 않는다. 음수는 0으로 자른다.
+    /// 60분 미만은 "M:SS", 이상은 "H:MM:SS". 맨 앞 자리는 0을 채우지 않는다. 음수는 0으로 자른다.
     public static func string(_ seconds: Int) -> String {
         let clamped = max(seconds, 0)
-        let secondsPart = clamped % 60
-        return "\(clamped / 60):\(secondsPart < 10 ? "0" : "")\(secondsPart)"
+        let hours = clamped / 3600
+        let minutes = clamped / 60 % 60
+        let secs = clamped % 60
+        if hours > 0 {
+            return "\(hours):\(twoDigits(minutes)):\(twoDigits(secs))"
+        }
+        return "\(minutes):\(twoDigits(secs))"
+    }
+
+    private static func twoDigits(_ value: Int) -> String {
+        value < 10 ? "0\(value)" : "\(value)"
     }
 }
 
