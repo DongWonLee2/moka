@@ -11,8 +11,6 @@ private func running(quantumMin: Int = 25, startedAt: Date = t0) -> NotchTimer {
         endsAt: startedAt.addingTimeInterval(TimeInterval(quantumMin * 60)))
 }
 
-// MARK: - empty(nil)
-
 @Test("FR-05 R-003: 빈 상태에서 제목을 넣으면 칩이 기본값으로 채워진다")
 func enterTitleFromEmptyFillsDefaultChip() {
     var timer = NotchTimer.empty(draft: nil)
@@ -39,8 +37,6 @@ func tickInEmptyChangesNothing() {
         #expect(timer == initial)
     }
 }
-
-// MARK: - 단계에 맞지 않는 이벤트
 
 struct RejectedCell: CustomTestStringConvertible, Sendable {
     let name: String
@@ -69,8 +65,6 @@ func eventNotAllowedInPhaseIsRejected(cell: RejectedCell) {
     #expect(result == .rejected(.notAllowedInPhase))
     #expect(timer == cell.initial)
 }
-
-// MARK: - empty(draft)
 
 @Test("FR-06 R-002: 초안에서 제목을 다시 넣으면 제목만 바뀌고 칩은 그대로")
 func enterTitleInDraftKeepsChip() {
@@ -102,8 +96,6 @@ func startFromDraft() {
     #expect(timer == .running(title: title, quantumMin: 25, startedAt: t0, endsAt: t0.addingTimeInterval(1500)))
     #expect(timer.remainingSeconds(at: t0) == 1500)
 }
-
-// MARK: - running
 
 @Test("FR-06 R-005: 남은 초는 끝 시각 − 현재 시각을 올림한 값이고 도는 동안 1 이상")
 func remainingSecondsIsCeilOfTimeToEnd() {
@@ -145,8 +137,6 @@ func completeWhileRunning() {
     #expect(timer.remainingSeconds(at: t0) == nil)
 }
 
-// MARK: - 암묵 tick
-
 @Test("FR-06 R-008: 끝 시각 이후 complete는 암묵 tick 뒤 처리되어 빈 상태가 된다")
 func implicitTickBeforeComplete() {
     var timer = running()
@@ -169,8 +159,6 @@ func implicitTickStaysWhenEventRejected() {
             == .rejected(.notAllowedInPhase))
     #expect(timer == .expired(title: title, chipMin: 25))
 }
-
-// MARK: - expired
 
 @Test("FR-06 R-008: 시간 끝에서 tick은 변화 없음")
 func tickInExpiredChangesNothing() {
@@ -195,8 +183,6 @@ func completeWhenExpired() {
     #expect(timer.apply(.complete, at: t0, defaultQuantumMin: 25) == .applied)
     #expect(timer == .empty(draft: nil))
 }
-
-// MARK: - 불변식
 
 @Test("FR-06 R-005: 정상 값은 불변식 위반이 없다")
 func validStatesHaveNoViolation() {

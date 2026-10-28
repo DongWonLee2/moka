@@ -36,7 +36,7 @@ public enum TransitionResult: Equatable, Sendable {
 }
 
 extension NotchTimer {
-    /// 처리 전에 `tick(at)`을 먼저 적용한다(암묵 tick). 이벤트가 rejected여도 tick 결과는 남는다.
+    /// 처리 전에 암묵 tick(끝 시각이 지난 running → expired)을 먼저 적용한다. 이벤트가 rejected여도 그 결과는 남는다.
     public mutating func apply(_ event: TimerEvent, at now: Date, defaultQuantumMin: Int) -> TransitionResult {
         if case .running(let title, _, _, let endsAt) = self, now >= endsAt {
             self = .expired(title: title, chipMin: defaultQuantumMin)
@@ -92,7 +92,6 @@ extension NotchTimer {
         }
     }
 
-    /// nil이면 정상이다.
     public func invariantViolation(at now: Date) -> String? {
         switch self {
         case .empty(nil):
