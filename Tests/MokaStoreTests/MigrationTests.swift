@@ -38,7 +38,12 @@ func testDatabasePathsAreSafe() throws {
         .appendingPathComponent("Library/Application Support/dev.dongwon.moka/moka.sqlite")
     // 가드가 깨졌을 때 앱 경로를 실제로 열지 않도록 open(at:)에는 넘기지 않는다.
     #expect(!TestDatabase.isSafe(appLike.path))
+    // 임시 디렉터리 아래라 가드가 깨져도 임시 폴더만 생긴다. open(at:)의 거부까지 확인한다.
     let tempButNamed = FileManager.default.temporaryDirectory
-        .appendingPathComponent("dev.dongwon.moka/moka.sqlite")
+        .appendingPathComponent("moka-tests-\(UUID().uuidString)", isDirectory: true)
+        .appendingPathComponent("dev.dongwon.moka", isDirectory: true)
+        .appendingPathComponent("moka.sqlite")
+    defer { TestDatabase.removeTestFolder(of: tempButNamed) }
     #expect(!TestDatabase.isSafe(tempButNamed.path))
+    #expect(throws: TestDatabase.UnsafePath.self) { try TestDatabase.open(at: tempButNamed) }
 }
