@@ -164,8 +164,9 @@ func implicitTickBeforeChooseQuantum() {
 @Test("FR-06 R-008: 끝 시각 이후 rejected 이벤트에도 암묵 tick은 남는다")
 func implicitTickStaysWhenEventRejected() {
     var timer = running()
-    #expect(timer.apply(.enterTitle("가짜 할 일 B"), at: t0.addingTimeInterval(1600), defaultQuantumMin: 25)
-        == .rejected(.notAllowedInPhase))
+    #expect(
+        timer.apply(.enterTitle("가짜 할 일 B"), at: t0.addingTimeInterval(1600), defaultQuantumMin: 25)
+            == .rejected(.notAllowedInPhase))
     #expect(timer == .expired(title: title, chipMin: 25))
 }
 
