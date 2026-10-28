@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "timezone": "Asia/Seoul",
+  "settings": {},
+  "events": [
+    { "at": "2026-11-02T09:00:00+09:00", "type": "enter_title", "title": "가짜 할 일 B" },
+    { "at": "2026-11-02T09:00:02+09:00", "type": "choose_quantum", "quantum_min": 45 },
+    { "at": "2026-11-02T09:00:03+09:00", "type": "start" },
+    { "at": "2026-11-02T09:45:03+09:00", "type": "tick" },
+    { "at": "2026-11-02T09:46:00+09:00", "type": "choose_quantum", "quantum_min": 15 },
+    { "at": "2026-11-02T09:46:01+09:00", "type": "start" },
+    { "at": "2026-11-02T00:56:01Z", "type": "tick" },
+    { "at": "2026-11-02T09:58:00+09:00", "type": "complete" }
+  ]
+}
