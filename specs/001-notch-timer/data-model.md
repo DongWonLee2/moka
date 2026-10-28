@@ -81,7 +81,7 @@ public enum QuantumChip {
     public static func parseCustom(_ text: String) -> Int?   // Int(text)가 1...180이면 값, 아니면 nil(시작 불가)
 }
 public enum RemainingFormat {
-    public static func string(_ seconds: Int) -> String      // "M:SS", 분은 0 채움 없음: 1500→"25:00", 599→"9:59", 5400→"90:00", 0→"0:00", 음수→"0:00"(#13)
+    public static func string(_ seconds: Int) -> String      // 60분 미만 "M:SS", 이상 "H:MM:SS", 맨 앞 자리는 0 채움 없음: 1500→"25:00", 599→"9:59", 3599→"59:59", 3600→"1:00:00", 5400→"1:30:00", 0→"0:00", 음수→"0:00"(#13)
 }
 ```
 
