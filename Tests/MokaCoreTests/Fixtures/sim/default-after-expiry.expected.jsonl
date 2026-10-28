@@ -1,0 +1,8 @@
+{"seq":1,"at":"2026-11-02T01:00:00Z","event":"enter_title","timer_state":"empty","chip_min":20,"remaining_s":null}
+{"seq":2,"at":"2026-11-02T01:00:05Z","event":"start","timer_state":"running","chip_min":20,"remaining_s":1200}
+{"seq":3,"at":"2026-11-02T01:25:00Z","event":"set_default_quantum","timer_state":"expired","chip_min":20,"remaining_s":0}
+{"seq":4,"at":"2026-11-02T01:26:00Z","event":"tick","timer_state":"expired","chip_min":20,"remaining_s":0}
+{"seq":5,"at":"2026-11-02T01:27:00Z","event":"complete","timer_state":"empty","chip_min":null,"remaining_s":null}
+{"seq":6,"at":"2026-11-02T01:28:00Z","event":"enter_title","timer_state":"empty","chip_min":40,"remaining_s":null}
+{"seq":7,"at":"2026-11-02T01:28:05Z","event":"start","timer_state":"running","chip_min":40,"remaining_s":2400}
+{"seq":8,"at":"2026-11-02T01:40:00Z","event":"complete","timer_state":"empty","chip_min":null,"remaining_s":null}
