@@ -36,8 +36,8 @@ func testDatabasePathsAreSafe() throws {
 
     let appLike = URL(fileURLWithPath: NSHomeDirectory())
         .appendingPathComponent("Library/Application Support/dev.dongwon.moka/moka.sqlite")
+    // 가드가 깨졌을 때 앱 경로를 실제로 열지 않도록 open(at:)에는 넘기지 않는다.
     #expect(!TestDatabase.isSafe(appLike.path))
-    #expect(throws: TestDatabase.UnsafePath.self) { try TestDatabase.open(at: appLike) }
     let tempButNamed = FileManager.default.temporaryDirectory
         .appendingPathComponent("dev.dongwon.moka/moka.sqlite")
     #expect(!TestDatabase.isSafe(tempButNamed.path))
