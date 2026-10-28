@@ -17,7 +17,7 @@ EGM 금붕어 리뷰(2026-10-28)와 승인 항목 토론 뒤 보강했다. 보�
 
 - **[P]**: 다른 파일을 고치고 아직 안 끝난 태스크에 기대지 않아 병렬로 할 수 있다
 - **[Story]**: US1~US5(spec.md)
-- **🔒**: spike(Phase 3) PASS 뒤에만 시작한다(시안 v3.4는 2026-10-28 확정). 무인 실행 대상이 아니다
+- **🔒**: spike(Phase 3) PASS 뒤에만 시작한다(시안 v3.4 확정(완료) → v3.5(위쪽 오목 모서리, 2026-10-28)). 무인 실행 대상이 아니다
 - 이 파일의 "확인 지점"은 Phase 완료 조건이다(GLOSSARY의 체크포인트와 다르다)
 
 ## 공통 규칙 (모든 태스크)
@@ -113,7 +113,7 @@ EGM 금붕어 리뷰(2026-10-28)와 승인 항목 토론 뒤 보강했다. 보�
 - [ ] T013 [US1] `Sources/moka-sim/main.swift`를 `moka-sim run <file>`로 바꾼다: 파일 읽기 → 실행기 → 성공이면 표준 출력, 오류면 표준 오류 한 줄 → `SimExitCode`로 종료(인자 없음·모르는 하위 명령·파일 없음도 2). DB·네트워크·Keychain·환경 변수·`Date()`·`TimeZone.current`를 쓰지 않고 DB 경로 인자를 두지 않는다. `swift run moka-sim run Tests/MokaCoreTests/Fixtures/sim/us1-basic.json`의 출력과 종료 코드를 PR "완료 증거"에 붙인다 〔단위 1b〕
 - [ ] T014 🔒 [US1] `App/Sources/AppState.swift`에 `@Observable @MainActor final class AppState`를 둔다(data-model §6). `running` 동안만 도는 1초 주기 화면 갱신 타이머와 `NSWorkspace.shared.notificationCenter`의 `didWakeNotification`에서 `apply(.tick, …)`를 부를 뿐 상태를 직접 바꾸지 않는다(research R1). 현재 시각은 `MokaClock`, 기본값은 주입받은 `SettingsStore`에서 읽는다. 화면에 남은 초를 쓰기 전에 `apply(.tick, …)`를 먼저 부른다(tick 없이 끝 시각이 지난 `running`을 그리면 `0:00`인데 시간 끝이 아닌 상태가 된다, #13). `os.Logger`(subsystem `dev.dongwon.moka`)로 상태 전이 이름만 남기고 제목은 남기지 않는다(R7) 〔단위 4〕
 - [ ] T015 🔒 [US1] `App/Sources/Notch/NotchHost.swift`(DynamicNotchKit을 import하는 유일한 파일, T008 6번으로 제거하면 직접 만든 패널)에서 접힘·펼침 뷰를 띄운다. 마우스를 올리면 펼치되 key window로 만들지 않는다. 펼친 판을 클릭하면 key window가 되고 빈 상태면 제목 칸에 포커스를 준다(data-model §6 포커스 표). 접힘은 `shouldStayExpanded`로 정한다. `project.yml`에 DynamicNotchKit 패키지(T008과 같은 revision, 유지할 때만)와 `MokaStore` 의존을 더한다 〔단위 4〕
-- [ ] T016 🔒 [P] [US1] `App/Sources/Views/`에 시안 v3.4대로 뷰를 만든다. 뷰는 `AppState`가 아니라 값(`NotchTimer`, 남은 초, 콜백)을 받아 스냅샷 번들이 앱 없이 컴파일할 수 있게 한다. 남은 시간 글자는 `RemainingFormat.string`:
+- [ ] T016 🔒 [P] [US1] `App/Sources/Views/`에 시안 v3.5대로 뷰를 만든다. 뷰는 `AppState`가 아니라 값(`NotchTimer`, 남은 초, 콜백)을 받아 스냅샷 번들이 앱 없이 컴파일할 수 있게 한다. 남은 시간 글자는 `RemainingFormat.string`:
   - `CollapsedView.swift`: 빈 상태 회색 점(R-001), 도는 중 점·제목·남은 시간(접힌 화면에서 노치 왼쪽 표시 영역 폭 104pt, 넘치는 제목은 끝을 "…"로, R-006)
   - `ExpandedView.swift`: 빈 상태 입력칸(자리표시 "할 일 없음 — 무엇을 할까요?", R-001), 앞뒤 공백을 뺀 제목이 비면 Enter로 넘어가지 않음(R-002), 도는 중에는 제목(두 줄까지)·남은 시간·완료 버튼만(R-006). 판 폭 340pt. 노치 왼쪽 귀: 잔 아이콘(#A47864)과 "MOKA" 글자(#F5E9E1). 오른쪽 귀: 상태 글자(새 할 일 / 시간 고르기 / N분 집중 / 시간 끝)
   - `MokaColors.swift`: 주색 #A47864, 기본 버튼 세로 그라데이션 #A47864→#85604F, 보조색(크레마) #E6C7B4, 밝은 바탕색(폼) #F5E9E1, 시간 끝 #E5533D
@@ -134,7 +134,7 @@ EGM 금붕어 리뷰(2026-10-28)와 승인 항목 토론 뒤 보강했다. 보�
 
 - [ ] T018 [P] [US2] `Tests/MokaCoreTests/QuantumChipTests.swift`에 시험을 쓴다:
   - `FR-05 R-004`: 프리셋은 15, 25, 45, 60. `parseCustom`은 `Int(_:)`가 1~180이면 값: `"1"`·`"180"`·`"90"`·`"+45"`는 받고, `"0"`·`"181"`·`""`·`"abc"`·`"4.5"`·`" 45"`는 nil
-  - `FR-06 R-006`: `RemainingFormat.string`: 1500→`25:00`, 599→`9:59`, 5400→`90:00`, 0→`0:00`
+  - `FR-06 R-006`: `RemainingFormat.string`: 1500→`25:00`, 599→`9:59`, 3599→`59:59`, 3600→`1:00:00`, 5400→`1:30:00`, 0→`0:00`
   - `FR-06 R-009`: `shouldStayExpanded(pinned:focused:hovering:)`는 셋 중 하나라도 참이면 참, 모두 거짓이면 거짓
   〔단위 1a〕
 - [ ] T019 [P] [US2] 픽스처 `Tests/MokaCoreTests/Fixtures/sim/us2-choose-45.json`과 기대 출력을 더한다: 45분 선택 → 시작(`remaining_s` 2700) → 시간 끝(`chip_min` 기본값) → `choose_quantum` 15 → 다시 시작(R-010) → 완료. 오류 픽스처 `errors/unknown-type.json`, `errors/time-reversed.json`, `errors/unknown-key.json`, `errors/start-in-empty.json`은 T010 방식으로 오류 값을 확인한다 〔단위 1b〕

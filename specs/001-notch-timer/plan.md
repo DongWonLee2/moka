@@ -72,7 +72,7 @@ Package.swift                         # 내부 의존만 정리: moka-sim→Moka
 Sources/MokaCore/
 ├── MokaClock.swift                   # 현재 시각 주입(앱만 씀)
 ├── NotchTimer.swift                  # 상태기계(empty(draft:)/running/expired), 전이 함수 apply, 남은 초 올림·자름, 불변식 검사
-├── QuantumChip.swift                 # 프리셋, 직접 입력 검증, 남은 시간 표시 형식 M:SS, shouldStayExpanded
+├── QuantumChip.swift                 # 프리셋, 직접 입력 검증, 남은 시간 표시 형식 M:SS(60분 이상 H:MM:SS), shouldStayExpanded
 ├── QuantumSettings.swift             # SettingsStore 프로토콜, 읽기 규칙(없거나 범위 밖이면 25)
 ├── Defaults.swift                    # 기본 분 25, 범위 1…180, 프리셋
 ├── DisplayTarget.swift               # 화면 목록 → .notch / .floating
@@ -126,7 +126,7 @@ project.yml                           # DynamicNotchKit 패키지, MokaStore 의
 
 ## 다음 단계
 
-1. HTML 시안 v3.4 확정(완료, 2026-10-28)
+1. HTML 시안 v3.4 확정(완료) → v3.5(위쪽 오목 모서리, 2026-10-28)
 2. `/speckit-tasks`(완료, EGM 반영 뒤 42개)
 3. EGM 금붕어 리뷰(완료, uninterrupted 5단계, `.audit/egm/consolidated_review_report.md`, 커밋 안 함). 승인 항목은 토론(`.audit/debate/20261028-1225-spec001-egm-approvals.md`) 뒤 사용자 승인, 나머지 🔴·🟡 지적은 이 문서들에 반영
 4. Issue 큐(작업 단위 1·2를 먼저, 3은 사람 세션, 4·5는 spike 뒤)
