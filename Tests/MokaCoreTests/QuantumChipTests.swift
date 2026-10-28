@@ -25,6 +25,11 @@ func remainingFormat(seconds: Int, expected: String) {
     #expect(RemainingFormat.string(seconds) == expected)
 }
 
+@Test("FR-06 R-006: 음수 초는 0으로 잘라 0:00을 보인다", arguments: [-1, -61])
+func remainingFormatClampsNegative(seconds: Int) {
+    #expect(RemainingFormat.string(seconds) == "0:00")
+}
+
 @Test(
     "FR-06 R-009: 고정·포커스·마우스 중 하나라도 참이면 펼친 채로 남는다",
     arguments: [true, false], [true, false])
