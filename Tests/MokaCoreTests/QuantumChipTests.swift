@@ -22,7 +22,8 @@ func parseCustomRejects(text: String) {
     "FR-06 R-006: 남은 시간은 60분 미만 M:SS, 이상 H:MM:SS",
     arguments: [
         (1500, "25:00"), (599, "9:59"), (3599, "59:59"), (3600, "1:00:00"), (5400, "1:30:00"),
-        (5099, "1:24:59"), (10800, "3:00:00"), (0, "0:00"),
+        (5099, "1:24:59"), (10800, "3:00:00"), (0, "0:00"), (61, "1:01"), (3661, "1:01:01"),
+        (3609, "1:00:09"),
     ])
 func remainingFormat(seconds: Int, expected: String) {
     #expect(RemainingFormat.string(seconds) == expected)
