@@ -22,6 +22,7 @@ let errorFixtures: [ErrorFixture] = [
     ErrorFixture(name: "unknown-key", kind: .unknownKey),
     ErrorFixture(name: "unknown-key-settings", kind: .unknownKey),
     ErrorFixture(name: "unknown-key-event", kind: .unknownKey),
+    ErrorFixture(name: "unknown-key-newline", kind: .unknownKey),
     ErrorFixture(name: "settings-out-of-range", kind: .outOfRange),
     ErrorFixture(name: "settings-float", kind: .wrongType),
     ErrorFixture(name: "unknown-type", kind: .unknownType),
@@ -173,4 +174,58 @@ func commandRunSuccess() {
     #expect(Data(result.stdout.utf8) == expected)
     #expect(result.stderr.isEmpty)
     #expect(result.exitCode == 0)
+}
+
+/// 끝의 개행 하나를 뺀 나머지에 줄을 바꾸는 문자(제어 문자, U+0085, U+2028, U+2029)가 없다.
+private func isOneLine(_ stderr: String) -> Bool {
+    guard stderr.hasSuffix("\n") else { return false }
+    return !stderr.dropLast().unicodeScalars.contains {
+        $0.value < 0x20 || (0x7F...0x9F).contains($0.value) || $0.value == 0x2028 || $0.value == 0x2029
+    }
+}
+
+private func runCommand(_ json: String) -> SimCommandResult {
+    SimCommand.run(arguments: ["run", "fake.json"]) { _ in Data(json.utf8) }
+}
+
+@Test("ADR-0003 R-015: errors/ 픽스처의 표준 오류는 개행 없는 한 줄", arguments: errorFixtures)
+func errorFixtureStderrIsOneLine(fixture: ErrorFixture) {
+    let path = errorsURL.appendingPathComponent("\(fixture.name).json").path
+    let command = SimCommand.run(arguments: ["run", path], readFile: readFixture)
+    #expect(isOneLine(command.stderr), "\(command.stderr.debugDescription)")
+}
+
+@Test(
+    "ADR-0003 R-015: 입력 문자열에 제어 문자가 있어도 표준 오류는 한 줄",
+    arguments: [
+        #"{"version":1,"timezone":"UTC","events":[],"a\nb":1}"#,
+        #"{"version":1,"timezone":"UTC","events":[],"settings":{"a\r\nb\u2028c":1}}"#,
+        #"{"version":1,"timezone":"UTC","events":[{"at":"2026-11-02T00:00:00Z","type":"ti\nck"}]}"#,
+        #"{"version":1,"timezone":"UTC","events":[{"at":"2026-11-02\n00:00:00Z","type":"tick"}]}"#,
+        #"{"version":1,"timezone":"UTC","events":[{"at":"2026-11-02T00:00:00.5Z\n","type":"tick"}]}"#,
+        #"{"version":1,"timezone":"Asia/\u0000Seoul","events":[]}"#,
+        #"{"version":1,"a\tb":1,"a\tb":2,"timezone":"UTC","events":[]}"#,
+    ])
+func controlCharactersInInputStayOnOneLine(json: String) {
+    let command = runCommand(json)
+    #expect(command.exitCode == 2)
+    #expect(isOneLine(command.stderr), "\(command.stderr.debugDescription)")
+}
+
+@Test(
+    "ADR-0003 R-015: 인자에 제어 문자가 있어도 표준 오류는 한 줄",
+    arguments: [["ch\neck"], ["run", "/nonexistent/fa\nke.json"]])
+func controlCharactersInArgumentsStayOnOneLine(arguments: [String]) {
+    let command = SimCommand.run(arguments: arguments) { _ in nil }
+    #expect(command.exitCode == 2)
+    #expect(isOneLine(command.stderr), "\(command.stderr.debugDescription)")
+}
+
+@Test("ADR-0003 R-015: 오류 설명에 넣는 입력 문자열은 64자에서 자른다")
+func longInputIsTruncated() {
+    let key = String(repeating: "x", count: 1000)
+    let command = runCommand(#"{"version":1,"timezone":"UTC","events":[],""# + key + #"":1}"#)
+    #expect(command.exitCode == 2)
+    #expect(command.stderr.contains(String(repeating: "x", count: 64) + "…"))
+    #expect(!command.stderr.contains(String(repeating: "x", count: 65)))
 }
