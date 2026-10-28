@@ -9,10 +9,11 @@ public enum QuantumChip {
 }
 
 public enum RemainingFormat {
-    /// "M:SS", 분은 0을 채우지 않는다.
+    /// "M:SS", 분은 0을 채우지 않는다. 음수는 0으로 자른다.
     public static func string(_ seconds: Int) -> String {
-        let secondsPart = seconds % 60
-        return "\(seconds / 60):\(secondsPart < 10 ? "0" : "")\(secondsPart)"
+        let clamped = max(seconds, 0)
+        let secondsPart = clamped % 60
+        return "\(clamped / 60):\(secondsPart < 10 ? "0" : "")\(secondsPart)"
     }
 }
 
