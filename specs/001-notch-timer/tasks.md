@@ -74,20 +74,14 @@ EGM 금붕어 리뷰(2026-10-28)와 승인 항목 토론 뒤 보강했다. 보�
 
 ---
 
-## Phase 3: DynamicNotchKit spike (사람이 있는 낮 세션, 🔒 UI 태스크 전부의 조건)
+## Phase 3: 노치 spike (사람이 있는 낮 세션, 🔒 UI 태스크 전부의 조건, 완료 2026-10-28)
 
 **Purpose**: research R4의 미확인 동작을 버리는 브랜치에서 확인한다. 병합하지 않는다. 상한 반나절. 무인 실행 대상이 아니다
 
-- [ ] T008 버리는 브랜치 `spike/dynamicnotchkit`에서 `project.yml` `packages`에 `DynamicNotchKit: {url: https://github.com/MrKai77/DynamicNotchKit, revision: cd0b3e52d537db115ad3a9d89601f20e0bee8d27}`(주석 `# 1.1.0`)을 앱 타깃에만 연결하고 아래를 PASS/FAIL로 기록한다 〔단위 3〕
-  1. 앱 타깃 Swift 6 모드 빌드(실패하면 ADR-0001 "앱 타깃도 Swift 6 모드로 시작" 항목대로 첫 실패에서 앱 타깃만 `SWIFT_VERSION: 5.0`, 두 번째 시도 없음)
-  2. 노치 위에 마우스를 올리면 펼침(라이브러리에 없으면 직접 구현 전제로 기록)
-  3. `LSUIElement` 앱에서 펼친 화면 `TextField`에 키 입력이 들어감(R-002)
-  4. 마우스를 올려 펼칠 때와 코드로 펼칠 때 키보드 포커스를 가져가지 않음(R-002·R-009, SC-003). 함께 본다: 펼친 판 첫 클릭 한 번에 입력 포커스까지 가는지, 시작·완료 뒤 key가 이전 앱으로 돌아가는지, 접힌 띠가 그 아래 메뉴 클릭을 가로채는지
-  5. 노치 없는 화면에서 직접 만든 `.nonactivatingPanel` 떠 있는 창이 뜨고 펼쳐짐(R-011)
-  6. 직접 만든 `.nonactivatingPanel`을 노치 위치에 노치 모양으로 띄우고 펼침. 2·4가 직접 구현·덮어쓰기이고 6이 반나절 안에 PASS면 DynamicNotchKit은 제거 후보다. 사람이 spike 끝에 정하고, 빼면 ADR로 남긴다
-- [ ] T009 같은 세션에서 스냅샷 도우미 첫 시험: `NSHostingView` + `bitmapImageRepForCachingDisplay`·`cacheDisplay(in:to:)`로 `TextField`가 든 뷰 하나를 라이트·다크(`NSAppearance(named: .aqua)`·`.darkAqua`) PNG로 만들고, `TEST_RUNNER_MOKA_SNAPSHOT_DIR`로 넘긴 절대 경로에 파일이 생기는지 본다(research R8). 결과를 T008과 함께 `research.md` R4·R8과 ADR-0001 "결정 검증"에 적는 PR을 따로 연다(spike 코드는 넣지 않음) 〔단위 3〕
+- [x] T008 버리는 브랜치에서 DynamicNotchKit 1.1.0(`cd0b3e52d537db115ad3a9d89601f20e0bee8d27`)을 앱 타깃에만 연결하고 6가지를 사람이 확인했다(2026-10-28). 결과: 1 Swift 6 빌드 PASS / 2 hover 펼침 PASS(라이브러리에 없어 `NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved)`로 직접) / 3 `LSUIElement` 입력칸 한글 포함 첫 클릭 PASS / 4 코드로 펼쳐도 key를 가져가지 않음 PASS("key window=없음, 앱 활성=false", `.nonactivatingPanel` + `orderFrontRegardless()`) / 5 직접 만든 떠 있는 창 PASS(노치 화면), 외부 모니터 NOT_RUN / 6 직접 만든 노치 모양 패널 PASS / 노치 옆 메뉴 클릭 가로채지 않음 PASS. 시작·완료 뒤 key가 이전 앱으로 돌아가는지는 기록이 없어 T015 사람 확인으로 넘긴다. 6번 조건대로 DynamicNotchKit을 뺐다(ADR-0008, research R4 표) 〔단위 3〕
+- [x] T009 같은 세션에서 스냅샷 도우미 첫 시험: `NSHostingView` + `bitmapImageRepForCachingDisplay`·`cacheDisplay(in:to:)`로 `TextField`가 든 뷰 하나를 라이트·다크(`NSAppearance(named: .aqua)`·`.darkAqua`) PNG로 만들고, `TEST_RUNNER_MOKA_SNAPSHOT_DIR`로 넘긴 절대 경로에 파일이 생기는지 본다(research R8). 결과를 T008과 함께 `research.md` R4·R8과 ADR-0001 "결정 검증"에 적는 PR을 따로 연다(spike 코드는 넣지 않음) 〔단위 3〕 — 결과 PASS(2026-10-28, research R8 "결정 검증"). 라이트·다크 PNG 생성, `TEST_RUNNER_MOKA_SNAPSHOT_DIR`가 `MOKA_SNAPSHOT_DIR`로 전달됨. 다크 위쪽 밝은 띠는 배경을 `.frame` 뒤에 칠해 막는다(T037). 기록은 ADR-0001 대신 research R8에 했다(ADR-0001 본문은 고치지 않음, ADR-0008)
 
-**확인 지점**: 6가지와 스냅샷 도우미 결과가 기록됐다. FAIL이 있으면 Phase 4 이후 🔒 태스크의 설계를 다시 정하고(debate) 사람 승인을 받는다. PASS여도 🔒 태스크의 뷰 입력·`SettingsStore` 주입 모양을 Issue 본문에 확정한 뒤 시작한다
+**확인 지점**: 6가지와 스냅샷 도우미 결과가 기록됐다(완료, research R4·R8, ADR-0008). FAIL이 있으면 Phase 4 이후 🔒 태스크의 설계를 다시 정하고(debate) 사람 승인을 받는다. PASS여도 🔒 태스크의 뷰 입력·`SettingsStore` 주입 모양을 Issue 본문에 확정한 뒤 시작한다
 
 ---
 
@@ -112,7 +106,7 @@ EGM 금붕어 리뷰(2026-10-28)와 승인 항목 토론 뒤 보강했다. 보�
 - [ ] T012 [US1] `Sources/MokaCore/Sim/`에 시나리오 타입·디코더(`SimScenario.swift`, 날짜 파싱은 지역 `ISO8601DateFormatter` 또는 `Date.ISO8601FormatStyle`), 실행기(`SimRunner.swift`: 모든 입력 이벤트에 대해 먼저 `apply(.tick, at:)`(암묵 tick, `set_default_quantum` 포함), 그다음 타이머 이벤트는 `NotchTimer.apply`, rejected는 입력 오류, `set_default_quantum`은 `QuantumSettings.writeDefault`로 `InMemorySettingsStore`에 쓰기, 이벤트 뒤 `invariantViolation`). 정수 판정(`45`는 받고 `45.0`·`1.0`은 거부)은 `JSONDecoder`에 맡기지 않고 숫자 원문 토큰으로 한다(예: `JSONSerialization` 뒤 원문 검사 또는 작은 자체 스캐너), 출력(`SimOutput.swift`: 문자열 직접 조립, `JSONEncoder` 안 씀), 종료 코드 매핑 순수 함수(`SimExitCode.swift`)를 구현한다. 결과는 출력 줄 전체 또는 오류 값 하나다(오류면 출력 없음). `SimExitCode`에 깨진 상태로 만든 불변식 위반을 넣어 1이 나오는 단위 시험을 더한다. T010·T011 PASS 〔단위 1b〕
 - [ ] T013 [US1] `Sources/moka-sim/main.swift`를 `moka-sim run <file>`로 바꾼다: 파일 읽기 → 실행기 → 성공이면 표준 출력, 오류면 표준 오류 한 줄 → `SimExitCode`로 종료(인자 없음·모르는 하위 명령·파일 없음도 2). DB·네트워크·Keychain·환경 변수·`Date()`·`TimeZone.current`를 쓰지 않고 DB 경로 인자를 두지 않는다. `swift run moka-sim run Tests/MokaCoreTests/Fixtures/sim/us1-basic.json`의 출력과 종료 코드를 PR "완료 증거"에 붙인다 〔단위 1b〕
 - [ ] T014 🔒 [US1] `App/Sources/AppState.swift`에 `@Observable @MainActor final class AppState`를 둔다(data-model §6). `running` 동안만 도는 1초 주기 화면 갱신 타이머와 `NSWorkspace.shared.notificationCenter`의 `didWakeNotification`에서 `apply(.tick, …)`를 부를 뿐 상태를 직접 바꾸지 않는다(research R1). 현재 시각은 `MokaClock`, 기본값은 주입받은 `SettingsStore`에서 읽는다. 화면에 남은 초를 쓰기 전에 `apply(.tick, …)`를 먼저 부른다(tick 없이 끝 시각이 지난 `running`을 그리면 `0:00`인데 시간 끝이 아닌 상태가 된다, #13). `os.Logger`(subsystem `dev.dongwon.moka`)로 상태 전이 이름만 남기고 제목은 남기지 않는다(R7) 〔단위 4〕
-- [ ] T015 🔒 [US1] `App/Sources/Notch/NotchHost.swift`(DynamicNotchKit을 import하는 유일한 파일, T008 6번으로 제거하면 직접 만든 패널)에서 접힘·펼침 뷰를 띄운다. 마우스를 올리면 펼치되 key window로 만들지 않는다. 펼친 판을 클릭하면 key window가 되고 빈 상태면 제목 칸에 포커스를 준다(data-model §6 포커스 표). 접힘은 `shouldStayExpanded`로 정한다. `project.yml`에 DynamicNotchKit 패키지(T008과 같은 revision, 유지할 때만)와 `MokaStore` 의존을 더한다 〔단위 4〕
+- [ ] T015 🔒 [US1] `App/Sources/Notch/NotchPanelHost.swift`에 직접 만든 `.nonactivatingPanel` 하나를 두고 접힘·펼침 뷰를 띄운다(ADR-0008, 노치 화면과 노치 없는 화면이 같은 패널을 쓴다. 이 태스크는 노치 화면 배치까지). 노치 모양은 시안 v3.5 치수대로 직접 그린다(위쪽 양 끝 안쪽 오목 곡선 8pt, 아래 둥근 모서리. DynamicNotchKit `NotchShape`(MIT)를 옮기면 출처 주석). 애니메이션은 SwiftUI 크기 전환으로 시작한다. 마우스를 올리면(`NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved)`) 펼치되 key window로 만들지 않는다(`orderFrontRegardless()`). 펼친 판을 클릭하면 key window가 되고 빈 상태면 제목 칸에 포커스를 준다(data-model §6 포커스 표). 접힘은 `shouldStayExpanded`로 정한다. `project.yml`에는 `MokaStore` 의존만 더한다(노치 라이브러리 패키지 없음). 사람 확인: 노치 모양이 시안 v3.5와 같은지, 펼침·접힘이 바로 보이는지(SC-004), 시작·완료 뒤 key가 이전 앱으로 돌아가는지. 모양·애니메이션이 같은 원인으로 두 번 미달하면 ADR-0008 되돌림 조건대로 멈추고 사람 승인을 받는다 〔단위 4〕
 - [ ] T016 🔒 [P] [US1] `App/Sources/Views/`에 시안 v3.5대로 뷰를 만든다. 뷰는 `AppState`가 아니라 값(`NotchTimer`, 남은 초, 콜백)을 받아 스냅샷 번들이 앱 없이 컴파일할 수 있게 한다. 남은 시간 글자는 `RemainingFormat.string`:
   - `CollapsedView.swift`: 빈 상태 회색 점(R-001), 도는 중 점·제목·남은 시간(접힌 화면에서 노치 왼쪽 표시 영역 폭 104pt, 넘치는 제목은 끝을 "…"로, R-006)
   - `ExpandedView.swift`: 빈 상태 입력칸(자리표시 "할 일 없음 — 무엇을 할까요?", R-001), 앞뒤 공백을 뺀 제목이 비면 Enter로 넘어가지 않음(R-002), 도는 중에는 제목(두 줄까지)·남은 시간·완료 버튼만(R-006). 판 폭 340pt. 노치 왼쪽 귀: 잔 아이콘(#A47864)과 "MOKA" 글자(#F5E9E1). 오른쪽 귀: 상태 글자(새 할 일 / 시간 고르기 / N분 집중 / 시간 끝)
@@ -189,7 +183,7 @@ EGM 금붕어 리뷰(2026-10-28)와 승인 항목 토론 뒤 보강했다. 보�
 - [ ] T029 [US4] `schema/moka-schema.sql`에 첫 스냅샷을 만든다(T025가 `Issue.record`로 낸 텍스트를 그대로 옮긴다). macOS `swift test` PASS는 필수다. 리눅스는 docker(`docker run --rm -v "$PWD":/w -w /w swift:6.3.3-noble bash -c "apt-get update -qq && apt-get install -y -qq --no-install-recommends libsqlite3-dev >/dev/null && swift test --scratch-path /tmp/.build-linux"`)로 보고, docker를 못 쓰면 NOT_RUN과 이유를 적고 PR CI `core-test` 결과로 갈음한다(research R2 선행 확인). 텍스트가 다르면 멈추고 PR "사람이 볼 결정"에 올린다(ADR-0004 재검토 트리거). 스냅샷 추가 자체도 "사람이 볼 결정"에 적는다 〔단위 2〕
 - [ ] T030 [US4] `Sources/MokaStore/MokaDatabase.swift`에 `open(at:)`(상위 폴더 생성 → 열기 → 마이그레이션, 경로는 받은 그대로)과 `schemaSQL(_:)`을 더하고, `Sources/MokaStore/GRDBSettingsStore.swift`에 `SettingsStore` 구현(UPSERT)을 둔다. 제품 코드에 테스트 빌드 판별 분기를 두지 않는다. 기존 `inMemory()`·`healthCheck`는 유지한다. T025·T026 PASS 〔단위 2〕
 - [ ] T031 [US4] T027 golden이 T012 실행기로 PASS하는지 확인한다(`set_default_quantum`은 T012에서 구현) 〔단위 1b〕
-- [ ] T032 🔒 [US4] `App/Sources/Settings/SettingsView.swift`를 SwiftUI `Settings` scene으로 만든다(메뉴의 "설정…"은 `SettingsLink`, 창을 앞으로 가져오려 `NSApp.activate`). 기본 작업 시간 입력은 제출(Enter)이나 포커스를 잃을 때 `QuantumSettings.writeDefault`로 저장하고, 범위 밖이면 칸을 이전 값으로 되돌린다. `MokaApp.swift`에서 `MokaDatabase.open(at:)`으로 `~/Library/Application Support/dev.dongwon.moka/moka.sqlite`를 열어 `GRDBSettingsStore`로 쓴다. 못 열면 `InMemorySettingsStore`로 동작하고 `os.Logger`에 오류 종류를 남긴다(research R2). 앱 코드만 이 경로를 쓴다 〔단위 4〕
+- [ ] T032 🔒 [US4] `App/Sources/Settings/SettingsView.swift`를 SwiftUI `Settings` scene으로 만든다(메뉴의 "설정…"은 `SettingsLink`, 창을 앞으로 가져오려 `NSApp.activate`). 기본 작업 시간 입력은 제출(Enter)이나 포커스를 잃을 때 `QuantumSettings.writeDefault`로 저장하고, 범위 밖이면 칸을 이전 값으로 되돌린다. `MokaApp.swift`에서 `MokaDatabase.open(at:)`으로 `~/Library/Application Support/dev.dongwon.moka/moka.sqlite`를 열어 `GRDBSettingsStore`로 쓴다. 못 열면 `InMemorySettingsStore`로 동작하고 `os.Logger`에 오류 종류를 남긴다(research R2). 앱 코드만 이 경로를 쓴다. 펼친 판에 우클릭 메뉴(`contextMenu`)로 "설정…"과 "종료"를 둔다(R-012, 메뉴 막대가 넘쳐 아이콘이 노치 뒤로 숨을 때 대비). 사람 확인: nonactivating 패널에서 우클릭 메뉴가 뜨는지, 거기서 연 설정 창이 앞으로 오는지. FAIL이면 두 번째 시도 없이 우클릭 메뉴를 빼고 spec "대안과 위험"의 알려진 위험으로 기록한다 〔단위 4〕
 
 **확인 지점**: 재시작 뒤 기본값 유지는 quickstart 6 마지막 줄로 사람이 확인
 
@@ -209,7 +203,7 @@ EGM 금붕어 리뷰(2026-10-28)와 승인 항목 토론 뒤 보강했다. 보�
 
 - [ ] T034 [US5] `Sources/MokaCore/DisplayTarget.swift`에 data-model §5의 `ScreenInfo`, `DisplayTarget`, `chooseDisplayTarget(_:)`를 구현한다. T033 PASS 〔단위 1a〕
 - [ ] T035 🔒 [US5] `App/Sources/Notch/ScreenWatcher.swift`에서 `NSScreen` → T034 입력(data-model §5: `id`는 `NSScreenNumber`, `hasNotch`는 `safeAreaInsets.top > 0`, `isMain`은 `NSScreen.screens.first`이고 `NSScreen.main`이 아니다)을 만들고 `NSApplication.didChangeScreenParametersNotification`에서 다시 고른다. 타이머 상태와 `isPinnedOpen`은 건드리지 않고 새 위치로 옮긴다 〔단위 5〕
-- [ ] T036 🔒 [US5] `App/Sources/Notch/FloatingHost.swift`에 직접 만든 `.nonactivatingPanel` 떠 있는 창(메뉴 막대 아래 중앙 고정, 드래그 없음)을 만들고 T016 뷰를 같이 띄운다. 접힘·펼침 둘 다 보이고 마우스를 올리면 펼친다(포커스 규칙은 T015와 같다). 라이트 모드의 "MOKA" 글자는 #85604F 〔단위 5〕
+- [ ] T036 🔒 [US5] `App/Sources/Notch/NotchPanelHost.swift`(T015)에 노치 없는 화면 배치를 더한다: T035가 `.floating`을 고르면 같은 패널을 노치 모양 없이 메뉴 막대 아래 중앙에 고정(드래그 없음)하고, 화면 변경 때 타이머 상태와 `isPinnedOpen`을 유지한 채 새 위치로 옮긴다. 접힘·펼침·hover·포커스 규칙은 T015 그대로다. 라이트 모드의 "MOKA" 글자는 #85604F. 사람 확인: 덮개를 닫고 외부 모니터만 쓸 때(spike 5 외부 모니터 NOT_RUN 몫) 〔단위 5〕
 
 **확인 지점**: 다섯 이야기 모두 완성
 
@@ -217,7 +211,7 @@ EGM 금붕어 리뷰(2026-10-28)와 승인 항목 토론 뒤 보강했다. 보�
 
 ## Phase 9: Polish & Cross-Cutting
 
-- [ ] T037 🔒 `App/Tests/MokaAppTests/SnapshotHelper.swift`에 `renderPNG(view:size:appearance:) -> Data`(T009 결과)를 두고, `App/Tests/MokaAppTests/ScreenStateSnapshotTests.swift`에서 빈 상태, 입력, 칩 펼침, 도는 중, 시간 끝, 떠 있는 창을 라이트·다크로 만든다. sanity 단언만 한다(크기 0 아님, 단색 아님, 라이트≠다크). 출력은 `TEST_RUNNER_MOKA_SNAPSHOT_DIR`(xcodebuild가 접두사를 떼고 넘김) 또는 `#filePath`로 구한 저장소 루트의 `.verify/snapshots/001/`(커밋 안 함, 도우미가 폴더 생성). `project.yml`에 `MokaAppTests`(type `bundle.unit-test`, platform macOS, sources `App/Sources/Views`·`App/Tests/MokaAppTests`, dependencies `- package: Moka, product: MokaCore`, settings `SWIFT_VERSION: "6.0"`·`GENERATE_INFOPLIST_FILE: YES`, TEST_HOST 없음)를 더하고 `Moka` 타깃에 `scheme: { testTargets: [MokaAppTests] }`를 둔다. CI job은 두지 않는다. 마일스톤 1 완료 조건이 아니며 밀리면 버퍼(11/8~9)로 간다 〔단위 5〕
+- [ ] T037 🔒 `App/Tests/MokaAppTests/SnapshotHelper.swift`에 `renderPNG(view:size:appearance:) -> Data`(T009 결과, 배경은 `.frame` 뒤에 칠해 다크 위쪽 투명 띠를 막는다)를 두고, `App/Tests/MokaAppTests/ScreenStateSnapshotTests.swift`에서 빈 상태, 입력, 칩 펼침, 도는 중, 시간 끝, 떠 있는 창을 라이트·다크로 만든다. sanity 단언만 한다(크기 0 아님, 단색 아님, 라이트≠다크). 출력은 `TEST_RUNNER_MOKA_SNAPSHOT_DIR`(xcodebuild가 접두사를 떼고 넘김) 또는 `#filePath`로 구한 저장소 루트의 `.verify/snapshots/001/`(커밋 안 함, 도우미가 폴더 생성). `project.yml`에 `MokaAppTests`(type `bundle.unit-test`, platform macOS, sources `App/Sources/Views`·`App/Tests/MokaAppTests`, dependencies `- package: Moka, product: MokaCore`, settings `SWIFT_VERSION: "6.0"`·`GENERATE_INFOPLIST_FILE: YES`, TEST_HOST 없음)를 더하고 `Moka` 타깃에 `scheme: { testTargets: [MokaAppTests] }`를 둔다. CI job은 두지 않는다. 마일스톤 1 완료 조건이 아니며 밀리면 버퍼(11/8~9)로 간다 〔단위 5〕
 - [ ] T038 🔒 스냅샷 방법 ADR(그때의 다음 번호)을 `adr/`에 쓴다(D4, research R8). "생성 PASS는 화면 정합 증거가 아니다"와, ADR-0003의 "앱 UI 테스트는 XCUITest" 문구와 다른 점(XCTest 단위 번들)을 적는다 〔단위 5〕
 - [ ] T039 🔒 모은 PNG를 `~/Dev/ai-platform/projects/moka/design/pr-<번호>/index.html`에 시안과 나란히 두고 PR "완료 증거"에 경로를 적는다(저장소 밖, 커밋 안 함) 〔단위 5〕
 - [ ] T040 quickstart 3 오류 주입: golden 기대값 하나, 마이그레이션 열 하나, 가짜 마이그레이션 등록 하나를 일부러 넣어 `swift test`가 FAIL하고 종료 코드가 0이 아닌지 확인한 뒤 되돌린다. 커밋하지 않고 결과만 PR에 적는다 〔단위 1·2〕
@@ -231,7 +225,7 @@ EGM 금붕어 리뷰(2026-10-28)와 승인 항목 토론 뒤 보강했다. 보�
 ### Phase 순서
 
 - Setup(1) → Foundational(2) = 단위 1a(+T018·T020·T033·T034) → 병합 → 단위 1b와 단위 2를 병렬
-- Spike(3)는 사람이 있는 낮 세션. Phase 2와 무관하게 언제든 할 수 있다
+- Spike(3)는 사람이 있는 낮 세션(완료 2026-10-28, T008·T009 PASS)
 - 🔒 태스크는 전부 Spike PASS 뒤. 그 안에서는 US1(T014~T017) → US2(T021)·US3(T023·T024) → US4(T032)·US5(T035·T036) → Polish(T037~T039, T042)
 
 ### 태스크 사이 의존
@@ -239,7 +233,7 @@ EGM 금붕어 리뷰(2026-10-28)와 승인 항목 토론 뒤 보강했다. 보�
 - T006 ← T004, T007 ← T005, T020 ← T018, T034 ← T033
 - T012 ← T006·T007·T010·T011, T013 ← T012, T031 ← T027·T012
 - T025·T026·T030 ← T007(1a 병합), T030 ← T025·T026·T028·T029, T032 ← T030·T017
-- T015·T016·T017 ← T014, T021 ← T016, T023 ← T014, T024 ← T021, T036 ← T016·T035
+- T015·T016·T017 ← T014, T021 ← T016, T023 ← T014, T024 ← T021, T036 ← T015·T016·T035
 - T037 ← T016·T021·T024·T036, T038 ← T037, T039 ← T037
 
 ### 작업 단위 ↔ Issue (plan "작업 단위")
