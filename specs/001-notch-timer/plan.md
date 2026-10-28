@@ -6,13 +6,13 @@
 
 ## Summary
 
-노치(없으면 직접 만든 떠 있는 창)에 수동 입력한 할 일 하나와 사용자가 고른 시간의 타이머를 띄운다. 타이머·칩·설정 규칙·표시 위치 선택은 MokaCore 값 타입과 순수 함수로 두고 리눅스 `swift test`와 `moka-sim`으로 화면 없이 검증한다. 기본 작업 시간은 GRDB `settings` 테이블에 저장하며, 이 PR 묶음에서 첫 마이그레이션과 스키마 스냅샷이 시작된다. 화면은 HTML 시안을 사용자가 확정한 뒤 만들고, 그 전에 DynamicNotchKit spike로 미확인 동작 6가지를 확인한다. 결정 근거는 [research.md](research.md).
+노치(없으면 직접 만든 떠 있는 창)에 수동 입력한 할 일 하나와 사용자가 고른 시간의 타이머를 띄운다. 타이머·칩·설정 규칙·표시 위치 선택은 MokaCore 값 타입과 순수 함수로 두고 리눅스 `swift test`와 `moka-sim`으로 화면 없이 검증한다. 기본 작업 시간은 GRDB `settings` 테이블에 저장하며, 이 PR 묶음에서 첫 마이그레이션과 스키마 스냅샷이 시작된다. 화면은 HTML 시안을 사용자가 확정한 뒤 만들고, 그 전에 노치 spike로 미확인 동작 6가지를 확인했다(2026-10-28, 결과로 DynamicNotchKit을 뺐다, ADR-0008). 결정 근거는 [research.md](research.md).
 
 ## Technical Context
 
 **Language/Version**: Swift 6(언어 모드 6, ADR-0001). 앱 타깃은 Swift 6 첫 실패 시 5.0(ADR-0001 32행)
 
-**Primary Dependencies**: GRDB 7.11.1(`MokaStore`, 기존), DynamicNotchKit 1.1.0 `revision: cd0b3e52d537db115ad3a9d89601f20e0bee8d27`(앱 타깃만, `project.yml`, 새로 연결 — 의존성 자체는 ADR-0001 승인)
+**Primary Dependencies**: GRDB 7.11.1(`MokaStore`, 기존). 노치 라이브러리는 쓰지 않는다 — DynamicNotchKit은 spike 뒤 ADR-0008로 제외했고, 노치·떠 있는 창은 직접 만든 `.nonactivatingPanel`(AppKit)이다
 
 **Storage**: SQLite `~/Library/Application Support/dev.dongwon.moka/moka.sqlite`(ADR-0004), `settings` 테이블 하나. 할 일·타이머는 메모리
 
@@ -34,7 +34,7 @@
 
 | 원칙 | 판정 | 근거 |
 |---|---|---|
-| I 승인 없는 계약 변경 금지 | 통과(승인 받음) | 첫 마이그레이션·스냅샷(D1), `moka-sim` v1(D2), DynamicNotchKit 연결(D3), 스냅샷 방법(D4)을 토론 → 사용자 "전부 승인"(2026-10-28). EGM 리뷰 뒤 계약 보강·ADR-0004 정정(새 ADR)·Package.swift 내부 의존 정리·포커스 규칙(SC-001)을 토론 → 사용자 승인(2026-10-28). 구현 PR마다 "사람이 볼 결정"에 다시 적는다 |
+| I 승인 없는 계약 변경 금지 | 통과(승인 받음) | 첫 마이그레이션·스냅샷(D1), `moka-sim` v1(D2), DynamicNotchKit 연결(D3, spike 뒤 ADR-0008로 제외), 스냅샷 방법(D4)을 토론 → 사용자 "전부 승인"(2026-10-28). EGM 리뷰 뒤 계약 보강·ADR-0004 정정(새 ADR)·Package.swift 내부 의존 정리·포커스 규칙(SC-001)을 토론 → 사용자 승인(2026-10-28). 구현 PR마다 "사람이 볼 결정"에 다시 적는다 |
 | II 테스트 먼저, 약화 금지 | 통과 | R-ID마다 Red 커밋 → Green 커밋. 시간 규칙은 주입한 `MokaClock`. 오류 주입은 quickstart 3 |
 | III 네 가지로만 보고 | 통과 | quickstart 결과 표는 PASS/FAIL/SKIP/NOT_RUN. 스냅샷 생성 PASS는 화면 정합 증거가 아니라고 명시(R8) |
 | IV 같은 실패 2회 중단 | 통과 | Swift 6 첫 실패에서 5.0으로 내림(두 번째 시도 없음). spike 상한 반나절 |
@@ -89,13 +89,12 @@ schema/moka-schema.sql                # 첫 스냅샷(settings)
 App/Sources/
 ├── MokaApp.swift                     # 메뉴 막대(설정…, 종료), AppState 생성
 ├── AppState.swift                    # @Observable @MainActor
-├── Notch/NotchHost.swift             # DynamicNotchKit을 import하는 유일한 파일
-├── Notch/FloatingHost.swift          # 직접 만든 .nonactivatingPanel 떠 있는 창
+├── Notch/NotchPanelHost.swift        # 직접 만든 .nonactivatingPanel 하나(노치 위치·떠 있는 창, ADR-0008)
 ├── Notch/ScreenWatcher.swift         # NSScreen → DisplayTarget 입력, 화면 변경 알림
 ├── Views/                            # 접힘·펼침·칩·시간 끝 SwiftUI 뷰(스냅샷 대상)
 └── Settings/SettingsView.swift
 App/Tests/MokaAppTests/               # 스냅샷 도우미 + 상태별 PNG(XCTest, TEST_HOST 없음)
-project.yml                           # DynamicNotchKit 패키지, MokaStore 의존, MokaAppTests 타깃
+project.yml                           # MokaStore 의존, MokaAppTests 타깃(노치 라이브러리 패키지 없음)
 ```
 
 **Structure Decision**: ADR-0001 구조(루트 `Package.swift`, MokaCore·MokaStore·moka-sim, 얇은 `App/`)를 그대로 쓴다. 설계서 §1의 `Packages/` 3개 패키지 레이아웃과 `Moka/` 앱 폴더는 ADR-0001과 어긋나며 ADR을 따른다([승인 P] Q1).
@@ -106,8 +105,8 @@ project.yml                           # DynamicNotchKit 패키지, MokaStore 의
 |---|---|---|---|---|
 | 1 | MokaCore 타이머 상태기계·칩·설정 규칙·표시 위치 + `moka-sim` v1 + golden | R-003·004·005·007·008·010·011(선택 함수)·013·015 | 아니오 | 예 |
 | 2 | MokaStore 첫 마이그레이션 `v1_settings`·스냅샷·경로 가드·`GRDBSettingsStore` | R-012 | 아니오 | 예(리눅스·macOS 스냅샷 텍스트 비교 포함) |
-| 3 | DynamicNotchKit spike(버리는 브랜치) + 스냅샷 도우미 첫 시험 | — (R-002·009·011 위험 확인) | 아니오 | 아니오(사람 눈·손) |
-| 4 | 앱: AppState, NotchHost, 접힘·펼침·입력·칩·시간 끝 뷰, 메뉴 막대, 설정 화면 | R-001·002·006·007·008·009·012(화면) | 예 | 화면 확인은 사람 |
+| 3 | 노치 spike(버리는 브랜치) + 스냅샷 도우미 첫 시험 — 완료 2026-10-28, ADR-0008 | — (R-002·009·011 위험 확인) | 아니오 | 아니오(사람 눈·손) |
+| 4 | 앱: AppState, NotchPanelHost, 접힘·펼침·입력·칩·시간 끝 뷰, 메뉴 막대, 설정 화면 | R-001·002·006·007·008·009·012(화면) | 예 | 화면 확인은 사람 |
 | 5 | 앱: 떠 있는 창·화면 변경, 스냅샷 번들, 스냅샷 방법 ADR | R-011, D4 | 예 | 화면 확인은 사람 |
 
 1·2는 서로 파일이 겹치지 않아 병렬로 갈 수 있다. 단, 단위 2의 `GRDBSettingsStore`는 단위 1의 `SettingsStore` 프로토콜(T007)에 기대므로 T007 PR을 먼저 병합한다. `Package.swift` 정리는 spec PR에 들어 있다. 4·5는 3의 PASS와 시안 확정 뒤에 시작한다.
