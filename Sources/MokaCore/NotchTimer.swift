@@ -100,6 +100,7 @@ extension NotchTimer {
             return Self.titleViolation(draft.title) ?? Self.minutesViolation("chipMin", draft.chipMin)
         case .running(let title, let quantumMin, let startedAt, let endsAt):
             if endsAt <= startedAt { return "endsAt가 startedAt보다 늦지 않다" }
+            if now >= endsAt { return "끝 시각이 지났는데 running이다(남은 초 1 미만)" }
             return Self.titleViolation(title) ?? Self.minutesViolation("quantumMin", quantumMin)
         case .expired(let title, let chipMin):
             return Self.titleViolation(title) ?? Self.minutesViolation("chipMin", chipMin)
