@@ -177,6 +177,21 @@ func restartFromExpired() {
     #expect(timer == .running(title: title, quantumMin: 45, startedAt: t1, endsAt: t1.addingTimeInterval(2700)))
 }
 
+@Test("FR-05 R-010: 시간 끝에서 칩을 바꾸지 않고 시작하면 채워진 칩으로 다시 돈다")
+func restartFromExpiredWithFilledChip() {
+    var timer = NotchTimer.expired(title: title, chipMin: 45)
+    #expect(timer.apply(.start, at: t0, defaultQuantumMin: 25) == .applied)
+    #expect(timer == .running(title: title, quantumMin: 45, startedAt: t0, endsAt: t0.addingTimeInterval(2700)))
+}
+
+@Test("FR-05 R-010: 끝 시각 이후 start는 암묵 tick 뒤 기본값 칩으로 다시 돈다")
+func implicitTickBeforeStart() {
+    var timer = running()
+    let t1 = t0.addingTimeInterval(1800)
+    #expect(timer.apply(.start, at: t1, defaultQuantumMin: 15) == .applied)
+    #expect(timer == .running(title: title, quantumMin: 15, startedAt: t1, endsAt: t1.addingTimeInterval(900)))
+}
+
 @Test("FR-06 R-007: 시간 끝에서 완료하면 빈 상태로 돌아간다")
 func completeWhenExpired() {
     var timer = NotchTimer.expired(title: title, chipMin: 25)
@@ -207,10 +222,19 @@ func brokenStatesHaveViolation() {
         .empty(draft: Draft(title: title, chipMin: 0)),
         .expired(title: title, chipMin: 181),
         .empty(draft: Draft(title: "  ", chipMin: 25)),
+        .running(title: " ", quantumMin: 25, startedAt: t0, endsAt: t0.addingTimeInterval(1500)),
+        .expired(title: "", chipMin: 25),
     ]
     for state in states {
         #expect(state.invariantViolation(at: t0) != nil)
     }
+}
+
+@Test("FR-06 R-005: 끝 시각이 지난 running은 남은 초가 1 미만이라 불변식 위반", arguments: [0.0, 0.5, 600])
+func runningPastEndViolatesInvariant(overrun: TimeInterval) {
+    let timer = running()
+    #expect(timer.invariantViolation(at: t0.addingTimeInterval(1500 + overrun)) != nil)
+    #expect(timer.invariantViolation(at: t0.addingTimeInterval(1499.5)) == nil)
 }
 
 @Test("FR-06 R-005: MokaClock.fixed는 주입한 시각을 돌려준다")
