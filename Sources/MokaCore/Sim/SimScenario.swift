@@ -51,7 +51,7 @@ extension SimScenario {
 
         let zoneName = try string(require(root, "timezone", path: "timezone", seq: nil), path: "timezone", seq: nil)
         guard let timezone = TimeZone(identifier: zoneName) else {
-            throw SimError(kind: .unknownTimezone, seq: nil, message: "모르는 timezone \"\(zoneName)\"")
+            throw SimError(kind: .unknownTimezone, seq: nil, message: "모르는 timezone \(SimError.quoted(zoneName))")
         }
 
         var defaultQuantumMin: Int?
@@ -87,7 +87,7 @@ extension SimScenario {
         case "enter_title": extra = "title"
         case "choose_quantum", "set_default_quantum": extra = "quantum_min"
         case "start", "tick", "complete": extra = nil
-        default: throw SimError(kind: .unknownType, seq: seq, message: "모르는 type \"\(type)\"")
+        default: throw SimError(kind: .unknownType, seq: seq, message: "모르는 type \(SimError.quoted(type))")
         }
         try checkKeys(event, allowed: Set(["at", "type"] + (extra.map { [$0] } ?? [])), path: type, seq: seq)
 
@@ -124,7 +124,7 @@ extension SimScenario {
 
     private static func checkKeys(_ object: Object, allowed: Set<String>, path: String, seq: Int?) throws(SimError) {
         if let unknown = object.first(where: { !allowed.contains($0.key) }) {
-            throw SimError(kind: .unknownKey, seq: seq, message: "\(path)에 모르는 키 \"\(unknown.key)\"")
+            throw SimError(kind: .unknownKey, seq: seq, message: "\(path)에 모르는 키 \(SimError.quoted(unknown.key))")
         }
     }
 
@@ -167,7 +167,8 @@ enum SimTimestamp {
     static func parse(_ text: String, seq: Int) throws(SimError) -> Int {
         let b = Array(text.utf8)
         func invalid() -> SimError {
-            SimError(kind: .invalidTimestamp, seq: seq, message: "at \"\(text)\"는 오프셋이 있는 초 단위 ISO 8601이 아니다")
+            SimError(
+                kind: .invalidTimestamp, seq: seq, message: "at \(SimError.quoted(text))는 오프셋이 있는 초 단위 ISO 8601이 아니다")
         }
         func number(_ start: Int, _ count: Int) -> Int? {
             guard start + count <= b.count else { return nil }
@@ -187,7 +188,7 @@ enum SimTimestamp {
             let minute = number(14, 2), byte(16, is: ":"), let second = number(17, 2)
         else { throw invalid() }
         if byte(19, is: ".") {
-            throw SimError(kind: .fractionalSeconds, seq: seq, message: "at \"\(text)\"에 소수 초가 있다")
+            throw SimError(kind: .fractionalSeconds, seq: seq, message: "at \(SimError.quoted(text))에 소수 초가 있다")
         }
 
         let offsetSeconds: Int
@@ -208,7 +209,8 @@ enum SimTimestamp {
         let days = daysFromCivil(year: year, month: month, day: day)
         let epochSeconds = days * 86_400 + hour * 3600 + minute * 60 + second - offsetSeconds
         guard epochSeconds >= minEpochSeconds, epochSeconds <= maxEpochSeconds else {
-            throw SimError(kind: .invalidTimestamp, seq: seq, message: "at \"\(text)\"의 UTC 연도가 1...9999 밖이다")
+            throw SimError(
+                kind: .invalidTimestamp, seq: seq, message: "at \(SimError.quoted(text))의 UTC 연도가 1...9999 밖이다")
         }
         return epochSeconds
     }

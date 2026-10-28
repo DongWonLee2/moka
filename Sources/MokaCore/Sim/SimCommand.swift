@@ -19,12 +19,14 @@ public enum SimCommand {
             if let data = readFile(arguments[1]) {
                 result = SimRunner.run(data)
             } else {
-                result = .failure(SimError(kind: .fileUnreadable, seq: nil, message: "파일을 읽지 못했다: \(arguments[1])"))
+                result = .failure(
+                    SimError(kind: .fileUnreadable, seq: nil, message: "파일을 읽지 못했다: \(SimError.quoted(arguments[1]))"))
             }
         case "run":
             result = .failure(SimError(kind: .usage, seq: nil, message: "run은 시나리오 파일 하나를 받는다. \(usage)"))
         case .some(let command):
-            result = .failure(SimError(kind: .usage, seq: nil, message: "모르는 하위 명령 \"\(command)\". \(usage)"))
+            result = .failure(
+                SimError(kind: .usage, seq: nil, message: "모르는 하위 명령 \(SimError.quoted(command)). \(usage)"))
         }
 
         switch result {
