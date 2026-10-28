@@ -206,8 +206,16 @@ enum SimTimestamp {
         else { throw invalid() }
 
         let days = daysFromCivil(year: year, month: month, day: day)
-        return days * 86_400 + hour * 3600 + minute * 60 + second - offsetSeconds
+        let epochSeconds = days * 86_400 + hour * 3600 + minute * 60 + second - offsetSeconds
+        guard epochSeconds >= minEpochSeconds, epochSeconds <= maxEpochSeconds else {
+            throw SimError(kind: .invalidTimestamp, seq: seq, message: "at \"\(text)\"의 UTC 연도가 1...9999 밖이다")
+        }
+        return epochSeconds
     }
+
+    /// 출력 `at`이 4자리 연도를 지키는 범위: UTC 0001-01-01T00:00:00Z ... 9999-12-31T23:59:59Z.
+    private static let minEpochSeconds = daysFromCivil(year: 1, month: 1, day: 1) * 86_400
+    private static let maxEpochSeconds = daysFromCivil(year: 10_000, month: 1, day: 1) * 86_400 - 1
 
     /// UTC `YYYY-MM-DDTHH:MM:SSZ`.
     static func formatUTC(_ epochSeconds: Int) -> String {

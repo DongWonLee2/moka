@@ -156,9 +156,18 @@ struct SimJSONParser {
     }
 
     private mutating func parseHex4() throws(SimError) -> UInt32 {
-        guard index + 4 <= bytes.count,
-            let value = UInt32(String(decoding: bytes[index..<index + 4], as: UTF8.self), radix: 16)
-        else { throw invalid("\\u 뒤에 16진수 4자리가 와야 한다") }
+        guard index + 4 <= bytes.count else { throw invalid("\\u 뒤에 16진수 4자리가 와야 한다") }
+        var value: UInt32 = 0
+        for byte in bytes[index..<index + 4] {
+            let digit: UInt8
+            switch byte {
+            case UInt8(ascii: "0")...UInt8(ascii: "9"): digit = byte - UInt8(ascii: "0")
+            case UInt8(ascii: "a")...UInt8(ascii: "f"): digit = byte - UInt8(ascii: "a") + 10
+            case UInt8(ascii: "A")...UInt8(ascii: "F"): digit = byte - UInt8(ascii: "A") + 10
+            default: throw invalid("\\u 뒤에 16진수 4자리가 와야 한다")
+            }
+            value = value << 4 | UInt32(digit)
+        }
         index += 4
         return value
     }
