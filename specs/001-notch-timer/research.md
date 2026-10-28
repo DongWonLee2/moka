@@ -4,14 +4,14 @@
 
 ## R1. 타이머 모델 (R-005·R-008·R-010)
 
-- **Decision**: 타이머는 실제로 잠들지 않는 값 타입 상태기계다. 상태는 `empty / running / expired` 셋. `running`은 시작 시각과 끝 시각(= 시작 + quantum)을 가진다. 상태는 시각을 붙인 이벤트(`start(at:)`, `tick(now:)`, `complete(at:)`)로만 바뀐다. 남은 시간은 `끝 시각 − now`를 초 단위로 **올림**한 값이고, 0 이하가 되는 첫 `tick`에서 `expired`로 간다.
+- **Decision**: 타이머는 실제로 잠들지 않는 값 타입 상태기계다. 상태는 `empty / running / expired` 셋. `running`은 시작 시각과 끝 시각(= 시작 + quantum)을 가진다. 상태는 시각을 붙인 이벤트(`start(at:)`, `tick(now:)`, `complete(at:)`)로만 바뀐다. 남은 시간은 `끝 시각 − now`를 초 단위로 **올림**한 값이고(시계를 되돌려도 `quantumMin·60`을 넘지 않게 자른다), 0 이하가 되는 첫 `tick`에서 `expired`로 간다. 시작 전 단계(제목·칩 초안)도 이 값 타입의 `empty(draft:)`가 가진다(data-model §2, EGM 리뷰 뒤 토론 Q1 (b), 사용자 승인 2026-10-28).
 - **Rationale**: ADR-0003 "타이머는 실제로 잠들지 않는 상태기계다. 시각을 붙인 이벤트(`tick(now:)` 등)로만 상태가 바뀐다". 끝 시각 기준이라 잠자기·시계 변경과 무관하다(사용자 결정 grilling Q11). 올림이면 "남은 0초 ⇔ 시간 끝"이 같은 뜻이 되어 화면과 `moka-sim` 출력이 흔들리지 않는다(D2).
-- **Alternatives**: 남은 초를 1초마다 깎는 카운터(잠자기 동안 멈춤, 사용자가 거절), 내림(0:00이 1초 일찍 보임).
-- 시각은 `MokaClock`으로 주입한다. 앱은 1초 주기 화면 갱신 타이머로 `tick(now:)`를 부를 뿐 상태를 직접 바꾸지 않는다. 잠자기에서 깨어나면 `NSWorkspace.didWakeNotification`에서 한 번 더 `tick(now:)`를 부른다(R-008 "깨어날 때").
+- **Alternatives**: 남은 초를 1초마다 깎는 카운터(잠자기 동안 멈춤, 사용자가 거절), 내림(0:00이 1초 일찍 보임), monotonic 시계(`ContinuousClock`, 잠자기 포함·시계 변경 무관이지만 `MokaClock`과 `moka-sim`의 ISO 시각 입력과 맞지 않아 이번 범위에서 뺌).
+- 시각은 `MokaClock`으로 주입한다. 앱은 1초 주기 화면 갱신 타이머로 `tick(now:)`를 부를 뿐 상태를 직접 바꾸지 않는다. 잠자기에서 깨어나면 `NSWorkspace.didWakeNotification`(`NSWorkspace.shared.notificationCenter`에 등록, `NotificationCenter.default`에는 오지 않음)에서 한 번 더 `tick(now:)`를 부른다(R-008 "깨어날 때"). 갱신 타이머는 `running` 동안만 돈다.
 
 ## R2. 기본 작업 시간 저장 (R-012·R-013, D1 채택)
 
-- **Decision**: GRDB `settings(key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL)`. 마이그레이션 `v1_settings` 하나, seed 행 없음. 이름 배열 상수 시험, `schema/moka-schema.sql` 스냅샷 비교, DB 경로 가드 시험을 같이 넣는다. MokaCore에 `SettingsStore` 프로토콜, 값 규칙(정수 1~180, 없거나 범위 밖·숫자 아님이면 25)은 MokaCore. 앱은 `~/Library/Application Support/dev.dongwon.moka/moka.sqlite`(ADR-0004)를 `DatabaseQueue`로 연다. DB를 못 열면 메모리 저장소로 동작한다(25, 저장 안 남음). pytest 계약 시험은 튜닝 테이블이 생기는 spec에서.
+- **Decision**: GRDB `settings(key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL)`. 마이그레이션 `v1_settings` 하나, seed 행 없음. 마이그레이션 이름 시험(리터럴 `["v1_settings"]` == `migrator.migrations`), `schema/moka-schema.sql` 스냅샷 비교(질의·형식은 data-model §4), DB 경로 가드 시험(테스트 도우미 쪽, 제품 코드 분기 없음)을 같이 넣는다. MokaCore에 `SettingsStore` 프로토콜, 값 규칙(정수 1~180, 없거나 범위 밖·숫자 아님이면 25)은 MokaCore. 앱은 `~/Library/Application Support/dev.dongwon.moka/moka.sqlite`(ADR-0004)를 `DatabaseQueue`로 연다. 열기 전에 상위 폴더를 만든다(첫 실행에는 폴더가 없다). 그래도 못 열면 메모리 저장소로 동작하고(25, 저장 안 남음) `os.Logger`에 오류 종류를 남긴다. pytest 계약 시험은 튜닝 테이블이 생기는 spec에서.
 - **Rationale**: PRD 9장 `settings | key, value`. 검증기(ADR-0004 30~31행)를 테이블 하나로 먼저 돌려 리눅스·macOS `sqlite_master` 텍스트 차이(ADR-0004 49행 재검토 트리거)를 실제 할 일이 쌓이기 전에 드러낸다.
 - **Alternatives**: UserDefaults(마일스톤 2에서 이전 코드가 생기고, `~/Library/Preferences/dev.dongwon.moka.plist`는 deny 규칙 밖). 막히면 같은 프로토콜 뒤에 UserDefaults(테스트는 임시 suite)를 꽂는 후퇴 경로를 둔다.
 - 값 형식: 정수를 10진 문자열로 저장한다. 설계서 §2 ERD는 `settings.value`를 "JSON 문자열"로 적었다. D1(TEXT, 키마다 형식)과 다르며 D1을 따른다. 정수 하나는 두 해석에서 같은 텍스트다.
@@ -20,7 +20,7 @@
 
 ## R3. `moka-sim` 시나리오 형식 v1 (R-015, D2 채택)
 
-- **Decision**: [contracts/moka-sim-v1.md](contracts/moka-sim-v1.md). JSON 파일 하나 입력, 이벤트마다 JSON Lines 한 줄 출력. `expect` 필드와 사람용 텍스트 출력은 없다. 시나리오 타입과 실행기는 MokaCore, CLI는 파일 읽기와 출력만.
+- **Decision**: [contracts/moka-sim-v1.md](contracts/moka-sim-v1.md). JSON 파일 하나 입력, 이벤트마다 JSON Lines 한 줄 출력. EGM 리뷰 뒤 보강(사용자 승인 2026-10-28): 상태×이벤트 표, 암묵 tick, 필드 이름 `quantum_min`·`timer_state`(GLOSSARY Avoid `minutes`, `state`는 판단 모델 입력), 시간 끝 칩은 기본값, 성공 시에만 출력, 직접 직렬화, 오류 픽스처 `errors/`. `expect` 필드와 사람용 텍스트 출력은 없다. 시나리오 타입과 실행기는 MokaCore, CLI는 파일 읽기와 출력만.
 - **Rationale**: ADR-0003 33행 "시나리오 JSON 입력". 출력 형식이 하나여야 계약이 하나다. FAIL 경로는 MokaCore golden 시험과 불변식 위반 종료 코드로 충분하다(3라운드 3:0).
 - **Alternatives**: `"format": "moka-sim/1"` 표기(B 소수 의견), 상대 시각(+N초, 06:00 경계를 넣을 때 version 2가 거의 확실).
 
@@ -33,6 +33,7 @@
   3. `LSUIElement` 앱에서 펼친 화면 `TextField`에 키 입력이 들어감(R-002)
   4. 코드로 펼칠 때 키보드 포커스를 가져가지 않음(R-009, SC-003)
   5. 노치 없는 화면에서 직접 만든 떠 있는 창이 뜨고 펼쳐짐(R-011)
+  6. 직접 만든 `.nonactivatingPanel`을 노치 위치에 노치 모양으로 띄우고 펼침. 2·4가 직접 구현·덮어쓰기이고 6이 반나절 안에 PASS면 DynamicNotchKit은 제거 후보다. 사람이 spike 끝에 정하고, 빼면 ADR로 남긴다(토론 Q3, 3:0)
   - 같은 세션에서 스냅샷 도우미 첫 시험(TextField가 든 뷰 하나, R8).
 - **Swift 6 실패 시**: ADR-0001 32행대로 첫 실패에서 앱 타깃만 `SWIFT_VERSION: 5.0`, 두 번째 시도 없음.
 - **알려진 구멍**: DynamicNotchKit이 받는 `swift-docc-plugin`(`from: "1.0.0"`)은 우리 쪽에서 고정되지 않는다. 앱 쪽 `Package.resolved`는 `*.xcodeproj/` 제외로 커밋되지 않는다(`.gitignore` 48행). `app-build` 로그로 해석된 버전을 본다.
@@ -61,7 +62,7 @@
 
 ## R8. 화면 스냅샷 (D4 채택)
 
-- **Decision**: 새 의존성 없이 `NSHostingView` + `bitmapImageRepForCachingDisplay`·`cacheDisplay(in:to:)`로 PNG를 만드는 도우미 `renderPNG(view:size:appearance:) -> Data` 하나. macOS 단위 테스트 번들 `MokaAppTests`(XCTest, TEST_HOST 없음, `App/Sources/Views/`를 직접 컴파일하고 `MokaApp.swift`는 넣지 않음). 라이트·다크는 `NSAppearance(.aqua/.darkAqua)`. 기준 이미지 비교는 하지 않고 sanity 단언(크기 0 아님, 단색 아님, 라이트≠다크)만 한다. 출력은 `MOKA_SNAPSHOT_DIR` 또는 `.verify/snapshots/001/`(커밋 안 함, `.gitignore` 82행). spec 001에서는 CI job을 두지 않는다. 방법은 구현 PR에서 ADR(다음 번호)로 기록한다.
+- **Decision**: 새 의존성 없이 `NSHostingView` + `bitmapImageRepForCachingDisplay`·`cacheDisplay(in:to:)`로 PNG를 만드는 도우미 `renderPNG(view:size:appearance:) -> Data` 하나. macOS 단위 테스트 번들 `MokaAppTests`(XCTest, TEST_HOST 없음, `App/Sources/Views/`를 직접 컴파일하고 `MokaApp.swift`는 넣지 않음). 라이트·다크는 `NSAppearance(.aqua/.darkAqua)`. 기준 이미지 비교는 하지 않고 sanity 단언(크기 0 아님, 단색 아님, 라이트≠다크)만 한다. 출력 폴더는 `TEST_RUNNER_MOKA_SNAPSHOT_DIR`로 넘긴다(`xcodebuild test`는 `TEST_RUNNER_` 접두사가 붙은 변수만 접두사를 떼고 테스트 프로세스에 넘긴다). 없으면 `#filePath`로 구한 저장소 루트의 `.verify/snapshots/001/`(커밋 안 함, `.gitignore`의 `.verify/` 규칙). 도우미가 폴더를 만든다. `project.yml`에서 `Moka` 스킴의 test 대상에 `MokaAppTests`를 넣는다. 마일스톤 1 완료 조건이 아니며 밀리면 버퍼(11/8~9)로 간다(토론 Q2, 3:0). spec 001에서는 CI job을 두지 않는다. 방법은 구현 PR에서 ADR(다음 번호)로 기록한다.
 - **Rationale**: Apple 문서 `ImageRenderer` "most types of UIKit and AppKit views. In those cases, ImageRenderer displays a placeholder image". swift-snapshot-testing의 macOS 전략도 같은 `cacheDisplay` 경로를 쓴다. 앱을 호스트로 쓰면 실제 DB 경로에서 마이그레이션이 돈다.
 - 생성 PASS는 "그림이 만들어졌다"는 뜻이지 화면이 맞다는 증거가 아니다. 화면 정합은 사람이 시안과 나란히 본다.
 

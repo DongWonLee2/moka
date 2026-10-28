@@ -27,7 +27,7 @@
 A를 추천하고 C는 쓰지 않는다(추천안 토론 3:0).
 - 앱 DB 경로: `~/Library/Application Support/dev.dongwon.moka/moka.sqlite`. 경로는 주입 가능한 값이다. `moka-sim`과 튜닝 스크립트에는 기본 경로를 두지 않는다.
 - `eraseDatabaseOnSchemaChange`는 DEBUG에서도 켜지 않는다. 마이그레이션은 이름 붙인 전진 마이그레이션만, 배포한 마이그레이션은 고치지 않는다. 개발용 초기화는 명시적인 인자(예: `moka-sim --fresh`)로만 한다.
-- 마이그레이션 이름 목록을 고정 배열과 비교한다(덧붙이기만 허용). GRDB 문서에 등록 목록을 읽는 API가 없으므로 이름 배열 상수로 등록하고 그 상수를 시험한다.
+- 마이그레이션 이름 목록을 고정 배열과 비교한다(덧붙이기만 허용). GRDB 문서에 등록 목록을 읽는 API가 없으므로 이름 배열 상수로 등록하고 그 상수를 시험한다. (정정: 이 문장은 [ADR-0007](ADR-0007-migration-name-check.md)이 대체한다. GRDB 7.11.1에는 `DatabaseMigrator.migrations`가 있다.)
 - 메모리 DB에 전부 마이그레이션한 뒤 정렬한 `sqlite_master` SQL을 커밋된 `schema/moka-schema.sql`과 비교한다. 테스트는 비교만 하고 파일을 쓰지 않으며, 실패하면 새 스키마를 출력한다.
 - pytest는 같은 `schema/moka-schema.sql`로 가짜 SQLite를 만들고 튜닝 스크립트가 읽는 열이 있는지 확인한다.
 - 테스트는 테스트마다 새 메모리 DB를 쓰고, DB 경로가 메모리나 임시 디렉터리인지 확인하는 가드 테스트를 둔다.

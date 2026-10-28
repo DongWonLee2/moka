@@ -34,7 +34,7 @@
 
 | 원칙 | 판정 | 근거 |
 |---|---|---|
-| I 승인 없는 계약 변경 금지 | 통과(승인 받음) | 첫 마이그레이션·스냅샷(D1), `moka-sim` v1(D2), DynamicNotchKit 연결(D3), 스냅샷 방법(D4)을 토론 → 사용자 "전부 승인"(2026-10-28). 구현 PR마다 "사람이 볼 결정"에 다시 적는다 |
+| I 승인 없는 계약 변경 금지 | 통과(승인 받음) | 첫 마이그레이션·스냅샷(D1), `moka-sim` v1(D2), DynamicNotchKit 연결(D3), 스냅샷 방법(D4)을 토론 → 사용자 "전부 승인"(2026-10-28). EGM 리뷰 뒤 계약 보강·ADR-0004 정정(새 ADR)·Package.swift 내부 의존 정리·포커스 규칙(SC-001)을 토론 → 사용자 승인(2026-10-28). 구현 PR마다 "사람이 볼 결정"에 다시 적는다 |
 | II 테스트 먼저, 약화 금지 | 통과 | R-ID마다 Red 커밋 → Green 커밋. 시간 규칙은 주입한 `MokaClock`. 오류 주입은 quickstart 3 |
 | III 네 가지로만 보고 | 통과 | quickstart 결과 표는 PASS/FAIL/SKIP/NOT_RUN. 스냅샷 생성 PASS는 화면 정합 증거가 아니라고 명시(R8) |
 | IV 같은 실패 2회 중단 | 통과 | Swift 6 첫 실패에서 5.0으로 내림(두 번째 시도 없음). spike 상한 반나절 |
@@ -60,7 +60,7 @@ specs/001-notch-timer/
 ├── contracts/
 │   └── moka-sim-v1.md    # 공개 계약
 ├── checklists/requirements.md
-└── tasks.md              # 시안 확정 뒤 /speckit-tasks
+└── tasks.md              # 시안 v3.4 확정 뒤 작성
 ```
 
 시안: `~/Dev/ai-platform/projects/moka/design/001-mockup.html`(저장소 밖, 로컬 전용).
@@ -68,11 +68,11 @@ specs/001-notch-timer/
 ### Source Code (repository root)
 
 ```text
-Package.swift                         # 변경 없음(타깃 그대로)
+Package.swift                         # 내부 의존만 정리: moka-sim→MokaStore 제거, MokaStoreTests에 MokaCore 명시(토론 Q5, 사용자 승인 2026-10-28)
 Sources/MokaCore/
-├── MokaClock.swift                   # 현재 시각 주입
-├── NotchTimer.swift                  # 상태기계(empty/running/expired), 남은 초 올림
-├── QuantumChip.swift                 # 프리셋, 직접 입력 검증, 미리 채움
+├── MokaClock.swift                   # 현재 시각 주입(앱만 씀)
+├── NotchTimer.swift                  # 상태기계(empty(draft:)/running/expired), 전이 함수 apply, 남은 초 올림·자름, 불변식 검사
+├── QuantumChip.swift                 # 프리셋, 직접 입력 검증, 남은 시간 표시 형식 M:SS, shouldStayExpanded
 ├── QuantumSettings.swift             # SettingsStore 프로토콜, 읽기 규칙(없거나 범위 밖이면 25)
 ├── Defaults.swift                    # 기본 분 25, 범위 1…180, 프리셋
 ├── DisplayTarget.swift               # 화면 목록 → .notch / .floating
@@ -110,7 +110,7 @@ project.yml                           # DynamicNotchKit 패키지, MokaStore 의
 | 4 | 앱: AppState, NotchHost, 접힘·펼침·입력·칩·시간 끝 뷰, 메뉴 막대, 설정 화면 | R-001·002·006·007·008·009·012(화면) | 예 | 화면 확인은 사람 |
 | 5 | 앱: 떠 있는 창·화면 변경, 스냅샷 번들, 스냅샷 방법 ADR | R-011, D4 | 예 | 화면 확인은 사람 |
 
-1·2는 서로 파일이 겹치지 않아 병렬로 갈 수 있다. 4·5는 3의 PASS와 시안 확정 뒤에 시작한다.
+1·2는 서로 파일이 겹치지 않아 병렬로 갈 수 있다. 단, 단위 2의 `GRDBSettingsStore`는 단위 1의 `SettingsStore` 프로토콜(T007)에 기대므로 T007 PR을 먼저 병합한다. `Package.swift` 정리는 spec PR에 들어 있다. 4·5는 3의 PASS와 시안 확정 뒤에 시작한다.
 
 ## 설계서 대조
 
@@ -126,7 +126,7 @@ project.yml                           # DynamicNotchKit 패키지, MokaStore 의
 
 ## 다음 단계
 
-1. HTML 시안 `~/Dev/ai-platform/projects/moka/design/001-mockup.html` → 사용자 "시안 확정"
-2. 확정 뒤 spec Assumptions에 시안 경로를 적고 `/speckit-tasks`
-3. tasks 뒤 EGM 금붕어 리뷰(Opus, uninterrupted, 단독), 분명한 지적 반영
-4. Issue 큐(위 작업 단위 1·2를 먼저, 3은 사람 세션, 4·5는 시안·spike 뒤)
+1. HTML 시안 v3.4 확정(완료, 2026-10-28)
+2. `/speckit-tasks`(완료, 41개)
+3. EGM 금붕어 리뷰(완료, uninterrupted 5단계, `.audit/egm/consolidated_review_report.md`, 커밋 안 함). 승인 항목은 토론(`.audit/debate/20261028-1225-spec001-egm-approvals.md`) 뒤 사용자 승인, 나머지 🔴·🟡 지적은 이 문서들에 반영
+4. Issue 큐(작업 단위 1·2를 먼저, 3은 사람 세션, 4·5는 spike 뒤)
