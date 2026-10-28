@@ -10,6 +10,7 @@ struct ErrorFixture: CustomTestStringConvertible, Sendable {
 
 let errorFixtures: [ErrorFixture] = [
     ErrorFixture(name: "invalid-json", kind: .invalidJSON),
+    ErrorFixture(name: "unicode-escape-sign", kind: .invalidJSON),
     ErrorFixture(name: "root-not-object", kind: .wrongType),
     ErrorFixture(name: "unknown-version", kind: .unknownVersion),
     ErrorFixture(name: "version-float", kind: .wrongType),
@@ -40,6 +41,8 @@ let errorFixtures: [ErrorFixture] = [
     ErrorFixture(name: "missing-offset", kind: .invalidTimestamp),
     ErrorFixture(name: "missing-seconds", kind: .invalidTimestamp),
     ErrorFixture(name: "invalid-date", kind: .invalidTimestamp),
+    ErrorFixture(name: "year-before-1", kind: .invalidTimestamp),
+    ErrorFixture(name: "year-after-9999", kind: .invalidTimestamp),
     ErrorFixture(name: "at-not-string", kind: .wrongType),
     ErrorFixture(name: "start-in-empty", kind: .notAllowedInPhase),
     ErrorFixture(name: "choose-in-empty", kind: .notAllowedInPhase),
@@ -47,6 +50,8 @@ let errorFixtures: [ErrorFixture] = [
     ErrorFixture(name: "enter-title-in-running", kind: .notAllowedInPhase),
     ErrorFixture(name: "start-in-running", kind: .notAllowedInPhase),
     ErrorFixture(name: "enter-title-in-expired", kind: .notAllowedInPhase),
+    ErrorFixture(name: "complete-in-empty", kind: .notAllowedInPhase),
+    ErrorFixture(name: "choose-in-running", kind: .notAllowedInPhase),
 ]
 
 private let errorsURL = simFixturesURL.appendingPathComponent("errors", isDirectory: true)

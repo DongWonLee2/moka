@@ -16,7 +16,9 @@ func goldenScenarioNames() throws -> [String] {
 @Test("ADR-0003 R-015: errors/ 밖 시나리오마다 기대 출력 파일이 있다")
 func everyGoldenScenarioHasExpectedOutput() throws {
     let names = try goldenScenarioNames()
-    #expect(Set(["us1-basic", "us2-choose-45", "us3-sleep", "us4-default-change"]).isSubset(of: Set(names)))
+    #expect(
+        Set(["contract-example", "us1-basic", "us2-choose-45", "us3-sleep", "us4-default-change"])
+            .isSubset(of: Set(names)))
     for name in names {
         let expected = simFixturesURL.appendingPathComponent("\(name).expected.jsonl")
         #expect(FileManager.default.fileExists(atPath: expected.path), "\(name).expected.jsonl 없음")
