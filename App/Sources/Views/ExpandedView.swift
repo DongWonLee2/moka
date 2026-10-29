@@ -8,7 +8,6 @@ struct ExpandedView: View {
     /// 판 안 버튼·입력칸 모서리 반경.
     static let controlRadius: CGFloat = 6
     nonisolated static let wordmarkSize: CGFloat = 10
-    static let wordmarkTracking: CGFloat = 1.25
 
     let timer: NotchTimer
     let remainingSeconds: Int?
@@ -44,9 +43,7 @@ struct ExpandedView: View {
                     .frame(width: 13, height: 13)
                     .foregroundStyle(MokaColors.mocha)
                     .alignmentGuide(.capCenter) { $0.height * CupIcon.bodyCenterFraction }
-                Text("MOKA")
-                    .font(.system(size: Self.wordmarkSize, weight: .bold))
-                    .tracking(Self.wordmarkTracking)
+                MokaWordmark()
                     .foregroundStyle(palette.wordmark)
                     .alignmentGuide(.capCenter) { $0[.firstTextBaseline] - Self.wordmarkCapHeight / 2 }
             }
