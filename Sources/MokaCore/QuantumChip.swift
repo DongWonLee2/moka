@@ -1,3 +1,13 @@
+/// 직접 입력을 받지 않는 이유(R-004). 화면 문구는 앱이 정한다.
+public enum CustomQuantumIssue: Equatable, Sendable {
+    /// 180분을 넘는다(자릿수가 너무 커 `Int`로 못 읽는 숫자도 포함).
+    case aboveMax
+    /// 1분보다 작다.
+    case belowMin
+    /// 정수로 읽을 수 없다(숫자 아님, 소수, 앞뒤 공백).
+    case notInteger
+}
+
 public enum QuantumChip {
     public static let presets = Defaults.quantumPresets
 
@@ -5,6 +15,19 @@ public enum QuantumChip {
     public static func parseCustom(_ text: String) -> Int? {
         guard let minutes = Int(text), Defaults.quantumMinRange.contains(minutes) else { return nil }
         return minutes
+    }
+
+    /// 직접 입력을 받지 않는 이유. 받는 값과 빈칸은 nil(빈칸은 시작만 막고 이유는 보이지 않는다).
+    /// nil이 아닌 값이 나오는 입력은 `parseCustom`도 nil이다.
+    public static func customIssue(_ text: String) -> CustomQuantumIssue? {
+        guard !text.isEmpty else { return nil }
+        guard let value = Int(text) else {
+            let digitsOnly = text.allSatisfy { $0.isASCII && $0.isNumber }
+            return digitsOnly ? .aboveMax : .notInteger
+        }
+        if value > Defaults.quantumMinRange.upperBound { return .aboveMax }
+        if value < Defaults.quantumMinRange.lowerBound { return .belowMin }
+        return nil
     }
 
     /// 시작할 수 있는가. `customText`가 nil이면 직접 입력을 쓰지 않아 칩 값으로 시작한다(R-003),
