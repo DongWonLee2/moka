@@ -156,6 +156,33 @@ public func chooseDisplayTarget(_ screens: [ScreenInfo]) -> DisplayTarget?
 
 앱 쪽 입력: `id` = `CGDirectDisplayID`(`deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")]`), `hasNotch` = `safeAreaInsets.top > 0`(노치는 내장 화면에만 있다), `isMain` = `screen == NSScreen.screens.first`(메뉴 막대가 있는 화면. `NSScreen.main`은 key window 화면이라 쓰지 않는다). 화면 연결이 바뀌면 다시 계산한다. 타이머 상태와 `isPinnedOpen`은 바뀌지 않고 새 위치로 옮겨진다(R-011).
 
+패널 위치 계산(`Sources/MokaCore/PanelPlacement.swift`, PR #36). 고른 표시 위치를 화면 좌표의 창 위치로 바꾼다. 좌표는 AppKit 기준(원점 왼쪽 아래, y가 위로 커짐)이고 리눅스 시험을 위해 CoreGraphics 대신 `Double`을 쓴다:
+
+```swift
+public struct PanelRect: Equatable, Sendable { public var x: Double; public var y: Double; public var width: Double; public var height: Double }
+public struct ScreenGeometry: Equatable, Sendable {
+    public var frame: PanelRect
+    public var visibleFrame: PanelRect
+    public var safeAreaTop: Double
+    public var auxiliaryTopLeftWidth: Double?    // 노치 양옆 표시 영역 폭, 노치 없는 화면은 nil
+    public var auxiliaryTopRightWidth: Double?
+}
+public struct PanelAnchor: Equatable, Sendable { public var centerX: Double; public var top: Double; public var holeWidth: Double; public var barHeight: Double }   // 떠 있는 창은 holeWidth 0
+public enum PanelPlacementMetrics {
+    public static let floatingBarHeight: Double = 28          // 시안 v3.5 7번: 떠 있는 창 접힌 판 높이
+    public static let floatingGapBelowMenuBar: Double = 8     // 메뉴 막대 아래 간격
+}
+public func panelAnchor(for target: DisplayTarget, on screen: ScreenGeometry) -> PanelAnchor
+public func panelFrame(anchor: PanelAnchor, width: Double, height: Double, scale: Double) -> PanelRect
+```
+
+| 표시 위치 | 기준점 |
+|---|---|
+| `.notch` | `centerX` = 화면 왼쪽 끝 + 왼쪽 표시 영역 폭 + 구멍 폭/2(구멍 폭 = 화면 폭 − 양옆 폭, 0 미만이면 0), `top` = 화면 맨 위, `barHeight` = `safeAreaTop` |
+| `.floating` | `centerX` = 화면 가운데, `top` = `visibleFrame` 위 끝 − 8pt, `holeWidth` 0, `barHeight` 28 |
+
+`panelFrame`은 고정 크기 패널을 기준점 가운데·위에 붙인다. 가로 원점은 화면 픽셀(`scale`) 단위로 반올림해 노치 가운데가 반 포인트여도 어긋나지 않게 한다. 앱(`ScreenWatcher`)은 `NSScreen`의 `frame`·`visibleFrame`·`safeAreaInsets.top`·`auxiliaryTopLeftArea`/`auxiliaryTopRightArea` 폭을 `ScreenGeometry`로, `backingScaleFactor`를 `scale`로 옮겨 담는다.
+
 ## 6. 화면 상태 (앱 `AppState`, 저장 안 함)
 
 | 값 | 의미 |
