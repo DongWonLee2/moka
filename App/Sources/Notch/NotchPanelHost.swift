@@ -2,24 +2,16 @@ import AppKit
 import SwiftUI
 
 /// 직접 만든 nonactivating 패널 하나로 노치 판을 띄운다(ADR-0008, research R6).
-/// 패널 프레임은 내용 크기이고, 노치 위 가운데에 위쪽을 맞춘다. 내용은 구멍이 가운데에 오도록 여백을 더한 크기다.
-/// 판이 커질 때는 패널을 먼저 키우고(내용이 그 안에서 자람), 작아질 때는 접는 애니메이션이 끝난 뒤 줄인다
-/// (먼저 줄이면 줄어드는 판이 잘린다).
+/// 패널 창은 펼친 판까지 들어가는 고정 크기 투명 창이고 노치 가운데·위에 붙인다. 판 모양은 SwiftUI 마스크가
+/// 애니메이션으로 키우고 줄이며, 창 크기는 바꾸지 않는다(창 크기와 SwiftUI 스프링이 따로 움직여 튀었다, PR #30 사람 확인).
+/// 투명한 부분의 클릭은 아래 앱으로 넘어간다. hover는 보이는 판 자리에서만 받는다.
 @MainActor
 final class NotchPanelHost: NSObject, NSWindowDelegate {
     private let appState: AppState
     private let panel: NotchPanel
     private let hostingView: NSHostingView<NotchPanelRoot>
     private let hoverView: HoverTrackingView
-    private var anchor: Anchor?
-    private var layout: PanelContentLayout?
-    private var pendingShrink: Task<Void, Never>?
-
-    /// 패널 위쪽 가운데 점(화면 좌표).
-    private struct Anchor {
-        var centerX: CGFloat
-        var top: CGFloat
-    }
+    private var contentLayout: PanelContentLayout?
 
     init(appState: AppState) {
         self.appState = appState
@@ -45,7 +37,6 @@ final class NotchPanelHost: NSObject, NSWindowDelegate {
         hostingView.autoresizingMask = [.width, .height]
         let container = NSView()
         container.addSubview(hostingView)
-        // hover는 검은 판 위에서만 받는다(구멍을 가운데에 두려고 더한 투명 여백은 뺀다).
         container.addSubview(hoverView)
         panel.contentView = container
     }
@@ -53,22 +44,26 @@ final class NotchPanelHost: NSObject, NSWindowDelegate {
     func show(on placement: ScreenPlacement) {
         let screen = placement.screen
         let metrics: NotchMetrics
+        let centerX: CGFloat
+        let top: CGFloat
         switch placement.target {
         case .notch:
             let leftWidth = screen.auxiliaryTopLeftArea?.width ?? 0
             let rightWidth = screen.auxiliaryTopRightArea?.width ?? 0
             let holeWidth = max(screen.frame.width - leftWidth - rightWidth, 0)
             metrics = NotchMetrics(holeWidth: holeWidth, height: screen.safeAreaInsets.top)
-            anchor = Anchor(centerX: screen.frame.minX + leftWidth + holeWidth / 2, top: screen.frame.maxY)
+            centerX = screen.frame.minX + leftWidth + holeWidth / 2
+            top = screen.frame.maxY
             panel.level = .screenSaver
         case .floating:
             // 떠 있는 창은 단위 5(T036). 지금은 같은 판을 메뉴 막대 아래 가운데에 구멍 없이 둔다.
             metrics = NotchMetrics(holeWidth: 0, height: 28)
-            anchor = Anchor(centerX: screen.frame.midX, top: screen.visibleFrame.maxY)
+            centerX = screen.frame.midX
+            top = screen.visibleFrame.maxY
             panel.level = .statusBar
         }
 
-        let root = NotchPanelRoot(
+        hostingView.rootView = NotchPanelRoot(
             appState: appState,
             metrics: metrics,
             onStart: { [weak self] in
@@ -79,63 +74,27 @@ final class NotchPanelHost: NSObject, NSWindowDelegate {
                 self?.appState.complete()
                 self?.giveUpKey()
             },
-            onLayoutChange: { [weak self] layout in self?.resize(to: layout) })
-        hostingView.rootView = root
-        // 패널 안의 호스팅 뷰는 크기 제약을 내지 않으므로(sizingOptions = []) 첫 크기는 따로 잰다.
-        resize(
-            to: PanelContentLayout(
-                size: NSHostingView(rootView: root).fittingSize,
-                holeCenterOffset: NotchLayout.holeCenterOffset(
-                    timer: appState.timer, remainingSeconds: appState.remainingSeconds,
-                    isExpanded: appState.isExpanded)))
+            onLayoutChange: { [weak self] layout in
+                self?.contentLayout = layout
+                self?.updateHoverFrame()
+            })
+        let size = NotchLayout.panelSize(metrics: metrics)
+        panel.setFrame(
+            NSRect(
+                x: (centerX - size.width / 2).rounded(), y: top - size.height, width: size.width, height: size.height),
+            display: true)
+        updateHoverFrame()
         panel.orderFrontRegardless()
     }
 
-    private func resize(to layout: PanelContentLayout) {
-        guard layout.size.width > 0, layout.size.height > 0, let target = panelFrame(size: layout.size) else { return }
-        self.layout = layout
-        pendingShrink?.cancel()
-        pendingShrink = nil
-
-        let current = panel.frame
-        let grown =
-            current.isEmpty
-            ? target
-            : panelFrame(
-                size: CGSize(width: max(current.width, target.width), height: max(current.height, target.height)))
-        apply(grown ?? target)
-        guard let grown, grown != target else { return }
-        pendingShrink = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(NotchLayout.collapseDuration + 0.03))
-            guard !Task.isCancelled else { return }
-            self?.apply(target)
-        }
-    }
-
-    /// 노치 가운데 위에 위쪽을 맞춘 프레임. 내용이 구멍을 가운데에 두므로 그대로 가운데 맞춤이다.
-    private func panelFrame(size: CGSize) -> NSRect? {
-        guard let anchor else { return nil }
-        return NSRect(
-            x: (anchor.centerX - size.width / 2).rounded(), y: anchor.top - size.height,
-            width: size.width, height: size.height)
-    }
-
-    private func apply(_ frame: NSRect) {
-        if frame != panel.frame {
-            panel.setFrame(frame, display: true, animate: false)
-        }
-        updateHoverFrame()
-    }
-
-    /// 내용은 패널 위쪽 가운데에 놓인다. 그중 여백을 뺀 검은 판 자리에 hover 영역을 둔다.
+    /// 판은 패널 위쪽 가운데에서 가로로 `offsetX`만큼 밀려 놓인다. 그 자리에 hover 영역을 둔다(목표 크기 기준).
     private func updateHoverFrame() {
-        guard let layout else { return }
+        guard let contentLayout else { return }
         let bounds = panel.contentView?.bounds ?? .zero
-        let insets = NotchLayout.balancingInsets(holeCenterOffset: layout.holeCenterOffset)
-        let outerMinX = (bounds.width - layout.size.width) / 2
+        let size = contentLayout.size
         hoverView.frame = NSRect(
-            x: outerMinX + insets.leading, y: bounds.height - layout.size.height,
-            width: layout.size.width - insets.leading - insets.trailing, height: layout.size.height)
+            x: (bounds.width - size.width) / 2 + contentLayout.offsetX, y: bounds.height - size.height,
+            width: size.width, height: size.height)
     }
 
     private func panelClicked() {
@@ -173,7 +132,7 @@ final class NotchPanel: NSPanel {
     }
 }
 
-/// 검은 판 자리에서 마우스 들어옴·나감을 받는다. 앱이 활성이 아니어도 받는다(`.activeAlways`).
+/// 보이는 판 자리에서 마우스 들어옴·나감을 받는다. 앱이 활성이 아니어도 받는다(`.activeAlways`).
 /// 클릭은 받지 않고 아래 호스팅 뷰로 넘긴다.
 final class HoverTrackingView: NSView {
     private let onHoverChange: (Bool) -> Void
@@ -204,7 +163,7 @@ final class HoverTrackingView: NSView {
     }
 }
 
-/// AppState를 읽어 뷰에 값과 콜백만 넘기는 연결부.
+/// AppState를 읽어 뷰에 값과 콜백만 넘기는 연결부. 판은 고정 패널 위쪽 가운데에 놓인다.
 struct NotchPanelRoot: View {
     let appState: AppState
     var metrics = NotchMetrics(holeWidth: 0, height: 0)
@@ -213,7 +172,7 @@ struct NotchPanelRoot: View {
     var onLayoutChange: (PanelContentLayout) -> Void = { _ in }
 
     var body: some View {
-        let holeCenterOffset = NotchLayout.holeCenterOffset(
+        let offsetX = NotchLayout.horizontalOffset(
             timer: appState.timer, remainingSeconds: appState.remainingSeconds, isExpanded: appState.isExpanded)
         NotchContentView(
             timer: appState.timer,
@@ -227,7 +186,7 @@ struct NotchPanelRoot: View {
         )
         .fixedSize()
         .onGeometryChange(for: PanelContentLayout.self) {
-            PanelContentLayout(size: $0.size, holeCenterOffset: holeCenterOffset)
+            PanelContentLayout(size: $0.size, offsetX: offsetX)
         } action: {
             onLayoutChange($0)
         }
@@ -235,8 +194,8 @@ struct NotchPanelRoot: View {
     }
 }
 
-/// 판 내용 크기(구멍을 가운데에 두는 여백 포함)와 구멍 가운데 위치. hover 영역은 여백을 뺀 자리다.
+/// 판 크기와 가로 이동 거리(목표값). hover 영역을 정하는 데만 쓴다.
 struct PanelContentLayout: Equatable {
     var size: CGSize
-    var holeCenterOffset: CGFloat
+    var offsetX: CGFloat
 }

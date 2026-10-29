@@ -4,7 +4,7 @@ import SwiftUI
 
 /// 펼친 판(폭 340pt). 위쪽 노치 높이만큼은 구멍 양옆 귀에 브랜드와 상태를 두고, 그 아래에 단계별 내용을 둔다.
 struct ExpandedView: View {
-    static let width: CGFloat = 340
+    nonisolated static let width: CGFloat = 340
     /// 판 안 버튼·입력칸 모서리 반경.
     static let controlRadius: CGFloat = 6
     nonisolated static let wordmarkSize: CGFloat = 10
@@ -15,8 +15,6 @@ struct ExpandedView: View {
     let metrics: NotchMetrics
     /// 값이 바뀔 때마다 빈 상태의 제목 칸에 포커스를 준다(펼친 판 클릭, data-model §6).
     let titleFocusRequest: Int
-    /// 접힘과 잇는 제목·남은 시간의 이름공간. nil이면 잇지 않는다(동작 줄이기).
-    var namespace: Namespace.ID?
     let onEnterTitle: (String) -> Void
     let onStart: () -> Void
     let onComplete: () -> Void
@@ -85,9 +83,9 @@ struct ExpandedView: View {
                     .keyboardShortcut(.defaultAction)
             }
         case .running(let title, _, _, _):
-            TitleText(title: title).matchedElement("title", in: namespace)
+            TitleText(title: title)
             HStack(spacing: 6) {
-                RemainingText(seconds: remainingSeconds, expired: false).matchedElement("remaining", in: namespace)
+                RemainingText(seconds: remainingSeconds, expired: false)
                 Spacer(minLength: 0)
                 Button(action: onComplete) { ButtonLabel(text: "완료") }
                     .buttonStyle(NotchButtonStyle(kind: .secondary))
@@ -95,8 +93,8 @@ struct ExpandedView: View {
         case .expired(let title, _):
             // 시간 끝 화면(칩·다시 시작)은 4b. 지금은 완료만 둔다.
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                TitleText(title: title).matchedElement("title", in: namespace)
-                RemainingText(seconds: remainingSeconds, expired: true).matchedElement("remaining", in: namespace)
+                TitleText(title: title)
+                RemainingText(seconds: remainingSeconds, expired: true)
             }
             HStack(spacing: 6) {
                 Spacer(minLength: 0)

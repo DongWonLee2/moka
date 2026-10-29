@@ -1,6 +1,7 @@
 import AppKit
 import MokaCore
 import Observation
+import SwiftUI
 import os
 
 /// 화면 상태와 타이머 값(data-model §6). 타이머 규칙은 MokaCore `NotchTimer`가 정하고 여기서는 이벤트를 전달만 한다.
@@ -16,9 +17,8 @@ final class AppState {
     private(set) var isInputFocused = false
     private(set) var titleFocusRequest = 0
 
-    var isExpanded: Bool {
-        shouldStayExpanded(pinned: isPinnedOpen, focused: isInputFocused, hovering: isHovering)
-    }
+    /// 펼침 여부. 바뀔 때는 `updateExpansion()` 한 곳에서 `withAnimation`으로 바꾼다.
+    private(set) var isExpanded = false
 
     @ObservationIgnored private let clock: MokaClock
     @ObservationIgnored private let settings: any SettingsStore
@@ -44,12 +44,14 @@ final class AppState {
     func start() {
         if send(.start) == .applied {
             isPinnedOpen = false
+            updateExpansion()
         }
     }
 
     func complete() {
         if send(.complete) == .applied {
             isPinnedOpen = false
+            updateExpansion()
         }
     }
 
@@ -59,10 +61,23 @@ final class AppState {
 
     func setHovering(_ hovering: Bool) {
         isHovering = hovering
+        updateExpansion()
     }
 
     func setInputFocused(_ focused: Bool) {
         isInputFocused = focused
+        updateExpansion()
+    }
+
+    /// 접힘 판정(`shouldStayExpanded`)이 바뀌면 방향에 맞는 애니메이션으로 펼치거나 접는다.
+    private func updateExpansion() {
+        let expanded = shouldStayExpanded(pinned: isPinnedOpen, focused: isInputFocused, hovering: isHovering)
+        guard expanded != isExpanded else { return }
+        let animation = NotchLayout.expansionAnimation(
+            expanding: expanded, reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
+        withAnimation(animation) {
+            isExpanded = expanded
+        }
     }
 
     /// 펼친 판을 클릭했다. 빈 상태면 제목 칸에 포커스를 준다(data-model §6).
