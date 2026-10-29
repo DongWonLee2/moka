@@ -6,6 +6,9 @@ enum SnapshotError: Error {
     case pngEncodingFailed
 }
 
+/// 스냅샷 배율. `renderPNG`는 1pt를 2px로 그린다.
+let snapshotScale = 2
+
 /// 뷰를 `size`(pt) 크기 PNG로 그린다(ADR-0009, research R8). 2배 해상도로 그린다.
 /// `NSHostingView` + `cacheDisplay(in:to:)`라서 `TextField` 같은 AppKit 컨트롤도 실제로 그려진다(`ImageRenderer`는 자리표시).
 /// 바탕은 `.frame` 뒤에 칠해 뷰가 덮지 않는 자리(다크 위쪽 투명 띠, T009 주의 1)도 화면 테마의 창 바탕색이 되게 한다.
@@ -20,7 +23,7 @@ func renderPNG(view: some View, size: CGSize, appearance: NSAppearance.Name) thr
     hosting.frame = CGRect(origin: .zero, size: size)
     hosting.layoutSubtreeIfNeeded()
 
-    let scale = 2
+    let scale = snapshotScale
     guard
         let rep = NSBitmapImageRep(
             bitmapDataPlanes: nil, pixelsWide: Int(size.width) * scale, pixelsHigh: Int(size.height) * scale,
@@ -78,5 +81,20 @@ enum SnapshotSanity {
             }
         }
         return "단색이다"
+    }
+
+    /// PNG 픽셀 수가 `size`(pt)에 배율을 곱한 값과 같은지.
+    static func sizeIssue(in png: Data, size: CGSize) -> String? {
+        nil
+    }
+
+    /// 노치 판: 판 안(`board` 지점, pt) 색이 테마와 무관하고 판 밖 바탕과 다르며, 판 안에 바탕 말고 그린 것이 있는지.
+    static func notchBoardIssue(light: Data, dark: Data, board: CGPoint) -> String? {
+        nil
+    }
+
+    /// 떠 있는 창: 판 안(`board` 지점, pt) 색이 판 밖 바탕과 다르고 라이트와 다크에서 다른지.
+    static func floatingBoardIssue(light: Data, dark: Data, board: CGPoint) -> String? {
+        nil
     }
 }

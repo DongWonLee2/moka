@@ -4,7 +4,7 @@ import SwiftUI
 import XCTest
 
 /// 화면 상태를 라이트·다크 PNG로 만든다(T037, ADR-0009). 기준 이미지와 비교하지 않고 sanity만 본다
-/// (크기 0 아님, 단색 아님, 라이트≠다크). 생성 PASS는 화면이 시안과 맞다는 증거가 아니다. 정합은 사람이 비교 페이지에서 본다.
+/// (크기 0 아님, 픽셀 치수, 단색 아님, 라이트≠다크, 판 안 색). 생성 PASS는 화면이 시안과 맞다는 증거가 아니다. 정합은 사람이 비교 페이지에서 본다.
 /// 할 일 제목은 가짜 예시만 쓴다.
 @MainActor
 final class ScreenStateSnapshotTests: XCTestCase {
@@ -96,7 +96,17 @@ final class ScreenStateSnapshotTests: XCTestCase {
             let url = try SnapshotOutput.write(png, name: "\(name)-\(suffix)")
             let issue = SnapshotSanity.issue(in: png)
             XCTAssertNil(issue, "\(url.lastPathComponent): \(issue ?? "")")
+            let sizeIssue = SnapshotSanity.sizeIssue(in: png, size: size)
+            XCTAssertNil(sizeIssue, "\(url.lastPathComponent): \(sizeIssue ?? "")")
         }
         XCTAssertNotEqual(light, dark, "\(name): 라이트와 다크 PNG가 같다")
+        // 판은 가로 가운데에 있고(노치 판은 구멍 가운데가 가운데), 위 끝에서 귀 줄 높이 절반 아래는 판 안이다.
+        let board = CGPoint(x: size.width / 2, y: metrics.height / 2)
+        let boardIssue =
+            switch style {
+            case .notch: SnapshotSanity.notchBoardIssue(light: light, dark: dark, board: board)
+            case .floating: SnapshotSanity.floatingBoardIssue(light: light, dark: dark, board: board)
+            }
+        XCTAssertNil(boardIssue, "\(name): \(boardIssue ?? "")")
     }
 }
