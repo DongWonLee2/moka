@@ -187,7 +187,8 @@ struct NotchPanelRoot: View {
                 canStart: appState.canStart,
                 onChoose: { appState.chooseQuantum($0) },
                 onBeginCustom: { appState.beginCustom() },
-                onEditCustom: { appState.editCustom($0) }),
+                onEditCustom: { appState.editCustom($0) },
+                takeFocusRequest: { appState.takeCustomFocusRequest() }),
             onEnterTitle: { appState.enterTitle($0) },
             onStart: onStart,
             onComplete: onComplete

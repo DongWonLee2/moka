@@ -49,9 +49,11 @@ struct QuantumChipView: View {
     }
 }
 
-/// 직접 입력 칸 줄의 앞부분: 숫자 칸, "분", 범위 밖이면 안내(시안 v3.4 3번). 칸을 보이면 바로 포커스를 준다.
+/// 직접 입력 칸 줄의 앞부분: 숫자 칸, "분", 범위 밖이면 안내(시안 v3.4 3번).
+/// 포커스는 "직접…"을 누른 직후 나타날 때만 준다. 마우스로 다시 펼쳐 칸이 다시 만들어질 때는 주지 않는다(SC-003).
 struct CustomMinutesField: View {
     let text: String
+    let takeFocusRequest: () -> Bool
     let onEdit: (String) -> Void
     let onSubmit: () -> Void
 
@@ -87,7 +89,7 @@ struct CustomMinutesField: View {
         }
         .onAppear {
             editing = text
-            focused = true
+            if takeFocusRequest() { focused = true }
         }
         .onChange(of: editing) { _, newValue in
             if newValue != text { onEdit(newValue) }

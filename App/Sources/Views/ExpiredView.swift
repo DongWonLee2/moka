@@ -8,6 +8,8 @@ struct QuantumChipInput {
     var onChoose: (Int) -> Void
     var onBeginCustom: () -> Void
     var onEditCustom: (String) -> Void
+    /// 직접 입력 칸이 나타날 때 부른다. 사용자가 "직접…"을 누른 직후에만 true(포커스를 줌).
+    var takeFocusRequest: () -> Bool
 }
 
 /// 시간 끝 화면(R-008·R-010, 시안 v3.4 6번): 제목과 빨간 0:00, 기본값으로 채운 칩, 다시 시작·완료.
@@ -30,7 +32,9 @@ struct ExpiredView: View {
             onChoose: chip.onChoose, onBeginCustom: chip.onBeginCustom, onEditCustom: chip.onEditCustom)
         HStack(spacing: 6) {
             if let customText = chip.customText {
-                CustomMinutesField(text: customText, onEdit: chip.onEditCustom, onSubmit: submitCustom)
+                CustomMinutesField(
+                    text: customText, takeFocusRequest: chip.takeFocusRequest, onEdit: chip.onEditCustom,
+                    onSubmit: submitCustom)
             }
             Spacer(minLength: 0)
             if chip.customText != nil {

@@ -75,7 +75,9 @@ struct ExpandedView: View {
                 onChoose: chip.onChoose, onBeginCustom: chip.onBeginCustom, onEditCustom: chip.onEditCustom)
             HStack(spacing: 6) {
                 if let customText = chip.customText {
-                    CustomMinutesField(text: customText, onEdit: chip.onEditCustom) {
+                    CustomMinutesField(
+                        text: customText, takeFocusRequest: chip.takeFocusRequest, onEdit: chip.onEditCustom
+                    ) {
                         if chip.canStart { onStart() }
                     }
                 }

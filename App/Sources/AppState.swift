@@ -25,6 +25,9 @@ final class AppState {
     /// 펼침 여부. 바뀔 때는 `updateExpansion()` 한 곳에서 `withAnimation`으로 바꾼다.
     private(set) var isExpanded = false
 
+    /// "직접…"을 누른 뒤 칸이 처음 나타날 때 한 번만 포커스를 준다. 마우스로 다시 펼쳐 칸이 다시 만들어질 때는
+    /// 주지 않는다(R-002, SC-003).
+    @ObservationIgnored private var customFocus = OneShotRequest()
     @ObservationIgnored private let clock: MokaClock
     @ObservationIgnored private let settings: any SettingsStore
     @ObservationIgnored private var refreshTimer: Timer?
@@ -49,6 +52,7 @@ final class AppState {
     /// 프리셋 칩을 골랐다. 직접 입력을 그만둔다.
     func chooseQuantum(_ minutes: Int) {
         customText = nil
+        customFocus.cancel()
         send(.chooseQuantum(minutes))
     }
 
@@ -59,6 +63,12 @@ final class AppState {
         case .expired(_, let chipMin): customText = String(chipMin)
         case .empty(nil), .running: return
         }
+        customFocus.request()
+    }
+
+    /// 직접 입력 칸이 나타날 때 부른다. "직접…"을 누른 직후에만 true.
+    func takeCustomFocusRequest() -> Bool {
+        customFocus.take()
     }
 
     /// 직접 입력 칸이 바뀌었다. 1~180 정수면 칩 값으로 쓴다(R-004).
@@ -120,6 +130,7 @@ final class AppState {
         let after = Self.phaseName(timer)
         if result == .applied, event == .start || event == .complete {
             customText = nil
+            customFocus.cancel()
         }
         isPinnedOpen = pinnedOpenAfter(event, result: result, from: previous, to: timer, wasPinned: isPinnedOpen)
         updateExpansion()
