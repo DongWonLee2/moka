@@ -66,7 +66,8 @@ func defaultChangeUpdatesUnpickedExpiredChip() {
 
     let restart = clock.now().addingTimeInterval(1600)
     #expect(timer.apply(.start, at: restart, defaultQuantumMin: 40) == .applied)
-    #expect(timer == .running(title: title, quantumMin: 40, startedAt: restart, endsAt: restart.addingTimeInterval(2400)))
+    #expect(
+        timer == .running(title: title, quantumMin: 40, startedAt: restart, endsAt: restart.addingTimeInterval(2400)))
 }
 
 @Test("FR-16 R-013 R-010: 시간 끝에서 칩을 직접 골랐으면 기본값을 바꿔도 칩은 그대로")

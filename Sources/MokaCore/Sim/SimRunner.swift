@@ -31,6 +31,7 @@ public enum SimRunner {
             switch event.kind {
             case .setDefaultQuantum(let minutes):
                 try write(minutes, to: settings, seq: event.seq)
+                timer.applyDefaultQuantumChange(QuantumSettings.readDefault(from: settings), isEditingCustom: false)
                 timerEvent = nil
             case .enterTitle(let title): timerEvent = .enterTitle(title)
             case .chooseQuantum(let minutes): timerEvent = .chooseQuantum(minutes)

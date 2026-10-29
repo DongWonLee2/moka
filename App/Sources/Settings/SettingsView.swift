@@ -7,6 +7,8 @@ import os
 /// 스테퍼는 누를 때마다 1분씩 바꿔 바로 저장한다.
 struct SettingsView: View {
     let store: any SettingsStore
+    /// 저장을 시도한 뒤 부른다. 펼친 판의 고르지 않은 칩이 새 기본값을 따르게 한다(R-013).
+    let onSaved: @MainActor () -> Void
 
     @State private var text = ""
     private static let logger = Logger(subsystem: "dev.dongwon.moka", category: "settings")
@@ -83,5 +85,6 @@ struct SettingsView: View {
             Self.logger.error("기본 작업 시간 저장 실패: \(String(reflecting: type(of: error)), privacy: .public)")
         }
         text = String(QuantumSettings.readDefault(from: store))
+        onSaved()
     }
 }

@@ -96,7 +96,7 @@ struct ExpandedView: View {
                 Button(action: onComplete) { ButtonLabel(text: "완료") }
                     .buttonStyle(NotchButtonStyle(kind: .secondary))
             }
-        case .expired(let title, let chipMin):
+        case .expired(let title, let chipMin, _):
             ExpiredView(title: title, chipMin: chipMin, chip: chip, onStart: onStart, onComplete: onComplete)
         }
     }

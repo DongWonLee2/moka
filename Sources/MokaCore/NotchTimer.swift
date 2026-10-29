@@ -3,17 +3,20 @@ import Foundation
 public struct Draft: Equatable, Sendable {
     public var title: String
     public var chipMin: Int
+    /// 사용자가 칩을 직접 골랐는지. false면 기본값으로 채운 칩이라 기본값 변경을 따른다(R-013).
+    public var chipPicked: Bool
 
-    public init(title: String, chipMin: Int) {
+    public init(title: String, chipMin: Int, chipPicked: Bool = false) {
         self.title = title
         self.chipMin = chipMin
+        self.chipPicked = chipPicked
     }
 }
 
 public enum NotchTimer: Equatable, Sendable {
     case empty(draft: Draft?)
     case running(title: String, quantumMin: Int, startedAt: Date, endsAt: Date)
-    case expired(title: String, chipMin: Int)
+    case expired(title: String, chipMin: Int, chipPicked: Bool = false)
 }
 
 public enum TimerEvent: Equatable, Sendable {
@@ -49,25 +52,28 @@ extension NotchTimer {
         case (.empty(let draft), .enterTitle(let text)):
             let title = text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !title.isEmpty else { return .rejected(.emptyTitle) }
-            self = .empty(draft: Draft(title: title, chipMin: draft?.chipMin ?? defaultQuantumMin))
+            self = .empty(
+                draft: Draft(
+                    title: title, chipMin: draft?.chipMin ?? defaultQuantumMin, chipPicked: draft?.chipPicked ?? false))
             return .applied
 
         case (.empty(.some(var draft)), .chooseQuantum(let minutes)):
             guard Defaults.quantumMinRange.contains(minutes) else { return .rejected(.quantumOutOfRange) }
             draft.chipMin = minutes
+            draft.chipPicked = true
             self = .empty(draft: draft)
             return .applied
 
-        case (.expired(let title, _), .chooseQuantum(let minutes)):
+        case (.expired(let title, _, _), .chooseQuantum(let minutes)):
             guard Defaults.quantumMinRange.contains(minutes) else { return .rejected(.quantumOutOfRange) }
-            self = .expired(title: title, chipMin: minutes)
+            self = .expired(title: title, chipMin: minutes, chipPicked: true)
             return .applied
 
         case (.empty(.some(let draft)), .start):
             self = .started(title: draft.title, quantumMin: draft.chipMin, at: now)
             return .applied
 
-        case (.expired(let title, let chipMin), .start):
+        case (.expired(let title, let chipMin, _), .start):
             self = .started(title: title, quantumMin: chipMin, at: now)
             return .applied
 
@@ -77,6 +83,21 @@ extension NotchTimer {
 
         default:
             return .rejected(.notAllowedInPhase)
+        }
+    }
+
+    /// 기본값이 바뀌었다(R-013). 타이머 이벤트가 아니라 거부되지 않는다. 칩을 직접 고르지 않았고 직접 입력 중이
+    /// 아닌 초안·시간 끝의 칩만 새 기본값으로 바꾼다. 도는 타이머와 빈 상태는 그대로다.
+    public mutating func applyDefaultQuantumChange(_ defaultQuantumMin: Int, isEditingCustom: Bool) {
+        guard !isEditingCustom else { return }
+        switch self {
+        case .empty(.some(var draft)) where !draft.chipPicked:
+            draft.chipMin = defaultQuantumMin
+            self = .empty(draft: draft)
+        case .expired(let title, _, false):
+            self = .expired(title: title, chipMin: defaultQuantumMin)
+        case .empty, .running, .expired:
+            return
         }
     }
 
@@ -102,7 +123,7 @@ extension NotchTimer {
             if endsAt <= startedAt { return "endsAt가 startedAt보다 늦지 않다" }
             if now >= endsAt { return "끝 시각이 지났는데 running이다(남은 초 1 미만)" }
             return Self.titleViolation(title) ?? Self.minutesViolation("quantumMin", quantumMin)
-        case .expired(let title, let chipMin):
+        case .expired(let title, let chipMin, _):
             return Self.titleViolation(title) ?? Self.minutesViolation("chipMin", chipMin)
         }
     }
