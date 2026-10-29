@@ -7,6 +7,10 @@ final class SnapshotSanityTests: XCTestCase {
     private static let size = CGSize(width: 200, height: 80)
     private static let board = CGPoint(x: 100, y: 16)
 
+    func test_intentionalFailureForCIRollout() {
+        XCTFail("의도한 실패: #39 app-snapshots 도입 검증. 다음 커밋에서 되돌린다")
+    }
+
     func test_sizeIssue_rejectsWrongPixelSize() throws {
         let png = try renderPNG(view: Color.red, size: Self.size, appearance: .aqua)
         XCTAssertNil(SnapshotSanity.sizeIssue(in: png, size: Self.size))
