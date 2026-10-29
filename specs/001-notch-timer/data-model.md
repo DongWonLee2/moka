@@ -86,7 +86,7 @@ public enum RemainingFormat {
 ```
 
 - 직접 입력은 Swift `Int(_:)` 결과를 그대로 쓰고 1…180만 받는다. 빈 값, 숫자 아님, 소수는 nil(R-004).
-- 미리 채움은 제목 입력 직후와 시간 끝에 `default_quantum_min`(R-003).
+- 미리 채움은 제목 입력 직후와 시간 끝에 `default_quantum_min`(R-003). 시간 고르기 화면은 Enter가 칩 값으로 시작이고, 시간 끝 화면은 Enter(기본 버튼)가 완료이며 다시 시작은 버튼으로만 한다. 시간 끝 화면에서 직접 입력 칸이 열려 있는 동안만 Enter가 다시 시작이다(사용자 결정 2026-10-29, PR #33).
 
 ## 4. 기본 작업 시간 설정 (MokaCore 규칙 + MokaStore 저장)
 

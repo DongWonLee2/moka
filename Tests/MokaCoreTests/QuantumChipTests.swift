@@ -41,3 +41,36 @@ func shouldStayExpandedTable(focused: Bool, hovering: Bool) {
     #expect(shouldStayExpanded(pinned: true, focused: focused, hovering: hovering))
     #expect(shouldStayExpanded(pinned: false, focused: focused, hovering: hovering) == (focused || hovering))
 }
+
+@Test(
+    "FR-05 R-004: 직접 입력이 받는 값이거나 빈칸이면 이유 없음",
+    arguments: ["1", "45", "180", "+45", ""])
+func customIssueNone(text: String) {
+    #expect(QuantumChip.customIssue(text) == nil)
+}
+
+@Test(
+    "FR-05 R-004: 직접 입력이 180분을 넘으면 aboveMax",
+    arguments: ["181", "999", "99999999999999999999999"])
+func customIssueAboveMax(text: String) {
+    #expect(QuantumChip.customIssue(text) == .aboveMax)
+}
+
+@Test("FR-05 R-004: 직접 입력이 1분보다 작으면 belowMin", arguments: ["0", "-1", "00"])
+func customIssueBelowMin(text: String) {
+    #expect(QuantumChip.customIssue(text) == .belowMin)
+}
+
+@Test(
+    "FR-05 R-004: 직접 입력이 정수가 아니면(숫자 아님·소수·공백) notInteger",
+    arguments: ["abc", "4.5", " 45", "45 ", "4분", "-"])
+func customIssueNotInteger(text: String) {
+    #expect(QuantumChip.customIssue(text) == .notInteger)
+}
+
+@Test(
+    "FR-05 R-004: 이유가 없는 비지 않은 값만 parseCustom이 받는다",
+    arguments: ["1", "180", "+45", "181", "0", "abc", "4.5", " 45"])
+func customIssueAgreesWithParseCustom(text: String) {
+    #expect((QuantumChip.customIssue(text) == nil) == (QuantumChip.parseCustom(text) != nil))
+}

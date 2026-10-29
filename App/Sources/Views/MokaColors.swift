@@ -19,6 +19,8 @@ enum MokaColors {
     static let controlDisabled = Color(hex: 0xFFF0E1, opacity: 0.05)
     static let textDisabled = Color(hex: 0x625951)
     static let textOnPrimary = Color(hex: 0xFFF8F0)
+    /// 분할 컨트롤의 고르지 않은 칸 글자(시안 v3.4 `.seg span`).
+    static let segmentText = Color(hex: 0xE6DDD4)
     static let field = Color(hex: 0x17120F)
     static let fieldLine = Color(hex: 0x3B302A)
     /// 입력칸 바탕(#17120F) 위 4.81:1. 시안 #6C625A는 3.13:1이라 올렸다.

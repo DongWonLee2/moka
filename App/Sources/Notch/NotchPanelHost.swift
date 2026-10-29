@@ -182,6 +182,13 @@ struct NotchPanelRoot: View {
             isExpanded: appState.isExpanded,
             metrics: metrics,
             titleFocusRequest: appState.titleFocusRequest,
+            chip: QuantumChipInput(
+                customText: appState.customText,
+                canStart: appState.canStart,
+                onChoose: { appState.chooseQuantum($0) },
+                onBeginCustom: { appState.beginCustom() },
+                onEditCustom: { appState.editCustom($0) },
+                takeFocusRequest: { appState.takeCustomFocusRequest() }),
             onEnterTitle: { appState.enterTitle($0) },
             onStart: onStart,
             onComplete: onComplete
