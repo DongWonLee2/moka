@@ -5,6 +5,8 @@ import SwiftUI
 struct CollapsedLeadingView: View {
     let timer: NotchTimer
 
+    @Environment(\.panelPalette) private var palette
+
     var body: some View {
         // 칸은 내용이 없어도 폭을 차지해야 하므로 Color.clear를 깐다(빈 ViewBuilder에 건 frame은 사라진다).
         ZStack(alignment: .leading) {
@@ -12,7 +14,7 @@ struct CollapsedLeadingView: View {
             content.padding(.leading, 14)
         }
         .font(.system(size: 12))
-        .foregroundStyle(MokaColors.notchForeground)
+        .foregroundStyle(palette.foreground)
     }
 
     @ViewBuilder
@@ -36,6 +38,8 @@ struct CollapsedTrailingView: View {
     let timer: NotchTimer
     let remainingSeconds: Int?
 
+    @Environment(\.panelPalette) private var palette
+
     var body: some View {
         ZStack(alignment: .trailing) {
             Color.clear
@@ -44,7 +48,7 @@ struct CollapsedTrailingView: View {
                     .fontWeight(.semibold)
                     .monospacedDigit()
                     .lineLimit(1)
-                    .foregroundStyle(isExpired ? MokaColors.danger : MokaColors.notchForeground)
+                    .foregroundStyle(isExpired ? palette.danger : palette.foreground)
                     .padding(.trailing, 14)
             }
         }
@@ -65,10 +69,12 @@ struct CollapsedTrailingView: View {
 struct StatusDot: View {
     let active: Bool
 
+    @Environment(\.panelPalette) private var palette
+
     var body: some View {
         Circle()
-            .fill(active ? MokaColors.crema : MokaColors.idleDot)
+            .fill(active ? palette.activeDot : palette.idleDot)
             .frame(width: 6, height: 6)
-            .shadow(color: active ? MokaColors.crema.opacity(0.7) : .clear, radius: 3)
+            .shadow(color: active && palette.activeDotGlows ? palette.activeDot.opacity(0.7) : .clear, radius: 3)
     }
 }

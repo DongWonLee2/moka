@@ -66,11 +66,14 @@ enum AppSettings {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let appState = AppState(clock: MokaClock { Date() }, settings: AppSettings.store)
     private var panelHost: NotchPanelHost?
+    private var screenWatcher: ScreenWatcher?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let host = NotchPanelHost(appState: appState)
-        if let placement = ScreenWatcher.currentPlacement() {
-            host.show(on: placement)
+        host.move(to: ScreenWatcher.currentPlacement())
+        // 화면 연결이 바뀌면 같은 패널을 새 위치로 옮긴다(R-011). 타이머는 AppState에 있어 끊기지 않는다.
+        screenWatcher = ScreenWatcher { [weak host] placement in
+            host?.move(to: placement)
         }
         panelHost = host
     }

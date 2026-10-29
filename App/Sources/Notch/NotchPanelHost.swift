@@ -1,9 +1,11 @@
 import AppKit
+import MokaCore
 import SwiftUI
 
 /// 직접 만든 nonactivating 패널 하나로 노치 판을 띄운다(ADR-0008, research R6).
-/// 패널 창은 펼친 판까지 들어가는 고정 크기 투명 창이고 노치 가운데·위에 붙인다. 판 모양은 SwiftUI 마스크가
-/// 애니메이션으로 키우고 줄이며, 창 크기는 바꾸지 않는다(창 크기와 SwiftUI 스프링이 따로 움직여 튀었다, PR #30 사람 확인).
+/// 노치 없는 화면에서는 같은 패널을 노치 모양 없이 메뉴 막대 아래 가운데에 고정한다(R-011, 드래그 없음).
+/// 패널 창은 펼친 판까지 들어가는 고정 크기 투명 창이고 노치 가운데·위(또는 메뉴 막대 아래 가운데)에 붙인다.
+/// 판 모양은 SwiftUI 마스크가 애니메이션으로 키우고 줄이며, 창 크기는 바꾸지 않는다(창 크기와 SwiftUI 스프링이 따로 움직여 튀었다, PR #30 사람 확인).
 /// 투명한 부분의 클릭은 아래 앱으로 넘어간다. hover는 보이는 판 자리에서만 받는다.
 @MainActor
 final class NotchPanelHost: NSObject, NSWindowDelegate {
@@ -12,6 +14,8 @@ final class NotchPanelHost: NSObject, NSWindowDelegate {
     private let hostingView: NSHostingView<NotchPanelRoot>
     private let hoverView: HoverTrackingView
     private var contentLayout: PanelContentLayout?
+    private var currentMetrics: NotchMetrics?
+    private var currentStyle: PanelStyle?
 
     init(appState: AppState) {
         self.appState = appState
@@ -41,50 +45,51 @@ final class NotchPanelHost: NSObject, NSWindowDelegate {
         panel.contentView = container
     }
 
-    func show(on placement: ScreenPlacement) {
-        let screen = placement.screen
-        let metrics: NotchMetrics
-        let centerX: CGFloat
-        let top: CGFloat
+    /// 표시 위치로 패널을 옮긴다(R-011). 처음 띄울 때와 화면 연결이 바뀔 때 모두 부른다.
+    /// 창은 다시 만들지 않고 `setFrame`으로만 옮기므로 key 상태와 입력 중인 글자가 남는다(ADR-0008).
+    /// 타이머와 `isPinnedOpen`은 `AppState`에 있고 여기서 건드리지 않는다. 화면이 없으면(nil) 감춘다.
+    func move(to placement: ScreenPlacement?) {
+        guard let placement else {
+            panel.orderOut(nil)
+            return
+        }
+        let anchor = panelAnchor(for: placement.target, on: placement.geometry)
+        let metrics = NotchMetrics(holeWidth: anchor.holeWidth, height: anchor.barHeight)
+        let style: PanelStyle
         switch placement.target {
         case .notch:
-            let leftWidth = screen.auxiliaryTopLeftArea?.width ?? 0
-            let rightWidth = screen.auxiliaryTopRightArea?.width ?? 0
-            let holeWidth = max(screen.frame.width - leftWidth - rightWidth, 0)
-            metrics = NotchMetrics(holeWidth: holeWidth, height: screen.safeAreaInsets.top)
-            centerX = screen.frame.minX + leftWidth + holeWidth / 2
-            top = screen.frame.maxY
+            style = .notch
             panel.level = .screenSaver
         case .floating:
-            // 떠 있는 창은 단위 5(T036). 지금은 같은 판을 메뉴 막대 아래 가운데에 구멍 없이 둔다.
-            metrics = NotchMetrics(holeWidth: 0, height: 28)
-            centerX = screen.frame.midX
-            top = screen.visibleFrame.maxY
+            style = .floating
             panel.level = .statusBar
         }
 
-        hostingView.rootView = NotchPanelRoot(
-            appState: appState,
-            metrics: metrics,
-            onStart: { [weak self] in
-                self?.appState.start()
-                self?.giveUpKey()
-            },
-            onComplete: { [weak self] in
-                self?.appState.complete()
-                self?.giveUpKey()
-            },
-            onLayoutChange: { [weak self] layout in
-                self?.contentLayout = layout
-                self?.updateHoverFrame()
-            })
+        // 판 모양이 바뀔 때만 뷰를 바꾼다. 같은 화면 안 변경(해상도 등)에서는 위치만 옮긴다.
+        if metrics != currentMetrics || style != currentStyle {
+            currentMetrics = metrics
+            currentStyle = style
+            hostingView.rootView = NotchPanelRoot(
+                appState: appState,
+                metrics: metrics,
+                style: style,
+                onStart: { [weak self] in
+                    self?.appState.start()
+                    self?.giveUpKey()
+                },
+                onComplete: { [weak self] in
+                    self?.appState.complete()
+                    self?.giveUpKey()
+                },
+                onLayoutChange: { [weak self] layout in
+                    self?.contentLayout = layout
+                    self?.updateHoverFrame()
+                })
+        }
         let size = NotchLayout.panelSize(metrics: metrics)
-        // 정수가 아니라 화면 픽셀 단위로 맞춘다. 노치 가운데가 반 포인트여도 어긋나지 않는다.
-        let scale = screen.backingScaleFactor
-        let originX = ((centerX - size.width / 2) * scale).rounded() / scale
-        panel.setFrame(
-            NSRect(x: originX, y: top - size.height, width: size.width, height: size.height),
-            display: true)
+        let frame = panelFrame(
+            anchor: anchor, width: Double(size.width), height: Double(size.height), scale: placement.backingScale)
+        panel.setFrame(NSRect(frame), display: true)
         updateHoverFrame()
         panel.orderFrontRegardless()
     }
@@ -169,18 +174,21 @@ final class HoverTrackingView: NSView {
 struct NotchPanelRoot: View {
     let appState: AppState
     var metrics = NotchMetrics(holeWidth: 0, height: 0)
+    var style: PanelStyle = .notch
     var onStart: () -> Void = {}
     var onComplete: () -> Void = {}
     var onLayoutChange: (PanelContentLayout) -> Void = { _ in }
 
     var body: some View {
         let offsetX = NotchLayout.horizontalOffset(
-            timer: appState.timer, remainingSeconds: appState.remainingSeconds, isExpanded: appState.isExpanded)
+            timer: appState.timer, remainingSeconds: appState.remainingSeconds, isExpanded: appState.isExpanded,
+            style: style)
         NotchContentView(
             timer: appState.timer,
             remainingSeconds: appState.remainingSeconds,
             isExpanded: appState.isExpanded,
             metrics: metrics,
+            style: style,
             titleFocusRequest: appState.titleFocusRequest,
             chip: QuantumChipInput(
                 customText: appState.customText,

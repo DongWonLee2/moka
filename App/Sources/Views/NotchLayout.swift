@@ -23,8 +23,11 @@ enum NotchLayout {
 
     /// 판을 가로로 옮길 거리. 접힌 판은 양옆 폭이 달라 그대로 가운데에 두면 구멍이 노치에서 어긋나므로
     /// 구멍 가운데가 판 자리 가운데(노치 가운데)에 오게 민다. 펼친 판은 대칭이라 0.
-    static func horizontalOffset(timer: NotchTimer, remainingSeconds: Int?, isExpanded: Bool) -> CGFloat {
-        guard !isExpanded else { return 0 }
+    /// 떠 있는 창은 맞출 노치가 없으므로 판 자체를 가운데에 둔다(0).
+    static func horizontalOffset(
+        timer: NotchTimer, remainingSeconds: Int?, isExpanded: Bool, style: PanelStyle
+    ) -> CGFloat {
+        guard !isExpanded, style == .notch else { return 0 }
         let sides = collapsedSideWidths(timer: timer, remainingSeconds: remainingSeconds)
         return (sides.trailing - sides.leading) / 2
     }
