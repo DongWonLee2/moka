@@ -140,7 +140,7 @@ private struct TitleEntryRow: View {
             TextField(
                 "",
                 text: $text,
-                prompt: Text("할 일 없음 — 무엇을 할까요?").foregroundStyle(
+                prompt: Text("무엇을 할까요?").foregroundStyle(
                     contrast == .increased ? MokaColors.placeholderHighContrast : MokaColors.placeholder)
             )
             .textFieldStyle(.plain)
