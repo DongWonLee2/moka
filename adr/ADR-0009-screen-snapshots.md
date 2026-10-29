@@ -67,3 +67,7 @@ Agent 추천안 채택(D4, 2026-10-28). 판단 이유: 사용자 위임(토론 �
 - 실행할 실험: `xcodegen generate && TEST_RUNNER_MOKA_SNAPSHOT_DIR=<절대 경로> xcodebuild test -scheme Moka -destination 'platform=macOS' -only-testing:MokaAppTests CODE_SIGNING_ALLOWED=NO`로 상태별 라이트·다크 PNG가 그 폴더에 생기는지 본다. 사람이 비교 페이지에서 시안과 나란히 본다.
 - 성공 판정: 테스트 PASS(생성) + 사람 확인(정합)은 따로 판정한다.
 - 재검토 트리거: macOS 업데이트로 `cacheDisplay`가 SwiftUI 내용을 빈 그림으로 그림, 뷰가 `AppState`나 앱 전용 타입에 기대게 되어 번들이 컴파일되지 않음, 사람이 자동 회귀 감지를 원함(대안 C나 CI job, 소수 의견 참고).
+
+### 보완 (2026-10-29, PR #49)
+
+위 "spec 001에서는 CI job을 두지 않는다", "단언은 sanity 3종만", "CI(`app-build`)는 이 번들을 돌리지 않는다"는 이 ADR을 채택할 때의 결정이고 문장은 그대로 둔다. 그 뒤 소수 의견(토론 A 자리)이 예고한 비필수 `app-snapshots` job 제안이 실행되었다. Issue #39 Q3 추천안 토론(2026-10-29, 3:0, 3라운드, 소수 의견 없음)과 사용자 승인으로, spec 001 뒤 CI에 비필수 `app-snapshots` job을 더했다(PR #49). 조건은 `continue-on-error: true`, main 보호 필수 검사 목록 불변, PNG artifact 없음, 같은 원인으로 2회 실패하면 `workflow_dispatch` 전용으로 내림이다. 같은 PR에서 sanity 단언에 픽셀 치수(`size × 2`), 노치 판(판 안 색이 테마와 무관하고 판 안에 그린 것이 있음), 떠 있는 창(라이트 판 휘도가 다크 판보다 확실히 높음)을 더했다. 기준 이미지 비교는 여전히 없고, 생성 PASS는 여전히 화면 정합 증거가 아니다.
