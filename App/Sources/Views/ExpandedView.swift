@@ -8,7 +8,6 @@ struct ExpandedView: View {
     /// 판 안 버튼·입력칸 모서리 반경.
     static let controlRadius: CGFloat = 6
     nonisolated static let wordmarkSize: CGFloat = 10
-    static let wordmarkTracking: CGFloat = 1.25
 
     let timer: NotchTimer
     let remainingSeconds: Int?
@@ -44,9 +43,7 @@ struct ExpandedView: View {
                     .frame(width: 13, height: 13)
                     .foregroundStyle(MokaColors.mocha)
                     .alignmentGuide(.capCenter) { $0.height * CupIcon.bodyCenterFraction }
-                Text("MOKA")
-                    .font(.system(size: Self.wordmarkSize, weight: .bold))
-                    .tracking(Self.wordmarkTracking)
+                MokaWordmark()
                     .foregroundStyle(palette.wordmark)
                     .alignmentGuide(.capCenter) { $0[.firstTextBaseline] - Self.wordmarkCapHeight / 2 }
             }
@@ -136,6 +133,7 @@ private struct TitleEntryRow: View {
     @FocusState private var focused: Bool
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.panelPalette) private var palette
+    @Environment(\.panelIsKey) private var panelIsKey
 
     var body: some View {
         HStack(spacing: 6) {
@@ -153,14 +151,18 @@ private struct TitleEntryRow: View {
             .background(palette.field, in: .rect(cornerRadius: ExpandedView.controlRadius))
             .overlay {
                 RoundedRectangle(cornerRadius: ExpandedView.controlRadius)
-                    .strokeBorder(focused ? MokaColors.mochaHighlight : palette.fieldLine, lineWidth: 1)
+                    .strokeBorder(showsFocus ? MokaColors.mochaHighlight : palette.fieldLine, lineWidth: 1)
             }
-            .shadow(color: focused ? MokaColors.mocha.opacity(0.38) : .clear, radius: 3)
+            .shadow(color: showsFocus ? MokaColors.mocha.opacity(0.38) : .clear, radius: 3)
             Button(action: submit) { ButtonLabel(text: "다음", shortcut: "↵") }
                 .buttonStyle(NotchButtonStyle(kind: .primary))
                 .disabled(trimmed.isEmpty)
         }
         .onChange(of: focusRequest) { focused = true }
+    }
+
+    private var showsFocus: Bool {
+        FieldBorder.kind(invalid: false, focused: focused, panelIsKey: panelIsKey) == .focus
     }
 
     private var trimmed: String {

@@ -63,6 +63,7 @@ struct CustomMinutesField: View {
     @State private var editing = ""
     @FocusState private var focused: Bool
     @Environment(\.panelPalette) private var palette
+    @Environment(\.panelIsKey) private var panelIsKey
 
     var body: some View {
         HStack(spacing: 6) {
@@ -99,8 +100,11 @@ struct CustomMinutesField: View {
     }
 
     private var borderColor: Color {
-        if isInvalid { return palette.danger }
-        return focused ? MokaColors.mochaHighlight : palette.fieldLine
+        switch FieldBorder.kind(invalid: isInvalid, focused: focused, panelIsKey: panelIsKey) {
+        case .error: palette.danger
+        case .focus: MokaColors.mochaHighlight
+        case .normal: palette.fieldLine
+        }
     }
 }
 

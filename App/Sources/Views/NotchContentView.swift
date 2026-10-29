@@ -12,6 +12,9 @@ struct NotchContentView: View {
     let timer: NotchTimer
     let remainingSeconds: Int?
     let isExpanded: Bool
+    var isHovering = false
+    /// 패널이 key window인지. 입력 칸 포커스 색에만 쓴다(data-model §6).
+    var isPanelKey = false
     let metrics: NotchMetrics
     var style: PanelStyle = .notch
     let titleFocusRequest: Int
@@ -55,8 +58,25 @@ struct NotchContentView: View {
             Rectangle().fill(palette.background).padding(-50)
         }
         .mask { shape }
+        .background {
+            // 판 둘레 바깥 1.5pt 테두리(시안 `.ex.hover`). 3pt 선의 안쪽 절반은 불투명한 판이 덮는다.
+            // 위쪽 가장자리의 바깥 절반은 패널 창(화면 위 끝) 밖이라 보이지 않는다.
+            // 펼침 애니메이션이 끝난 뒤 짧게 나타나고, 접힐 때는 바로 사라진다(전환에 붙인 애니메이션이 바깥 것을 덮는다).
+            if NotchLayout.showsHoverRing(isHovering: isHovering, isExpanded: isExpanded, style: style) {
+                NotchShape(bottomRadius: 18).stroke(MokaColors.mocha.opacity(0.8), lineWidth: 3)
+                    // 테두리는 보이기만 한다. 클릭·hover 판정은 판 자체가 정한다.
+                    .allowsHitTesting(false)
+                    .transition(
+                        .asymmetric(
+                            insertion: .opacity.animation(
+                                NotchLayout.hoverRingAnimation(appearing: true, reduceMotion: reduceMotion)),
+                            removal: .opacity.animation(
+                                NotchLayout.hoverRingAnimation(appearing: false, reduceMotion: reduceMotion))))
+            }
+        }
         .shadow(color: palette.hasShadow ? .black.opacity(0.18) : .clear, radius: 8, y: 4)
         .environment(\.panelPalette, palette)
+        .environment(\.panelIsKey, isPanelKey)
         .offset(
             x: NotchLayout.horizontalOffset(
                 timer: timer, remainingSeconds: remainingSeconds, isExpanded: isExpanded, style: style))

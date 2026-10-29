@@ -187,6 +187,9 @@ struct NotchPanelRoot: View {
             timer: appState.timer,
             remainingSeconds: appState.remainingSeconds,
             isExpanded: appState.isExpanded,
+            isHovering: appState.isHovering,
+            // AppState.isInputFocused는 패널의 windowDidBecomeKey·windowDidResignKey를 따른다.
+            isPanelKey: appState.isInputFocused,
             metrics: metrics,
             style: style,
             titleFocusRequest: appState.titleFocusRequest,

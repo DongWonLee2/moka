@@ -22,7 +22,7 @@ struct SettingsView: View {
                     .background(MokaColors.mocha, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("Moka").bold()
+                    MokaWordmark(size: 13)
                     Text("지금 할 일 하나")
                         .font(.caption)
                         .foregroundStyle(.secondary)
