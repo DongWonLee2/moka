@@ -47,7 +47,7 @@ moka-sim run <scenario.json>
 | `start` | 없음 | 칩 값으로 타이머 시작 |
 | `tick` | 없음 | 그 시각으로 상태를 갱신 |
 | `complete` | 없음 | 할 일을 비움 |
-| `set_default_quantum` | `quantum_min`(정수 1~180) | 설정의 기본값 변경 |
+| `set_default_quantum` | `quantum_min`(정수 1~180) | 설정의 기본값 변경. 직접 고르지 않은 칩도 새 값이 됨(R-013) |
 
 정수 필드는 JSON 정수만 받는다(`45.0`, `"45"`는 입력 오류).
 
@@ -60,9 +60,9 @@ moka-sim run <scenario.json>
 | 단계 \ 이벤트 | `enter_title` | `choose_quantum` | `start` | `tick` | `complete` | `set_default_quantum` |
 |---|---|---|---|---|---|---|
 | `empty` | 초안 생성, 칩 = 기본값 | 2 | 2 | 변화 없음 | 2 | 기본값 변경 |
-| `empty` + 초안 | 제목만 바꿈, 칩 유지 | 칩 = 값 | `running`(제목, 칩) | 변화 없음 | 2 | 기본값 변경, 칩 유지 |
+| `empty` + 초안 | 제목만 바꿈, 칩 유지 | 칩 = 값 | `running`(제목, 칩) | 변화 없음 | 2 | 기본값 변경. 칩을 `choose_quantum`으로 고르지 않았으면 칩 = 새 기본값, 골랐으면 칩 유지 |
 | `running` | 2 | 2 | 2 | 끝 시각 이후면 `expired`, 칩 = 기본값 | `empty`(초안 없음) | 기본값 변경, 타이머·칩 유지 |
-| `expired` | 2 | 칩 = 값 | `running`(같은 제목, 칩) | 변화 없음 | `empty`(초안 없음) | 기본값 변경, 칩 유지 |
+| `expired` | 2 | 칩 = 값 | `running`(같은 제목, 칩) | 변화 없음 | `empty`(초안 없음) | 기본값 변경. 시간 끝 뒤 `choose_quantum`이 없었으면 칩 = 새 기본값, 있었으면 칩 유지 |
 
 "2"는 종료 코드 2(입력 오류)다.
 

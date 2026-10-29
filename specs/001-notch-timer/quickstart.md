@@ -25,7 +25,7 @@ swift run moka-sim run Tests/MokaCoreTests/Fixtures/sim/<시나리오>.json
 기대: [contracts/moka-sim-v1.md](contracts/moka-sim-v1.md) 형식의 JSON Lines, 종료 코드 0. 시나리오는 가짜 할 일만 쓴다. 최소 시나리오:
 - 기본 25분 시작 → 끝 시각에 `expired`, `remaining_s` 0, `chip_min`은 기본값
 - 45분 선택 → 다시 시작(R-010) → 완료
-- 도는 중 `set_default_quantum` → 남은 시간 그대로, 다음 `enter_title`의 `chip_min`이 새 값(R-013)
+- 도는 중 `set_default_quantum` → 남은 시간 그대로, 고르지 않은 칩과 다음 `enter_title`의 `chip_min`이 새 값, 직접 고른 칩은 그대로(R-013)
 - 끝 시각 뒤에 온 `complete` → 암묵 tick으로 `expired`를 거쳐 `empty`
 - 잠자기를 `at` 건너뛰기로 표현 → 깨어난 첫 `tick`이 `expired`(R-008)
 - 오류 입력(`Fixtures/sim/errors/`: 모르는 `type`, 시각 역행, 모르는 키 등) → 종료 코드 2, 표준 출력 비어 있음

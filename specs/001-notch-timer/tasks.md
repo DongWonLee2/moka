@@ -166,7 +166,7 @@ EGM 금붕어 리뷰(2026-10-28)와 승인 항목 토론 뒤 보강했다. 보�
 
 **Goal**: 메뉴 막대 "설정…"에서 `default_quantum_min`을 바꾸고 재시작 뒤에도 남는다
 
-**Independent Test**: `swift test`의 `MokaStoreTests`가 마이그레이션 이름, 스키마 스냅샷, 테스트 DB 경로 가드, 왕복을 확인한다. 화면 없이 `us4-default-change.json`이 도는 중 `set_default_quantum` 뒤에도 `remaining_s`가 그대로이고 다음 `enter_title`의 `chip_min`이 새 값임을 보인다(R-013)
+**Independent Test**: `swift test`의 `MokaStoreTests`가 마이그레이션 이름, 스키마 스냅샷, 테스트 DB 경로 가드, 왕복을 확인한다. 화면 없이 `us4-default-change.json`이 도는 중 `set_default_quantum` 뒤에도 `remaining_s`가 그대로이고, 고르지 않은 초안 칩과 다음 `enter_title`의 `chip_min`이 새 값임을 보인다. `us4-picked-chip.json`은 직접 고른 칩이 그대로임을 보인다(R-013, 사용자 결정 2026-10-29, #43)
 
 ### Tests (Red)
 
