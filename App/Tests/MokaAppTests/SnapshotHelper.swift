@@ -121,7 +121,7 @@ enum SnapshotSanity {
         return nil
     }
 
-    /// 떠 있는 창: 판 안(`board` 지점, pt) 색이 판 밖 바탕과 다르고 라이트와 다크에서 다른지.
+    /// 떠 있는 창: 판 안(`board` 지점, pt) 색이 판 밖 바탕과 다르고, 라이트 판이 다크 판보다 확실히 밝은지.
     static func floatingBoardIssue(light: Data, dark: Data, board: CGPoint) -> String? {
         guard let light = SnapshotPixels(png: light), let dark = SnapshotPixels(png: dark) else {
             return "PNG를 읽지 못했다"
@@ -131,9 +131,16 @@ enum SnapshotSanity {
         if let issue = boardOutsideIssue(light: light, dark: dark, lightBoard: lightBoard, darkBoard: darkBoard) {
             return issue
         }
-        guard lightBoard != darkBoard else { return "떠 있는 창 판 안 색이 라이트와 다크에서 같다(\(lightBoard))" }
+        // 판은 반투명이라 판 밖 바탕이 비쳐 색이 조금 달라진다. 라이트 판은 밝고 다크 판은 어두워야 한다.
+        guard lightBoard.luminance - darkBoard.luminance >= minimumThemeLuminanceGap else {
+            return "떠 있는 창 판 안 색이 테마를 따르지 않는다(라이트 \(lightBoard), 다크 \(darkBoard))"
+        }
         return nil
     }
+
+    /// 라이트 판 #FFFCF8 88%와 다크 판 #26201C 90%는 휘도가 0.8쯤 차이 난다.
+    /// 같은 반투명 판이 바탕만 달리 비치면 0.1 안쪽이다.
+    private static let minimumThemeLuminanceGap = 0.3
 
     private static let minimumDrawnPixels = 20
 
@@ -152,6 +159,8 @@ struct SnapshotPixels {
     struct RGBA: Hashable, CustomStringConvertible {
         var r, g, b, a: UInt8
         var description: String { String(format: "#%02X%02X%02X%02X", r, g, b, a) }
+        /// 0...1 상대 휘도 근사(감마를 풀지 않는다). 테마가 밝은지 어두운지만 가른다.
+        var luminance: Double { (0.2126 * Double(r) + 0.7152 * Double(g) + 0.0722 * Double(b)) / 255 }
     }
 
     let width: Int
