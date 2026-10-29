@@ -21,6 +21,7 @@ struct ExpandedView: View {
     let onComplete: () -> Void
 
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.panelPalette) private var palette
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -32,7 +33,7 @@ struct ExpandedView: View {
         .frame(width: Self.width, alignment: .leading)
         .overlay(alignment: .top) { ears }
         .font(.system(size: 12))
-        .foregroundStyle(MokaColors.notchForeground)
+        .foregroundStyle(palette.foreground)
     }
 
     private var ears: some View {
@@ -46,7 +47,7 @@ struct ExpandedView: View {
                 Text("MOKA")
                     .font(.system(size: Self.wordmarkSize, weight: .bold))
                     .tracking(Self.wordmarkTracking)
-                    .foregroundStyle(MokaColors.foam.opacity(0.92))
+                    .foregroundStyle(palette.wordmark)
                     .alignmentGuide(.capCenter) { $0[.firstTextBaseline] - Self.wordmarkCapHeight / 2 }
             }
             .frame(width: 64, alignment: .leading)
@@ -55,7 +56,7 @@ struct ExpandedView: View {
                 .font(.system(size: 10.5, weight: isExpired ? .semibold : .regular))
                 .monospacedDigit()
                 .lineLimit(1)
-                .foregroundStyle(isExpired ? MokaColors.danger : mutedColor)
+                .foregroundStyle(isExpired ? palette.danger : mutedColor)
                 .frame(width: 64, alignment: .trailing)
         }
         .padding(.horizontal, 14)
@@ -109,7 +110,7 @@ struct ExpandedView: View {
     }
 
     private var mutedColor: Color {
-        contrast == .increased ? MokaColors.notchMutedHighContrast : MokaColors.notchMuted
+        contrast == .increased ? palette.mutedHighContrast : palette.muted
     }
 
     private nonisolated static let wordmarkCapHeight = NSFont.systemFont(ofSize: wordmarkSize, weight: .bold).capHeight
@@ -134,6 +135,7 @@ private struct TitleEntryRow: View {
     @State private var text = ""
     @FocusState private var focused: Bool
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.panelPalette) private var palette
 
     var body: some View {
         HStack(spacing: 6) {
@@ -141,17 +143,17 @@ private struct TitleEntryRow: View {
                 "",
                 text: $text,
                 prompt: Text("무엇을 할까요?").foregroundStyle(
-                    contrast == .increased ? MokaColors.placeholderHighContrast : MokaColors.placeholder)
+                    contrast == .increased ? palette.placeholderHighContrast : palette.placeholder)
             )
             .textFieldStyle(.plain)
             .focused($focused)
             .onSubmit(submit)
             .padding(.horizontal, 8)
             .frame(height: 24)
-            .background(MokaColors.field, in: .rect(cornerRadius: ExpandedView.controlRadius))
+            .background(palette.field, in: .rect(cornerRadius: ExpandedView.controlRadius))
             .overlay {
                 RoundedRectangle(cornerRadius: ExpandedView.controlRadius)
-                    .strokeBorder(focused ? MokaColors.mochaHighlight : MokaColors.fieldLine, lineWidth: 1)
+                    .strokeBorder(focused ? MokaColors.mochaHighlight : palette.fieldLine, lineWidth: 1)
             }
             .shadow(color: focused ? MokaColors.mocha.opacity(0.38) : .clear, radius: 3)
             Button(action: submit) { ButtonLabel(text: "다음", shortcut: "↵") }
@@ -188,12 +190,14 @@ struct RemainingText: View {
     let seconds: Int?
     let expired: Bool
 
+    @Environment(\.panelPalette) private var palette
+
     var body: some View {
         Text(RemainingFormat.string(seconds ?? 0))
             .font(.system(size: 22, weight: .semibold))
             .monospacedDigit()
             .lineLimit(1)
-            .foregroundStyle(expired ? MokaColors.danger : MokaColors.notchForeground)
+            .foregroundStyle(expired ? palette.danger : palette.foreground)
     }
 }
 
@@ -220,6 +224,7 @@ struct NotchButtonStyle: ButtonStyle {
     let kind: Kind
 
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.panelPalette) private var palette
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -234,19 +239,19 @@ struct NotchButtonStyle: ButtonStyle {
     }
 
     private var foreground: Color {
-        guard isEnabled else { return MokaColors.textDisabled }
-        return kind == .primary ? MokaColors.textOnPrimary : MokaColors.notchForeground
+        guard isEnabled else { return palette.textDisabled }
+        return kind == .primary ? MokaColors.textOnPrimary : palette.foreground
     }
 
     @ViewBuilder
     private var background: some View {
         let shape = RoundedRectangle(cornerRadius: ExpandedView.controlRadius)
         if !isEnabled {
-            shape.fill(MokaColors.controlDisabled)
+            shape.fill(palette.controlDisabled)
         } else if kind == .primary {
             shape.fill(MokaColors.primaryGradient)
         } else {
-            shape.fill(MokaColors.control)
+            shape.fill(palette.control)
         }
     }
 }

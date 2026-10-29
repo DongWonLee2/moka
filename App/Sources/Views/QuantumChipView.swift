@@ -11,6 +11,8 @@ struct QuantumChipView: View {
     let onBeginCustom: () -> Void
     let onEditCustom: (String) -> Void
 
+    @Environment(\.panelPalette) private var palette
+
     var body: some View {
         HStack(spacing: 0) {
             ForEach(QuantumChip.presets, id: \.self) { minutes in
@@ -21,7 +23,7 @@ struct QuantumChipView: View {
             }
         }
         .padding(2)
-        .background(MokaColors.control, in: .rect(cornerRadius: 7))
+        .background(palette.control, in: .rect(cornerRadius: 7))
     }
 
     private var isCustom: Bool {
@@ -34,7 +36,7 @@ struct QuantumChipView: View {
                 .font(.system(size: 11.5, weight: selected ? .semibold : .regular))
                 .monospacedDigit()
                 .lineLimit(1)
-                .foregroundStyle(selected ? MokaColors.textOnPrimary : MokaColors.segmentText)
+                .foregroundStyle(selected ? MokaColors.textOnPrimary : palette.segmentText)
                 .frame(maxWidth: .infinity)
                 .frame(height: 22)
                 .background {
@@ -60,6 +62,7 @@ struct CustomMinutesField: View {
 
     @State private var editing = ""
     @FocusState private var focused: Bool
+    @Environment(\.panelPalette) private var palette
 
     var body: some View {
         HStack(spacing: 6) {
@@ -71,7 +74,7 @@ struct CustomMinutesField: View {
                 .onSubmit(onSubmit)
                 .padding(.horizontal, 8)
                 .frame(width: 46, height: 24)
-                .background(MokaColors.field, in: .rect(cornerRadius: ExpandedView.controlRadius))
+                .background(palette.field, in: .rect(cornerRadius: ExpandedView.controlRadius))
                 .overlay {
                     RoundedRectangle(cornerRadius: ExpandedView.controlRadius)
                         .strokeBorder(borderColor, lineWidth: 1)
@@ -80,7 +83,7 @@ struct CustomMinutesField: View {
                 .accessibilityHint(CustomIssueText.message(for: text) ?? "")
             Text("분")
                 .font(.system(size: 11))
-                .foregroundStyle(MokaColors.notchMuted)
+                .foregroundStyle(palette.muted)
         }
         .onAppear {
             editing = text
@@ -96,8 +99,8 @@ struct CustomMinutesField: View {
     }
 
     private var borderColor: Color {
-        if isInvalid { return MokaColors.danger }
-        return focused ? MokaColors.mochaHighlight : MokaColors.fieldLine
+        if isInvalid { return palette.danger }
+        return focused ? MokaColors.mochaHighlight : palette.fieldLine
     }
 }
 
@@ -105,10 +108,12 @@ struct CustomMinutesField: View {
 struct CustomIssueText: View {
     let message: String
 
+    @Environment(\.panelPalette) private var palette
+
     var body: some View {
         Text(message)
             .font(.system(size: 11))
-            .foregroundStyle(MokaColors.danger)
+            .foregroundStyle(palette.danger)
             .lineLimit(1)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
