@@ -4,8 +4,11 @@ import Testing
 /// 금지 호출 문자열을 이 파일에 그대로 두면 검사가 자기 자신을 잡으므로 이어 붙여 만든다.
 private let forbiddenCalls = [
     "MokaDatabase" + ".open(",
-    "DatabaseQueue" + "(path:",
-    "DatabasePool" + "(path:",
+    "MokaDatabase" + ".inMemory(",
+    "DatabaseQueue" + "(",
+    "DatabaseQueue" + ".init(",
+    "DatabasePool" + "(",
+    "DatabasePool" + ".init(",
 ]
 
 private let allowedFile = "Support/TestDatabase.swift"
@@ -34,5 +37,5 @@ func storeTestsOpenDatabaseOnlyThroughTestDatabase() throws {
 
     // 경로가 어긋나 아무 파일도 읽지 않고 통과하는 거짓 PASS를 막는다.
     #expect(scanned.contains(allowedFile))
-    #expect(scanned.contains("TestDatabaseUsageTests.swift"))
+    #expect(scanned.contains(URL(fileURLWithPath: #filePath).lastPathComponent))
 }
