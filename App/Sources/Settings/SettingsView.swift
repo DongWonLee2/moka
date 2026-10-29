@@ -34,8 +34,10 @@ struct SettingsView: View {
             HStack(spacing: 4) {
                 Text("기본 작업 시간")
                 Spacer()
-                TextField("기본 작업 시간", text: $text)
+                // macOS는 TextField 제목을 칸 안 자리표시로 그리므로 제목은 비우고 접근성 라벨로만 둔다(#45).
+                TextField("", text: $text)
                     .labelsHidden()
+                    .accessibilityLabel("기본 작업 시간")
                     .multilineTextAlignment(.trailing)
                     .frame(width: 44)
                     .focused($isFieldFocused)
@@ -54,6 +56,7 @@ struct SettingsView: View {
         .padding(.top, 6)
         .padding(.bottom, 14)
         .frame(width: 320)
+        .background(SettingsWindowRaiser.Anchor())
         .navigationTitle("Moka 설정")
         .onAppear { text = String(QuantumSettings.readDefault(from: store)) }
         .onChange(of: isFieldFocused) { _, focused in
