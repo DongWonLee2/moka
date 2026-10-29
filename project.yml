@@ -28,3 +28,17 @@ targets:
         ENABLE_APP_SANDBOX: NO
         ENABLE_HARDENED_RUNTIME: NO
         CODE_SIGN_STYLE: Automatic
+    scheme:
+      testTargets: [MokaAppTests]
+  # 화면 스냅샷 번들(ADR-0009, D4). 앱을 호스트로 쓰지 않고(TEST_HOST 없음) 뷰만 직접 컴파일한다.
+  MokaAppTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: [App/Sources/Views, App/Tests/MokaAppTests]
+    dependencies:
+      - package: Moka
+        product: MokaCore
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: YES
