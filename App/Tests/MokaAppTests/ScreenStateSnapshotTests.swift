@@ -34,6 +34,13 @@ final class ScreenStateSnapshotTests: XCTestCase {
             "03-chip", timer: .empty(draft: Draft(title: Self.title, chipMin: 25)), remaining: nil, expanded: true)
     }
 
+    /// 프리셋 밖 기본값(30분)으로 미리 채운 칩. "직접…" 자리에 "30분"이 선택된 채 보인다(#34).
+    func test_R003_R004_chipOffPresetDefault() throws {
+        try snapshot(
+            "03-chip-default-30", timer: .empty(draft: Draft(title: Self.title, chipMin: 30)), remaining: nil,
+            expanded: true)
+    }
+
     func test_R006_runningCollapsed() throws {
         try snapshot("04-running-collapsed", timer: Self.running, remaining: Self.runningRemaining, expanded: false)
     }
