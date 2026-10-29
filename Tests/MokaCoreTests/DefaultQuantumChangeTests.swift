@@ -46,6 +46,15 @@ func reenteredTitleKeepsPickedChip() {
     #expect(timer == .empty(draft: Draft(title: "가짜 할 일 B", chipMin: 45, chipPicked: true)))
 }
 
+@Test("FR-16 R-013: 고르지 않은 초안에 제목을 다시 넣어도 고르지 않은 칩으로 남아 기본값 변경을 따른다")
+func reenteredTitleKeepsUnpickedChip() {
+    var timer = draft()
+    _ = timer.apply(.enterTitle("가짜 할 일 B"), at: clock.now(), defaultQuantumMin: 25)
+    #expect(timer == .empty(draft: Draft(title: "가짜 할 일 B", chipMin: 25, chipPicked: false)))
+    timer.applyDefaultQuantumChange(40, isEditingCustom: false)
+    #expect(timer == .empty(draft: Draft(title: "가짜 할 일 B", chipMin: 40)))
+}
+
 @Test("FR-16 R-013: 직접 입력 중이면 기본값을 바꿔도 칩은 그대로")
 func defaultChangeKeepsChipWhileEditingCustom() {
     var timer = draft()
