@@ -32,6 +32,12 @@ enum NotchLayout {
         return (sides.trailing - sides.leading) / 2
     }
 
+    /// 마우스가 올라가 펼친 노치 판에만 모카 테두리를 그린다(시안 v3.5 `.ex.hover`, 2·5번).
+    /// 시간 끝 자동 펼침처럼 마우스가 없으면 그리지 않는다. 떠 있는 창은 시안 7번에 테두리가 없다.
+    static func showsHoverRing(isHovering: Bool, isExpanded: Bool, style: PanelStyle) -> Bool {
+        isHovering && isExpanded && style == .notch
+    }
+
     /// 고정 패널 크기: 가장 넓은 접힌 판(구멍 양옆을 넓은 쪽 폭으로 맞춘 대칭 폭)과 펼친 판이 들어가고,
     /// 스프링이 조금 넘쳐도 잘리지 않게 여유를 둔다.
     static func panelSize(metrics: NotchMetrics) -> CGSize {

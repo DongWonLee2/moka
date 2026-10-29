@@ -187,6 +187,7 @@ struct NotchPanelRoot: View {
             timer: appState.timer,
             remainingSeconds: appState.remainingSeconds,
             isExpanded: appState.isExpanded,
+            isHovering: appState.isHovering,
             metrics: metrics,
             style: style,
             titleFocusRequest: appState.titleFocusRequest,
