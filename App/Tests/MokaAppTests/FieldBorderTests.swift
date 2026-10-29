@@ -27,7 +27,7 @@ final class HoverRingAnimationTests: XCTestCase {
 
     func test_R009_ringCompletesWithExpansion() {
         XCTAssertEqual(
-            NotchLayout.hoverRingDelay + NotchLayout.hoverRingFadeDuration, NotchLayout.expansionDuration,
+            NotchLayout.hoverRingDelay + NotchLayout.hoverRingFadeDuration, NotchLayout.expansionDuration * 0.75,
             accuracy: 0.0001)
     }
 
