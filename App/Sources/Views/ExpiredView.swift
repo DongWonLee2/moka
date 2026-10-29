@@ -52,6 +52,9 @@ struct ExpiredView: View {
                     .keyboardShortcut(.defaultAction)
             }
         }
+        if let message = CustomIssueText.message(for: chip.customText) {
+            CustomIssueText(message: message)
+        }
     }
 
     private func submitCustom() {

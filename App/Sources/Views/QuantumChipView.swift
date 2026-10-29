@@ -49,7 +49,8 @@ struct QuantumChipView: View {
     }
 }
 
-/// 직접 입력 칸 줄의 앞부분: 숫자 칸과 "분". 틀린 값은 빨간 테두리와 꺼진 시작 버튼으로만 알린다(화면 문구 없음).
+/// 직접 입력 칸 줄의 앞부분: 숫자 칸과 "분". 틀린 값은 빨간 테두리와 꺼진 시작 버튼으로 알리고,
+/// 이유는 칸 아래 줄의 `CustomIssueText`가 보인다(같은 줄에 두면 폭이 넘쳐 겹친다, PR #33 사람 확인).
 /// 포커스는 "직접…"을 누른 직후 나타날 때만 준다. 마우스로 다시 펼쳐 칸이 다시 만들어질 때는 주지 않는다(SC-003).
 struct CustomMinutesField: View {
     let text: String
@@ -76,7 +77,7 @@ struct CustomMinutesField: View {
                         .strokeBorder(borderColor, lineWidth: 1)
                 }
                 .accessibilityLabel("직접 입력 분")
-                .accessibilityHint(isInvalid ? "1에서 180 사이 정수를 입력하세요" : "")
+                .accessibilityHint(CustomIssueText.message(for: text) ?? "")
             Text("분")
                 .font(.system(size: 11))
                 .foregroundStyle(MokaColors.notchMuted)
@@ -97,5 +98,28 @@ struct CustomMinutesField: View {
     private var borderColor: Color {
         if isInvalid { return MokaColors.danger }
         return focused ? MokaColors.mochaHighlight : MokaColors.fieldLine
+    }
+}
+
+/// 직접 입력 칸 아래 줄의 이유 안내(R-004). 빈칸이면 안내 없이 시작만 꺼진다.
+struct CustomIssueText: View {
+    let message: String
+
+    var body: some View {
+        Text(message)
+            .font(.system(size: 11))
+            .foregroundStyle(MokaColors.danger)
+            .lineLimit(1)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// 직접 입력 중이고 받지 않는 값이면 안내 문구, 아니면 nil.
+    static func message(for customText: String?) -> String? {
+        guard let customText, let issue = QuantumChip.customIssue(customText) else { return nil }
+        switch issue {
+        case .aboveMax: return "3시간(180분)까지 정할 수 있어요"
+        case .belowMin: return "1분부터 정할 수 있어요"
+        case .notInteger: return "분은 숫자로만 적어 주세요"
+        }
     }
 }
