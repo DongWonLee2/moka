@@ -63,7 +63,7 @@ func writeDefaultPropagatesStoreError() {
     }
 }
 
-@Test("FR-16 R-013: 기본값을 바꿔도 도는 타이머와 이미 채운 칩은 그대로, 다음 채움에 반영")
+@Test("FR-16 R-013: 기본값을 바꿔도 도는 타이머는 그대로, 시간 끝 칩은 다음 채움에, 고르지 않은 칩은 바로 반영")
 func defaultChangeAffectsOnlyNextFill() throws {
     let t0 = Date(timeIntervalSince1970: 1_800_000_000)
     let store = InMemorySettingsStore()
@@ -83,6 +83,7 @@ func defaultChangeAffectsOnlyNextFill() throws {
     #expect(timer == .expired(title: "가짜 할 일 A", chipMin: 45))
 
     try QuantumSettings.writeDefault(15, to: store)
+    timer.applyDefaultQuantumChange(QuantumSettings.readDefault(from: store), isEditingCustom: false)
     _ = timer.apply(.tick, at: t2.addingTimeInterval(60), defaultQuantumMin: QuantumSettings.readDefault(from: store))
-    #expect(timer == .expired(title: "가짜 할 일 A", chipMin: 45))
+    #expect(timer == .expired(title: "가짜 할 일 A", chipMin: 15))
 }
