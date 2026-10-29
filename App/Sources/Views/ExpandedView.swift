@@ -133,6 +133,7 @@ private struct TitleEntryRow: View {
     @FocusState private var focused: Bool
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.panelPalette) private var palette
+    @Environment(\.panelIsKey) private var panelIsKey
 
     var body: some View {
         HStack(spacing: 6) {
@@ -150,14 +151,18 @@ private struct TitleEntryRow: View {
             .background(palette.field, in: .rect(cornerRadius: ExpandedView.controlRadius))
             .overlay {
                 RoundedRectangle(cornerRadius: ExpandedView.controlRadius)
-                    .strokeBorder(focused ? MokaColors.mochaHighlight : palette.fieldLine, lineWidth: 1)
+                    .strokeBorder(showsFocus ? MokaColors.mochaHighlight : palette.fieldLine, lineWidth: 1)
             }
-            .shadow(color: focused ? MokaColors.mocha.opacity(0.38) : .clear, radius: 3)
+            .shadow(color: showsFocus ? MokaColors.mocha.opacity(0.38) : .clear, radius: 3)
             Button(action: submit) { ButtonLabel(text: "다음", shortcut: "↵") }
                 .buttonStyle(NotchButtonStyle(kind: .primary))
                 .disabled(trimmed.isEmpty)
         }
         .onChange(of: focusRequest) { focused = true }
+    }
+
+    private var showsFocus: Bool {
+        FieldBorder.kind(invalid: false, focused: focused, panelIsKey: panelIsKey) == .focus
     }
 
     private var trimmed: String {
