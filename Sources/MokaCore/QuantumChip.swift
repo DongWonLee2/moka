@@ -8,8 +8,41 @@ public enum CustomQuantumIssue: Equatable, Sendable {
     case notInteger
 }
 
+/// 시간 칩의 칸 하나(R-003·R-004). 프리셋 칸 4개 뒤에 직접 입력 칸 하나가 온다.
+public struct QuantumChipSegment: Equatable, Sendable {
+    public enum Kind: Hashable, Sendable {
+        /// 누르면 그 분으로 고른다.
+        case preset(Int)
+        /// 누르면 직접 입력 칸을 연다.
+        case custom
+    }
+
+    public let kind: Kind
+    public let label: String
+    public let selected: Bool
+
+    public init(kind: Kind, label: String, selected: Bool) {
+        self.kind = kind
+        self.label = label
+        self.selected = selected
+    }
+}
+
 public enum QuantumChip {
     public static let presets = Defaults.quantumPresets
+
+    /// 칩에 그릴 칸들. `customText`가 nil이 아니면 직접 입력 중이다.
+    /// 칩 값이 프리셋 밖이고 직접 입력 중이 아니면(프리셋 밖 기본값으로 미리 채움) 직접 입력 칸이 그 값을
+    /// "30분"처럼 보이며 선택된다(R-003). 직접 입력 중에는 값이 입력 칸에 보이므로 "직접…"으로 둔다.
+    public static func segments(chipMin: Int, customText: String?) -> [QuantumChipSegment] {
+        let offPreset = !presets.contains(chipMin)
+        let isCustom = customText != nil || offPreset
+        let presetSegments = presets.map { minutes in
+            QuantumChipSegment(kind: .preset(minutes), label: "\(minutes)분", selected: !isCustom && chipMin == minutes)
+        }
+        let customLabel = customText == nil && offPreset ? "\(chipMin)분" : "직접…"
+        return presetSegments + [QuantumChipSegment(kind: .custom, label: customLabel, selected: isCustom)]
+    }
 
     /// `Int(text)`가 1...180이면 값, 아니면 nil(시작 불가).
     public static func parseCustom(_ text: String) -> Int? {

@@ -74,3 +74,29 @@ func customIssueNotInteger(text: String) {
 func customIssueAgreesWithParseCustom(text: String) {
     #expect((QuantumChip.customIssue(text) == nil) == (QuantumChip.parseCustom(text) != nil))
 }
+
+@Test("FR-05 R-003: 기본값이 프리셋이면 그 칸만 선택되고 직접 입력 칸은 직접…이다", arguments: [15, 25, 45, 60])
+func segmentsPresetDefault(chipMin: Int) {
+    let segments = QuantumChip.segments(chipMin: chipMin, customText: nil)
+    #expect(segments.map(\.label) == ["15분", "25분", "45분", "60분", "직접…"])
+    #expect(segments.filter(\.selected).map(\.kind) == [.preset(chipMin)])
+}
+
+@Test(
+    "FR-05 R-003: 기본값이 프리셋 밖이면 직접 입력 칸 자리에 그 값이 보이며 선택되고 바로 시작할 수 있다",
+    arguments: [(30, "30분"), (1, "1분"), (180, "180분")])
+func segmentsOffPresetDefault(chipMin: Int, label: String) {
+    let segments = QuantumChip.segments(chipMin: chipMin, customText: nil)
+    #expect(segments.map(\.label) == ["15분", "25분", "45분", "60분", label])
+    #expect(segments.filter(\.selected).map(\.kind) == [.custom])
+    #expect(QuantumChip.startAllowed(customText: nil))
+}
+
+@Test(
+    "FR-05 R-004: 직접 입력 중이면 직접 입력 칸은 직접…으로 선택된다",
+    arguments: [(30, "30"), (25, "25"), (25, "")])
+func segmentsEditingCustom(chipMin: Int, text: String) {
+    let segments = QuantumChip.segments(chipMin: chipMin, customText: text)
+    #expect(segments.map(\.label) == ["15분", "25분", "45분", "60분", "직접…"])
+    #expect(segments.filter(\.selected).map(\.kind) == [.custom])
+}

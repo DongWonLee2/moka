@@ -2,7 +2,8 @@ import MokaCore
 import SwiftUI
 
 /// 시간 칩: 분할 컨트롤(15분|25분|45분|60분|직접…)과 직접 입력 칸(R-003·R-004, 시안 v3.4 3·6번).
-/// 값과 콜백만 받는다. 칩 값이 프리셋이 아니면(직접 입력이나 프리셋 밖 기본값) "직접…"이 선택된다.
+/// 값과 콜백만 받는다. 칸 이름과 선택은 `QuantumChip.segments`가 정한다. 프리셋 밖 기본값이면 "직접…" 자리에
+/// "30분"처럼 그 값이 선택된 채 보이고, 누르면 그 값으로 채운 직접 입력 칸이 열린다.
 struct QuantumChipView: View {
     let chipMin: Int
     /// 직접 입력 칸 글자. nil이면 직접 입력을 쓰지 않는 중.
@@ -15,19 +16,17 @@ struct QuantumChipView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            ForEach(QuantumChip.presets, id: \.self) { minutes in
-                segment("\(minutes)분", selected: !isCustom && chipMin == minutes) { onChoose(minutes) }
-            }
-            segment("직접…", selected: isCustom) {
-                if customText == nil { onBeginCustom() }
+            ForEach(QuantumChip.segments(chipMin: chipMin, customText: customText), id: \.kind) { item in
+                segment(item.label, selected: item.selected) {
+                    switch item.kind {
+                    case .preset(let minutes): onChoose(minutes)
+                    case .custom: if customText == nil { onBeginCustom() }
+                    }
+                }
             }
         }
         .padding(2)
         .background(palette.control, in: .rect(cornerRadius: 7))
-    }
-
-    private var isCustom: Bool {
-        customText != nil || !QuantumChip.presets.contains(chipMin)
     }
 
     private func segment(_ label: String, selected: Bool, action: @escaping () -> Void) -> some View {
