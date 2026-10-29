@@ -6,6 +6,13 @@ public enum QuantumChip {
         guard let minutes = Int(text), Defaults.quantumMinRange.contains(minutes) else { return nil }
         return minutes
     }
+
+    /// 시작할 수 있는가. `customText`가 nil이면 직접 입력을 쓰지 않아 칩 값으로 시작한다(R-003),
+    /// 직접 입력 중이면 `parseCustom`이 값을 낼 때만(R-004).
+    public static func startAllowed(customText: String?) -> Bool {
+        guard let customText else { return true }
+        return parseCustom(customText) != nil
+    }
 }
 
 public enum RemainingFormat {
@@ -28,4 +35,18 @@ public enum RemainingFormat {
 
 public func shouldStayExpanded(pinned: Bool, focused: Bool, hovering: Bool) -> Bool {
     pinned || focused || hovering
+}
+
+/// 이벤트를 적용한 뒤의 시간 끝 고정 여부(R-009). `running`에서 `expired`로 바뀌면 고정하고,
+/// 시작·완료가 적용되면 푼다. 그 밖에는 이전 값을 그대로 둔다.
+public func pinnedOpenAfter(
+    _ event: TimerEvent, result: TransitionResult, from before: NotchTimer, to after: NotchTimer, wasPinned: Bool
+) -> Bool {
+    if result == .applied, event == .start || event == .complete {
+        return false
+    }
+    if case .running = before, case .expired = after {
+        return true
+    }
+    return wasPinned
 }
