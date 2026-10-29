@@ -34,6 +34,7 @@ struct OpenSettingsButton: View {
 
     var body: some View {
         Button("설정…") {
+            SettingsWindowRaiser.request()
             NSApp.activate()
             openSettings()
             DispatchQueue.main.async { SettingsWindowRaiser.raise() }
@@ -45,6 +46,12 @@ struct OpenSettingsButton: View {
 @MainActor
 enum SettingsWindowRaiser {
     private static weak var window: NSWindow?
+    /// 설정…을 눌렀을 때만 건다. 앵커는 이 요청이 있을 때만 창을 올려, 요청 없이 창이 저절로 앞으로 오지 않게 한다.
+    private static var pending = OneShotRequest()
+
+    static func request() {
+        pending.request()
+    }
 
     static func raise() {
         guard let window else { return }
@@ -52,7 +59,7 @@ enum SettingsWindowRaiser {
         window.orderFrontRegardless()
     }
 
-    /// 설정 화면 바탕에 깔아 설정 창을 알아낸다. 창이 처음 붙으면 다음 틱에 올린다.
+    /// 설정 화면 바탕에 깔아 설정 창을 알아낸다. 창에 붙을 때 설정… 요청이 걸려 있으면 다음 틱에 올린다.
     struct Anchor: NSViewRepresentable {
         func makeNSView(context: Context) -> NSView { AnchorView() }
         func updateNSView(_ nsView: NSView, context: Context) {}
@@ -63,6 +70,7 @@ enum SettingsWindowRaiser {
             super.viewDidMoveToWindow()
             guard let window else { return }
             SettingsWindowRaiser.window = window
+            guard SettingsWindowRaiser.pending.take() else { return }
             DispatchQueue.main.async { SettingsWindowRaiser.raise() }
         }
     }
