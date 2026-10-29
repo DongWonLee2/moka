@@ -15,6 +15,7 @@ struct ExpandedView: View {
     let metrics: NotchMetrics
     /// 값이 바뀔 때마다 빈 상태의 제목 칸에 포커스를 준다(펼친 판 클릭, data-model §6).
     let titleFocusRequest: Int
+    let chip: QuantumChipInput
     let onEnterTitle: (String) -> Void
     let onStart: () -> Void
     let onComplete: () -> Void
@@ -68,19 +69,21 @@ struct ExpandedView: View {
             TitleEntryRow(focusRequest: titleFocusRequest, onSubmit: onEnterTitle)
         case .empty(.some(let draft)):
             TitleText(title: draft.title)
+            // 기본값으로 채운 칩이 선택된 채로 Enter나 시작 한 번이면 그 값으로 시작한다(R-003).
+            QuantumChipView(
+                chipMin: draft.chipMin, customText: chip.customText,
+                onChoose: chip.onChoose, onBeginCustom: chip.onBeginCustom, onEditCustom: chip.onEditCustom)
             HStack(spacing: 6) {
-                // 칩 고르기 UI는 #27. 지금은 기본값으로 채운 칩 하나만 보인다(R-003).
-                Text("\(draft.chipMin)분")
-                    .font(.system(size: 11.5, weight: .semibold))
-                    .monospacedDigit()
-                    .foregroundStyle(MokaColors.textOnPrimary)
-                    .padding(.horizontal, 10)
-                    .frame(height: 22)
-                    .background(MokaColors.primaryGradient, in: .rect(cornerRadius: 5))
+                if let customText = chip.customText {
+                    CustomMinutesField(text: customText, onEdit: chip.onEditCustom) {
+                        if chip.canStart { onStart() }
+                    }
+                }
                 Spacer(minLength: 0)
                 Button(action: onStart) { ButtonLabel(text: "시작", shortcut: "↵") }
                     .buttonStyle(NotchButtonStyle(kind: .primary))
                     .keyboardShortcut(.defaultAction)
+                    .disabled(!chip.canStart)
             }
         case .running(let title, _, _, _):
             TitleText(title: title)
@@ -90,18 +93,8 @@ struct ExpandedView: View {
                 Button(action: onComplete) { ButtonLabel(text: "완료") }
                     .buttonStyle(NotchButtonStyle(kind: .secondary))
             }
-        case .expired(let title, _):
-            // 시간 끝 화면(칩·다시 시작)은 4b. 지금은 완료만 둔다.
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                TitleText(title: title)
-                RemainingText(seconds: remainingSeconds, expired: true)
-            }
-            HStack(spacing: 6) {
-                Spacer(minLength: 0)
-                Button(action: onComplete) { ButtonLabel(text: "완료", shortcut: "↵") }
-                    .buttonStyle(NotchButtonStyle(kind: .primary))
-                    .keyboardShortcut(.defaultAction)
-            }
+        case .expired(let title, let chipMin):
+            ExpiredView(title: title, chipMin: chipMin, chip: chip, onStart: onStart, onComplete: onComplete)
         }
     }
 
@@ -173,7 +166,7 @@ private struct TitleEntryRow: View {
     }
 }
 
-private struct TitleText: View {
+struct TitleText: View {
     let title: String
 
     var body: some View {
@@ -186,7 +179,7 @@ private struct TitleText: View {
     }
 }
 
-private struct RemainingText: View {
+struct RemainingText: View {
     let seconds: Int?
     let expired: Bool
 
@@ -199,7 +192,7 @@ private struct RemainingText: View {
     }
 }
 
-private struct ButtonLabel: View {
+struct ButtonLabel: View {
     let text: String
     var shortcut: String?
 

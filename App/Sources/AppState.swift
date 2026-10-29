@@ -11,11 +11,16 @@ final class AppState {
     private(set) var timer: NotchTimer = .empty(draft: nil)
     /// 화면에 쓰는 남은 초. 늘 `apply(.tick, …)` 뒤에 다시 계산한다(#13).
     private(set) var remainingSeconds: Int?
-    /// 시간 끝 자동 펼침 고정(R-009). 자동 펼침은 4b에서 켠다.
+    /// 시간 끝 자동 펼침 고정(R-009). `running → expired`에서 켜고 시작·완료로 끈다(`pinnedOpenAfter`).
+    /// 판 내용만 펼치고 패널을 key window로 만들거나 앱을 활성화하지 않는다(data-model §6 포커스 표).
     private(set) var isPinnedOpen = false
     private(set) var isHovering = false
     private(set) var isInputFocused = false
     private(set) var titleFocusRequest = 0
+    /// 직접 입력 칸에 쓴 글자. nil이면 직접 입력을 쓰지 않는 중이다(data-model §6 `isEditingCustom`).
+    private(set) var customText: String?
+    /// 직접 입력 값이 1~180 정수가 아니면 시작을 막는다(R-004).
+    var canStart: Bool { QuantumChip.startAllowed(customText: customText) }
 
     /// 펼침 여부. 바뀔 때는 `updateExpansion()` 한 곳에서 `withAnimation`으로 바꾼다.
     private(set) var isExpanded = false
@@ -41,18 +46,36 @@ final class AppState {
         send(.enterTitle(text))
     }
 
-    func start() {
-        if send(.start) == .applied {
-            isPinnedOpen = false
-            updateExpansion()
+    /// 프리셋 칩을 골랐다. 직접 입력을 그만둔다.
+    func chooseQuantum(_ minutes: Int) {
+        customText = nil
+        send(.chooseQuantum(minutes))
+    }
+
+    /// "직접…"을 골랐다. 칸은 지금 칩 값으로 시작한다.
+    func beginCustom() {
+        switch timer {
+        case .empty(.some(let draft)): customText = String(draft.chipMin)
+        case .expired(_, let chipMin): customText = String(chipMin)
+        case .empty(nil), .running: return
         }
     }
 
-    func complete() {
-        if send(.complete) == .applied {
-            isPinnedOpen = false
-            updateExpansion()
+    /// 직접 입력 칸이 바뀌었다. 1~180 정수면 칩 값으로 쓴다(R-004).
+    func editCustom(_ text: String) {
+        customText = text
+        if let minutes = QuantumChip.parseCustom(text) {
+            send(.chooseQuantum(minutes))
         }
+    }
+
+    func start() {
+        guard canStart else { return }
+        send(.start)
+    }
+
+    func complete() {
+        send(.complete)
     }
 
     func tick() {
@@ -91,9 +114,15 @@ final class AppState {
     private func send(_ event: TimerEvent) -> TransitionResult {
         let now = clock.now()
         let before = Self.phaseName(timer)
+        let previous = timer
         let result = timer.apply(event, at: now, defaultQuantumMin: QuantumSettings.readDefault(from: settings))
         remainingSeconds = timer.remainingSeconds(at: now)
         let after = Self.phaseName(timer)
+        if result == .applied, event == .start || event == .complete {
+            customText = nil
+        }
+        isPinnedOpen = pinnedOpenAfter(event, result: result, from: previous, to: timer, wasPinned: isPinnedOpen)
+        updateExpansion()
 
         if case .rejected(let reason) = result {
             Self.logger.notice(
