@@ -2,8 +2,9 @@ import MokaCore
 import SwiftUI
 import os
 
-/// 설정 화면: 기본 작업 시간(`default_quantum_min`) 하나(R-012).
-/// 제출(Enter)이나 포커스를 잃을 때 저장하고, 1~180 정수가 아니거나 저장에 실패하면 칸을 저장된 값으로 되돌린다.
+/// 설정 화면: 기본 작업 시간(`default_quantum_min`) 하나(R-012). 시안 8번 "메뉴 막대 메뉴와 설정".
+/// 숫자 칸은 제출(Enter)이나 포커스를 잃을 때 저장하고, 1~180 정수가 아니거나 저장에 실패하면 저장된 값으로 되돌린다.
+/// 스테퍼는 누를 때마다 1분씩 바꿔 바로 저장한다.
 struct SettingsView: View {
     let store: any SettingsStore
 
@@ -12,24 +13,44 @@ struct SettingsView: View {
     @FocusState private var isFieldFocused: Bool
 
     var body: some View {
-        Form {
-            LabeledContent("기본 작업 시간") {
-                HStack(spacing: 6) {
-                    TextField("기본 작업 시간", text: $text)
-                        .labelsHidden()
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: 56)
-                        .focused($isFieldFocused)
-                        .onSubmit(commit)
-                    Text("분")
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                CupIcon()
+                    .frame(width: 20, height: 20)
+                    .foregroundStyle(MokaColors.foam)
+                    .frame(width: 34, height: 34)
+                    .background(MokaColors.mocha, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Moka").bold()
+                    Text("지금 할 일 하나")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
-            Text("1~180분. 다음에 칩을 채울 때부터 쓴다. 도는 타이머는 그대로다.")
+            Divider()
+            HStack(spacing: 4) {
+                Text("기본 작업 시간")
+                Spacer()
+                TextField("기본 작업 시간", text: $text)
+                    .labelsHidden()
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 44)
+                    .focused($isFieldFocused)
+                    .onSubmit(commit)
+                Stepper("기본 작업 시간", value: stepperValue, in: Defaults.quantumMinRange, step: 1)
+                    .labelsHidden()
+                Text("분")
+            }
+            Text("1~180분. 다음 할 일의 기본값. 도는 타이머는 그대로.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
-        .padding(20)
-        .frame(width: 340)
+        .padding(.horizontal, 14)
+        .padding(.top, 6)
+        .padding(.bottom, 14)
+        .frame(width: 320)
+        .navigationTitle("Moka 설정")
         .onAppear { text = String(QuantumSettings.readDefault(from: store)) }
         .onChange(of: isFieldFocused) { _, focused in
             if !focused { commit() }
@@ -37,13 +58,27 @@ struct SettingsView: View {
         .onDisappear(perform: commit)
     }
 
+    /// 칸에 유효한 값이 있으면 그 값에서, 없으면 저장된 값에서 한 칸 움직인다.
+    private var stepperValue: Binding<Int> {
+        Binding(
+            get: { QuantumChip.parseCustom(text) ?? QuantumSettings.readDefault(from: store) },
+            set: { save($0) })
+    }
+
     private func commit() {
         if let minutes = QuantumChip.parseCustom(text) {
-            do {
-                try QuantumSettings.writeDefault(minutes, to: store)
-            } catch {
-                Self.logger.error("기본 작업 시간 저장 실패: \(String(reflecting: type(of: error)), privacy: .public)")
-            }
+            save(minutes)
+        } else {
+            text = String(QuantumSettings.readDefault(from: store))
+        }
+    }
+
+    /// 저장하고 칸을 저장된 값으로 맞춘다. 저장에 실패하면 이전 값이 보인다.
+    private func save(_ minutes: Int) {
+        do {
+            try QuantumSettings.writeDefault(minutes, to: store)
+        } catch {
+            Self.logger.error("기본 작업 시간 저장 실패: \(String(reflecting: type(of: error)), privacy: .public)")
         }
         text = String(QuantumSettings.readDefault(from: store))
     }
