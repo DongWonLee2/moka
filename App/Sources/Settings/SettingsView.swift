@@ -42,7 +42,7 @@ struct SettingsView: View {
                     .labelsHidden()
                 Text("분")
             }
-            Text("새 할 일을 시작할 때 먼저 골라 둘 시간이에요. 1분부터 3시간까지 정할 수 있어요. 지금 돌고 있는 타이머는 바뀌지 않아요.")
+            Text("새 할 일에 먼저 골라 둘 시간이에요.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
