@@ -20,6 +20,9 @@ let package = Package(
         ),
         .executableTarget(name: "moka-sim", dependencies: ["MokaCore"]),
         .testTarget(name: "MokaCoreTests", dependencies: ["MokaCore"]),
-        .testTarget(name: "MokaStoreTests", dependencies: ["MokaCore", "MokaStore"]),
+        .testTarget(
+            name: "MokaStoreTests",
+            dependencies: ["MokaCore", "MokaStore", .product(name: "GRDB", package: "GRDB.swift")]
+        ),
     ]
 )
