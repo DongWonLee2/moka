@@ -35,7 +35,8 @@ enum NotchLayout {
         let overshoot: CGFloat = 24
         let collapsedWidth = metrics.holeWidth + 2 * 104
         let width = max(collapsedWidth, ExpandedView.width) + 2 * NotchShape.earRadius + 2 * overshoot
-        return CGSize(width: width.rounded(.up), height: metrics.height + 160)
+        // 폭을 짝수로 둬야 노치 가운데에 놓을 때 왼쪽 끝이 반 포인트로 떨어지지 않는다.
+        return CGSize(width: (width / 2).rounded(.up) * 2, height: metrics.height + 160)
     }
 }
 

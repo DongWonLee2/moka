@@ -79,9 +79,11 @@ final class NotchPanelHost: NSObject, NSWindowDelegate {
                 self?.updateHoverFrame()
             })
         let size = NotchLayout.panelSize(metrics: metrics)
+        // 정수가 아니라 화면 픽셀 단위로 맞춘다. 노치 가운데가 반 포인트여도 어긋나지 않는다.
+        let scale = screen.backingScaleFactor
+        let originX = ((centerX - size.width / 2) * scale).rounded() / scale
         panel.setFrame(
-            NSRect(
-                x: (centerX - size.width / 2).rounded(), y: top - size.height, width: size.width, height: size.height),
+            NSRect(x: originX, y: top - size.height, width: size.width, height: size.height),
             display: true)
         updateHoverFrame()
         panel.orderFrontRegardless()
