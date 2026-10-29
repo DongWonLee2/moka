@@ -204,7 +204,7 @@ EGM 금붕어 리뷰(2026-10-28)와 승인 항목 토론 뒤 보강했다. 보�
 
 - [x] T034 [US5] `Sources/MokaCore/DisplayTarget.swift`에 data-model §5의 `ScreenInfo`, `DisplayTarget`, `chooseDisplayTarget(_:)`를 구현한다. T033 PASS 〔단위 1a〕
 - [x] T035 🔒 [US5] `App/Sources/Notch/ScreenWatcher.swift`(T015에서 만든 화면 고르기)에 `NSApplication.didChangeScreenParametersNotification` 구독을 더한다. 입력 규칙은 data-model §5(`id`는 `NSScreenNumber`, `hasNotch`는 `safeAreaInsets.top > 0`, `isMain`은 `NSScreen.screens.first`이고 `NSScreen.main`이 아니다). 알림마다 새 `DisplayTarget`을 계산해 `NotchPanelHost.move(to:)`를 부르고, 호스트는 `setFrame`으로 옮긴다(창을 다시 만들지 않는다 — ADR-0008 결함 사유). 타이머 상태와 `isPinnedOpen`은 건드리지 않는다 〔단위 5〕
-- [x] T036 🔒 [US5] `App/Sources/Notch/NotchPanelHost.swift`(T015)에 노치 없는 화면 배치를 더한다: `move(to:)`가 `.floating`을 받으면 같은 패널을 노치 모양 없이 level `.statusBar`로 메뉴 막대 아래 중앙에 고정(드래그 없음)한다. 옮기기는 T035와 같이 `setFrame`이고 창을 다시 만들지 않는다. 접힘·펼침·hover·포커스 규칙은 T015 그대로다. 라이트 모드의 "MOKA" 글자는 #85604F. 사람 확인: 덮개를 닫고 외부 모니터만 쓸 때(spike 5 외부 모니터 NOT_RUN 몫) 〔단위 5〕
+- [x] T036 🔒 [US5] `App/Sources/Notch/NotchPanelHost.swift`(T015)에 노치 없는 화면 배치를 더한다: `move(to:)`가 `.floating`을 받으면 같은 패널을 노치 모양 없이 level `.statusBar`로 메뉴 막대 아래 중앙에 고정(드래그 없음)한다. 옮기기는 T035와 같이 `setFrame`이고 창을 다시 만들지 않는다. 접힘·펼침·hover·포커스 규칙은 T015 그대로다. 라이트 모드의 "MOKA" 글자는 #85604F. 사람 확인: 덮개를 닫고 외부 모니터만 쓸 때(spike 5 외부 모니터 NOT_RUN 몫) 〔단위 5〕 코드는 PR #36으로 병합. 덮개 닫기·외부 모니터 사람 확인은 NOT_RUN(외부 모니터 없음)이라 T042(quickstart 6)로 넘김
 
 **확인 지점**: 다섯 이야기 모두 완성
 
