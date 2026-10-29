@@ -25,11 +25,11 @@ final class SnapshotSanityTests: XCTestCase {
         XCTAssertNotNil(SnapshotSanity.notchBoardIssue(light: light, dark: dark, board: Self.board))
     }
 
-    /// 검은 판 안에 점이 있으면 노치 판 단언을 통과한다.
+    /// 검은 판 안에 점이 있으면 노치 판 단언을 통과한다. 점 색은 테마와 무관한 고정 색이다(`Color.orange`는 테마마다 다르다).
     func test_notchBoardIssue_acceptsBoardWithContent() throws {
         let (light, dark) = try render(
             Color.black.frame(width: 120, height: 32).overlay(alignment: .leading) {
-                Circle().fill(Color.orange).frame(width: 8, height: 8).padding(.leading, 10)
+                Circle().fill(Color(red: 1, green: 0.5, blue: 0)).frame(width: 8, height: 8).padding(.leading, 10)
             })
         XCTAssertNil(SnapshotSanity.notchBoardIssue(light: light, dark: dark, board: Self.board))
     }
