@@ -27,13 +27,51 @@ struct MokaApp: App {
 
 /// "설정…" 메뉴 항목. 메뉴 막대와 펼친 판 우클릭 메뉴가 같이 쓴다(R-012).
 /// `LSUIElement` 앱은 활성이 아니어서 설정 창이 다른 앱 뒤에 열리므로 앱을 활성화한다.
+/// macOS 14의 `activate()`는 요청이라 바로 활성이 되지 않을 수 있다. 그래서 설정 창을 연 뒤 다음 틱에
+/// 그 창을 직접 앞으로 올린다(#45). 처음 만들어지는 창은 `SettingsWindowRaiser.Anchor`가 붙을 때 올린다.
 struct OpenSettingsButton: View {
     @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         Button("설정…") {
+            SettingsWindowRaiser.request()
             NSApp.activate()
             openSettings()
+            DispatchQueue.main.async { SettingsWindowRaiser.raise() }
+        }
+    }
+}
+
+/// 설정 창을 앞으로 올린다. 노치 패널은 건드리지 않는다(SC-003).
+@MainActor
+enum SettingsWindowRaiser {
+    private static weak var window: NSWindow?
+    /// 설정…을 눌렀을 때만 건다. 앵커는 이 요청이 있을 때만 창을 올려, 요청 없이 창이 저절로 앞으로 오지 않게 한다.
+    private static var pending = OneShotRequest()
+
+    static func request() {
+        pending.request()
+    }
+
+    static func raise() {
+        guard let window else { return }
+        window.makeKeyAndOrderFront(nil)
+        window.orderFrontRegardless()
+    }
+
+    /// 설정 화면 바탕에 깔아 설정 창을 알아낸다. 창에 붙을 때 설정… 요청이 걸려 있으면 다음 틱에 올린다.
+    struct Anchor: NSViewRepresentable {
+        func makeNSView(context: Context) -> NSView { AnchorView() }
+        func updateNSView(_ nsView: NSView, context: Context) {}
+    }
+
+    private final class AnchorView: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard let window else { return }
+            SettingsWindowRaiser.window = window
+            guard SettingsWindowRaiser.pending.take() else { return }
+            DispatchQueue.main.async { SettingsWindowRaiser.raise() }
         }
     }
 }
