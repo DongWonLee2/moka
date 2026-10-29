@@ -17,12 +17,18 @@ final class FieldBorderTests: XCTestCase {
     }
 }
 
-/// hover 테두리는 판이 다 펼쳐진 뒤 짧게 나타나고, 접힐 때는 바로 사라진다. 동작 줄이기면 애니메이션 없이 바로.
+/// hover 테두리는 펼침 끝무렵 짧게 나타나 펼침이 끝날 때 함께 완성되고, 접힐 때는 바로 사라진다. 동작 줄이기면 애니메이션 없이 바로.
 final class HoverRingAnimationTests: XCTestCase {
     func test_R009_ringFadesInAfterExpansion() {
         XCTAssertEqual(
             NotchLayout.hoverRingAnimation(appearing: true, reduceMotion: false),
-            .easeOut(duration: NotchLayout.hoverRingFadeDuration).delay(NotchLayout.expansionDuration))
+            .easeOut(duration: NotchLayout.hoverRingFadeDuration).delay(NotchLayout.hoverRingDelay))
+    }
+
+    func test_R009_ringCompletesWithExpansion() {
+        XCTAssertEqual(
+            NotchLayout.hoverRingDelay + NotchLayout.hoverRingFadeDuration, NotchLayout.expansionDuration,
+            accuracy: 0.0001)
     }
 
     func test_R009_ringHidesImmediatelyOnCollapseOrReduceMotion() {
