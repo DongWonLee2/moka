@@ -1,9 +1,9 @@
 {"seq":1,"at":"2026-11-02T00:00:00Z","event":"enter_title","timer_state":"empty","chip_min":20,"remaining_s":null}
-{"seq":2,"at":"2026-11-02T00:00:05Z","event":"set_default_quantum","timer_state":"empty","chip_min":20,"remaining_s":null}
-{"seq":3,"at":"2026-11-02T00:00:10Z","event":"start","timer_state":"running","chip_min":20,"remaining_s":1200}
-{"seq":4,"at":"2026-11-02T00:05:10Z","event":"set_default_quantum","timer_state":"running","chip_min":20,"remaining_s":900}
-{"seq":5,"at":"2026-11-02T00:20:10Z","event":"tick","timer_state":"expired","chip_min":45,"remaining_s":0}
-{"seq":6,"at":"2026-11-02T00:21:00Z","event":"set_default_quantum","timer_state":"expired","chip_min":45,"remaining_s":0}
+{"seq":2,"at":"2026-11-02T00:00:05Z","event":"set_default_quantum","timer_state":"empty","chip_min":30,"remaining_s":null}
+{"seq":3,"at":"2026-11-02T00:00:10Z","event":"start","timer_state":"running","chip_min":30,"remaining_s":1800}
+{"seq":4,"at":"2026-11-02T00:05:10Z","event":"set_default_quantum","timer_state":"running","chip_min":30,"remaining_s":1500}
+{"seq":5,"at":"2026-11-02T00:20:10Z","event":"tick","timer_state":"running","chip_min":30,"remaining_s":600}
+{"seq":6,"at":"2026-11-02T00:21:00Z","event":"set_default_quantum","timer_state":"running","chip_min":30,"remaining_s":550}
 {"seq":7,"at":"2026-11-02T00:22:00Z","event":"complete","timer_state":"empty","chip_min":null,"remaining_s":null}
 {"seq":8,"at":"2026-11-02T00:23:00Z","event":"set_default_quantum","timer_state":"empty","chip_min":null,"remaining_s":null}
 {"seq":9,"at":"2026-11-02T00:24:00Z","event":"enter_title","timer_state":"empty","chip_min":15,"remaining_s":null}

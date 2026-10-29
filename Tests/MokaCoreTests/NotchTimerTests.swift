@@ -77,7 +77,7 @@ func enterTitleInDraftKeepsChip() {
 func chooseQuantumInDraft(minutes: Int) {
     var timer = NotchTimer.empty(draft: Draft(title: title, chipMin: 25))
     #expect(timer.apply(.chooseQuantum(minutes), at: t0, defaultQuantumMin: 25) == .applied)
-    #expect(timer == .empty(draft: Draft(title: title, chipMin: minutes)))
+    #expect(timer == .empty(draft: Draft(title: title, chipMin: minutes, chipPicked: true)))
 }
 
 @Test("FR-05 R-004: 1~180 밖의 칩 값은 rejected", arguments: [0, -1, 181, 1000])
@@ -148,7 +148,7 @@ func implicitTickBeforeComplete() {
 func implicitTickBeforeChooseQuantum() {
     var timer = running()
     #expect(timer.apply(.chooseQuantum(15), at: t0.addingTimeInterval(1500), defaultQuantumMin: 25) == .applied)
-    #expect(timer == .expired(title: title, chipMin: 15))
+    #expect(timer == .expired(title: title, chipMin: 15, chipPicked: true))
 }
 
 @Test("FR-06 R-008: 끝 시각 이후 rejected 이벤트에도 암묵 tick은 남는다")

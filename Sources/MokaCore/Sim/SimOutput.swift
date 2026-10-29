@@ -12,7 +12,7 @@ enum SimOutput {
         case .running(_, let quantumMin, _, _):
             state = "running"
             chipMin = quantumMin
-        case .expired(_, let chip):
+        case .expired(_, let chip, _):
             state = "expired"
             chipMin = chip
         }

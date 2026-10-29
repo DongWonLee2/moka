@@ -22,7 +22,7 @@ struct CollapsedLeadingView: View {
         switch timer {
         case .empty:
             StatusDot(active: false)
-        case .running(let title, _, _, _), .expired(let title, _):
+        case .running(let title, _, _, _), .expired(let title, _, _):
             HStack(spacing: 6) {
                 StatusDot(active: true)
                 Text(title)

@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "timezone": "Asia/Seoul",
+  "settings": { "default_quantum_min": 20 },
+  "events": [
+    { "at": "2026-11-02T11:00:00+09:00", "type": "enter_title", "title": "가짜 할 일 I" },
+    { "at": "2026-11-02T11:00:03+09:00", "type": "choose_quantum", "quantum_min": 45 },
+    { "at": "2026-11-02T11:00:05+09:00", "type": "set_default_quantum", "quantum_min": 30 },
+    { "at": "2026-11-02T11:00:10+09:00", "type": "start" },
+    { "at": "2026-11-02T11:45:10+09:00", "type": "tick" },
+    { "at": "2026-11-02T11:46:00+09:00", "type": "choose_quantum", "quantum_min": 15 },
+    { "at": "2026-11-02T11:46:05+09:00", "type": "set_default_quantum", "quantum_min": 60 },
+    { "at": "2026-11-02T11:47:00+09:00", "type": "complete" }
+  ]
+}

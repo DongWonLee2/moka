@@ -19,6 +19,7 @@ func everyGoldenScenarioHasExpectedOutput() throws {
     #expect(
         Set([
             "contract-example", "default-after-expiry", "us1-basic", "us2-choose-45", "us3-sleep", "us4-default-change",
+            "us4-picked-chip",
         ])
         .isSubset(of: Set(names)))
     for name in names {

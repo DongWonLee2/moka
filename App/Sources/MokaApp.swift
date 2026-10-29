@@ -20,7 +20,7 @@ struct MokaApp: App {
                 .accessibilityLabel("Moka")
         }
         Settings {
-            SettingsView(store: AppSettings.store)
+            SettingsView(store: AppSettings.store, onSaved: { delegate.defaultQuantumChanged() })
         }
     }
 }
@@ -76,5 +76,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             host?.move(to: placement)
         }
         panelHost = host
+    }
+
+    func defaultQuantumChanged() {
+        appState.defaultQuantumChanged()
     }
 }

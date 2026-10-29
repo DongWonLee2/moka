@@ -63,8 +63,8 @@ func writeDefaultPropagatesStoreError() {
     }
 }
 
-@Test("FR-16 R-013: 기본값을 바꿔도 도는 타이머와 이미 채운 칩은 그대로, 다음 채움에 반영")
-func defaultChangeAffectsOnlyNextFill() throws {
+@Test("FR-16 R-013: 설정 쓰기와 tick만으로는 도는 타이머·채운 칩이 그대로이고, 기본값 변경을 적용하면 고르지 않은 시간 끝 칩이 새 값")
+func defaultChangeAppliesOnlyThroughApplyDefaultQuantumChange() throws {
     let t0 = Date(timeIntervalSince1970: 1_800_000_000)
     let store = InMemorySettingsStore()
     var timer = NotchTimer.empty(draft: nil)
@@ -85,4 +85,7 @@ func defaultChangeAffectsOnlyNextFill() throws {
     try QuantumSettings.writeDefault(15, to: store)
     _ = timer.apply(.tick, at: t2.addingTimeInterval(60), defaultQuantumMin: QuantumSettings.readDefault(from: store))
     #expect(timer == .expired(title: "가짜 할 일 A", chipMin: 45))
+
+    timer.applyDefaultQuantumChange(QuantumSettings.readDefault(from: store), isEditingCustom: false)
+    #expect(timer == .expired(title: "가짜 할 일 A", chipMin: 15))
 }

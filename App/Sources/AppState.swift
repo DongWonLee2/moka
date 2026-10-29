@@ -60,7 +60,7 @@ final class AppState {
     func beginCustom() {
         switch timer {
         case .empty(.some(let draft)): customText = String(draft.chipMin)
-        case .expired(_, let chipMin): customText = String(chipMin)
+        case .expired(_, let chipMin, _): customText = String(chipMin)
         case .empty(nil), .running: return
         }
         customFocus.request()
@@ -77,6 +77,12 @@ final class AppState {
         if let minutes = QuantumChip.parseCustom(text) {
             send(.chooseQuantum(minutes))
         }
+    }
+
+    /// 설정에서 기본 작업 시간을 저장했다. 칩을 직접 고르지 않았고 직접 입력 중이 아니면 칩이 새 값이 된다(R-013).
+    func defaultQuantumChanged() {
+        timer.applyDefaultQuantumChange(
+            QuantumSettings.readDefault(from: settings), isEditingCustom: customText != nil)
     }
 
     func start() {

@@ -40,7 +40,7 @@ func pinSurvivesNonReleasingEvents() {
     #expect(step(&timer, pinned: true, .chooseQuantum(45), at: now))
     #expect(step(&timer, pinned: true, .chooseQuantum(181), at: now))
     #expect(step(&timer, pinned: true, .enterTitle("다른 일"), at: now))
-    #expect(timer == .expired(title: title, chipMin: 45))
+    #expect(timer == .expired(title: title, chipMin: 45, chipPicked: true))
 }
 
 @Test("FR-05 FR-06 R-009 R-010: 시간 끝에서 시작하면 같은 할 일로 다시 돌고 고정이 풀린다")
