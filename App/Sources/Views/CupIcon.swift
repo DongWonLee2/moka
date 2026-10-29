@@ -2,6 +2,9 @@ import SwiftUI
 
 /// 시안 S3 아이콘(넓은 잔 + 김 한 줄, 24 격자). 원본은 시안 HTML의 `#s-drop` SVG.
 struct CupIcon: View {
+    /// 잔 몸통(그릇 위 y 9 ~ 받침 아래 y 22)의 세로 가운데, 24 격자 높이에 대한 비율. 김은 뺀다.
+    nonisolated static let bodyCenterFraction: CGFloat = 15.5 / 24
+
     var body: some View {
         Canvas { context, size in
             let scale = min(size.width, size.height) / 24

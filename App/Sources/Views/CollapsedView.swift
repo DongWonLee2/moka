@@ -6,6 +6,8 @@ struct CollapsedView: View {
     let timer: NotchTimer
     let remainingSeconds: Int?
     let metrics: NotchMetrics
+    /// 펼침과 잇는 제목·남은 시간의 이름공간. nil이면 잇지 않는다(동작 줄이기).
+    var namespace: Namespace.ID?
 
     var body: some View {
         let sides = NotchLayout.collapsedSideWidths(timer: timer, remainingSeconds: remainingSeconds)
@@ -39,6 +41,7 @@ struct CollapsedView: View {
                 Text(title)
                     .lineLimit(1)
                     .truncationMode(.tail)
+                    .matchedElement("title", in: namespace)
             }
         }
     }
@@ -51,6 +54,7 @@ struct CollapsedView: View {
                 .monospacedDigit()
                 .lineLimit(1)
                 .foregroundStyle(isExpired ? MokaColors.danger : MokaColors.notchForeground)
+                .matchedElement("remaining", in: namespace)
         }
     }
 

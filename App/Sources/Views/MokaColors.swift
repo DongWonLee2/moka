@@ -11,15 +11,22 @@ enum MokaColors {
 
     static let notchBackground = Color.black
     static let notchForeground = Color(hex: 0xF5EFE9)
+    /// 검정 위 5.81:1(작은 글자 4.5:1 이상).
     static let notchMuted = Color(hex: 0x8F857C)
+    /// 대비 높이기: 검정 위 9.09:1.
+    static let notchMutedHighContrast = Color(hex: 0xB3A99F)
     static let control = Color(hex: 0xFFF0E1, opacity: 0.11)
     static let controlDisabled = Color(hex: 0xFFF0E1, opacity: 0.05)
     static let textDisabled = Color(hex: 0x625951)
     static let textOnPrimary = Color(hex: 0xFFF8F0)
     static let field = Color(hex: 0x17120F)
     static let fieldLine = Color(hex: 0x3B302A)
-    static let placeholder = Color(hex: 0x6C625A)
-    static let idleDot = Color(hex: 0x5C544D)
+    /// 입력칸 바탕(#17120F) 위 4.81:1. 시안 #6C625A는 3.13:1이라 올렸다.
+    static let placeholder = Color(hex: 0x8A8078)
+    /// 대비 높이기: 입력칸 바탕 위 8.05:1.
+    static let placeholderHighContrast = Color(hex: 0xB3A99F)
+    /// 빈 상태 점, 검정 위 3.51:1(의미 있는 그래픽 3:1 이상). 시안 #5C544D는 2.83:1.
+    static let idleDot = Color(hex: 0x6A625B)
 
     /// 기본 버튼 세로 그라데이션 #A47864 → #85604F.
     static var primaryGradient: LinearGradient {

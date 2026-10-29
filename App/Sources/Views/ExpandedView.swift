@@ -1,18 +1,27 @@
+import AppKit
 import MokaCore
 import SwiftUI
 
 /// 펼친 판(폭 340pt). 위쪽 노치 높이만큼은 구멍 양옆 귀에 브랜드와 상태를 두고, 그 아래에 단계별 내용을 둔다.
 struct ExpandedView: View {
     static let width: CGFloat = 340
+    /// 판 안 버튼·입력칸 모서리 반경.
+    static let controlRadius: CGFloat = 6
+    nonisolated static let wordmarkSize: CGFloat = 10
+    static let wordmarkTracking: CGFloat = 1.25
 
     let timer: NotchTimer
     let remainingSeconds: Int?
     let metrics: NotchMetrics
     /// 값이 바뀔 때마다 빈 상태의 제목 칸에 포커스를 준다(펼친 판 클릭, data-model §6).
     let titleFocusRequest: Int
+    /// 접힘과 잇는 제목·남은 시간의 이름공간. nil이면 잇지 않는다(동작 줄이기).
+    var namespace: Namespace.ID?
     let onEnterTitle: (String) -> Void
     let onStart: () -> Void
     let onComplete: () -> Void
+
+    @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -29,14 +38,17 @@ struct ExpandedView: View {
 
     private var ears: some View {
         HStack(spacing: 0) {
-            HStack(spacing: 5) {
+            // 잔 몸통(그릇+받침) 세로 가운데를 워드마크 대문자 높이의 가운데에 맞춘다.
+            HStack(alignment: .capCenter, spacing: 5) {
                 CupIcon()
                     .frame(width: 13, height: 13)
                     .foregroundStyle(MokaColors.mocha)
+                    .alignmentGuide(.capCenter) { $0.height * CupIcon.bodyCenterFraction }
                 Text("MOKA")
-                    .font(.system(size: 9.5, weight: .bold))
-                    .tracking(2.2)
+                    .font(.system(size: Self.wordmarkSize, weight: .bold))
+                    .tracking(Self.wordmarkTracking)
                     .foregroundStyle(MokaColors.foam.opacity(0.92))
+                    .alignmentGuide(.capCenter) { $0[.firstTextBaseline] - Self.wordmarkCapHeight / 2 }
             }
             .frame(width: 64, alignment: .leading)
             Spacer(minLength: 0)
@@ -44,7 +56,7 @@ struct ExpandedView: View {
                 .font(.system(size: 10.5, weight: isExpired ? .semibold : .regular))
                 .monospacedDigit()
                 .lineLimit(1)
-                .foregroundStyle(isExpired ? MokaColors.danger : MokaColors.notchMuted)
+                .foregroundStyle(isExpired ? MokaColors.danger : mutedColor)
                 .frame(width: 64, alignment: .trailing)
         }
         .padding(.horizontal, 14)
@@ -73,9 +85,9 @@ struct ExpandedView: View {
                     .keyboardShortcut(.defaultAction)
             }
         case .running(let title, _, _, _):
-            TitleText(title: title)
+            TitleText(title: title).matchedElement("title", in: namespace)
             HStack(spacing: 6) {
-                RemainingText(seconds: remainingSeconds, expired: false)
+                RemainingText(seconds: remainingSeconds, expired: false).matchedElement("remaining", in: namespace)
                 Spacer(minLength: 0)
                 Button(action: onComplete) { ButtonLabel(text: "완료") }
                     .buttonStyle(NotchButtonStyle(kind: .secondary))
@@ -83,8 +95,8 @@ struct ExpandedView: View {
         case .expired(let title, _):
             // 시간 끝 화면(칩·다시 시작)은 4b. 지금은 완료만 둔다.
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                TitleText(title: title)
-                RemainingText(seconds: remainingSeconds, expired: true)
+                TitleText(title: title).matchedElement("title", in: namespace)
+                RemainingText(seconds: remainingSeconds, expired: true).matchedElement("remaining", in: namespace)
             }
             HStack(spacing: 6) {
                 Spacer(minLength: 0)
@@ -99,6 +111,23 @@ struct ExpandedView: View {
         if case .expired = timer { return true }
         return false
     }
+
+    private var mutedColor: Color {
+        contrast == .increased ? MokaColors.notchMutedHighContrast : MokaColors.notchMuted
+    }
+
+    private nonisolated static let wordmarkCapHeight = NSFont.systemFont(ofSize: wordmarkSize, weight: .bold).capHeight
+}
+
+extension VerticalAlignment {
+    private enum CapCenter: AlignmentID {
+        static func defaultValue(in dimensions: ViewDimensions) -> CGFloat {
+            dimensions[VerticalAlignment.center]
+        }
+    }
+
+    /// 대문자 높이의 가운데(아이콘과 워드마크 정렬용).
+    static let capCenter = VerticalAlignment(CapCenter.self)
 }
 
 /// 빈 상태 입력 줄. 앞뒤 공백을 뺀 제목이 비면 Enter·다음으로 넘어가지 않는다(R-002).
@@ -108,22 +137,24 @@ private struct TitleEntryRow: View {
 
     @State private var text = ""
     @FocusState private var focused: Bool
+    @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
         HStack(spacing: 6) {
             TextField(
                 "",
                 text: $text,
-                prompt: Text("할 일 없음 — 무엇을 할까요?").foregroundStyle(MokaColors.placeholder)
+                prompt: Text("할 일 없음 — 무엇을 할까요?").foregroundStyle(
+                    contrast == .increased ? MokaColors.placeholderHighContrast : MokaColors.placeholder)
             )
             .textFieldStyle(.plain)
             .focused($focused)
             .onSubmit(submit)
             .padding(.horizontal, 8)
             .frame(height: 24)
-            .background(MokaColors.field, in: .rect(cornerRadius: 6))
+            .background(MokaColors.field, in: .rect(cornerRadius: ExpandedView.controlRadius))
             .overlay {
-                RoundedRectangle(cornerRadius: 6)
+                RoundedRectangle(cornerRadius: ExpandedView.controlRadius)
                     .strokeBorder(focused ? MokaColors.mochaHighlight : MokaColors.fieldLine, lineWidth: 1)
             }
             .shadow(color: focused ? MokaColors.mocha.opacity(0.38) : .clear, radius: 3)
@@ -213,7 +244,7 @@ struct NotchButtonStyle: ButtonStyle {
 
     @ViewBuilder
     private var background: some View {
-        let shape = RoundedRectangle(cornerRadius: 6)
+        let shape = RoundedRectangle(cornerRadius: ExpandedView.controlRadius)
         if !isEnabled {
             shape.fill(MokaColors.controlDisabled)
         } else if kind == .primary {
