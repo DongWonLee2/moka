@@ -186,6 +186,12 @@ struct NotchPanelRoot: View {
             onStart: onStart,
             onComplete: onComplete
         )
+        // 우클릭 메뉴는 보이는 요소가 아니라서(R-006) 뷰가 아니라 여기서 붙인다. 빈 상태·도는 중·시간 끝 모두(R-012).
+        .contextMenu {
+            OpenSettingsButton()
+            Divider()
+            Button("종료") { NSApplication.shared.terminate(nil) }
+        }
         .fixedSize()
         .onGeometryChange(for: PanelContentLayout.self) {
             PanelContentLayout(size: $0.size, offsetX: offsetX)
