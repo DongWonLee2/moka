@@ -164,7 +164,7 @@ public func chooseDisplayTarget(_ screens: [ScreenInfo]) -> DisplayTarget?
 | `isExpanded` | 펼침 여부 |
 | `isPinnedOpen` | 시간 끝 자동 펼침으로 고정됨. 사용자가 시작·완료를 누르면 `false`(R-009) |
 | `isHovering` | 마우스가 노치·판 위에 있음 |
-| `isInputFocused` | 입력칸에 포커스가 있음 |
+| `isInputFocused` | 패널이 key window인 동안 참(`windowDidBecomeKey`/`windowDidResignKey`). 제목 칸이 사라진 시간 고르기 단계에서도 Enter로 시작할 때까지 접히지 않게 한다. 판을 클릭한 뒤에는 다른 앱을 클릭해 key를 놓을 때까지 펼친 채 남는다(사용자 확인 2026-10-29, PR #30) |
 | `isEditingCustom` | 직접 입력 칸을 쓰는 중 |
 
 접힘 판정은 MokaCore 순수 함수 `shouldStayExpanded(pinned:focused:hovering:) -> Bool`(셋 중 하나라도 참이면 펼친 채)로 두고 시험한다.

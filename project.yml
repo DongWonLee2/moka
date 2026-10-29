@@ -17,6 +17,8 @@ targets:
     dependencies:
       - package: Moka
         product: MokaCore
+      - package: Moka
+        product: MokaStore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.dongwon.moka
