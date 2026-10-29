@@ -8,14 +8,20 @@ struct CollapsedView: View {
     let metrics: NotchMetrics
 
     var body: some View {
+        let sides = NotchLayout.collapsedSideWidths(timer: timer, remainingSeconds: remainingSeconds)
+        // 양옆 칸은 내용이 없어도 폭을 차지해야 한다(빈 ViewBuilder에 건 frame은 사라진다).
         HStack(spacing: 0) {
-            leading
-                .padding(.leading, 14)
-                .frame(width: leadingWidth, alignment: .leading)
+            ZStack(alignment: .leading) {
+                Color.clear
+                leading.padding(.leading, 14)
+            }
+            .frame(width: sides.leading)
             Color.clear.frame(width: metrics.holeWidth)
-            trailing
-                .padding(.trailing, 14)
-                .frame(width: trailingWidth, alignment: .trailing)
+            ZStack(alignment: .trailing) {
+                Color.clear
+                trailing.padding(.trailing, 14)
+            }
+            .frame(width: sides.trailing)
         }
         .frame(height: metrics.height)
         .font(.system(size: 12))
@@ -56,15 +62,6 @@ struct CollapsedView: View {
     private var isExpired: Bool {
         if case .expired = timer { return true }
         return false
-    }
-
-    /// 빈 상태는 점 하나 자리(28pt), 할 일이 있으면 R-006의 104pt.
-    private var leadingWidth: CGFloat { isEmpty ? 28 : 104 }
-
-    /// 시안: "18:42"는 52pt, "1:04:59"는 64pt.
-    private var trailingWidth: CGFloat {
-        guard !isEmpty, let remainingSeconds else { return 28 }
-        return remainingSeconds >= 3600 ? 64 : 52
     }
 }
 

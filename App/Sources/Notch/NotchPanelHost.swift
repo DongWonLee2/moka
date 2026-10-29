@@ -71,18 +71,24 @@ final class NotchPanelHost: NSObject, NSWindowDelegate {
                 self?.appState.complete()
                 self?.giveUpKey()
             },
-            onSizeChange: { [weak self] size in self?.resize(to: size) })
+            onLayoutChange: { [weak self] layout in self?.resize(to: layout) })
         hostingView.rootView = root
         // 패널 안의 호스팅 뷰는 크기 제약을 내지 않으므로(sizingOptions = []) 첫 크기는 따로 잰다.
-        resize(to: NSHostingView(rootView: root).fittingSize)
+        resize(
+            to: PanelContentLayout(
+                size: NSHostingView(rootView: root).fittingSize,
+                holeCenterOffset: NotchLayout.holeCenterOffset(
+                    timer: appState.timer, remainingSeconds: appState.remainingSeconds,
+                    isExpanded: appState.isExpanded)))
         panel.orderFrontRegardless()
     }
 
-    private func resize(to size: CGSize) {
+    private func resize(to layout: PanelContentLayout) {
+        let size = layout.size
         guard let anchor, size.width > 0, size.height > 0 else { return }
-        let frame = NSRect(
-            x: (anchor.centerX - size.width / 2).rounded(), y: anchor.top - size.height,
-            width: size.width, height: size.height)
+        let minX = NotchLayout.panelMinX(
+            contentWidth: size.width, holeCenterOffset: layout.holeCenterOffset, notchCenterX: anchor.centerX)
+        let frame = NSRect(x: minX.rounded(), y: anchor.top - size.height, width: size.width, height: size.height)
         guard frame != panel.frame else { return }
         panel.setFrame(frame, display: true, animate: false)
     }
@@ -154,9 +160,11 @@ struct NotchPanelRoot: View {
     var metrics = NotchMetrics(holeWidth: 0, height: 0)
     var onStart: () -> Void = {}
     var onComplete: () -> Void = {}
-    var onSizeChange: (CGSize) -> Void = { _ in }
+    var onLayoutChange: (PanelContentLayout) -> Void = { _ in }
 
     var body: some View {
+        let holeCenterOffset = NotchLayout.holeCenterOffset(
+            timer: appState.timer, remainingSeconds: appState.remainingSeconds, isExpanded: appState.isExpanded)
         NotchContentView(
             timer: appState.timer,
             remainingSeconds: appState.remainingSeconds,
@@ -168,11 +176,17 @@ struct NotchPanelRoot: View {
             onComplete: onComplete
         )
         .fixedSize()
-        .onGeometryChange(for: CGSize.self) {
-            $0.size
+        .onGeometryChange(for: PanelContentLayout.self) {
+            PanelContentLayout(size: $0.size, holeCenterOffset: holeCenterOffset)
         } action: {
-            onSizeChange($0)
+            onLayoutChange($0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
+}
+
+/// 판 내용 크기와 구멍 가운데 위치. 패널 프레임은 이 둘로 정한다.
+struct PanelContentLayout: Equatable {
+    var size: CGSize
+    var holeCenterOffset: CGFloat
 }

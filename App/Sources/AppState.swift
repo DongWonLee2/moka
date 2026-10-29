@@ -42,13 +42,15 @@ final class AppState {
     }
 
     func start() {
-        isPinnedOpen = false
-        send(.start)
+        if send(.start) == .applied {
+            isPinnedOpen = false
+        }
     }
 
     func complete() {
-        isPinnedOpen = false
-        send(.complete)
+        if send(.complete) == .applied {
+            isPinnedOpen = false
+        }
     }
 
     func tick() {
@@ -70,7 +72,8 @@ final class AppState {
         }
     }
 
-    private func send(_ event: TimerEvent) {
+    @discardableResult
+    private func send(_ event: TimerEvent) -> TransitionResult {
         let now = clock.now()
         let before = Self.phaseName(timer)
         let result = timer.apply(event, at: now, defaultQuantumMin: QuantumSettings.readDefault(from: settings))
@@ -87,6 +90,7 @@ final class AppState {
             )
         }
         updateRefreshTimer()
+        return result
     }
 
     /// `running` 동안만 1초마다 tick을 보낸다(research R1).
