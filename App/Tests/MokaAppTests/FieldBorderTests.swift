@@ -17,7 +17,7 @@ final class FieldBorderTests: XCTestCase {
     }
 }
 
-/// hover 테두리는 펼침 끝무렵 짧게 나타나 펼침이 끝날 때 함께 완성되고, 접힐 때는 바로 사라진다. 동작 줄이기면 애니메이션 없이 바로.
+/// hover 테두리는 펼침의 3/4 지점에 완성되고, 접힐 때는 바로 사라진다. 동작 줄이기면 애니메이션 없이 바로.
 final class HoverRingAnimationTests: XCTestCase {
     func test_R009_ringFadesInAfterExpansion() {
         XCTAssertEqual(

@@ -12,9 +12,9 @@ enum NotchLayout {
 
     static let expansionDuration: TimeInterval = 0.4
     static let hoverRingFadeDuration: TimeInterval = 0.15
-    static let hoverRingDelay: TimeInterval = expansionDuration - hoverRingFadeDuration
+    static let hoverRingDelay: TimeInterval = expansionDuration * 0.75 - hoverRingFadeDuration
 
-    /// hover 테두리는 펼침 끝무렵 짧게 나타나 펼침이 끝날 때 함께 완성된다. 사라질 때와 동작 줄이기에서는 애니메이션 없이 바로 바뀐다(nil).
+    /// hover 테두리는 펼침의 3/4 지점(눈에 다 펼쳐진 때)에 완성되도록 짧게 나타난다. 사라질 때와 동작 줄이기에서는 애니메이션 없이 바로 바뀐다(nil).
     static func hoverRingAnimation(appearing: Bool, reduceMotion: Bool) -> Animation? {
         guard appearing, !reduceMotion else { return nil }
         return .easeOut(duration: hoverRingFadeDuration).delay(hoverRingDelay)
