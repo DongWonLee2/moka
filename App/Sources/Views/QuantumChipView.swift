@@ -49,7 +49,7 @@ struct QuantumChipView: View {
     }
 }
 
-/// 직접 입력 칸 줄의 앞부분: 숫자 칸, "분", 범위 밖이면 안내(시안 v3.4 3번).
+/// 직접 입력 칸 줄의 앞부분: 숫자 칸과 "분". 틀린 값은 빨간 테두리와 꺼진 시작 버튼으로만 알린다(화면 문구 없음).
 /// 포커스는 "직접…"을 누른 직후 나타날 때만 준다. 마우스로 다시 펼쳐 칸이 다시 만들어질 때는 주지 않는다(SC-003).
 struct CustomMinutesField: View {
     let text: String
@@ -76,16 +76,10 @@ struct CustomMinutesField: View {
                         .strokeBorder(borderColor, lineWidth: 1)
                 }
                 .accessibilityLabel("직접 입력 분")
+                .accessibilityHint(isInvalid ? "1에서 180 사이 정수를 입력하세요" : "")
             Text("분")
                 .font(.system(size: 11))
                 .foregroundStyle(MokaColors.notchMuted)
-            if isInvalid {
-                Text("1~180분 사이 정수")
-                    .font(.system(size: 11))
-                    .foregroundStyle(MokaColors.danger)
-                    .lineLimit(1)
-                    .fixedSize()
-            }
         }
         .onAppear {
             editing = text
