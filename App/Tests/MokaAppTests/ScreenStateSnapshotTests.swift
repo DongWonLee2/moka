@@ -26,7 +26,7 @@ final class ScreenStateSnapshotTests: XCTestCase {
     }
 
     func test_R001_R002_titleEntry() throws {
-        try snapshot("02-input", timer: .empty(draft: nil), remaining: nil, expanded: true)
+        try snapshot("02-input", timer: .empty(draft: nil), remaining: nil, expanded: true, hovering: true)
     }
 
     func test_R003_R004_chipExpanded() throws {
@@ -39,7 +39,9 @@ final class ScreenStateSnapshotTests: XCTestCase {
     }
 
     func test_R006_runningExpanded() throws {
-        try snapshot("05-running-expanded", timer: Self.running, remaining: Self.runningRemaining, expanded: true)
+        try snapshot(
+            "05-running-expanded", timer: Self.running, remaining: Self.runningRemaining, expanded: true,
+            hovering: true)
     }
 
     func test_R008_R009_R010_expired() throws {
@@ -65,13 +67,16 @@ final class ScreenStateSnapshotTests: XCTestCase {
     }
 
     /// 같은 상태를 라이트·다크로 그려 저장하고 sanity를 단언한다.
+    /// 시안 2번(입력)·5번(도는 중 펼침)은 마우스를 올린 상태라 `hovering: true`로 모카 테두리를 그린다.
     private func snapshot(
-        _ name: String, timer: NotchTimer, remaining: Int?, expanded: Bool, style: PanelStyle = .notch
+        _ name: String, timer: NotchTimer, remaining: Int?, expanded: Bool, hovering: Bool = false,
+        style: PanelStyle = .notch
     ) throws {
         let metrics = style == .notch ? Self.notchMetrics : Self.floatingMetrics
         let size = NotchLayout.panelSize(metrics: metrics)
         let content = NotchContentView(
-            timer: timer, remainingSeconds: remaining, isExpanded: expanded, metrics: metrics, style: style,
+            timer: timer, remainingSeconds: remaining, isExpanded: expanded, isHovering: hovering, metrics: metrics,
+            style: style,
             titleFocusRequest: 0,
             chip: QuantumChipInput(
                 customText: nil, canStart: true, onChoose: { _ in }, onBeginCustom: {}, onEditCustom: { _ in },
