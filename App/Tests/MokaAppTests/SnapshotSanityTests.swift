@@ -40,6 +40,13 @@ final class SnapshotSanityTests: XCTestCase {
         XCTAssertNotNil(SnapshotSanity.floatingBoardIssue(light: light, dark: dark, board: Self.board))
     }
 
+    /// 반투명 판은 판 밖 바탕이 비쳐 라이트·다크 픽셀이 조금 달라진다. 판 색 자체가 테마를 따르지 않으면 걸려야 한다.
+    func test_floatingBoardIssue_rejectsTranslucentThemeIndependentBoard() throws {
+        let (light, dark) = try render(
+            Color(red: 0.15, green: 0.12, blue: 0.11).opacity(0.9).frame(width: 120, height: 32))
+        XCTAssertNotNil(SnapshotSanity.floatingBoardIssue(light: light, dark: dark, board: Self.board))
+    }
+
     func test_floatingBoardIssue_acceptsThemedBoard() throws {
         let (light, dark) = try render(ThemedBoard().frame(width: 120, height: 32))
         XCTAssertNil(SnapshotSanity.floatingBoardIssue(light: light, dark: dark, board: Self.board))
