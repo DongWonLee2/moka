@@ -64,6 +64,8 @@ struct NotchContentView: View {
             // 펼침 애니메이션이 끝난 뒤 짧게 나타나고, 접힐 때는 바로 사라진다(전환에 붙인 애니메이션이 바깥 것을 덮는다).
             if NotchLayout.showsHoverRing(isHovering: isHovering, isExpanded: isExpanded, style: style) {
                 NotchShape(bottomRadius: 18).stroke(MokaColors.mocha.opacity(0.8), lineWidth: 3)
+                    // 테두리는 보이기만 한다. 클릭·hover 판정은 판 자체가 정한다.
+                    .allowsHitTesting(false)
                     .transition(
                         .asymmetric(
                             insertion: .opacity.animation(
