@@ -27,7 +27,7 @@
 ## R4. 할 일 삭제와 보존 (P4 (a), 3:0)
 
 - **Decision**: 할 일은 지우지 않는다. 설정 창의 "지우기"는 `status = 'dropped'`로 바꾸는 소프트 삭제다. `checkpoints.task_id`, `decisions_log.task_id`는 `REFERENCES tasks(id) ON DELETE RESTRICT`. 버린 할 일은 노치 후보(R-104)와 반복 리셋(R-113)에서 빠진다. 두 규칙을 Red 시험으로 먼저 둔다. 설정 창 목록은 버린 할 일을 보이지 않는다.
-- **가정**: 설정 창 삭제는 행동 로그를 남기지 않는다. R-112의 로그 대상은 완료·미루기·바꿔줘 버튼이다. 체크포인트도 남기지 않는다.
+- **가정**: 설정 창 삭제는 행동 로그를 남기지 않는다. R-112의 로그 대상은 완료·미루기·바꾸기 버튼이다. 체크포인트도 남기지 않는다.
 - **알려진 위험**: 버린 할 일의 제목은 영구히 남는다(plan 위험 4).
 - **Rationale**: spec Edge Cases "지운 할 일의 로그와 체크포인트는 남는다", 설계서 §2 "외래 키는 전부 ON DELETE RESTRICT". RESTRICT는 실수로 들어간 실제 DELETE를 DB가 막는다.
 - **Alternatives**: 실제 삭제 + 외래 키 없이 `task_id`만 남김(고아 줄), `ON DELETE SET NULL`(튜닝이 할 일과 로그를 잇지 못함).
@@ -61,7 +61,8 @@
 
 ## R8. API 키 보관 경계 (P8 (a), 3:0)
 
-- **Decision**: `KeyStore` 프로토콜은 MokaCore에 두고 저장·존재 여부·삭제만 가진다. 값 읽기는 3단계에서 더한다. Keychain 구현 `KeychainKeyStore`는 앱 타깃에만 둔다(generic password, service `dev.dongwon.moka`, account `openrouter`). 시험·스냅샷·`moka-sim`은 가짜 `InMemoryKeyStore`를 주입한다. 키 값을 print·`os.Logger`로 남기지 않는다. 가짜 키 문자열이 settings 값과 행동 로그·체크포인트에 없는지 시험한다(온보딩 끝내기 규칙에 가짜 키를 넣고 메모리 저장소 전체를 훑는다).
+- **Decision**: `KeyStore` 프로토콜은 MokaCore에 두고 저장·존재 여부·삭제만 가진다. 값 읽기는 3단계에서 더한다. Keychain 구현 `KeychainKeyStore`는 앱 타깃에만 둔다(generic password, service `dev.dongwon.moka`, account `typesafe`). 시험·스냅샷·`moka-sim`은 가짜 `InMemoryKeyStore`를 주입한다. 키 값을 print·`os.Logger`로 남기지 않는다. 가짜 키 문자열이 settings 값과 행동 로그·체크포인트에 없는지 시험한다(온보딩 끝내기 규칙에 가짜 키를 넣고 메모리 저장소 전체를 훑는다).
+- **키 종류 (사용자 결정 2026-10-30)**: MVP 시험 단계의 판단 API는 Jev(TypeSafe 직접)만 쓴다. 그래서 온보딩은 TypeSafe 키 한 칸이고 account는 `typesafe`다. OpenRouter(Decision-1)는 나중에 account `openrouter`로 더한다. 처음 plan의 account `openrouter`(사용자 결정 "OpenRouter 키 하나")를 대체한다.
 - **Rationale**: ADR-0001(Keychain은 앱 타깃), ADR-0005·헌법 보안 절(키는 Keychain에만). 프로토콜이 값 읽기를 갖지 않으면 2단계 코드가 키를 볼 길이 없다.
 - **Alternatives**: MokaStore에 Keychain 구현(리눅스에서 `Security` 없음, 시험 타깃이 실제 Keychain을 링크).
 - **미확인**:
@@ -123,7 +124,8 @@
 
 ## R15. 화면 시안 절차 (spec 가정)
 
-- plan 다음, tasks 전에 `~/Dev/ai-platform/projects/moka/design/002-mockup.html`(한 파일, 외부 CDN 없음, 라이트·다크, 가짜 할 일)을 만든다. 담을 화면: 설정 창 탭 셋(기본, 할 일, 컨텍스트), 할 일 폼(제목, 마감 날짜, 반복과 요일, 예상 소요), 컨텍스트 폼, 도는 중 펼친 화면의 완료·미루기·바꿔줘, 두 줄 입력, 시간 끝 화면의 두 줄과 버튼, 첫 행동 줄(접힘 2초, 펼침), 온보딩 3단계.
+- plan 다음, tasks 전에 `~/Dev/ai-platform/projects/moka/design/002-mockup.html`(한 파일, 외부 CDN 없음, 라이트·다크, 가짜 할 일)을 만든다. 담을 화면: 설정 창 탭 셋(기본, 할 일, 컨텍스트), 할 일 폼(제목, 마감 날짜, 반복과 요일, 예상 소요), 컨텍스트 폼, 도는 중 펼친 화면의 완료·미루기·바꾸기, 두 줄 입력, 시간 끝 화면의 두 줄과 버튼, 첫 행동 줄(접힘 2초, 펼침), 온보딩 3단계.
+- 확정(2026-10-30): v2를 사용자가 확정했다. C1~C4(접힌 노치에 회색 제목, 두 줄 질문은 라벨, 두 줄 화면 돌아가기, 칸 안 Enter는 첫 칸 = 다음 칸), 버튼 이름 "바꾸기", 할 일 목록 보기·정렬(R-118), 화면 이름(일정·중요도·이어서 할 일·추가 시간), 온보딩 TypeSafe 키가 사용자 선택이다. 화면 문구는 처음 쓰는 사람 관점의 리뷰를 한 번 거쳤다.
 - 사용자가 확정하면 경로를 spec에 적고 tasks를 만든다. 확정 전에는 UI tasks를 시작하지 않는다. MokaCore·MokaStore·`moka-sim`·앱 수명 연결은 시안과 무관하다.
 - 시안에서 사용자가 별도 창을 고르면 R-102와 메뉴 막대 항목을 바꾸고 ADR-0005 정정을 "사람이 볼 결정"에 올린다(spec 가정).
 - 구현 뒤 스냅샷은 spec 001과 같이 `~/Dev/ai-platform/projects/moka/design/pr-<번호>/index.html`에서 시안과 나란히 사람이 본다(ADR-0009).

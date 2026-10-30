@@ -2,11 +2,11 @@
 
 **Branch**: `chore/spec-002-storage-checkpoint` (구현은 Issue별 `feat/<issue>-<slug>`) | **Date**: 2026-10-30 | **Spec**: [spec.md](spec.md)
 
-**Input**: `specs/002-storage-checkpoint/spec.md`(R-101~R-117)
+**Input**: `specs/002-storage-checkpoint/spec.md`(R-101~R-118)
 
 ## Summary
 
-할 일, 컨텍스트, 체크포인트, 행동 로그를 GRDB에 저장한다. 새 마이그레이션 `v2_tasks_contexts_checkpoints_log` 하나가 표 넷을 만든다. 노치 고르기(R-104), 체크포인트 기록, 반복 리셋(R-113), 하루 경계(R-114), 재시작 복구(R-111)는 MokaCore 순수 함수와 값 타입으로 두고 리눅스 `swift test`와 `moka-sim`으로 화면 없이 검증한다. 저장 프로토콜과 메모리 구현은 MokaCore, GRDB 구현은 MokaStore다. 같은 계약 시험을 두 구현에 돌린다. `moka-sim`은 v1에 시나리오 선택 필드 `storage`와 이벤트를 덧붙이고, 기존 golden 출력은 바이트 그대로 둔다. API 키는 앱 타깃의 Keychain 구현에만 저장한다. 화면(설정 탭, 버튼, 두 줄 입력, 온보딩)은 HTML 시안을 사용자가 확정한 뒤 만든다. 결정 근거는 [research.md](research.md).
+할 일, 컨텍스트, 체크포인트, 행동 로그를 GRDB에 저장한다. 새 마이그레이션 `v2_tasks_contexts_checkpoints_log` 하나가 표 넷을 만든다. 노치 고르기(R-104), 체크포인트 기록, 반복 리셋(R-113), 하루 경계(R-114), 재시작 복구(R-111)는 MokaCore 순수 함수와 값 타입으로 두고 리눅스 `swift test`와 `moka-sim`으로 화면 없이 검증한다. 저장 프로토콜과 메모리 구현은 MokaCore, GRDB 구현은 MokaStore다. 같은 계약 시험을 두 구현에 돌린다. `moka-sim`은 v1에 시나리오 선택 필드 `storage`와 이벤트를 덧붙이고, 기존 golden 출력은 바이트 그대로 둔다. API 키는 앱 타깃의 Keychain 구현에만 저장한다. 화면(설정 탭, 버튼, 두 줄 입력, 온보딩)은 사용자가 확정한 HTML 시안 v2(2026-10-30)를 따른다. 할 일 목록 보기·정렬(R-118)은 MokaCore 순수 함수 `TaskListView`로 두어 화면 없이 시험한다. 결정 근거는 [research.md](research.md).
 
 ## Technical Context
 
@@ -14,7 +14,7 @@
 
 **Primary Dependencies**: GRDB 7.11.1(`MokaStore`, 기존). 새 의존성 없음. Keychain은 시스템 `Security` 프레임워크(앱 타깃만)
 
-**Storage**: SQLite `~/Library/Application Support/dev.dongwon.moka/moka.sqlite`(ADR-0004). 표: 기존 `settings` + 새 `tasks`, `contexts`, `checkpoints`, `decisions_log`. 저널은 GRDB `DatabaseQueue` 기본값 유지(research R14). API 키는 Keychain(service `dev.dongwon.moka`, account `openrouter`). 타이머와 "직전 할 일"은 메모리
+**Storage**: SQLite `~/Library/Application Support/dev.dongwon.moka/moka.sqlite`(ADR-0004). 표: 기존 `settings` + 새 `tasks`, `contexts`, `checkpoints`, `decisions_log`. 저널은 GRDB `DatabaseQueue` 기본값 유지(research R14). API 키는 Keychain(service `dev.dongwon.moka`, account `typesafe`, MVP는 Jev만). 타이머와 "직전 할 일"은 메모리
 
 **Testing**: Swift Testing(`MokaCoreTests`, `MokaStoreTests`, 리눅스 CI `core-test`), pytest(`tuning/tests`, CI `tuning-test`), XCTest 스냅샷 번들 `MokaAppTests`(macOS 로컬)
 
@@ -87,7 +87,7 @@ specs/002-storage-checkpoint/
 └── tasks.md              # 시안 확정 뒤 작성
 ```
 
-시안: `~/Dev/ai-platform/projects/moka/design/002-mockup.html`(저장소 밖, 로컬 전용, 아직 없음).
+시안: `~/Dev/ai-platform/projects/moka/design/002-mockup.html` v2(저장소 밖, 로컬 전용, 2026-10-30 사용자 확정).
 
 ### Source Code (repository root)
 
@@ -121,7 +121,7 @@ App/Sources/
 ├── AppState.swift                    # NotchSession 보관, 버튼·두 줄 입력, 잠자기·종료·활성화 처리
 ├── Keychain/KeychainKeyStore.swift   # 새: KeyStore 구현(앱 타깃만)
 ├── Settings/SettingsView.swift       # 탭(기본·할 일·컨텍스트) 틀
-└── Views/                            # 새 뷰: 할 일 목록·폼, 컨텍스트 목록·폼, 버튼 줄, 두 줄 입력, 첫 행동 줄, 온보딩 3단계(스냅샷 대상)
+└── Views/                            # 새 뷰: 할 일 목록(보기·정렬·다음 표시)·폼, 일정(컨텍스트) 목록·폼, 버튼 줄, 두 줄 입력, 첫 행동 줄, 온보딩 3단계(스냅샷 대상)
 App/Tests/MokaAppTests/               # 새 화면 상태 스냅샷
 project.yml                           # 바뀌지 않음(새 파일은 폴더 단위로 잡힘). 확인만
 adr/ADR-0010-day-boundary-calendar.md # 새(F4): ADR-0003의 앱 달력 문장 대체. ADR-0003:30 끝에 포인터만
@@ -133,10 +133,10 @@ adr/ADR-0010-day-boundary-calendar.md # 새(F4): ADR-0003의 앱 달력 문장 �
 
 | # | 단위 | R-ID | 시안 확정 필요 | 무인 가능 | 앞선 단위 |
 |---|---|---|---|---|---|
-| 1 | MokaCore 값 타입·규칙: 열거형, `LocalDay`·`DayBoundary`, R-104 고르기, R-111 복구, R-113 리셋·멱등, `NotchSession` 버튼 → `StoreBatch`, 경과 분, 설정 읽기 규칙, 저장 프로토콜·메모리 구현, `KeyStore`·가짜, 온보딩 끝내기 규칙 | R-101(값 검증)·104·106·107·108·109·111·112·113·114·116(규칙) | 아니오 | 예 | — |
+| 1 | MokaCore 값 타입·규칙: 열거형, `LocalDay`·`DayBoundary`, R-104 고르기, R-111 복구, R-113 리셋·멱등, `NotchSession` 버튼 → `StoreBatch`, 경과 분, 설정 읽기 규칙, 저장 프로토콜·메모리 구현, `KeyStore`·가짜, 온보딩 끝내기 규칙, 목록 보기 `TaskListView` | R-101(값 검증)·104·106·107·108·109·111·112·113·114·116(규칙)·118 | 아니오 | 예 | — |
 | 2 | MokaStore v2 마이그레이션·스냅샷·`GRDBTaskRepository`·`GRDBContextStore` + 공용 계약 시험(메모리·GRDB) + pytest 스키마 계약 시험 | R-101·108·112·115, SC-101·106 | 아니오 | 예(스키마 스냅샷 변경은 "사람이 볼 결정") | 1의 프로토콜 |
 | 3 | `moka-sim` storage 모드 + storage golden + 오류 픽스처 + MokaStoreTests에서 GRDB로 golden 재실행 + 계약 원본 반영 | R-117, SC-102·103·104 | 아니오 | 예(계약 변경은 "사람이 볼 결정") | 1, GRDB 재실행은 2 |
-| 4 | 앱 화면: 설정 탭(할 일·컨텍스트)과 폼, 완료·미루기·바꿔줘 버튼, 두 줄 입력, 첫 행동 표시, 온보딩 3단계, `KeychainKeyStore`, 스냅샷 | R-102·103·105·106·107·109·115·116 | 예 | 화면 확인은 사람. Keychain 확인 창은 개인 팀 서명 빌드로 사람 | 1·2, 시안 확정 |
+| 4 | 앱 화면: 설정 탭(기본·할 일·일정)과 폼, 할 일 목록 보기·정렬, 완료·미루기·바꾸기 버튼, 두 줄 입력(돌아가기·안 적기·등록), 이어서 할 일 표시, 온보딩 3단계, `KeychainKeyStore`, 스냅샷 | R-102·103·105·106·107·109·115·116·118 | 예 | 화면 확인은 사람. Keychain 확인 창은 개인 팀 서명 빌드로 사람 | 1·2, 시안 확정 |
 | 5 | 앱 수명 연결: 종료·잠자기 체크포인트, 켤 때 R-111 복구, 활성화 때 하루 판정, 노치 고르기 연결 | R-104(연결)·110·111·113(연결) | 아니오 | 코드는 무인 가능, 앱 확인은 사람 | 1·2 |
 
 순서: 1 → 2 → (3, 5 병렬) → 4. 단위 3의 시뮬레이터 본체는 1만 있으면 시작할 수 있고, GRDB 재실행 시험만 2 뒤에 붙인다. 단위 4는 시안 확정 전에 시작하지 않는다. 일정이 밀리면 spec 위험 1대로 큐 뒤쪽(반복 리셋 연결, 온보딩 키 단계, 종료·잠자기 연결)을 버퍼로 넘긴다.
@@ -168,7 +168,7 @@ adr/ADR-0010-day-boundary-calendar.md # 새(F4): ADR-0003의 앱 달력 문장 �
 
 ## 다음 단계
 
-1. HTML 시안 `002-mockup.html` 작성 → 사용자 확정(research R15)
+1. HTML 시안 `002-mockup.html` 작성 → 사용자 확정(research R15) — v2 확정(2026-10-30)
 2. `/speckit-tasks`
 3. EGM 금붕어 리뷰, 승인 항목은 토론 뒤 사용자 확인
 4. Issue 큐(단위 1·2를 먼저, 3·5는 그 뒤, 4는 시안 확정 뒤)

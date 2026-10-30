@@ -21,8 +21,8 @@ quantum의 남은 시간이 0이 된 상태.
 _Avoid_: timeout, 만료 알림
 
 **extension** (연장):
-끊으면 손해가 클 때 quantum 끝에서 한 번 더 붙이는 짧은 시간.
-_Avoid_: 추가 시간, overtime
+끊으면 손해가 클 때 quantum 끝에서 한 번 더 붙이는 짧은 시간. 설정 화면 이름은 "추가 시간"(설정 키 `default_extend_min`)이다.
+_Avoid_: overtime
 
 **pause** (일시 중지):
 자리를 비울 때 루프 전체를 멈추는 것. 타이머·질의·알림이 모두 멈춘다.
@@ -39,7 +39,7 @@ _Avoid_: 자정, midnight, 날짜 변경
 _Avoid_: 메모, 노트, 로그
 
 **first action** (첫 행동):
-할 일을 바로 시작할 수 있게 하는 첫 동작 한 줄. 체크포인트의 "다음에 할 일"이 이것이 된다.
+할 일을 바로 시작할 수 있게 하는 첫 동작 한 줄. 체크포인트의 "다음에 할 일"이 이것이 된다. 화면 이름은 "이어서 할 일"이다.
 _Avoid_: next step, 하위 작업
 
 **skip** (미루기):
@@ -73,8 +73,8 @@ _Avoid_: 백엔드, API, 서비스
 _Avoid_: 프롬프트, 문맥
 
 **context** (컨텍스트):
-시험·제출처럼 할 일과 따로 저장하는 일정. 이름, 날짜, 영향(보통/큼/치명적)을 가진다.
-_Avoid_: 이벤트, 일정, 캘린더
+시험·제출처럼 할 일과 따로 저장하는 일정. 이름, 날짜, 영향을 가진다. 화면 이름은 "일정"이다(설정 창 "일정" 탭). 코드·스키마·문서에서는 context(컨텍스트)라고 쓴다.
+_Avoid_: 이벤트, 캘린더
 
 **urgency** / **impact** / **concrete** / **blocked** / **avoiding**:
 할 일마다 묻는 판단 질문 다섯 개. 차례로 급함, 안 하면 생기는 손해, 바로 시작할 수 있음, 선행 일이 있음, 회피하기 쉬운 일인지를 묻는다.
@@ -122,7 +122,7 @@ _Avoid_: didBecomeActive, 포그라운드
 _Avoid_: 콤보, 연속 일수
 
 **trigger** (계기):
-체크포인트를 남긴 이유. **quantum**(시간 끝), **switch**(바꿔줘), **skip**(미루기), **urgent**(긴급), **pause**(일시 중지), **quit**(종료), **sleep**(잠자기), **day_end**(하루 끝) 여덟 값이다.
+체크포인트를 남긴 이유. **quantum**(시간 끝), **switch**(바꾸기), **skip**(미루기), **urgent**(긴급), **pause**(일시 중지), **quit**(종료), **sleep**(잠자기), **day_end**(하루 끝) 여덟 값이다.
 _Avoid_: reason, 원인, 이벤트
 
 **done_note** / **next_note** (한 일 / 다음 할 일):
@@ -137,12 +137,12 @@ _Avoid_: 소요 시간, est_min(예상 소요와 다르다)
 현재 할 일을 끝냈다고 누르는 것. 할 일은 후보에서 빠진다. 시뮬레이터 이벤트 이름은 `complete`다.
 _Avoid_: 끝내기, finish
 
-**switch** (바꿔줘):
+**switch** (바꾸기):
 현재 할 일을 대기로 돌리고 다른 할 일을 띄워 달라고 누르는 것. 미루기와 달리 aging이 오르지 않는다.
 _Avoid_: 교체, 다음, change
 
 **decisions_log** (행동 로그):
-완료·미루기·바꿔줘 같은 사용자 입력 한 번마다 쌓는 줄. 지우거나 고치지 않는다. 판단 칸(질문 버전, 공급자, 확률, state 해시, 모델 스냅샷)이 비어 있으면 판단 점수 없이 고른 줄이다. 튜닝 스크립트가 읽는 계약이다.
+완료·미루기·바꾸기 같은 사용자 입력 한 번마다 쌓는 줄. 지우거나 고치지 않는다. 판단 칸(질문 버전, 공급자, 확률, state 해시, 모델 스냅샷)이 비어 있으면 판단 점수 없이 고른 줄이다. 튜닝 스크립트가 읽는 계약이다.
 _Avoid_: 라벨 로그(PRD FR-11 이름, 라벨은 labels 표), 이력, history
 
 **user_action** (사용자 행동):
@@ -150,17 +150,17 @@ _Avoid_: 라벨 로그(PRD FR-11 이름, 라벨은 labels 표), 이력, history
 _Avoid_: 이벤트, 클릭
 
 **scheduler_choice** (선택 규칙):
-노치가 그 할 일을 고른 규칙의 이름. 스케줄러 전 임시 규칙은 **oldest_unpicked_v0**(가장 먼저 만든 대기 할 일, 바꿔줘·미루기 직후에는 그 할 일 제외)다.
+노치가 그 할 일을 고른 규칙의 이름. 스케줄러 전 임시 규칙은 **oldest_unpicked_v0**(가장 먼저 만든 대기 할 일, 바꾸기·미루기 직후에는 그 할 일 제외)다.
 _Avoid_: 알고리즘, 정책
 
 **context impact** (컨텍스트 영향):
-컨텍스트 하나가 걸린 무게. **normal**(보통), **high**(큼), **critical**(치명적) 셋이다. 판단 질문 **impact**(안 하면 생기는 손해의 확률)와 다른 것이다.
-_Avoid_: 중요도, priority, 판단 질문 impact와 섞어 쓰기
+컨텍스트 하나가 걸린 무게. **normal**, **high**, **critical** 셋이다. 화면 이름은 "중요도"이고 값은 차례로 조금·꽤·아주다. 판단 질문 **impact**(안 하면 생기는 손해의 확률)와 다른 것이다.
+_Avoid_: priority, 판단 질문 impact와 섞어 쓰기
 
 **onboarding** (온보딩):
-첫 실행에 한 번 보이는 세 단계: OpenRouter 키, 컨텍스트 한 건, 기본값 확인. 끝내면 `onboarding_done`이 남아 다시 나오지 않는다.
+첫 실행에 한 번 보이는 세 단계: TypeSafe 키(Jev), 컨텍스트 한 건, 기본값 확인. 마지막 버튼은 "시작하기"다. 끝내면 `onboarding_done`이 남아 다시 나오지 않는다.
 _Avoid_: 튜토리얼, 설정 마법사
 
 **key store** (키 보관함):
-API 키를 두는 곳. 앱은 macOS Keychain(service `dev.dongwon.moka`, account `openrouter`)만 쓰고, 시험은 가짜를 쓴다. 앱 DB·설정·로그에는 키를 두지 않는다.
+API 키를 두는 곳. 앱은 macOS Keychain(service `dev.dongwon.moka`, account `typesafe`)만 쓰고, 시험은 가짜를 쓴다. 앱 DB·설정·로그에는 키를 두지 않는다.
 _Avoid_: 비밀번호, 토큰 저장소, settings의 키

@@ -47,8 +47,8 @@
 | `add_task` | `title`(필수), `deadline`, `recurrence`(`none`/`daily`/`weekly`, 없으면 `none`), `weekday`(`weekly`일 때만, 없으면 그 순간이 속한 하루의 요일), `est_min`(정수 1 이상) | 설정 창 할 일 탭에서 더함 |
 | `edit_task` | `task`(필수), 그 밖은 `add_task`와 같은 필드 중 하나 이상. `deadline`·`est_min`은 `null`로 비움 | 설정 창에서 고침 |
 | `delete_task` | `task`(필수) | 설정 창에서 지움(`dropped`) |
-| `skip` | `done_note`, `next_note`(문자열, 없으면 건너뜀) | 미루기 + 두 줄 저장/건너뛰기 |
-| `switch` | `done_note`, `next_note` | 바꿔줘 + 두 줄 |
+| `skip` | `done_note`, `next_note`(문자열, 없으면 건너뜀) | 미루기 + 두 줄 등록/안 적기(돌아가기는 이벤트 없음) |
+| `switch` | `done_note`, `next_note` | 바꾸기 + 두 줄 |
 | `sleep` | 없음 | 맥이 잠듦(깨어남은 다음 이벤트의 `at`과 `activate`로 표현) |
 | `quit` | 없음 | 앱 종료 |
 | `relaunch` | 없음 | 앱 시작(메모리 상태를 버리고 저장소는 남김) |
@@ -110,7 +110,7 @@ storage 모드에서는 모든 줄(기존 이벤트 포함)에 원본 여섯 키
 {"seq":9,"at":"2026-11-02T22:00:00Z","event":"relaunch","timer_state":"empty","chip_min":25,"remaining_s":null,"notch_task":1,"has_first_action":true,"tasks":[{"id":1,"status":"todo","skip_count":0,"streak":0},{"id":2,"status":"todo","skip_count":0,"streak":1}],"checkpoint":null,"decision":null}
 ```
 
-읽는 법: 4에서 바꿔줘로 할 일 1을 빼고 2를 골랐다(R-104). 6에서 완료 뒤 1이 다시 뽑히고 첫 행동이 보인다(R-109). 8에서 종료 체크포인트는 경과 분만 남는다(R-110). 9는 다음 날 07:00(서울)이라 R-111이 1을 `todo`로 되돌리고, 하루 판정이 매일 반복 2를 `todo`로 되돌리며 연속 기록 1을 잇는다(R-113).
+읽는 법: 4에서 바꾸기로 할 일 1을 빼고 2를 골랐다(R-104). 6에서 완료 뒤 1이 다시 뽑히고 첫 행동이 보인다(R-109). 8에서 종료 체크포인트는 경과 분만 남는다(R-110). 9는 다음 날 07:00(서울)이라 R-111이 1을 `todo`로 되돌리고, 하루 판정이 매일 반복 2를 `todo`로 되돌리며 연속 기록 1을 잇는다(R-113).
 
 ## 오류 덧붙임
 

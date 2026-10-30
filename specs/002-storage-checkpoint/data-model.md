@@ -65,7 +65,7 @@ public struct NewTask: Equatable, Sendable {
     public var weekday: Weekday?         // .weekly인데 nil이면 등록 순간이 속한 하루의 요일(R-101)
 }
 
-public enum ContextImpact: String, CaseIterable, Sendable { case normal, high, critical }   // 보통/큼/치명적
+public enum ContextImpact: String, CaseIterable, Sendable { case normal, high, critical }   // 화면 이름 "중요도": 조금/꽤/아주
 
 public struct MokaContext: Equatable, Sendable {
     public var id: ContextID
@@ -79,7 +79,7 @@ public enum CheckpointTrigger: String, CaseIterable, Sendable {
     case dayEnd = "day_end"
 }
 
-/// 두 줄 입력. 앞뒤 공백을 뺀 값이고 건너뛰면 빈 문자열.
+/// 두 줄 입력. 앞뒤 공백을 뺀 값이고 안 적기·빈 칸이면 빈 문자열.
 public struct CheckpointNotes: Equatable, Sendable {
     public var doneNote: String
     public var nextNote: String
@@ -165,7 +165,7 @@ public protocol KeyStore: AnyObject {
 | `SettingsStore`(기존) | `InMemorySettingsStore` | `GRDBSettingsStore` | — |
 | `TaskRepository` | `InMemoryTaskRepository` | `GRDBTaskRepository` | — |
 | `ContextStore` | `InMemoryContextStore` | `GRDBContextStore` | — |
-| `KeyStore` | `InMemoryKeyStore`(가짜) | 없음 | `KeychainKeyStore`(service `dev.dongwon.moka`, account `openrouter`) |
+| `KeyStore` | `InMemoryKeyStore`(가짜) | 없음 | `KeychainKeyStore`(service `dev.dongwon.moka`, account `typesafe`) |
 
 - 메모리 구현은 GRDB 구현과 같은 규칙을 지킨다: id는 1부터 차례로, 없는 할 일을 가리키는 체크포인트·로그는 `taskNotFound`, `apply` 도중 실패하면 되돌림.
 - `decisions_log`·`checkpoints`에는 덧붙이기만 있다. 수정·삭제 메서드를 만들지 않는다.
@@ -185,8 +185,8 @@ public protocol KeyStore: AnyObject {
 | 완료 | 시간 끝 | `active` → `done` | 같음 | `quantum`(두 줄) | `done` |
 | 미루기 | 도는 중 | `active` → `todo` | `skip_count` + 1 | `skip`(두 줄) | `skip` |
 | 미루기 | 시간 끝 | `active` → `todo` | `skip_count` + 1 | `quantum`(두 줄) | `skip` |
-| 바꿔줘 | 도는 중 | `active` → `todo` | — | `switch`(두 줄) | `switch` |
-| 바꿔줘 | 시간 끝 | `active` → `todo` | — | `quantum`(두 줄) | `switch` |
+| 바꾸기 | 도는 중 | `active` → `todo` | — | `switch`(두 줄) | `switch` |
+| 바꾸기 | 시간 끝 | `active` → `todo` | — | `quantum`(두 줄) | `switch` |
 | 시간 끝 | `running` → `expired` | `active` 유지 | — | — | — |
 | 잠자기 | 도는 중 | 유지 | 타이머 그대로 | `sleep`(빈 두 줄) | — |
 | 종료 | 도는 중 | 유지(`active`) | — | `quit`(빈 두 줄) | — |
@@ -196,10 +196,10 @@ public protocol KeyStore: AnyObject {
 | 하루 판정 | §5.3 | `todo`·`done` → `todo` | §5.3 | — | — |
 
 - 체크포인트의 다음 할 일 줄이 비어 있지 않으면 같은 쓰기에서 `first_action`을 그 줄로 바꾼다. 비어 있으면 이전 값을 둔다(R-109, spec Edge Cases).
-- 시간 끝 화면의 어떤 버튼이든(완료, 미루기, 바꿔줘, 다시 시작) 그때 두 줄을 계기 `quantum`으로 저장한다. 비어도 저장한다(R-107).
-- 완료·미루기·바꿔줘의 쓰기(할 일 갱신, 체크포인트, 로그 한 줄)는 `StoreBatch` 하나다. 버튼 한 번 = 로그 한 줄(SC-102).
+- 시간 끝 화면의 어떤 버튼이든(완료, 미루기, 바꾸기, 다시 시작) 그때 두 줄을 계기 `quantum`으로 저장한다. 비어도 저장한다(R-107).
+- 완료·미루기·바꾸기의 쓰기(할 일 갱신, 체크포인트, 로그 한 줄)는 `StoreBatch` 하나다. 버튼 한 번 = 로그 한 줄(SC-102).
 - `done`·`dropped`는 끝 상태다. 반복 할 일의 `done`만 하루 판정이 `todo`로 되돌린다.
-- 진행 중인 반복 할 일은 하루 판정에서 건너뛴다. 그 할 일을 완료·미루기·바꿔줘로 끝낼 때 그 할 일만 먼저 판정하고(§5.3), 그 뒤에 버튼 규칙을 적용한다.
+- 진행 중인 반복 할 일은 하루 판정에서 건너뛴다. 그 할 일을 완료·미루기·바꾸기로 끝낼 때 그 할 일만 먼저 판정하고(§5.3), 그 뒤에 버튼 규칙을 적용한다.
 
 ### 4.2 노치 세션 `NotchSession` (MokaCore, 메모리)
 
@@ -207,13 +207,13 @@ public protocol KeyStore: AnyObject {
 public struct NotchSession: Equatable, Sendable {
     public var timer: NotchTimer          // spec 001 값 타입 그대로
     public var taskID: TaskID?            // 초안·도는 중·시간 끝이 가리키는 할 일
-    public var previousTaskID: TaskID?    // 바꿔줘·미루기 직후 고르기에서 뺄 할 일(R-104). 저장하지 않음
+    public var previousTaskID: TaskID?    // 바꾸기·미루기 직후 고르기에서 뺄 할 일(R-104). 저장하지 않음
 }
 ```
 
 앱(`AppState`)과 `moka-sim`이 같은 함수를 부른다. 함수는 새 세션과 `StoreBatch`를 돌려주고, 호출자가 `apply`한 뒤 세션을 바꾼다.
 
-| 세션 상태 \ 동작 | 고르기(§5.1) | 빠른 입력 | 시작 | 완료 | 미루기·바꿔줘 | 다시 시작 | 잠자기·종료 | 지움(노치의 할 일) |
+| 세션 상태 \ 동작 | 고르기(§5.1) | 빠른 입력 | 시작 | 완료 | 미루기·바꾸기 | 다시 시작 | 잠자기·종료 | 지움(노치의 할 일) |
 |---|---|---|---|---|---|---|---|---|
 | `empty(nil)` | 후보 있으면 `empty(draft)` + `taskID` | 할 일 만듦 → `empty(draft)` | 거부 | 거부 | 거부 | 거부 | 기록 없음 | — |
 | `empty(draft)` | 그대로 | 거부 | `running`, 할 일 `active` | 거부 | 거부 | 거부 | 기록 없음 | `empty(nil)` → 고르기 |
@@ -222,7 +222,7 @@ public struct NotchSession: Equatable, Sendable {
 
 - 초안의 칩은 그 순간의 `default_quantum_min`이다. 할 일별 마지막 칩(PRD `quantum_min`)은 범위 밖이다.
 - 완료 뒤 `previousTaskID`는 nil이다. 고르기는 빈 상태(초안 없음)가 될 때만 돈다: 버튼 뒤, 재시작 뒤, 노치의 할 일을 지운 뒤, 빈 상태에서 할 일을 만들었을 때, 빈 상태에서 하루 판정이 돈 뒤.
-- 타이머 전이는 spec 001 `NotchTimer.apply`를 그대로 쓴다. 완료·미루기·바꿔줘는 모두 타이머에 `.complete`를 보낸다. 다시 시작은 시간 끝의 `.start`다.
+- 타이머 전이는 spec 001 `NotchTimer.apply`를 그대로 쓴다. 완료·미루기·바꾸기는 모두 타이머에 `.complete`를 보낸다. 다시 시작은 시간 끝의 `.start`다.
 
 ## 5. 규칙 (MokaCore 순수 함수)
 
@@ -288,7 +288,7 @@ public enum DayBoundary {
 
 ### 5.5 경과 분과 첫 행동 표시
 
-- `Checkpoint.elapsedMinutes(startedAt:now:quantumMin:) -> Int` = `floor((now − startedAt) / 60)`를 `0...quantumMin`으로 자름. `now`는 체크포인트를 저장하는 순간이다(버튼을 누른 순간이 아니라 두 줄을 저장·건너뛴 순간, 종료·잠자기는 알림을 받은 순간, F6). 시간 끝에서는 `quantumMin`이다.
+- `Checkpoint.elapsedMinutes(startedAt:now:quantumMin:) -> Int` = `floor((now − startedAt) / 60)`를 `0...quantumMin`으로 자름. `now`는 체크포인트를 저장하는 순간이다(버튼을 누른 순간이 아니라 두 줄을 등록·안 적기 한 순간, 종료·잠자기는 알림을 받은 순간, F6). 시간 끝에서는 `quantumMin`이다.
 - `FirstActionDisplay.showsInCollapsed(pickedAt:now:) -> Bool` = `0 ≤ now − pickedAt < 2초`. 접힌 화면은 고른 뒤 2초만, 펼친 화면은 첫 행동이 있으면 늘 보인다(R-109).
 
 ### 5.6 값 검증
@@ -300,6 +300,26 @@ public enum DayBoundary {
 | `weekday` | `.weekly`면 1~7, 아니면 nil | 저장 안 함 |
 | 두 줄 | 앞뒤 공백 제거. 비면 `""` | — |
 | 마감, 컨텍스트 날짜 | `LocalDay`(날짜 고르기로만 받음) | 저장 안 함 |
+
+### 5.7 할 일 목록 보기 `TaskListView` (R-118)
+
+```swift
+public enum TaskListScope: Sendable { case all, today, thisWeek }
+public enum TaskListOrder: Sendable { case created, deadline }
+public enum TaskListView {
+    /// 버린(`dropped`) 할 일은 늘 뺀다. `today`는 `DayBoundary`(§5.4)로 구한 오늘.
+    public static func rows(_ tasks: [TaskRecord], scope: TaskListScope, order: TaskListOrder, today: LocalDay, calendar: Calendar) -> [TaskRecord]
+}
+```
+
+- `all`: 버리지 않은 모든 할 일.
+- `today`: 마감 ≤ 오늘 + `.daily` + 오늘 요일과 `weekday`가 같은 `.weekly`.
+- `thisWeek`: 마감 ≤ 이번 주 토요일(주는 일요일 시작, `weekday` 1=일과 같다) + 모든 반복.
+- 마감 없는 일반 할 일은 `all`에만 나온다. 상태(대기·진행 중·완료)로는 거르지 않는다.
+- `created`: `created_at`, 같으면 `id` 오름차순(§5.1과 같은 순서). `deadline`: 마감 오름차순, 마감 없음은 맨 뒤, 같으면 `created` 순서.
+- "다음" 표시는 이 함수가 아니라 §5.1 결과(지금 세션의 `previousTaskID`를 넣은 고르기)를 쓴다. 보기·정렬은 노치 고르기에 영향이 없다.
+- 고른 보기·정렬은 앱 `AppState`에만 두고 저장하지 않는다(§8).
+- 시험 경계값: 오늘 05:59:59(어제로 봄)·06:00:00, 토요일 마감·일요일 마감, 매주 반복의 요일이 오늘과 같음·다름.
 
 ## 6. 설정 키
 
@@ -334,7 +354,7 @@ CREATE TABLE decisions_log(id INTEGER PRIMARY KEY NOT NULL, task_id INTEGER NOT 
 | | `created_at` | UTC `YYYY-MM-DDTHH:MM:SSZ` |
 | | `first_action` | NULL 또는 비어 있지 않은 문자열 |
 | `contexts` | `date` | `YYYY-MM-DD` |
-| `checkpoints` | `done_note`, `next_note` | 건너뛰면 `''` |
+| `checkpoints` | `done_note`, `next_note` | 안 적기·빈 칸이면 `''` |
 | | `elapsed_min` | 0 이상 정수(§5.5) |
 | `decisions_log` | 판단 칸 넷, `model_snapshot` | 이번 단계는 모두 NULL. 공급자가 없으면 나머지도 NULL, 공급자만 있는 줄은 허용(F5). 원문 텍스트 금지 |
 | | `scheduler_choice` | `oldest_unpicked_v0`(MokaCore 열거형 `rawValue`만) |
@@ -364,10 +384,11 @@ CREATE TABLE tasks(…);
 |---|---|
 | `session` | `NotchSession`(spec 001의 `timer`를 감쌈) |
 | `pickedAt` | 노치가 지금 할 일을 고른 시각. 첫 행동 접힘 표시 2초에 씀 |
-| `pendingAction` | 미루기·바꿔줘를 눌러 두 줄 입력 중이면 그 동작, 아니면 nil |
+| `pendingAction` | 미루기·바꾸기를 눌러 두 줄 입력 중이면 그 동작, 아니면 nil |
+| `taskListScope`, `taskListOrder` | 할 일 탭의 보기·정렬(§5.7). 처음 값은 `all`·`created`, 앱을 끄면 사라짐 |
 | `notesDraft` | 두 줄 입력 칸의 글자(시간 끝 화면 포함) |
 | `showsOnboarding` | `onboarding_done`이 `true`가 아니면 참 |
 
-- 미루기·바꿔줘를 누르면 `pendingAction`을 켜고 두 줄 칸을 보인다. 저장 또는 건너뛰기에서 `StoreBatch`를 적용한다. 그동안 타이머는 그대로 돈다. 입력 중 시간이 끝나면 시간 끝 화면으로 바뀌고, 그때 누르는 버튼은 시간 끝 규칙(계기 `quantum`)을 따른다.
+- 미루기·바꾸기를 누르면 `pendingAction`을 켜고 두 줄 칸을 보인다. 등록 또는 안 적기에서 `StoreBatch`를 적용한다(안 적기는 두 줄을 `""`로). 돌아가기(Esc)는 `pendingAction`을 nil로 되돌리고 `notesDraft`를 비우며 아무것도 쓰지 않는다. 그동안 타이머는 그대로 돈다. 화면의 "N분 했어요"는 지금까지의 경과로 계속 바뀌고, 체크포인트에는 등록·안 적기를 누른 순간 값이 남는다(§5.5). 입력 중 시간이 끝나면 시간 끝 화면으로 바뀌고, 그때 누르는 버튼은 시간 끝 규칙(계기 `quantum`)을 따른다.
 - 두 줄 칸은 각 한 줄이다. 노치에 보일 때는 끝을 "…"로 줄인다(spec Edge Cases).
 - 포커스 규칙은 spec 001 data-model §6 그대로다. 두 줄 칸은 펼친 판을 클릭한 뒤에만 키 입력을 받는다.
