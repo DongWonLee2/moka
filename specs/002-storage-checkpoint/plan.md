@@ -120,7 +120,7 @@ App/Sources/
 ├── MokaApp.swift                     # DB 하나를 열어 저장소들에 나눠 줌, 온보딩 창, 종료 알림
 ├── AppState.swift                    # NotchSession 보관, 버튼·두 줄 입력, 잠자기·종료·활성화 처리
 ├── Keychain/KeychainKeyStore.swift   # 새: KeyStore 구현(앱 타깃만)
-├── Settings/SettingsView.swift       # 탭(기본·할 일·컨텍스트) 틀
+├── Settings/SettingsView.swift       # 탭(기본·할 일·일정) 틀
 └── Views/                            # 새 뷰: 할 일 목록(보기·정렬·다음 표시)·폼, 일정(컨텍스트) 목록·폼, 버튼 줄, 두 줄 입력, 첫 행동 줄, 온보딩 3단계(스냅샷 대상)
 App/Tests/MokaAppTests/               # 새 화면 상태 스냅샷
 project.yml                           # 바뀌지 않음(새 파일은 폴더 단위로 잡힘). 확인만

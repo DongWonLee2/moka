@@ -197,7 +197,7 @@ public protocol KeyStore: AnyObject {
 
 - 체크포인트의 다음 할 일 줄이 비어 있지 않으면 같은 쓰기에서 `first_action`을 그 줄로 바꾼다. 비어 있으면 이전 값을 둔다(R-109, spec Edge Cases).
 - 시간 끝 화면의 어떤 버튼이든(완료, 미루기, 바꾸기, 다시 시작) 그때 두 줄을 계기 `quantum`으로 저장한다. 비어도 저장한다(R-107).
-- 완료·미루기·바꾸기의 쓰기(할 일 갱신, 체크포인트, 로그 한 줄)는 `StoreBatch` 하나다. 버튼 한 번 = 로그 한 줄(SC-102).
+- 완료·미루기·바꾸기의 쓰기(할 일 갱신, 체크포인트, 로그 한 줄)는 `StoreBatch` 하나다. 완료 한 번, 또는 미루기·바꾸기의 등록·안 적기 한 번 = 로그 한 줄(SC-102). 돌아가기는 앱 화면 상태(§8)만 되돌리고 이 함수를 부르지 않는다.
 - `done`·`dropped`는 끝 상태다. 반복 할 일의 `done`만 하루 판정이 `todo`로 되돌린다.
 - 진행 중인 반복 할 일은 하루 판정에서 건너뛴다. 그 할 일을 완료·미루기·바꾸기로 끝낼 때 그 할 일만 먼저 판정하고(§5.3), 그 뒤에 버튼 규칙을 적용한다.
 
@@ -308,7 +308,7 @@ public enum TaskListScope: Sendable { case all, today, thisWeek }
 public enum TaskListOrder: Sendable { case created, deadline }
 public enum TaskListView {
     /// 버린(`dropped`) 할 일은 늘 뺀다. `today`는 `DayBoundary`(§5.4)로 구한 오늘.
-    public static func rows(_ tasks: [TaskRecord], scope: TaskListScope, order: TaskListOrder, today: LocalDay, calendar: Calendar) -> [TaskRecord]
+    public static func rows(_ tasks: [MokaTask], scope: TaskListScope, order: TaskListOrder, today: LocalDay, calendar: Calendar) -> [MokaTask]
 }
 ```
 
@@ -316,7 +316,7 @@ public enum TaskListView {
 - `today`: 마감 ≤ 오늘 + `.daily` + 오늘 요일과 `weekday`가 같은 `.weekly`.
 - `thisWeek`: 마감 ≤ 이번 주 토요일(주는 일요일 시작, `weekday` 1=일과 같다) + 모든 반복.
 - 마감 없는 일반 할 일은 `all`에만 나온다. 상태(대기·진행 중·완료)로는 거르지 않는다.
-- `created`: `created_at`, 같으면 `id` 오름차순(§5.1과 같은 순서). `deadline`: 마감 오름차순, 마감 없음은 맨 뒤, 같으면 `created` 순서.
+- `created`: `id` 오름차순(§5.1과 같은 순서, research R13). `deadline`: 마감 오름차순, 마감 없음은 맨 뒤, 같으면 `id` 오름차순.
 - "다음" 표시는 이 함수가 아니라 §5.1 결과(지금 세션의 `previousTaskID`를 넣은 고르기)를 쓴다. 보기·정렬은 노치 고르기에 영향이 없다.
 - 고른 보기·정렬은 앱 `AppState`에만 두고 저장하지 않는다(§8).
 - 시험 경계값: 오늘 05:59:59(어제로 봄)·06:00:00, 토요일 마감·일요일 마감, 매주 반복의 요일이 오늘과 같음·다름.
