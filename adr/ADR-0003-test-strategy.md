@@ -27,7 +27,7 @@
 A를 추천한다(추천안 토론 3:0).
 - `MokaCore`·`MokaStore` 테스트는 Swift Testing. 표시 이름은 FR·정책 번호로 시작한다(예: `@Test("FR-05: …")`). 앱 UI 테스트만 XCTest(XCUITest).
 - 시계: `MokaClock`(현재 시각을 돌려주는 작은 타입, 표준 `Clock`과 이름 충돌 회피)과 `Calendar`(시간대 포함)를 주입한다. `MokaCore` 안에서 `Date()`·`TimeZone.current`를 직접 읽지 않는다.
-- 하루 경계는 설정 `day_start`(기본 06:00)와 주입한 `Calendar`로 계산한다. 앱은 `Calendar.autoupdatingCurrent`, 테스트는 `Asia/Seoul`과 일광절약시간이 있는 `America/New_York`을 고정 주입한다.
+- 하루 경계는 설정 `day_start`(기본 06:00)와 주입한 `Calendar`로 계산한다. 앱은 `Calendar.autoupdatingCurrent`, 테스트는 `Asia/Seoul`과 일광절약시간이 있는 `America/New_York`을 고정 주입한다. (정정: 이 문장은 [ADR-0010](ADR-0010-day-boundary-calendar.md)이 대체한다.)
 - 타이머는 실제로 잠들지 않는 상태기계다. 시각을 붙인 이벤트(`tick(now:)` 등)로만 상태가 바뀐다. 저장 시각은 UTC.
 - 튜닝 스크립트(FR-18)는 pytest와 가짜 SQLite 파일. 실제 decision API는 가짜 공급자로 대신한다.
 - 검증 경로: `moka-sim`(시나리오 JSON 입력 → 하루 배정과 로그 출력). 노치 화면은 사람이 확인한다.
