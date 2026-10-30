@@ -10,7 +10,7 @@ swift test
 
 기대: 기존 시험과 새 R-ID 시험(`@Test("FR-07 R-108: …")` 등)이 모두 PASS. 포함 범위:
 - MokaCore: 노치 고르기(R-104, 버림 제외·후보 하나·직전 할 일 제외), 버튼 → `StoreBatch`(R-106·107·108·109·112, 버튼 한 번 = 로그 한 줄), 재시작 복구(R-111), 반복 리셋(R-113: 매일·매주, 연속 기록 잇기·0, 두 번 돌려도 같음, 버림 제외), 하루 경계(R-114: 05:59:59/06:00:00, `Asia/Seoul`·`America/New_York`, 일광절약 전환일), 경과 분, 첫 행동 접힘 2초, 설정 읽기 규칙(`default_extend_min`, `day_start`, `onboarding_done`), 온보딩 끝내기(가짜 키가 settings·로그·체크포인트에 없음)
-- MokaStore: 마이그레이션 이름 리터럴 `["v1_settings", "v2_tasks_contexts_checkpoints_log"]`, 스키마 스냅샷, 경로 가드, 공용 계약 시험(메모리·GRDB 두 구현), 모르는 `user_action`·`scheduler_choice` 읽기 실패, `ON DELETE RESTRICT`, 판단 칸 일부만 채운 줄 거부, storage golden을 GRDB로 다시 돌림
+- MokaStore: 마이그레이션 이름 리터럴 `["v1_settings", "v2_tasks_contexts_checkpoints_log"]`, 스키마 스냅샷, 경로 가드, 공용 계약 시험(메모리·GRDB 두 구현), 모르는 `user_action`·`scheduler_choice` 읽기 실패, `ON DELETE RESTRICT`, 공급자 없이 다른 판단 칸이나 `model_snapshot`이 있는 줄 거부, 폴백 줄(`provider = 'fallback'`만) 허용, `daily` + `cycle_day` NULL 거부·`none` + NULL 허용, storage golden을 GRDB로 다시 돌림
 - `moka-sim` golden: 기존 시나리오(기대 출력 파일 변경 없음)와 storage 시나리오
 
 리눅스 컨테이너에서도 같은 결과인지 확인(스냅샷 텍스트와 하루 경계, research R9·R16):
@@ -63,7 +63,7 @@ swift run moka-sim run Tests/MokaCoreTests/Fixtures/sim/<시나리오>.json
 cd tuning && python3 -m pytest
 ```
 
-기대: `test_schema_contract.py`가 `schema/moka-schema.sql`로 메모리 DB를 만들고 `decisions_log` 열 이름(R5), 판단 칸이 모두 NULL인 가짜 줄 넣기, 판단 칸 일부만 채운 줄 거부를 확인해 PASS.
+기대: `test_schema_contract.py`가 `schema/moka-schema.sql`로 메모리 DB를 만들고 `decisions_log` 열 이름(R5), 판단 칸이 모두 NULL인 가짜 줄과 폴백 줄 넣기, 공급자 없이 다른 판단 칸이나 `model_snapshot`이 있는 줄 거부, `daily` + `cycle_day` NULL 거부와 `none` + NULL 허용을 확인해 PASS.
 
 ## 5. 앱 빌드와 스냅샷
 

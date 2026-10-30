@@ -98,12 +98,12 @@ public struct Checkpoint: Equatable, Sendable {
 public enum UserAction: String, CaseIterable, Sendable { case done, skip, `switch` }
 public enum SchedulerChoice: String, CaseIterable, Sendable { case oldestUnpickedV0 = "oldest_unpicked_v0" }
 
-/// 판단 칸 넷. 이번 단계에서는 늘 nil(R-112).
+/// 판단 칸. 이번 단계에서는 늘 nil(R-112). 공급자가 있을 때만 존재하고, 나머지는 폴백 줄에서 비어도 된다(F5).
 public struct Judgment: Equatable, Sendable {
-    public var questionVersion: String
     public var provider: String
-    public var probsJSON: String
-    public var stateHash: String
+    public var questionVersion: String?
+    public var probsJSON: String?
+    public var stateHash: String?
 }
 
 public struct DecisionLogEntry: Equatable, Sendable {
@@ -170,7 +170,7 @@ public protocol KeyStore: AnyObject {
 - 메모리 구현은 GRDB 구현과 같은 규칙을 지킨다: id는 1부터 차례로, 없는 할 일을 가리키는 체크포인트·로그는 `taskNotFound`, `apply` 도중 실패하면 되돌림.
 - `decisions_log`·`checkpoints`에는 덧붙이기만 있다. 수정·삭제 메서드를 만들지 않는다.
 - 저장소는 로그를 남기지 않는다(spec 001 research R7).
-- 공용 계약 시험(`MokaStoreTests`, `@Test(arguments:)`로 두 구현): 왕복, id 순서, 버림 포함 목록, `apply` 원자성, 외래 키·RESTRICT(GRDB만, 메모리는 같은 오류 종류), 모르는 `user_action`·`scheduler_choice` 읽기 실패(GRDB는 원시 SQL로 넣음), 판단 칸 일부만 채운 줄 거부.
+- 공용 계약 시험(`MokaStoreTests`, `@Test(arguments:)`로 두 구현): 왕복, id 순서, 버림 포함 목록, `apply` 원자성, 외래 키·RESTRICT(GRDB만, 메모리는 같은 오류 종류), 모르는 `user_action`·`scheduler_choice` 읽기 실패(GRDB는 원시 SQL로 넣음), 공급자 없이 다른 판단 칸이나 `model_snapshot`이 있는 줄 거부, 공급자만 있는 폴백 줄(`provider = 'fallback'`, 나머지 NULL) 허용, 반복인데 `cycle_day` NULL인 할 일 거부(GRDB는 원시 SQL).
 
 ## 4. 상태 전이
 
@@ -270,7 +270,7 @@ public enum RecurrenceReset {
 - 멱등: 결과의 `cycle_day`가 `c`이므로 같은 `today`로 다시 돌리면 대상이 없다. 시험은 두 번 돌린 결과 == 한 번 돌린 결과, 할 일 수가 그대로(SC-104), 두 시간대.
 - 하루 시작 시각을 바꿔 `today`가 앞 날로 돌아가도 `cycleDay < c`가 아니므로 되돌리지 않는다.
 - 새로 만들 때, 반복을 새로 걸 때, 요일을 바꿀 때 `cycle_day = c`(그 순간 기준). 반복을 없애면 nil.
-- `weekday`가 없는 매주, `cycle_day`가 없는 반복은 값 검증에서 막는다(불변식).
+- `weekday`가 없는 매주, `cycle_day`가 없는 반복은 값 검증에서 막고 DB CHECK도 막는다(F2).
 
 ### 5.4 하루 경계 `DayBoundary` (R-114)
 
@@ -283,12 +283,12 @@ public enum DayBoundary {
 
 - `d` = `instant`의 지역 달력 날짜(`calendar.timeZone`). `b` = `start(of: d)` = `d`의 `dayStart` 시·분, `matchingPolicy: .nextTime`, `repeatedTimePolicy: .first`.
 - `instant ≥ b`면 `d`, 아니면 `d − 1일`.
-- 앱은 `Calendar(identifier: .gregorian)` + `timeZone = .autoupdatingCurrent`, 시험은 그레고리력 + `Asia/Seoul`·`America/New_York` 고정, `moka-sim`은 그레고리력 + 시나리오 `timezone`(research R9).
+- 앱은 `Calendar(identifier: .gregorian)` + 시스템 시간대([ADR-0010](../../adr/ADR-0010-day-boundary-calendar.md)), 시험은 그레고리력 + `Asia/Seoul`·`America/New_York` 고정, `moka-sim`은 그레고리력 + 시나리오 `timezone`(research R9).
 - 시험 경계값: 05:59:59 → 어제, 06:00:00 → 오늘. `America/New_York` 3월·11월 전환일. 하루 시작 02:30 같은 전환 구간 값.
 
 ### 5.5 경과 분과 첫 행동 표시
 
-- `Checkpoint.elapsedMinutes(startedAt:now:quantumMin:) -> Int` = `floor((now − startedAt) / 60)`를 `0...quantumMin`으로 자름. 시간 끝에서는 `quantumMin`이다.
+- `Checkpoint.elapsedMinutes(startedAt:now:quantumMin:) -> Int` = `floor((now − startedAt) / 60)`를 `0...quantumMin`으로 자름. `now`는 체크포인트를 저장하는 순간이다(버튼을 누른 순간이 아니라 두 줄을 저장·건너뛴 순간, 종료·잠자기는 알림을 받은 순간, F6). 시간 끝에서는 `quantumMin`이다.
 - `FirstActionDisplay.showsInCollapsed(pickedAt:now:) -> Bool` = `0 ≤ now − pickedAt < 2초`. 접힌 화면은 고른 뒤 2초만, 펼친 화면은 첫 행동이 있으면 늘 보인다(R-109).
 
 ### 5.6 값 검증
@@ -321,25 +321,26 @@ public enum DayBoundary {
 이름 `v2_tasks_contexts_checkpoints_log`. `v1_settings` 뒤에 등록한다. 문장 넷을 각각 `db.execute(sql:)`로 실행한다(한 줄 문자열, `sqlite_master`에 그대로 남는다).
 
 ```sql
-CREATE TABLE tasks(id INTEGER PRIMARY KEY NOT NULL, title TEXT NOT NULL, deadline TEXT, est_min INTEGER, recurrence TEXT NOT NULL CHECK(recurrence IN ('none', 'daily', 'weekly')), weekday INTEGER CHECK(weekday BETWEEN 1 AND 7), cycle_day TEXT, first_action TEXT, status TEXT NOT NULL CHECK(status IN ('todo', 'active', 'done', 'dropped')), skip_count INTEGER NOT NULL, streak INTEGER NOT NULL, created_at TEXT NOT NULL, CHECK((recurrence = 'weekly') = (weekday IS NOT NULL)))
+CREATE TABLE tasks(id INTEGER PRIMARY KEY NOT NULL, title TEXT NOT NULL, deadline TEXT, est_min INTEGER, recurrence TEXT NOT NULL CHECK(recurrence IN ('none', 'daily', 'weekly')), weekday INTEGER CHECK(weekday BETWEEN 1 AND 7), cycle_day TEXT, first_action TEXT, status TEXT NOT NULL CHECK(status IN ('todo', 'active', 'done', 'dropped')), skip_count INTEGER NOT NULL, streak INTEGER NOT NULL, created_at TEXT NOT NULL, CHECK((recurrence = 'weekly') = (weekday IS NOT NULL)), CHECK((recurrence = 'none') = (cycle_day IS NULL)))
 CREATE TABLE contexts(id INTEGER PRIMARY KEY NOT NULL, name TEXT NOT NULL, date TEXT NOT NULL, impact TEXT NOT NULL CHECK(impact IN ('normal', 'high', 'critical')))
 CREATE TABLE checkpoints(id INTEGER PRIMARY KEY NOT NULL, task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE RESTRICT, done_note TEXT NOT NULL, next_note TEXT NOT NULL, trigger TEXT NOT NULL CHECK(trigger IN ('quantum', 'switch', 'skip', 'urgent', 'pause', 'quit', 'sleep', 'day_end')), elapsed_min INTEGER NOT NULL, created_at TEXT NOT NULL)
-CREATE TABLE decisions_log(id INTEGER PRIMARY KEY NOT NULL, task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE RESTRICT, question_version TEXT, provider TEXT, probs_json TEXT, state_hash TEXT, model_snapshot TEXT, scheduler_choice TEXT NOT NULL, user_action TEXT NOT NULL, created_at TEXT NOT NULL, CHECK((question_version IS NULL) = (provider IS NULL) AND (provider IS NULL) = (probs_json IS NULL) AND (probs_json IS NULL) = (state_hash IS NULL)), CHECK(model_snapshot IS NULL OR provider IS NOT NULL))
+CREATE TABLE decisions_log(id INTEGER PRIMARY KEY NOT NULL, task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE RESTRICT, question_version TEXT, provider TEXT, probs_json TEXT, state_hash TEXT, model_snapshot TEXT, scheduler_choice TEXT NOT NULL, user_action TEXT NOT NULL, created_at TEXT NOT NULL, CHECK(provider IS NOT NULL OR (question_version IS NULL AND probs_json IS NULL AND state_hash IS NULL)), CHECK(model_snapshot IS NULL OR provider IS NOT NULL))
 ```
 
 | 표 | 열 | 형식·규칙 |
 |---|---|---|
-| `tasks` | `deadline`, `cycle_day` | `YYYY-MM-DD` 또는 NULL |
+| `tasks` | `deadline` | `YYYY-MM-DD` 또는 NULL |
+| | `cycle_day` | `YYYY-MM-DD`. 반복 없음이면 NULL, 반복이면 값(CHECK, F2) |
 | | `created_at` | UTC `YYYY-MM-DDTHH:MM:SSZ` |
 | | `first_action` | NULL 또는 비어 있지 않은 문자열 |
 | `contexts` | `date` | `YYYY-MM-DD` |
 | `checkpoints` | `done_note`, `next_note` | 건너뛰면 `''` |
 | | `elapsed_min` | 0 이상 정수(§5.5) |
-| `decisions_log` | 판단 칸 넷 | 이번 단계는 모두 NULL. 원문 텍스트 금지 |
+| `decisions_log` | 판단 칸 넷, `model_snapshot` | 이번 단계는 모두 NULL. 공급자가 없으면 나머지도 NULL, 공급자만 있는 줄은 허용(F5). 원문 텍스트 금지 |
 | | `scheduler_choice` | `oldest_unpicked_v0`(MokaCore 열거형 `rawValue`만) |
 | | `user_action` | `done` / `skip` / `switch`(MokaCore 열거형 `rawValue`만) |
 
-- CHECK가 있는 칸: `tasks.recurrence`, `tasks.status`, `tasks.weekday`(범위와 매주 짝), `contexts.impact`, `checkpoints.trigger`, `decisions_log` 판단 칸 묶음과 `model_snapshot`. 그 밖의 형식은 MokaCore가 지킨다(P3 (c)).
+- CHECK가 있는 칸: `tasks.recurrence`, `tasks.status`, `tasks.weekday`(범위와 매주 짝), `tasks.cycle_day`(반복 짝, F2), `contexts.impact`, `checkpoints.trigger`, `decisions_log`의 공급자 기준 판단 칸(F5)과 `model_snapshot`. 그 밖의 형식은 MokaCore가 지킨다(P3 (c)).
 - 기본값(`DEFAULT`)을 두지 않는다. 저장소가 모든 열을 쓴다.
 - 외래 키는 GRDB가 연결마다 켠다(GRDB `Configuration.foreignKeysEnabled` 기본값 true, 미확인 → 공용 계약 시험의 RESTRICT 시험으로 확인).
 - 색인은 두지 않는다(할 일 수십 건).

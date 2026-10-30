@@ -32,11 +32,11 @@
 
 *GATE: Phase 0 전 확인, Phase 1 설계 뒤 다시 확인함.*
 
-승인 항목 P1~P8은 토론(`.audit/debate/20261030-plan002-approvals.md`, 커밋 안 함, 3라운드)으로 추천안을 만들고 사용자가 2026-10-30 정했다.
+승인 항목 P1~P8은 토론(`.audit/debate/20261030-plan002-approvals.md`, 커밋 안 함, 3라운드)으로 추천안을 만들고 사용자가 2026-10-30 정했다. 설계 중 생긴 후속 결정 F1~F6은 토론(`.audit/debate/20261030-plan002-followups.md`, 커밋 안 함)을 거쳐 같은 날 사용자가 정했다(아래 "후속 결정").
 
 | 원칙 | 판정 | 근거 |
 |---|---|---|
-| I 승인 없는 계약 변경 금지 | 통과(승인 받음) | P1 새 마이그레이션 하나에 표 넷(3:0), P2 `tasks.weekday` 1~7과 짝 CHECK(3:0), P3 닫힌 칸에만 CHECK·`user_action`·`scheduler_choice`는 TEXT(2:1, A·B / C, 사용자 결정 (c)), P4 소프트 삭제·`ON DELETE RESTRICT`(3:0), P5 `decisions_log` PRD 9장 열 + 판단 칸 NULL 허용(3:0), `model_snapshot` 추가는 사용자 위임(토론 A 추천), P6 `moka-sim` v1 덧붙이기·기존 golden 바이트 불변(3:0), P7 프로토콜·메모리는 MokaCore·GRDB는 MokaStore(3:0), P8 키 프로토콜 MokaCore·Keychain은 앱 타깃(3:0). 설계 중 새로 생긴 결정(아래 "사람이 볼 결정 후보")은 구현 PR "사람이 볼 결정"에 다시 올린다 |
+| I 승인 없는 계약 변경 금지 | 통과(승인 받음) | P1 새 마이그레이션 하나에 표 넷(3:0), P2 `tasks.weekday` 1~7과 짝 CHECK(3:0), P3 닫힌 칸에만 CHECK·`user_action`·`scheduler_choice`는 TEXT(2:1, A·B / C, 사용자 결정 (c)), P4 소프트 삭제·`ON DELETE RESTRICT`(3:0), P5 `decisions_log` PRD 9장 열 + 판단 칸 NULL 허용(3:0), `model_snapshot` 추가는 사용자 위임(토론 A 추천), P6 `moka-sim` v1 덧붙이기·기존 golden 바이트 불변(3:0), P7 프로토콜·메모리는 MokaCore·GRDB는 MokaStore(3:0), P8 키 프로토콜 MokaCore·Keychain은 앱 타깃(3:0). 후속: F1 `tasks` 열 범위(3:0), F2 `cycle_day` 짝 CHECK(2:1, A·C / B, 사용자 결정), F3 활성화 정의(3:0), F4 하루 경계 달력 ADR-0010(3:0), F5 `decisions_log` 판단 칸 CHECK 문구 변경(3:0, P5 사용자 재승인), F6 `moka-sim` 이벤트 모양(3:0). 구현 PR마다 "사람이 볼 결정"에 다시 적는다 |
 | II 테스트 먼저, 약화 금지 | 통과 | R-ID마다 Red 커밋 → Green 커밋. 하루 경계·반복 리셋은 주입한 `MokaClock`·`Calendar`(`Asia/Seoul`, `America/New_York`). 리셋 멱등, dropped 제외, 모르는 열거 값 읽기 실패를 Red 시험으로 먼저 둔다. 오류 주입은 quickstart 3 |
 | III 네 가지로만 보고 | 통과 | quickstart 결과는 PASS/FAIL/SKIP/NOT_RUN. Keychain 확인 창과 종료·잠자기 기록은 사람 확인이며 자동 PASS로 적지 않는다 |
 | IV 같은 실패 2회 중단 | 통과 | Keychain 확인 창이 개인 팀 서명에서 반복되면 키 단계만 마일스톤 3으로 미룬다(spec 위험 4). 두 번째 시도 없음 |
@@ -48,17 +48,27 @@
 
 설계 뒤 재확인: 위반 없음. Complexity Tracking 해당 없음.
 
-### 사람이 볼 결정 후보 (설계 중 새로 생김)
+### 후속 결정 (설계 중 생김, 사용자 2026-10-30)
 
-토론을 거치지 않았다. 구현 PR 전에 사람이 확인하거나 debate로 넘긴다.
+토론 `.audit/debate/20261030-plan002-followups.md`(커밋 안 함)의 추천안을 사용자가 정했다.
 
-1. `tasks`의 열 범위: PRD 9장 열 가운데 이번 단계가 쓰는 열만 둔다. `quantum_min`, `is_urgent`, `carry_count`, `due_decision`, 설계서의 `paused_until`은 쓰는 단계에서 `ADD COLUMN`으로 더한다(research R1).
-2. `tasks.cycle_day` 열 추가: 반복 리셋 멱등과 연속 기록 판정에 필요하다. CHECK는 두지 않는다(P3 범위 밖)(research R10).
-3. "활성화"의 정의: 앱 시작, 잠자기에서 깨어남, 노치 펼침, 설정 창 열기(research R11).
-4. 하루 경계 계산은 그레고리력 `Calendar`에 시스템 시간대를 넣어 주입한다. ADR-0003의 `Calendar.autoupdatingCurrent`를 그대로 쓰지 않는다(research R9).
-5. `decisions_log` 판단 칸 CHECK에서 `model_snapshot`을 빼고 `model_snapshot IS NULL OR provider IS NOT NULL`만 둔다(research R5).
-6. `moka-sim` 이벤트 모양: 버튼과 두 줄을 한 이벤트로 받고(`checkpoint` 이벤트 없음), 완료는 기존 `complete`를 쓴다(`done` 이벤트 없음)([contracts/moka-sim-v1-additions.md](contracts/moka-sim-v1-additions.md)).
-7. `user_action` 열거형은 이번에 쓰는 `done`·`skip`·`switch`만 둔다. 나머지 PRD 값은 쓰는 단계에서 덧붙인다(research R3).
+| # | 결정 | 표결 | 사람 |
+|---|---|---|---|
+| F1 | `tasks`에는 이번 단계가 쓰는 열만 둔다. `quantum_min`, `is_urgent`, `carry_count`, `due_decision`, 설계서의 `paused_until`은 쓰는 단계에서 `ADD COLUMN`(research R1) | 3:0 | 승인 |
+| F2 | `tasks.cycle_day` 열과 `CHECK((recurrence = 'none') = (cycle_day IS NULL))`(research R10) | 2:1(A·C / B) | 사용자 결정(다수안) |
+| F3 | 활성화 = 앱 시작, 잠자기에서 깨어남, 노치 펼침, 설정 창 열기(research R11) | 3:0 | 승인 |
+| F4 | 하루 경계·`LocalDay`는 `Calendar(identifier: .gregorian)` 고정, 시간대는 시스템. [ADR-0010](../../adr/ADR-0010-day-boundary-calendar.md)이 ADR-0003의 한 문장을 대체(research R9) | 3:0 | 승인 |
+| F5 | `decisions_log`: `CHECK(provider IS NOT NULL OR (question_version IS NULL AND probs_json IS NULL AND state_hash IS NULL))` + `CHECK(model_snapshot IS NULL OR provider IS NOT NULL)`. 공급자만 있는 폴백 줄을 받는다(research R5) | 3:0(형태 2:1, 의미 같음) | P5 문구 변경 재승인 |
+| F6 | `moka-sim` 버튼과 두 줄은 한 이벤트, 완료는 기존 `complete`([contracts/moka-sim-v1-additions.md](contracts/moka-sim-v1-additions.md)). 경과 분은 저장 순간 기준(data-model §5.5) | 3:0 | 승인 |
+
+소수 의견:
+- F2(B): CHECK 없이 GRDB 왕복 시험과 `moka-sim` 불변식 오류 주입으로 지킨다. 표 수준 CHECK가 있으면 `cycle_day`를 지우거나 뜻을 바꿀 때 `DROP COLUMN`을 못 해 표를 다시 만들어야 하고, P3의 사용자 판단(로컬 앱이라 엄격히 막지 않음)과도 가벼운 쪽이 맞다.
+- F5 형태(C): `model_snapshot`까지 한 식으로 묶자. 허용 집합은 같다.
+
+### 가정
+
+- F3 차이: 설계서 tech-design.md:193은 하루 경계 판정을 앱 활성화·잠자기 해제·매일 06:00 타이머 세 곳에서 부른다. 이 plan은 06:00 타이머를 두지 않고 노치 펼침·설정 창 열기를 더한다. 판정이 멱등이고, 사용자가 노치를 보는 순간에 돌면 충분하며, 예약 타이머는 잠자기·시계 변경에 약하다(research R11).
+- `UserAction` 열거형은 이번에 쓰는 `done`·`skip`·`switch`만 둔다. PRD의 나머지 값은 쓰는 단계에서 덧붙인다. TEXT 칸이라 스키마 변경이 아니다(research R3).
 
 ## Project Structure
 
@@ -68,7 +78,7 @@
 specs/002-storage-checkpoint/
 ├── spec.md
 ├── plan.md               # 이 파일
-├── research.md           # R1~R16 결정
+├── research.md           # R1~R16 결정(후속 F1~F6 반영)
 ├── data-model.md         # 값 타입, 상태 전이, 고르기·리셋 규칙, v2 SQL, 설정 키
 ├── quickstart.md         # 검증 절차 1~7
 ├── contracts/
@@ -114,6 +124,7 @@ App/Sources/
 └── Views/                            # 새 뷰: 할 일 목록·폼, 컨텍스트 목록·폼, 버튼 줄, 두 줄 입력, 첫 행동 줄, 온보딩 3단계(스냅샷 대상)
 App/Tests/MokaAppTests/               # 새 화면 상태 스냅샷
 project.yml                           # 바뀌지 않음(새 파일은 폴더 단위로 잡힘). 확인만
+adr/ADR-0010-day-boundary-calendar.md # 새(F4): ADR-0003의 앱 달력 문장 대체. ADR-0003:30 끝에 포인터만
 ```
 
 **Structure Decision**: ADR-0001 구조 그대로다. 새 타깃·의존성 없음. `Package.swift`는 바꾸지 않는다. 공용 계약 시험은 MokaCore와 MokaStore를 둘 다 보는 `MokaStoreTests`에 둔다(research R7). 새 화면 뷰는 스냅샷 번들이 컴파일하는 `App/Sources/Views/`에 둔다(ADR-0009).
@@ -148,7 +159,7 @@ project.yml                           # 바뀌지 않음(새 파일은 폴더 �
 ## 위험
 
 - 위험 1(일정): 마일스톤 2는 하루(11/3)다. 단위 1~3은 무인으로 앞당기고, 4는 시안 확정이 늦으면 밀린다. 밀리면 큐 뒤쪽을 버퍼(11/8~9)로 넘기고 PR에 적는다.
-- 위험 2(되돌리기 어려운 스키마): CHECK와 열은 표를 다시 만들어야 바꿀 수 있다. 특히 판단 칸 넷의 전부-NULL/전부-값 CHECK는 마일스톤 3의 코드 폴백 줄(공급자는 있고 확률은 없는 줄)을 막을 수 있다. 마일스톤 3 설계에서 폴백 줄을 판단 칸 NULL로 남길지 먼저 정한다.
+- 위험 2(되돌리기 어려운 스키마): CHECK와 열은 표를 다시 만들어야 바꿀 수 있다. 코드 폴백 줄이 막히는 문제는 F5로 해소했다: 공급자만 있고 다른 판단 칸이 비어 있는 줄(`provider = 'fallback'`)을 받는다. 남은 사실: 폴백의 모양이 문서마다 다르다. PRD prd.md:74는 "마감일 정렬"만 적었고, 설계서 tech-design.md:155는 "concrete = first_action 유무, 나머지 0.5"로 확률을 합성하고 `provider = fallback`으로 로그한다. 합성 확률을 `probs_json`에 넣을지는 마일스톤 3에서 정한다. 넣어도 F5 CHECK에 걸리지 않는다.
 - 위험 3(앱 밖 쓰기 경로): `user_action`·`scheduler_choice`는 DB가 막지 않는다(P3 (c)). 지금 쓰는 곳은 앱 하나다. 튜닝 스크립트가 쓰기를 하거나 라벨셋 가져오기처럼 앱 밖 쓰기 경로가 생기면 CHECK를 다시 본다.
 - 위험 4(제목 영구 보존): 버린 할 일의 제목은 행에 남는다(P4). 로그·체크포인트가 할 일을 가리키므로 지울 수 없다. 앱 DB는 저장소에 들어오지 않지만, 공유·백업 때 함께 나간다.
 - 위험 5(Keychain): 개인 팀 서명에서도 확인 창이 반복될 수 있다(ADR-0005, 미확인). 반복되면 키 단계만 마일스톤 3으로 미룬다. `ThisDeviceOnly` 접근성 속성과 data protection keychain 사용 조건은 미확인이다.
