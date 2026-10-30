@@ -75,6 +75,31 @@ jobs:
           xcodegen generate
           xcodebuild build -scheme Moka -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO
 
+  # ADR-0009·#39: 화면 스냅샷 번들(MokaAppTests)을 돌린다. 필수 검사가 아니다(main 보호 목록에 넣지 않는다).
+  # PASS는 그림이 만들어졌고 sanity를 통과했다는 뜻이지 화면이 시안과 맞다는 증거가 아니다. PNG는 artifact로 올리지 않는다.
+  app-snapshots:
+    name: app-snapshots
+    runs-on: macos-26
+    timeout-minutes: 30
+    continue-on-error: true
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Test snapshots
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          xcodegen --version
+          xcodegen generate
+          TEST_RUNNER_MOKA_SNAPSHOT_DIR="$RUNNER_TEMP/moka-snapshots" \
+            xcodebuild test -scheme Moka -destination 'platform=macOS' -only-testing:MokaAppTests CODE_SIGNING_ALLOWED=NO
+
   secrets-scan:
     name: secrets-scan
     runs-on: ubuntu-24.04
