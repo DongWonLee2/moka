@@ -102,7 +102,7 @@ func segmentsEditingCustom(chipMin: Int, text: String) {
 }
 
 @Test(
-    "FR-05 R-003: 시간 끝 화면의 다시 하기 버튼은 고른 시간을 넣어 \"N분 더\"로 보인다(#52)",
+    "FR-05 R-003: 시간 끝 화면의 다시 시작 버튼은 고른 시간을 넣어 \"N분 더\"로 보인다(#52)",
     arguments: [
         (25, nil, "25분 더"), (90, nil, "90분 더"), (25, "45", "45분 더"), (25, "180", "180분 더"),
     ] as [(Int, String?, String)])
@@ -111,7 +111,7 @@ func againLabelShowsMinutes(chipMin: Int, customText: String?, expected: String)
 }
 
 @Test(
-    "FR-05 R-004: 직접 입력 값이 틀리면 다시 하기 버튼은 숫자 자리를 비워 \"— 분 더\"로 보인다(#52)",
+    "FR-05 R-004: 직접 입력 값이 틀리면 다시 시작 버튼은 숫자 자리를 비워 \"— 분 더\"로 보인다(#52)",
     arguments: ["", "0", "181", "4.5", "abc"])
 func againLabelBlankWhenInvalid(customText: String) {
     #expect(QuantumChip.againLabel(chipMin: 25, customText: customText) == "— 분 더")
