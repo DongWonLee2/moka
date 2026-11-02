@@ -69,6 +69,14 @@ public enum QuantumChip {
         guard let customText else { return true }
         return parseCustom(customText) != nil
     }
+
+    /// 시간 끝 화면에서 같은 할 일을 한 번 더 하는 버튼 이름(#52). 직접 입력 중이면 입력 값,
+    /// 아니면 칩 값을 넣는다. 직접 입력 값이 틀리면 숫자 자리를 비운다(버튼은 꺼짐).
+    public static func againLabel(chipMin: Int, customText: String?) -> String {
+        guard let customText else { return "\(chipMin)분 더" }
+        guard let minutes = parseCustom(customText) else { return "— 분 더" }
+        return "\(minutes)분 더"
+    }
 }
 
 public enum RemainingFormat {

@@ -5,9 +5,9 @@ public enum NotchStatus {
         case .empty(nil):
             return "새 할 일"
         case .empty(.some):
-            return "시간 고르기"
+            return "시작 전"
         case .running(_, let quantumMin, _, _):
-            return "\(quantumMin)분 집중"
+            return "\(quantumMin)분 타이머"
         case .expired:
             return "시간 끝"
         }

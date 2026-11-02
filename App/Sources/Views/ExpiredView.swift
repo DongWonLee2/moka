@@ -12,7 +12,7 @@ struct QuantumChipInput {
     var takeFocusRequest: () -> Bool
 }
 
-/// 시간 끝 화면(R-008·R-010, 시안 v3.4 6번): 제목과 빨간 0:00, 기본값으로 채운 칩, 다시 시작·완료.
+/// 시간 끝 화면(R-008·R-010, 시안 v3.4 6번): 제목과 빨간 0:00, 기본값으로 채운 칩, N분 더(다시 시작)·완료.
 /// 완료가 기본 버튼이다. 직접 입력 중에는 Enter가 할 일을 비우지 않도록 다시 시작을 기본 버튼으로 바꾼다.
 /// Enter는 사용자가 판을 클릭해 패널이 key가 된 뒤에만 닿는다(R-009).
 struct ExpiredView: View {
@@ -38,14 +38,14 @@ struct ExpiredView: View {
             }
             Spacer(minLength: 0)
             if chip.customText != nil {
-                Button(action: onStart) { ButtonLabel(text: "다시 시작", shortcut: "↵") }
+                Button(action: onStart) { ButtonLabel(text: againLabel, shortcut: "↵") }
                     .buttonStyle(NotchButtonStyle(kind: .secondary))
                     .keyboardShortcut(.defaultAction)
                     .disabled(!chip.canStart)
                 Button(action: onComplete) { ButtonLabel(text: "완료") }
                     .buttonStyle(NotchButtonStyle(kind: .primary))
             } else {
-                Button(action: onStart) { ButtonLabel(text: "다시 시작") }
+                Button(action: onStart) { ButtonLabel(text: againLabel) }
                     .buttonStyle(NotchButtonStyle(kind: .secondary))
                 Button(action: onComplete) { ButtonLabel(text: "완료", shortcut: "↵") }
                     .buttonStyle(NotchButtonStyle(kind: .primary))
@@ -55,6 +55,10 @@ struct ExpiredView: View {
         if let message = CustomIssueText.message(for: chip.customText) {
             CustomIssueText(message: message)
         }
+    }
+
+    private var againLabel: String {
+        QuantumChip.againLabel(chipMin: chipMin, customText: chip.customText)
     }
 
     private func submitCustom() {
