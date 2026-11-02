@@ -20,11 +20,14 @@ final class CollapsedLayoutTests: XCTestCase {
     func test_R008_expiredNotchIsSymmetric() {
         let sides = NotchLayout.collapsedSideWidths(
             timer: .expired(title: "가짜 할 일", chipMin: 25), remainingSeconds: 0, style: .notch)
-        XCTAssertEqual(sides.leading, sides.trailing)
+        XCTAssertEqual(sides.leading, 64)
+        XCTAssertEqual(sides.trailing, 64)
     }
 
     func test_R011_floatingKeepsContentWidths() {
         let timer = NotchTimer.running(title: "가짜 할 일", quantumMin: 25, startedAt: t0, endsAt: t0 + 1500)
+        XCTAssertEqual(
+            NotchLayout.collapsedSideWidths(timer: timer, remainingSeconds: 1122, style: .floating).leading, 104)
         XCTAssertEqual(
             NotchLayout.collapsedSideWidths(timer: timer, remainingSeconds: 1122, style: .floating).trailing, 52)
         XCTAssertEqual(

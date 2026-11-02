@@ -51,7 +51,8 @@ enum NotchLayout {
         isHovering && isExpanded && style == .notch
     }
 
-    /// 고정 패널 크기: 가장 넓은 접힌 판(구멍 양옆을 넓은 쪽 폭으로 맞춘 대칭 폭)과 펼친 판이 들어가고,
+    /// 고정 패널 크기: 접힌 판(어느 화면이든 한쪽 칸이 104pt를 넘지 않으므로 구멍 양옆 104pt로 잡은 넉넉한 폭)과
+    /// 펼친 판이 들어가고,
     /// 스프링이 조금 넘쳐도 잘리지 않게 여유를 둔다.
     static func panelSize(metrics: NotchMetrics) -> CGSize {
         let overshoot: CGFloat = 24
