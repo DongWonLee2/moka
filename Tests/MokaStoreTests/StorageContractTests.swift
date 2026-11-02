@@ -1,15 +1,19 @@
 import Foundation
 import MokaCore
+import MokaStore
 import Testing
 
 /// 공용 계약 시험의 구현 선택(data-model §3). 시험 안에서 새 저장소를 만든다.
-/// `grdb`는 GRDB 구현이 들어오는 단위 2(T015)에서 case와 만들기 분기를 함께 더한다.
 enum StoreKind: CaseIterable, Sendable {
-    case memory
+    case memory, grdb
 
     func makeStores() throws -> (tasks: any TaskRepository, contexts: any ContextStore) {
         switch self {
-        case .memory: (InMemoryTaskRepository(), InMemoryContextStore())
+        case .memory:
+            return (InMemoryTaskRepository(), InMemoryContextStore())
+        case .grdb:
+            let db = try TestDatabase.migratedInMemory()
+            return (GRDBTaskRepository(db), GRDBContextStore(db))
         }
     }
 }

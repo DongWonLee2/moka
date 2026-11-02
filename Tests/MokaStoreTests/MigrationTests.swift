@@ -5,7 +5,7 @@ import Testing
 
 @Test("ADR-0004 FR-16: 등록된 마이그레이션 이름은 고정 목록과 같다(덧붙이기만 허용)")
 func migrationNamesAreFixed() {
-    #expect(MokaMigrations.migrator.migrations == ["v1_settings"])
+    #expect(MokaMigrations.migrator.migrations == ["v1_settings", "v2_tasks_contexts_checkpoints_log"])
 }
 
 @Test("ADR-0004 FR-16: 마이그레이션 뒤 스키마가 schema/moka-schema.sql 스냅샷과 같다")
