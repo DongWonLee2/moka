@@ -145,7 +145,9 @@ func foreignKeysRestrictDelete() throws {
         let error = #expect(throws: DatabaseError.self) {
             try db.write { try $0.execute(sql: "DELETE FROM tasks WHERE id = ?", arguments: [id]) }
         }
-        #expect(error?.extendedResultCode == .SQLITE_CONSTRAINT_FOREIGNKEY)
+        // SQLite는 RESTRICT 위반을 확장 코드 SQLITE_CONSTRAINT_TRIGGER(1811)로 알린다. 문구로 외래 키임을 확인한다.
+        #expect(error?.resultCode == .SQLITE_CONSTRAINT)
+        #expect(error?.message == "FOREIGN KEY constraint failed")
     }
     #expect(try db.read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM tasks") } == 2)
 
