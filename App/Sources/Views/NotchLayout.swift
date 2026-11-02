@@ -21,13 +21,14 @@ enum NotchLayout {
     }
 
     /// 접힌 판의 구멍 왼쪽·오른쪽 칸 폭(시안 v3.5). 빈 상태는 점 하나 자리 28pt씩,
-    /// 할 일이 있으면 노치는 양쪽 104pt(R-006), 떠 있는 창은 오른쪽을 "18:42" 52pt·"1:04:59" 64pt로 줄인다.
+    /// 할 일이 있으면 노치는 양쪽 64pt(R-006), 떠 있는 창은 왼쪽 104pt·오른쪽 "18:42" 52pt·"1:04:59" 64pt.
     static func collapsedSideWidths(
         timer: NotchTimer, remainingSeconds: Int?, style: PanelStyle
     ) -> (leading: CGFloat, trailing: CGFloat) {
         guard case .empty = timer else {
-            // 노치는 판이 카메라 구멍 양옆으로 같은 폭이어야 화면 가운데에 맞아 보인다(사용자 결정 2026-11-02).
-            guard style == .floating else { return (104, 104) }
+            // 노치는 판이 카메라 구멍 양옆으로 같은 폭이어야 화면 가운데에 맞아 보이고, 메뉴 막대를 덜 가리게
+            // "1:04:59"가 들어가는 가장 작은 폭 64pt로 둔다(사용자 결정 2026-11-02).
+            guard style == .floating else { return (64, 64) }
             return (104, (remainingSeconds ?? 0) >= 3600 ? 64 : 52)
         }
         return (28, 28)
