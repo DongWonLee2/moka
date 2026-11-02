@@ -137,7 +137,8 @@ func dayBoundaryRoundTrip(zone: TimeZone) {
         for instant in instantRuns().joined() {
             let current = DayBoundary.day(containing: instant, dayStart: start, calendar: calendar)
             let begin = DayBoundary.start(of: current, dayStart: start, calendar: calendar)
-            let end = DayBoundary.start(of: current.adding(days: 1, calendar: calendar), dayStart: start, calendar: calendar)
+            let end = DayBoundary.start(
+                of: current.adding(days: 1, calendar: calendar), dayStart: start, calendar: calendar)
             #expect(begin <= instant && instant < end, "\(text) \(UTCTimestamp.format(instant)) → \(current.text)")
             #expect(DayBoundary.day(containing: begin, dayStart: start, calendar: calendar) == current)
             #expect(
@@ -153,7 +154,7 @@ func dayBoundaryRoundTrip(zone: TimeZone) {
 /// 끝나면 원래 값으로 되돌린다. MokaCore와 다른 시험은 시스템 시간대를 읽지 않는다.
 @Suite(.serialized)
 struct ADR0010DecisionTests {
-    private static func withSystemTimeZone(_ identifier: String, _ body: () throws -> Void) rethrows {
+    private static func withSystemTimeZone(_ identifier: String, _ body: () -> Void) {
         let saved = ProcessInfo.processInfo.environment["TZ"]
         setenv("TZ", identifier, 1)
         NSTimeZone.resetSystemTimeZone()
@@ -161,22 +162,22 @@ struct ADR0010DecisionTests {
             if let saved { setenv("TZ", saved, 1) } else { unsetenv("TZ") }
             NSTimeZone.resetSystemTimeZone()
         }
-        try body()
+        body()
     }
 
     @Test("ADR-0010: 시스템 시간대가 바뀌면 (a) 한 번 만든 autoupdatingCurrent 달력과 (b) 판정마다 새로 만든 달력 모두 새 시간대를 따른다")
-    func judgmentFollowsSystemTimeZoneChange() throws {
+    func judgmentFollowsSystemTimeZoneChange() {
         // 2026-11-02T03:00:00Z = 서울 11-02 12:00, 뉴욕 11-01 22:00(EST)
         let instant = utc("2026-11-02T03:00:00Z")
         let start = dayStart("06:00")
 
-        try Self.withSystemTimeZone("Asia/Seoul") {
+        Self.withSystemTimeZone("Asia/Seoul") {
             let onceA = GregorianCalendar.make(timeZone: .autoupdatingCurrent)
             let snapshot = GregorianCalendar.make(timeZone: .current)
             #expect(DayBoundary.day(containing: instant, dayStart: start, calendar: onceA).text == "2026-11-02")
             #expect(DayBoundary.day(containing: instant, dayStart: start, calendar: snapshot).text == "2026-11-02")
 
-            try Self.withSystemTimeZone("America/New_York") {
+            Self.withSystemTimeZone("America/New_York") {
                 // (a) 바꾸기 전에 한 번 만들어 둔 같은 달력
                 #expect(DayBoundary.day(containing: instant, dayStart: start, calendar: onceA).text == "2026-11-01")
                 // (b) 판정 순간 TimeZone.current로 새로 만든 달력

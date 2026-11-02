@@ -202,11 +202,11 @@ enum SimTimestamp {
             throw invalid()
         }
 
-        guard (1...12).contains(month), (1...daysInMonth(year: year, month: month)).contains(day), hour < 24,
-            minute < 60, second < 60
+        guard (1...12).contains(month), (1...GregorianCivil.daysInMonth(year: year, month: month)).contains(day),
+            hour < 24, minute < 60, second < 60
         else { throw invalid() }
 
-        let days = daysFromCivil(year: year, month: month, day: day)
+        let days = GregorianCivil.daysFromCivil(year: year, month: month, day: day)
         let epochSeconds = days * 86_400 + hour * 3600 + minute * 60 + second - offsetSeconds
         guard epochSeconds >= minEpochSeconds, epochSeconds <= maxEpochSeconds else {
             throw SimError(
@@ -216,49 +216,11 @@ enum SimTimestamp {
     }
 
     /// 출력 `at`이 4자리 연도를 지키는 범위: UTC 0001-01-01T00:00:00Z ... 9999-12-31T23:59:59Z.
-    private static let minEpochSeconds = daysFromCivil(year: 1, month: 1, day: 1) * 86_400
-    private static let maxEpochSeconds = daysFromCivil(year: 10_000, month: 1, day: 1) * 86_400 - 1
+    private static let minEpochSeconds = GregorianCivil.daysFromCivil(year: 1, month: 1, day: 1) * 86_400
+    private static let maxEpochSeconds = GregorianCivil.daysFromCivil(year: 10_000, month: 1, day: 1) * 86_400 - 1
 
     /// UTC `YYYY-MM-DDTHH:MM:SSZ`.
     static func formatUTC(_ epochSeconds: Int) -> String {
-        let days = epochSeconds >= 0 ? epochSeconds / 86_400 : (epochSeconds - 86_399) / 86_400
-        let secondsOfDay = epochSeconds - days * 86_400
-        let (year, month, day) = civilFromDays(days)
-        func pad(_ value: Int, _ width: Int) -> String {
-            let text = String(value)
-            return String(repeating: "0", count: max(0, width - text.count)) + text
-        }
-        return "\(pad(year, 4))-\(pad(month, 2))-\(pad(day, 2))T\(pad(secondsOfDay / 3600, 2)):"
-            + "\(pad(secondsOfDay % 3600 / 60, 2)):\(pad(secondsOfDay % 60, 2))Z"
-    }
-
-    private static func daysInMonth(year: Int, month: Int) -> Int {
-        switch month {
-        case 2: (year % 4 == 0 && year % 100 != 0) || year % 400 == 0 ? 29 : 28
-        case 4, 6, 9, 11: 30
-        default: 31
-        }
-    }
-
-    // Howard Hinnant의 days_from_civil / civil_from_days(그레고리력, 1970-01-01 = 0).
-    private static func daysFromCivil(year: Int, month: Int, day: Int) -> Int {
-        let y = month <= 2 ? year - 1 : year
-        let era = (y >= 0 ? y : y - 399) / 400
-        let yoe = y - era * 400
-        let doy = (153 * (month > 2 ? month - 3 : month + 9) + 2) / 5 + day - 1
-        let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy
-        return era * 146_097 + doe - 719_468
-    }
-
-    private static func civilFromDays(_ days: Int) -> (Int, Int, Int) {
-        let z = days + 719_468
-        let era = (z >= 0 ? z : z - 146_096) / 146_097
-        let doe = z - era * 146_097
-        let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365
-        let doy = doe - (365 * yoe + yoe / 4 - yoe / 100)
-        let mp = (5 * doy + 2) / 153
-        let day = doy - (153 * mp + 2) / 5 + 1
-        let month = mp < 10 ? mp + 3 : mp - 9
-        return (yoe + era * 400 + (month <= 2 ? 1 : 0), month, day)
+        GregorianCivil.formatUTC(epochSeconds)
     }
 }

@@ -141,7 +141,9 @@ func dayStartParsesValidText(text: String, hour: Int, minute: Int) throws {
 
 @Test(
     "FR-09 R-114: 틀린 하루 시작 시각은 nil",
-    arguments: ["", "6:00", "06:0", "24:00", "12:60", "06:00:00", "06-00", " 06:00", "06:00 ", "-1:00", "０６:00", "ab:cd"])
+    arguments: [
+        "", "6:00", "06:0", "24:00", "12:60", "06:00:00", "06-00", " 06:00", "06:00 ", "-1:00", "０６:00", "ab:cd",
+    ])
 func dayStartRejectsInvalidText(text: String) {
     #expect(DayStart(text: text) == nil)
 }
@@ -168,7 +170,8 @@ func taskEditFieldDistinguishesCases() throws {
         }
     }
     #expect(TaskEdit.Field<Int>.set(30) != .set(45))
-    let edit = TaskEdit(title: "가짜 할 일 B", deadline: .clear, estMin: .set(30), recurrence: .weekly, weekday: Weekday(rawValue: 4))
+    let edit = TaskEdit(
+        title: "가짜 할 일 B", deadline: .clear, estMin: .set(30), recurrence: .weekly, weekday: Weekday(rawValue: 4))
     #expect(edit.deadline == .clear)
     #expect(edit.estMin == .set(30))
 }
@@ -199,7 +202,9 @@ func contextNameIsTrimmed() {
     #expect(MokaContext.normalizedName("") == nil)
 }
 
-@Test("FR-01 R-101: 예상 소요는 nil 또는 1 이상", arguments: [(nil, true), (1, true), (180, true), (0, false), (-5, false)] as [(Int?, Bool)])
+@Test(
+    "FR-01 R-101: 예상 소요는 nil 또는 1 이상",
+    arguments: [(nil, true), (1, true), (180, true), (0, false), (-5, false)] as [(Int?, Bool)])
 func estimatedMinutesValidation(value: Int?, valid: Bool) {
     #expect(MokaTask.isValidEstMin(value) == valid)
 }

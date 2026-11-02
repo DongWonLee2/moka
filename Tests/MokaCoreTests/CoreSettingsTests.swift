@@ -92,7 +92,12 @@ func onboardingShownWithoutRow() {
     #expect(!CoreSettings.isOnboardingDone(in: InMemorySettingsStore()))
 }
 
-@Test("FR-21 R-116: 값이 정확히 true일 때만 온보딩을 끝낸 것으로 읽는다", arguments: [("true", true), ("TRUE", false), ("True", false), ("1", false), ("yes", false), ("", false), (" true", false), ("false", false)])
+@Test(
+    "FR-21 R-116: 값이 정확히 true일 때만 온보딩을 끝낸 것으로 읽는다",
+    arguments: [
+        ("true", true), ("TRUE", false), ("True", false), ("1", false), ("yes", false), ("", false), (" true", false),
+        ("false", false),
+    ])
 func onboardingDoneOnlyForExactTrue(stored: String, done: Bool) throws {
     let store = InMemorySettingsStore()
     try store.setValue(stored, for: CoreSettings.onboardingDoneKey)

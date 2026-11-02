@@ -36,7 +36,9 @@ private func checkpoint(_ taskID: TaskID, _ trigger: CheckpointTrigger, at: Date
         createdAt: at)
 }
 
-private func decision(_ taskID: TaskID, _ action: UserAction, at: Date, judgment: Judgment? = nil, snapshot: String? = nil)
+private func decision(
+    _ taskID: TaskID, _ action: UserAction, at: Date, judgment: Judgment? = nil, snapshot: String? = nil
+)
     -> NewDecisionLogEntry
 {
     NewDecisionLogEntry(
@@ -52,7 +54,8 @@ func taskInsertRoundTrip(kind: StoreKind) throws {
     let a = try repo.insertTask(newTask("가짜 할 일 A", deadline: "2026-11-30", estMin: 30), cycleDay: nil, at: base)
     let b = try repo.insertTask(newTask("가짜 할 일 B", recurrence: .daily), cycleDay: day("2026-10-26"), at: base)
     let c = try repo.insertTask(
-        newTask("가짜 할 일 C", recurrence: .weekly, weekday: 4), cycleDay: day("2026-10-21"), at: base.addingTimeInterval(60))
+        newTask("가짜 할 일 C", recurrence: .weekly, weekday: 4), cycleDay: day("2026-10-21"),
+        at: base.addingTimeInterval(60))
 
     #expect(
         a
@@ -165,7 +168,8 @@ func sequentialBatchesKeepOrder(kind: StoreKind) throws {
     a.skipCount = 1
     try repo.apply(
         StoreBatch(
-            updatedTasks: [a], newCheckpoints: [checkpoint(a.id, .skip, at: base.addingTimeInterval(60), next: "가짜 이어서 A")],
+            updatedTasks: [a],
+            newCheckpoints: [checkpoint(a.id, .skip, at: base.addingTimeInterval(60), next: "가짜 이어서 A")],
             newDecisions: [decision(a.id, .skip, at: base.addingTimeInterval(60))]))
     b.status = .done
     try repo.apply(
@@ -202,7 +206,8 @@ func applyIsAtomic(kind: StoreKind) throws {
     changed.status = .done
 
     let missingCheckpoint = StoreBatch(
-        updatedTasks: [changed], newCheckpoints: [checkpoint(original.id, .quantum, at: base), checkpoint(99, .quantum, at: base)],
+        updatedTasks: [changed],
+        newCheckpoints: [checkpoint(original.id, .quantum, at: base), checkpoint(99, .quantum, at: base)],
         newDecisions: [decision(original.id, .done, at: base)])
     #expect(throws: StoreError.taskNotFound(99)) { try repo.apply(missingCheckpoint) }
 
@@ -221,7 +226,8 @@ func applyIsAtomic(kind: StoreKind) throws {
     #expect(try repo.decisions().isEmpty)
 
     // 실패한 묶음이 id를 쓰지 않는다.
-    try repo.apply(StoreBatch(updatedTasks: [], newCheckpoints: [checkpoint(original.id, .quantum, at: base)], newDecisions: []))
+    try repo.apply(
+        StoreBatch(updatedTasks: [], newCheckpoints: [checkpoint(original.id, .quantum, at: base)], newDecisions: []))
     #expect(try repo.checkpoints().map(\.id) == [1])
 }
 
@@ -275,13 +281,17 @@ func judgmentColumnsNeedProvider(kind: StoreKind) throws {
     let task = try repo.insertTask(newTask("가짜 할 일 A"), cycleDay: nil, at: base)
     #expect(throws: StoreError.invalidValue(column: "model_snapshot")) {
         try repo.apply(
-            StoreBatch(updatedTasks: [], newCheckpoints: [], newDecisions: [decision(task.id, .done, at: base, snapshot: "가짜-모델")]))
+            StoreBatch(
+                updatedTasks: [], newCheckpoints: [],
+                newDecisions: [decision(task.id, .done, at: base, snapshot: "가짜-모델")]))
     }
     #expect(try repo.decisions().isEmpty)
 
     let fallback = Judgment(provider: "fallback", questionVersion: nil, probsJSON: nil, stateHash: nil)
     try repo.apply(
-        StoreBatch(updatedTasks: [], newCheckpoints: [], newDecisions: [decision(task.id, .done, at: base, judgment: fallback)]))
+        StoreBatch(
+            updatedTasks: [], newCheckpoints: [], newDecisions: [decision(task.id, .done, at: base, judgment: fallback)]
+        ))
     #expect(try repo.decisions().map(\.judgment) == [fallback])
 }
 
