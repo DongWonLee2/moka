@@ -151,9 +151,8 @@ func foreignKeysRestrictDelete() throws {
     }
     #expect(try db.read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM tasks") } == 2)
 
-    let orphan = #expect(throws: DatabaseError.self) {
-        try db.write { try $0.execute(sql: checkpointRows[0].sql.replacingOccurrences(of: "VALUES (1,", with: "VALUES (99,")) }
-    }
+    let orphanSQL = checkpointRows[0].sql.replacingOccurrences(of: "VALUES (1,", with: "VALUES (99,")
+    let orphan = #expect(throws: DatabaseError.self) { try db.write { try $0.execute(sql: orphanSQL) } }
     #expect(orphan?.extendedResultCode == .SQLITE_CONSTRAINT_FOREIGNKEY)
 }
 

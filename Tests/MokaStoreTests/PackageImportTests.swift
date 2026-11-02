@@ -31,7 +31,8 @@ private func declaredTestTargets(in manifest: String) throws -> [String: Set<Str
 }
 
 private func importedModules(in source: String) throws -> [(line: Int, module: String)] {
-    let importLine = try Regex(#"^\s*(?:@testable\s+)?import\s+(?:(?:struct|class|enum|protocol|func|var|let|typealias)\s+)?(\w+)"#)
+    let kinds = "struct|class|enum|protocol|func|var|let|typealias"
+    let importLine = try Regex(#"^\s*(?:@testable\s+)?import\s+(?:(?:"# + kinds + #")\s+)?(\w+)"#)
     return source.components(separatedBy: .newlines).enumerated().compactMap { index, line in
         guard let match = line.firstMatch(of: importLine), let module = match.output[1].substring else { return nil }
         return (index + 1, String(module))
