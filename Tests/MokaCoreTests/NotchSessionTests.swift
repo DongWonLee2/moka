@@ -583,3 +583,30 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
         #expect(again.isEmpty)
     }
 }
+
+// MARK: - 빠진 칸 보강(data-model §4.2 표·커서 수명)
+
+@Suite struct NotchSessionGapTests {
+    @Test("FR-05 R-104: 시간 끝에서 다른 할 일은 거부(세션 그대로)")
+    func nextDraftRejectedWhenExpired() throws {
+        var (expired, tasks) = try started(Fake.todos(1...2))
+        _ = expired.timer.apply(.tick, at: t0.addingTimeInterval(25 * 60), defaultQuantumMin: 25)
+        #expect(expired.nextDraft(Fake.input(tasks, now: t0.addingTimeInterval(26 * 60))) == expired)
+    }
+
+    @Test("FR-07 R-107: 빈 상태에서 다시 시작은 거부")
+    func restartRejectedWhenEmpty() {
+        #expect(throws: SessionError.notAllowed) {
+            try NotchSession.initial.restart(.empty, quantumMin: 25, Fake.input([Fake.task(1)]))
+        }
+    }
+
+    @Test("FR-05 R-104: 다시 시작 뒤 커서는 그대로")
+    func restartKeepsCursor() throws {
+        var (running, tasks) = try started(Fake.todos(1...3))
+        running.previousTaskID = 3
+        let now = t0.addingTimeInterval(30 * 60)
+        let step = try running.restart(.empty, quantumMin: 25, Fake.input(tasks, now: now))
+        #expect(step.session.previousTaskID == 3)
+    }
+}
