@@ -6,13 +6,13 @@ import Testing
 
 private let start = Fake.noon
 
+/// (지난 초, 작업 시간, 기대 경과 분)
+private let elapsedCases: [(Double, Int, Int)] = [
+    (0, 25, 0), (59.999, 25, 0), (60, 25, 1), (779.9, 25, 12), (1500, 25, 25), (2400, 25, 25), (10_800, 180, 180),
+]
+
 @Suite struct ElapsedMinutesTests {
-    @Test(
-        "FR-07 R-108: 경과 분은 지난 초를 60으로 나눠 버리고 0...작업 시간으로 자른다",
-        arguments: [
-            (0.0, 25, 0), (59.999, 25, 0), (60.0, 25, 1), (12 * 60 + 59.9, 25, 12), (25 * 60.0, 25, 25),
-            (40 * 60.0, 25, 25), (3 * 3600.0, 180, 180),
-        ])
+    @Test("FR-07 R-108: 경과 분은 지난 초를 60으로 나눠 버리고 0...작업 시간으로 자른다", arguments: elapsedCases)
     func floorsAndClamps(seconds: Double, quantumMin: Int, expected: Int) {
         let now = start.addingTimeInterval(seconds)
         #expect(Checkpoint.elapsedMinutes(startedAt: start, now: now, quantumMin: quantumMin) == expected)

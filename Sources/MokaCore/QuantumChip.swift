@@ -1,4 +1,5 @@
-/// 직접 입력을 받지 않는 이유(R-004). 화면 문구는 앱이 정한다.
+/// 직접 입력을 받지 않는 이유(R-004). 안내 문장은 아직 앱(`CustomIssueText.message(for:)`)이 고른다.
+/// 화면 문구 원칙(`NotchStatus` 주석, #42)에서 남은 예외다.
 public enum CustomQuantumIssue: Equatable, Sendable {
     /// 180분을 넘는다(자릿수가 너무 커 `Int`로 못 읽는 숫자도 포함).
     case aboveMax

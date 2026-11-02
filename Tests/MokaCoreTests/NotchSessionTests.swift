@@ -91,7 +91,8 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
 
     @Test("FR-01 R-103: 초안에서 빠른 입력이면 새 할 일이 초안이 되고 고른 칩은 그대로, 커서도 그대로")
     func addFromDraftKeepsChip() {
-        let session = NotchSession(timer: draft("가짜 할 일 1", chip: 60, picked: true), taskID: 1, previousTaskID: 4, run: nil)
+        let session = NotchSession(
+            timer: draft("가짜 할 일 1", chip: 60, picked: true), taskID: 1, previousTaskID: 4, run: nil)
         let added = Fake.task(9)
         let next = session.addedTask(added, Fake.input([Fake.task(1), added]))
         #expect(next.timer == draft("가짜 할 일 9", chip: 60, picked: true))
@@ -111,7 +112,8 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
 @Suite struct NotchSessionNextDraftTests {
     @Test("FR-05 R-104: 다른 할 일은 커서를 지금 초안으로 두고 다음 후보로 초안을 바꾼다(칩 유지)")
     func nextDraftAdvances() {
-        let session = NotchSession(timer: draft("가짜 할 일 1", chip: 45, picked: true), taskID: 1, previousTaskID: nil, run: nil)
+        let session = NotchSession(
+            timer: draft("가짜 할 일 1", chip: 45, picked: true), taskID: 1, previousTaskID: nil, run: nil)
         let next = session.nextDraft(Fake.input(Fake.todos(1...3)))
         #expect(next.timer == draft("가짜 할 일 2", chip: 45, picked: true))
         #expect(next.taskID == 2)
@@ -181,7 +183,8 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
         #expect(dropped == NotchSession(timer: .empty(draft: nil), taskID: nil, previousTaskID: 2, run: nil))
         let (running, _) = try started(Fake.todos(1...2))
         #expect(
-            running.taskDropped(1) == NotchSession(timer: .empty(draft: nil), taskID: nil, previousTaskID: nil, run: nil))
+            running.taskDropped(1)
+                == NotchSession(timer: .empty(draft: nil), taskID: nil, previousTaskID: nil, run: nil))
     }
 
     @Test("FR-01 R-102: 노치에 없는 할 일을 지우면 세션 그대로")
@@ -196,7 +199,8 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
         var renamed = Fake.task(1)
         renamed.title = "가짜 할 일 새 이름"
 
-        let drafted = NotchSession(timer: draft("가짜 할 일 1", chip: 60, picked: true), taskID: 1, previousTaskID: 3, run: nil)
+        let drafted = NotchSession(
+            timer: draft("가짜 할 일 1", chip: 60, picked: true), taskID: 1, previousTaskID: 3, run: nil)
         #expect(drafted.edited(renamed).timer == draft("가짜 할 일 새 이름", chip: 60, picked: true))
         #expect(drafted.edited(renamed).previousTaskID == 3)
 
@@ -399,7 +403,8 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
         #expect(step.batch.newDecisions.isEmpty)
         #expect(step.batch.updatedTasks.map(\.status) == [.active])
         #expect(step.batch.updatedTasks.map(\.firstAction) == ["가짜 다음 줄"])
-        #expect(step.session.timer == .running(title: "가짜 할 일 1", quantumMin: 15, startedAt: now, endsAt: now + 15 * 60))
+        #expect(
+            step.session.timer == .running(title: "가짜 할 일 1", quantumMin: 15, startedAt: now, endsAt: now + 15 * 60))
         #expect(step.session.run == RunInfo(startedAt: now, quantumMin: 15))
         #expect(step.session.taskID == 1)
     }
@@ -461,7 +466,8 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
         for _ in 0..<5 {
             seen.append(try #require(session.taskID))
             now += 60
-            session = try SessionCommit.commit(session.start(Fake.input(try repository.tasks(), now: now)), to: repository)
+            session = try SessionCommit.commit(
+                session.start(Fake.input(try repository.tasks(), now: now)), to: repository)
             now += 60
             session = try SessionCommit.commit(
                 session.switchTask(.empty, Fake.input(try repository.tasks(), now: now)), to: repository)
@@ -493,7 +499,8 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
 
         func startNext() throws {
             now += 60
-            session = try SessionCommit.commit(session.start(Fake.input(try repository.tasks(), now: now)), to: repository)
+            session = try SessionCommit.commit(
+                session.start(Fake.input(try repository.tasks(), now: now)), to: repository)
         }
         func pickNext() throws {
             session = session.picked(Fake.input(try repository.tasks(), now: now))
@@ -504,7 +511,8 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
         #expect(try repository.decisions().isEmpty)
 
         now += 60
-        session = try SessionCommit.commit(session.complete(nil, Fake.input(try repository.tasks(), now: now)), to: repository)
+        session = try SessionCommit.commit(
+            session.complete(nil, Fake.input(try repository.tasks(), now: now)), to: repository)
         #expect(try repository.decisions().count == 1)
         try pickNext()
 
@@ -529,11 +537,13 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
             Fake.input(try repository.tasks()))
         #expect(session.taskID == 2)
         session = try SessionCommit.commit(session.start(Fake.input(try repository.tasks())), to: repository)
-        session = try SessionCommit.commit(session.complete(nil, Fake.input(try repository.tasks(), now: t0 + 60)), to: repository)
+        session = try SessionCommit.commit(
+            session.complete(nil, Fake.input(try repository.tasks(), now: t0 + 60)), to: repository)
         session = session.picked(Fake.input(try repository.tasks()))
         #expect(session.taskID == 1)
         session = try SessionCommit.commit(session.start(Fake.input(try repository.tasks())), to: repository)
-        session = try SessionCommit.commit(session.skip(.empty, Fake.input(try repository.tasks(), now: t0 + 60)), to: repository)
+        session = try SessionCommit.commit(
+            session.skip(.empty, Fake.input(try repository.tasks(), now: t0 + 60)), to: repository)
         session = session.picked(Fake.input(try repository.tasks()))
         #expect(session.taskID == 3)
     }
@@ -550,7 +560,8 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
         _ = try repository.insertTask(new.task, cycleDay: new.cycleDay, at: startAt)
 
         var session = NotchSession.initial.picked(Fake.input(try repository.tasks(), now: startAt))
-        session = try SessionCommit.commit(session.start(Fake.input(try repository.tasks(), now: startAt)), to: repository)
+        session = try SessionCommit.commit(
+            session.start(Fake.input(try repository.tasks(), now: startAt)), to: repository)
         let doneAt = Fake.at(2027, 1, 13, 6, 10)
         session = try SessionCommit.commit(
             session.complete(nil, Fake.input(try repository.tasks(), now: doneAt)), to: repository)
