@@ -51,3 +51,14 @@ Agent 추천안 채택(사용자 승인 2026-10-30). 판단 이유: 사용자 �
 
 - `TimeZone.autoupdatingCurrent`를 넣은 `Calendar`가 시스템 시간대 변경을 앱 재시작 없이 따르는지.
 - `Calendar.date(bySettingHour:minute:second:of:matchingPolicy:repeatedTimePolicy:direction:)`의 일광절약시간 처리가 리눅스 Foundation에서 macOS와 같은지(research R9).
+
+## 결정 검증 결과 (2026-11-02, Issue #54)
+
+- 고른 방식: (a) 앱이 `GregorianCalendar.make(timeZone: .autoupdatingCurrent)`로 달력을 한 번 만들어 둔다. (b)도 시험을 통과했지만 고르지 않았다.
+- 근거:
+  - 시험 `ADR-0010: 시스템 시간대가 바뀌면 (a) 한 번 만든 autoupdatingCurrent 달력과 (b) 판정마다 새로 만든 달력 모두 새 시간대를 따른다`(`Tests/MokaCoreTests/DayBoundaryTests.swift`, `ADR0010DecisionTests`). `TZ` 환경 변수와 `NSTimeZone.resetSystemTimeZone()`으로 시스템 시간대를 `Asia/Seoul` → `America/New_York`으로 바꾸면 (a)의 같은 달력과 (b)의 새 달력이 모두 새 시간대로 판정한다. macOS(Swift 6.4)와 리눅스 `swift:6.3.3-noble` 모두 PASS.
+  - 같은 시험의 대조: 바꾸기 전에 `TimeZone.current` 값으로 만든 달력은 옛 시간대에 머문다. (b)는 판정마다 새로 만들어야만 맞고, 한 곳이라도 만들어 둔 달력을 다시 쓰면 틀린다. (a)는 만드는 곳이 하나라 그 실수가 생기지 않는다.
+  - `NSTimeZone.default`를 바꾸는 방식은 두 플랫폼 모두 `TimeZone.current`·`autoupdatingCurrent`에 반영되지 않아 시험에 쓰지 않았다(사전 실험, 커밋 안 함).
+- 그레고리력 고정: 시험 `ADR-0010: make는 늘 그레고리력이라 다른 달력 설정과 무관하게 LocalDay 텍스트가 같다` PASS(두 플랫폼). 불교력·일본력을 그대로 주입하면 `LocalDay` 텍스트가 달라지는 대조도 같은 시험에 있다.
+- "미확인" 둘째 줄(`date(bySettingHour:…matchingPolicy:repeatedTimePolicy:direction:)`의 일광절약시간 처리): `America/New_York` 3월·11월 전환일과 전환 구간 하루 시작(02:30·01:30) 시험이 macOS와 리눅스에서 같은 결과로 PASS.
+- 남은 미확인: 실제 시스템 설정 앱에서 시간대를 바꿀 때(환경 변수가 아닌 경로) 앱 재시작 없이 따르는지는 앱 연결 단계(spec 002 단위 5)에서 사람이 확인한다.
