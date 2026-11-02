@@ -28,7 +28,7 @@ struct NotchContentView: View {
 
     var body: some View {
         let palette = PanelPalette.resolve(style: style, colorScheme: colorScheme)
-        let sides = NotchLayout.collapsedSideWidths(timer: timer, remainingSeconds: remainingSeconds)
+        let sides = NotchLayout.collapsedSideWidths(timer: timer, remainingSeconds: remainingSeconds, style: style)
         ZStack(alignment: .top) {
             HStack(spacing: 0) {
                 if !isExpanded {

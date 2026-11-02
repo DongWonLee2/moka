@@ -21,24 +21,26 @@ enum NotchLayout {
     }
 
     /// 접힌 판의 구멍 왼쪽·오른쪽 칸 폭(시안 v3.5). 빈 상태는 점 하나 자리 28pt씩,
-    /// 할 일이 있으면 왼쪽 104pt(R-006), 오른쪽은 "18:42" 52pt·"1:04:59" 64pt.
+    /// 할 일이 있으면 노치는 양쪽 104pt(R-006), 떠 있는 창은 오른쪽을 "18:42" 52pt·"1:04:59" 64pt로 줄인다.
     static func collapsedSideWidths(
-        timer: NotchTimer, remainingSeconds: Int?
+        timer: NotchTimer, remainingSeconds: Int?, style: PanelStyle
     ) -> (leading: CGFloat, trailing: CGFloat) {
         guard case .empty = timer else {
+            // 노치는 판이 카메라 구멍 양옆으로 같은 폭이어야 화면 가운데에 맞아 보인다(사용자 결정 2026-11-02).
+            guard style == .floating else { return (104, 104) }
             return (104, (remainingSeconds ?? 0) >= 3600 ? 64 : 52)
         }
         return (28, 28)
     }
 
-    /// 판을 가로로 옮길 거리. 접힌 판은 양옆 폭이 달라 그대로 가운데에 두면 구멍이 노치에서 어긋나므로
+    /// 판을 가로로 옮길 거리. 접힌 판의 양옆 폭이 다르면 그대로 가운데에 두면 구멍이 노치에서 어긋나므로
     /// 구멍 가운데가 판 자리 가운데(노치 가운데)에 오게 민다. 펼친 판은 대칭이라 0.
     /// 떠 있는 창은 맞출 노치가 없으므로 판 자체를 가운데에 둔다(0).
     static func horizontalOffset(
         timer: NotchTimer, remainingSeconds: Int?, isExpanded: Bool, style: PanelStyle
     ) -> CGFloat {
         guard !isExpanded, style == .notch else { return 0 }
-        let sides = collapsedSideWidths(timer: timer, remainingSeconds: remainingSeconds)
+        let sides = collapsedSideWidths(timer: timer, remainingSeconds: remainingSeconds, style: style)
         return (sides.trailing - sides.leading) / 2
     }
 
