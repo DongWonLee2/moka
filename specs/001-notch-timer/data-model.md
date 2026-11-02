@@ -90,14 +90,19 @@ public struct MokaClock: Sendable {
 public enum QuantumChip {
     public static let presets = Defaults.quantumPresets      // [15, 25, 45, 60]
     public static func parseCustom(_ text: String) -> Int?   // Int(text)가 1...180이면 값, 아니면 nil(시작 불가)
+    public static func customIssue(_ text: String) -> CustomQuantumIssue?   // 받지 않는 이유(빈칸·받는 값은 nil)
+    public static func segments(chipMin: Int, customText: String?) -> [QuantumChipSegment]  // 프리셋 넷 + 직접 입력 칸
+    public static func startAllowed(customText: String?) -> Bool
+    public static func againLabel(chipMin: Int, customText: String?) -> String  // 시간 끝 버튼 "N분 더", 직접 입력이 틀리면 "— 분 더"(#52)
 }
+public struct QuantumChipSegment { public let kind: Kind /* .preset(Int) | .custom */; public let label: String; public let selected: Bool }
 public enum RemainingFormat {
     public static func string(_ seconds: Int) -> String      // 60분 미만 "M:SS", 이상 "H:MM:SS", 맨 앞 자리는 0 채움 없음: 1500→"25:00", 599→"9:59", 3599→"59:59", 3600→"1:00:00", 5400→"1:30:00", 0→"0:00", 음수→"0:00"(#13)
 }
 ```
 
 - 직접 입력은 Swift `Int(_:)` 결과를 그대로 쓰고 1…180만 받는다. 빈 값, 숫자 아님, 소수는 nil(R-004).
-- 미리 채움은 제목 입력 직후와 시간 끝에 `default_quantum_min`(R-003). 시간 고르기 화면은 Enter가 칩 값으로 시작이고, 시간 끝 화면은 Enter(기본 버튼)가 완료이며 다시 시작은 버튼으로만 한다. 시간 끝 화면에서 직접 입력 칸이 열려 있는 동안만 Enter가 다시 시작이다(사용자 결정 2026-10-29, PR #33).
+- 미리 채움은 제목 입력 직후와 시간 끝에 `default_quantum_min`(R-003). 시간 고르기 화면은 Enter가 칩 값으로 시작이고, 시간 끝 화면은 Enter(기본 버튼)가 완료이며 다시 시작은 버튼으로만 한다(버튼 이름은 고른 시간을 넣은 "N분 더", 직접 입력 값이 틀리면 "— 분 더", #52). 시간 끝 화면에서 직접 입력 칸이 열려 있는 동안만 Enter가 다시 시작이다(사용자 결정 2026-10-29, PR #33).
 
 ## 4. 기본 작업 시간 설정 (MokaCore 규칙 + MokaStore 저장)
 
@@ -203,7 +208,7 @@ public func panelFrame(anchor: PanelAnchor, width: Double, height: Double, scale
 | `isPinnedOpen` | 시간 끝 자동 펼침으로 고정됨. 사용자가 시작·완료를 누르면 `false`(R-009) |
 | `isHovering` | 마우스가 노치·판 위에 있음 |
 | `isInputFocused` | 패널이 key window인 동안 참(`windowDidBecomeKey`/`windowDidResignKey`). 제목 칸이 사라진 시간 고르기 단계에서도 Enter로 시작할 때까지 접히지 않게 한다. 판을 클릭한 뒤에는 다른 앱을 클릭해 key를 놓을 때까지 펼친 채 남는다(사용자 확인 2026-10-29, PR #30) |
-| `isEditingCustom` | 직접 입력 칸을 쓰는 중 |
+| `customText` | 직접 입력 칸의 글자(`String?`). nil이면 직접 입력 중이 아니다. 직접 입력 중 여부(`applyDefaultQuantumChange`의 `isEditingCustom`)는 `customText != nil`이다(PR #33) |
 
 접힘 판정은 MokaCore 순수 함수 `shouldStayExpanded(pinned:focused:hovering:) -> Bool`(셋 중 하나라도 참이면 펼친 채)로 두고 시험한다.
 

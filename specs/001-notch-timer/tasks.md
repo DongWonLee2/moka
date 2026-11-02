@@ -137,7 +137,7 @@ EGM 금붕어 리뷰(2026-10-28)와 승인 항목 토론 뒤 보강했다. 보�
 ### Implementation (Green)
 
 - [x] T020 [US2] `Sources/MokaCore/QuantumChip.swift`에 data-model §3의 `QuantumChip`, `RemainingFormat`, `shouldStayExpanded`를 구현한다. T018 PASS 〔단위 1a〕
-- [x] T021 🔒 [US2] `App/Sources/Views/QuantumChipView.swift`에 macOS 분할 컨트롤(15분|25분|45분|60분|직접…)과 직접 입력칸을 만든다. `parseCustom`이 nil이면 시작 버튼을 막는다. Enter나 시작 한 번으로 칩 값으로 시작한다(R-003). 버튼은 둥근 사각형 push button, 기본 버튼은 #A47864→#85604F 세로 그라데이션 〔단위 4〕
+- [x] T021 🔒 [US2] `App/Sources/Views/QuantumChipView.swift`에 시안 모양의 분할 칸(15분|25분|45분|60분|직접…, `QuantumChip.segments`)과 직접 입력칸을 SwiftUI로 직접 그린다(PR #33 가정). `parseCustom`이 nil이면 시작 버튼을 막는다. Enter나 시작 한 번으로 칩 값으로 시작한다(R-003). 버튼은 `NotchButtonStyle`로 직접 그리고, 기본 버튼은 #A47864→#85604F 세로 그라데이션 〔단위 4〕
 
 **확인 지점**: US1·US2를 함께 화면 없이 재현할 수 있다
 
