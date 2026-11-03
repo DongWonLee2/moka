@@ -19,7 +19,8 @@ func everyGoldenScenarioHasExpectedOutput() throws {
     #expect(
         Set([
             "contract-example", "default-after-expiry", "us1-basic", "us2-choose-45", "us3-sleep", "us4-default-change",
-            "us4-picked-chip",
+            "us4-picked-chip", "storage-contract-example", "storage-us1-pick", "storage-us2-buttons",
+            "storage-us3-lifecycle", "storage-us4-recurrence", "storage-us4-newyork",
         ])
         .isSubset(of: Set(names)))
     for name in names {
@@ -40,4 +41,19 @@ func goldenOutputMatchesBytes(name: String) throws {
     }
     #expect(Data(output.utf8) == expected)
     #expect(SimExitCode.code(for: result) == 0)
+}
+
+@Test(
+    "ADR-0003 R-117: storage 시나리오 출력에 할 일 제목·두 줄 본문이 없다(ASCII만)",
+    arguments: try goldenScenarioNames().filter { $0.hasPrefix("storage-") })
+func storageOutputHasNoText(name: String) throws {
+    let input = try Data(contentsOf: simFixturesURL.appendingPathComponent("\(name).json"))
+    guard case .success(let output) = SimRunner.run(input) else {
+        Issue.record("\(name): 실패")
+        return
+    }
+    #expect(!output.isEmpty)
+    let asciiOnly = output.unicodeScalars.allSatisfy { $0.isASCII }
+    #expect(asciiOnly)
+    #expect(!output.contains("가짜"))
 }

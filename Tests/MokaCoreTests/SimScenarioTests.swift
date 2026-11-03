@@ -53,6 +53,60 @@ let errorFixtures: [ErrorFixture] = [
     ErrorFixture(name: "enter-title-in-expired", kind: .notAllowedInPhase),
     ErrorFixture(name: "complete-in-empty", kind: .notAllowedInPhase),
     ErrorFixture(name: "choose-in-running", kind: .notAllowedInPhase),
+    // spec 002 storage 모드(contracts/moka-sim-v1-additions.md "오류 덧붙임" 종료 코드 2 줄)
+    ErrorFixture(name: "storage-not-bool", kind: .wrongType),
+    ErrorFixture(name: "storage-string", kind: .wrongType),
+    ErrorFixture(name: "storage-missing-add-task", kind: .storageOnly),
+    ErrorFixture(name: "storage-false-quit", kind: .storageOnly),
+    ErrorFixture(name: "storage-missing-activate", kind: .storageOnly),
+    ErrorFixture(name: "storage-missing-day-start", kind: .storageOnly),
+    ErrorFixture(name: "storage-missing-notes", kind: .storageOnly),
+    ErrorFixture(name: "storage-unknown-key-add-task", kind: .unknownKey),
+    ErrorFixture(name: "storage-unknown-key-quit", kind: .unknownKey),
+    ErrorFixture(name: "storage-unknown-key-settings", kind: .unknownKey),
+    ErrorFixture(name: "storage-title-missing", kind: .missingField),
+    ErrorFixture(name: "storage-title-not-string", kind: .wrongType),
+    ErrorFixture(name: "storage-note-not-string", kind: .wrongType),
+    ErrorFixture(name: "storage-blank-title", kind: .emptyTitle),
+    ErrorFixture(name: "storage-blank-enter-title", kind: .emptyTitle),
+    ErrorFixture(name: "storage-recurrence-unknown", kind: .outOfRange),
+    ErrorFixture(name: "storage-recurrence-not-string", kind: .wrongType),
+    ErrorFixture(name: "storage-weekday-8", kind: .outOfRange),
+    ErrorFixture(name: "storage-weekday-0", kind: .outOfRange),
+    ErrorFixture(name: "storage-weekday-daily", kind: .weekdayNotWeekly),
+    ErrorFixture(name: "storage-weekday-no-recurrence", kind: .weekdayNotWeekly),
+    ErrorFixture(name: "storage-est-min-zero", kind: .outOfRange),
+    ErrorFixture(name: "storage-est-min-negative", kind: .outOfRange),
+    ErrorFixture(name: "storage-deadline-format", kind: .invalidDate),
+    ErrorFixture(name: "storage-deadline-nonexistent", kind: .invalidDate),
+    ErrorFixture(name: "storage-deadline-not-string", kind: .wrongType),
+    ErrorFixture(name: "storage-day-start-format", kind: .invalidDayStart),
+    ErrorFixture(name: "storage-day-start-out-of-range", kind: .invalidDayStart),
+    ErrorFixture(name: "storage-day-start-not-string", kind: .wrongType),
+    ErrorFixture(name: "storage-add-task-after-quit", kind: .notAllowedInPhase),
+    ErrorFixture(name: "storage-enter-title-after-quit", kind: .notAllowedInPhase),
+    ErrorFixture(name: "storage-start-after-quit", kind: .notAllowedInPhase),
+    ErrorFixture(name: "storage-complete-after-quit", kind: .notAllowedInPhase),
+    ErrorFixture(name: "storage-skip-after-quit", kind: .notAllowedInPhase),
+    ErrorFixture(name: "storage-switch-after-quit", kind: .notAllowedInPhase),
+    ErrorFixture(name: "storage-choose-after-quit", kind: .notAllowedInPhase),
+    ErrorFixture(name: "storage-tick-after-quit", kind: .notAllowedInPhase),
+    ErrorFixture(name: "storage-set-default-after-quit", kind: .notAllowedInPhase),
+    ErrorFixture(name: "storage-quit-after-quit", kind: .notAllowedInPhase),
+    ErrorFixture(name: "storage-activate-after-quit", kind: .notAllowedInPhase),
+    ErrorFixture(name: "storage-start-in-empty", kind: .notAllowedInPhase),
+    ErrorFixture(name: "storage-complete-in-empty", kind: .notAllowedInPhase),
+    ErrorFixture(name: "storage-skip-in-empty", kind: .notAllowedInPhase),
+    ErrorFixture(name: "storage-switch-in-empty", kind: .notAllowedInPhase),
+    ErrorFixture(name: "storage-choose-in-empty", kind: .notAllowedInPhase),
+    ErrorFixture(name: "storage-complete-in-draft", kind: .notAllowedInPhase),
+    ErrorFixture(name: "storage-skip-in-draft", kind: .notAllowedInPhase),
+    ErrorFixture(name: "storage-switch-in-draft", kind: .notAllowedInPhase),
+    ErrorFixture(name: "storage-enter-title-in-running", kind: .notAllowedInPhase),
+    ErrorFixture(name: "storage-start-in-running", kind: .notAllowedInPhase),
+    ErrorFixture(name: "storage-enter-title-in-expired", kind: .notAllowedInPhase),
+    ErrorFixture(name: "storage-complete-notes-in-running", kind: .notAllowedInPhase),
+    ErrorFixture(name: "storage-start-notes-in-draft", kind: .notAllowedInPhase),
 ]
 
 private let errorsURL = simFixturesURL.appendingPathComponent("errors", isDirectory: true)
@@ -228,4 +282,55 @@ func longInputIsTruncated() {
     #expect(command.exitCode == 2)
     #expect(command.stderr.contains(String(repeating: "x", count: 64) + "…"))
     #expect(!command.stderr.contains(String(repeating: "x", count: 65)))
+}
+
+// MARK: - spec 002 storage 모드
+
+private let timerOnlyEvents =
+    #"[{"at":"2026-11-02T09:00:00+09:00","type":"enter_title","title":"가짜 할 일 A"},{"at":"2026-11-02T09:00:05+09:00","type":"start"},{"at":"2026-11-02T09:26:00+09:00","type":"complete"}]"#
+
+@Test("ADR-0003 R-117: storage가 false면 storage가 없을 때와 출력이 바이트 단위로 같다")
+func storageFalseMatchesOriginalV1() {
+    let absent = run(#"{"version":1,"timezone":"Asia/Seoul","events":"# + timerOnlyEvents + "}")
+    let off = run(#"{"version":1,"timezone":"Asia/Seoul","storage":false,"events":"# + timerOnlyEvents + "}")
+    #expect(kind(absent) == nil)
+    #expect(off == absent)
+}
+
+@Test("ADR-0003 R-117: storage 모드는 기존 이벤트 줄에도 키 다섯을 이 순서로 덧붙인다")
+func storageModeAppendsKeysToOriginalEvents() {
+    let result = run(
+        #"{"version":1,"timezone":"Asia/Seoul","storage":true,"events":[{"at":"2026-11-02T09:00:00+09:00","type":"tick"}]}"#
+    )
+    #expect(
+        result
+            == .success(
+                #"{"seq":1,"at":"2026-11-02T00:00:00Z","event":"tick","timer_state":"empty","chip_min":null,"remaining_s":null,"notch_task":null,"has_first_action":null,"tasks":[],"checkpoint":null,"decision":null}"#
+                    + "\n"))
+}
+
+@Test("ADR-0003 R-117: storage 모드 빠른 입력은 반복 없는 할 일을 만들고 초안이면 칩을 유지한다")
+func storageEnterTitleCreatesTask() {
+    let result = run(
+        #"{"version":1,"timezone":"Asia/Seoul","storage":true,"events":[{"at":"2026-11-02T09:00:00+09:00","type":"enter_title","title":"가짜 할 일 A"},{"at":"2026-11-02T09:00:01+09:00","type":"choose_quantum","quantum_min":45},{"at":"2026-11-02T09:00:02+09:00","type":"enter_title","title":"가짜 할 일 B"}]}"#
+    )
+    guard case .success(let output) = result else {
+        Issue.record("성공해야 한다: \(result)")
+        return
+    }
+    let lines = output.split(separator: "\n").map(String.init)
+    #expect(lines.count == 3)
+    #expect(lines.first?.contains(#""chip_min":25,"remaining_s":null,"notch_task":1,"#) == true)
+    #expect(
+        lines.last?.contains(
+            #""chip_min":45,"remaining_s":null,"notch_task":2,"has_first_action":false,"tasks":[{"id":1,"status":"todo","skip_count":0,"streak":0},{"id":2,"status":"todo","skip_count":0,"streak":0}]"#
+        ) == true)
+}
+
+@Test("ADR-0003 R-117: storage 오류의 표준 오류에 할 일 제목·두 줄 본문이 없다", arguments: errorFixtures.filter { $0.name.hasPrefix("storage-") })
+func storageErrorStderrHasNoText(fixture: ErrorFixture) {
+    let path = errorsURL.appendingPathComponent("\(fixture.name).json").path
+    let command = SimCommand.run(arguments: ["run", path], readFile: readFixture)
+    #expect(command.exitCode == 2)
+    #expect(!command.stderr.contains("가짜"), "\(command.stderr)")
 }

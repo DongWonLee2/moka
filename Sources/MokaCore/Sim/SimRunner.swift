@@ -10,6 +10,12 @@ public enum SimRunner {
         }
     }
 
+    public static func checkStorageInvariant(
+        _ state: SimStorageState, previous: SimStorageState, at now: Date, seq: Int
+    ) -> SimError? {
+        nil
+    }
+
     public static func checkInvariant(_ timer: NotchTimer, at now: Date, seq: Int) -> SimError? {
         timer.invariantViolation(at: now).map {
             SimError(kind: .invariantViolation, seq: seq, message: "불변식 위반(MokaCore 버그 신호): \($0)")

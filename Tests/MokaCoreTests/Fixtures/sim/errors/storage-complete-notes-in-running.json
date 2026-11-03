@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "timezone": "Asia/Seoul",
+  "storage": true,
+  "events": [
+    {
+      "at": "2026-11-02T09:00:00+09:00",
+      "type": "add_task",
+      "title": "가짜 할 일 A"
+    },
+    {
+      "at": "2026-11-02T09:01:00+09:00",
+      "type": "start"
+    },
+    {
+      "at": "2026-11-02T09:02:00+09:00",
+      "type": "complete",
+      "done_note": "가짜 한 일"
+    }
+  ]
+}
