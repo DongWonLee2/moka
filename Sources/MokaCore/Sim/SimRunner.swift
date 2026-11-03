@@ -10,22 +10,21 @@ public enum SimRunner {
         }
     }
 
-    public static func checkStorageInvariant(
-        _ state: SimStorageState, previous: SimStorageState, at now: Date, seq: Int
-    ) -> SimError? {
-        nil
+    public static func checkInvariant(_ timer: NotchTimer, at now: Date, seq: Int) -> SimError? {
+        timer.invariantViolation(at: now).map { invariantViolation($0, seq: seq) }
     }
 
-    public static func checkInvariant(_ timer: NotchTimer, at now: Date, seq: Int) -> SimError? {
-        timer.invariantViolation(at: now).map {
-            SimError(kind: .invariantViolation, seq: seq, message: "불변식 위반(MokaCore 버그 신호): \($0)")
-        }
+    static func invariantViolation(_ reason: String, seq: Int?) -> SimError {
+        SimError(kind: .invariantViolation, seq: seq, message: "불변식 위반(MokaCore 버그 신호): \(reason)")
     }
 
     private static func execute(_ scenario: SimScenario) throws(SimError) -> String {
         let settings = InMemorySettingsStore()
         if let minutes = scenario.defaultQuantumMin {
             try write(minutes, to: settings, seq: nil)
+        }
+        if scenario.storage {
+            return try executeStorage(scenario, settings: settings)
         }
         var timer = NotchTimer.empty(draft: nil)
         var output = ""
@@ -44,6 +43,9 @@ public enum SimRunner {
             case .start: timerEvent = .start
             case .tick: timerEvent = .tick
             case .complete: timerEvent = .complete
+            case .addTask, .skip, .switchTask, .quit, .relaunch, .activate:
+                // 디코딩이 storage 없이는 막는다.
+                throw SimError(kind: .storageOnly, seq: event.seq, message: "\(event.kind.name)는 storage 모드에서만 받는다")
             }
             if let timerEvent,
                 case .rejected(let reason) = timer.apply(timerEvent, at: event.at, defaultQuantumMin: defaultQuantumMin)
@@ -59,7 +61,7 @@ public enum SimRunner {
         return output
     }
 
-    private static func write(_ minutes: Int, to settings: InMemorySettingsStore, seq: Int?) throws(SimError) {
+    static func write(_ minutes: Int, to settings: InMemorySettingsStore, seq: Int?) throws(SimError) {
         do {
             try QuantumSettings.writeDefault(minutes, to: settings)
         } catch {
@@ -67,14 +69,18 @@ public enum SimRunner {
         }
     }
 
-    private static func rejection(_ reason: RejectReason, event: SimEvent) -> SimError {
+    static func rejection(_ reason: RejectReason, event: SimEvent) -> SimError {
         switch reason {
         case .emptyTitle:
             SimError(kind: .emptyTitle, seq: event.seq, message: "앞뒤 공백을 뺀 title이 비어 있다")
         case .quantumOutOfRange:
             SimError(kind: .outOfRange, seq: event.seq, message: "quantum_min이 1...180 밖이다")
         case .notAllowedInPhase:
-            SimError(kind: .notAllowedInPhase, seq: event.seq, message: "이 단계에서 \(event.kind.name)을 받을 수 없다")
+            notAllowed(event)
         }
+    }
+
+    static func notAllowed(_ event: SimEvent) -> SimError {
+        SimError(kind: .notAllowedInPhase, seq: event.seq, message: "이 단계에서 \(event.kind.name)을 받을 수 없다")
     }
 }

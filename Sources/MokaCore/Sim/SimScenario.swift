@@ -3,10 +3,19 @@ import Foundation
 enum SimEventKind: Equatable {
     case enterTitle(String)
     case chooseQuantum(Int)
-    case start
+    /// 두 줄은 storage 모드에서만 온다(시간 끝 다시 시작).
+    case start(CheckpointNotes?)
     case tick
-    case complete
+    /// 두 줄은 storage 모드에서만 온다(시간 끝 완료).
+    case complete(CheckpointNotes?)
     case setDefaultQuantum(Int)
+    // storage 모드에서만
+    case addTask(NewTask)
+    case skip(CheckpointNotes)
+    case switchTask(CheckpointNotes)
+    case quit
+    case relaunch
+    case activate
 
     var name: String {
         switch self {
@@ -16,6 +25,12 @@ enum SimEventKind: Equatable {
         case .tick: "tick"
         case .complete: "complete"
         case .setDefaultQuantum: "set_default_quantum"
+        case .addTask: "add_task"
+        case .skip: "skip"
+        case .switchTask: "switch"
+        case .quit: "quit"
+        case .relaunch: "relaunch"
+        case .activate: "activate"
         }
     }
 }
@@ -33,14 +48,29 @@ struct SimScenario {
     var timezone: TimeZone
     /// `settings.default_quantum_min`. 없으면 nil(설정 규칙대로 25).
     var defaultQuantumMin: Int?
+    /// 최상위 `storage`. 없으면 false.
+    var storage: Bool
+    /// `settings.day_start`(storage 모드에서만). 없으면 nil(설정 규칙대로 06:00).
+    var dayStart: DayStart?
     var events: [SimEvent]
 }
 
 extension SimScenario {
     private typealias Object = [(key: String, value: SimJSON)]
 
-    private static let topKeys: Set<String> = ["version", "timezone", "settings", "events"]
-    private static let settingsKeys: Set<String> = ["default_quantum_min"]
+    private static let topKeys: Set<String> = ["version", "timezone", "storage", "settings", "events"]
+    private static let settingsKeys: Set<String> = ["default_quantum_min", "day_start"]
+    private static let noteKeys = ["done_note", "next_note"]
+    /// 원본 v1 이벤트의 추가 필드.
+    private static let timerEventKeys: [String: [String]] = [
+        "enter_title": ["title"], "choose_quantum": ["quantum_min"], "set_default_quantum": ["quantum_min"],
+        "start": [], "tick": [], "complete": [],
+    ]
+    /// storage 모드에서만 받는 이벤트의 추가 필드.
+    private static let storageEventKeys: [String: [String]] = [
+        "add_task": ["title", "deadline", "recurrence", "weekday", "est_min"], "skip": noteKeys, "switch": noteKeys,
+        "quit": [], "relaunch": [], "activate": [],
+    ]
 
     static func decode(_ data: Data) throws(SimError) -> SimScenario {
         let root = try object(SimJSONParser.parse(data), path: "최상위", seq: nil)
@@ -54,12 +84,33 @@ extension SimScenario {
             throw SimError(kind: .unknownTimezone, seq: nil, message: "모르는 timezone \(SimError.quoted(zoneName))")
         }
 
+        var storage = false
+        if let value = field(root, "storage") {
+            guard case .bool(let flag) = value else {
+                throw SimError(kind: .wrongType, seq: nil, message: "storage는 JSON 불리언이어야 한다")
+            }
+            storage = flag
+        }
+
         var defaultQuantumMin: Int?
+        var dayStart: DayStart?
         if let value = field(root, "settings") {
             let settings = try object(value, path: "settings", seq: nil)
+            if !storage, field(settings, "day_start") != nil {
+                throw storageOnly("settings.day_start", seq: nil)
+            }
             try checkKeys(settings, allowed: settingsKeys, path: "settings", seq: nil)
             if let minutes = field(settings, "default_quantum_min") {
                 defaultQuantumMin = try quantum(minutes, path: "settings.default_quantum_min", seq: nil)
+            }
+            if let value = field(settings, "day_start") {
+                let text = try string(value, path: "settings.day_start", seq: nil)
+                guard let parsed = DayStart(text: text) else {
+                    throw SimError(
+                        kind: .invalidDayStart, seq: nil,
+                        message: "settings.day_start \(SimError.quoted(text))는 HH:MM(00:00~23:59)이 아니다")
+                }
+                dayStart = parsed
             }
         }
 
@@ -68,28 +119,39 @@ extension SimScenario {
         }
         var events: [SimEvent] = []
         for (offset, item) in items.enumerated() {
-            let event = try decodeEvent(item, seq: offset + 1)
+            let event = try decodeEvent(item, seq: offset + 1, storage: storage)
             if let previous = events.last, event.epochSeconds < previous.epochSeconds {
                 throw SimError(kind: .timeReversed, seq: event.seq, message: "at이 이전 이벤트보다 이르다")
             }
             events.append(event)
         }
-        return SimScenario(timezone: timezone, defaultQuantumMin: defaultQuantumMin, events: events)
+        return SimScenario(
+            timezone: timezone, defaultQuantumMin: defaultQuantumMin, storage: storage, dayStart: dayStart,
+            events: events)
     }
 
-    private static func decodeEvent(_ value: SimJSON, seq: Int) throws(SimError) -> SimEvent {
+    private static func decodeEvent(_ value: SimJSON, seq: Int, storage: Bool) throws(SimError) -> SimEvent {
         let event = try object(value, path: "events[\(seq - 1)]", seq: seq)
         let atText = try string(require(event, "at", path: "at", seq: seq), path: "at", seq: seq)
         let type = try string(require(event, "type", path: "type", seq: seq), path: "type", seq: seq)
 
-        let extra: String?
-        switch type {
-        case "enter_title": extra = "title"
-        case "choose_quantum", "set_default_quantum": extra = "quantum_min"
-        case "start", "tick", "complete": extra = nil
-        default: throw SimError(kind: .unknownType, seq: seq, message: "모르는 type \(SimError.quoted(type))")
+        var extra: [String]
+        if let keys = timerEventKeys[type] {
+            extra = keys
+            if type == "start" || type == "complete" {
+                if storage {
+                    extra += noteKeys
+                } else if let note = noteKeys.first(where: { field(event, $0) != nil }) {
+                    throw storageOnly("\(type)의 \(note)", seq: seq)
+                }
+            }
+        } else if let keys = storageEventKeys[type] {
+            guard storage else { throw storageOnly("type \(SimError.quoted(type))", seq: seq) }
+            extra = keys
+        } else {
+            throw SimError(kind: .unknownType, seq: seq, message: "모르는 type \(SimError.quoted(type))")
         }
-        try checkKeys(event, allowed: Set(["at", "type"] + (extra.map { [$0] } ?? [])), path: type, seq: seq)
+        try checkKeys(event, allowed: Set(["at", "type"] + extra), path: type, seq: seq)
 
         let epochSeconds = try SimTimestamp.parse(atText, seq: seq)
         let kind: SimEventKind
@@ -104,11 +166,90 @@ extension SimScenario {
             kind = .setDefaultQuantum(
                 try quantum(require(event, "quantum_min", path: "quantum_min", seq: seq), path: "quantum_min", seq: seq)
             )
-        case "start": kind = .start
+        case "start": kind = .start(try optionalNotes(event, seq: seq))
         case "tick": kind = .tick
-        default: kind = .complete
+        case "complete": kind = .complete(try optionalNotes(event, seq: seq))
+        case "add_task": kind = .addTask(try newTask(event, seq: seq))
+        case "skip": kind = .skip(try notes(event, seq: seq))
+        case "switch": kind = .switchTask(try notes(event, seq: seq))
+        case "quit": kind = .quit
+        case "relaunch": kind = .relaunch
+        default: kind = .activate
         }
         return SimEvent(seq: seq, epochSeconds: epochSeconds, kind: kind)
+    }
+
+    private static func storageOnly(_ what: String, seq: Int?) -> SimError {
+        SimError(kind: .storageOnly, seq: seq, message: "\(what)는 \"storage\": true일 때만 받는다")
+    }
+
+    /// 두 줄. 없는 줄은 빈 줄.
+    private static func notes(_ event: Object, seq: Int) throws(SimError) -> CheckpointNotes {
+        var lines: [String] = []
+        for key in noteKeys {
+            if let value = field(event, key) {
+                lines.append(try string(value, path: key, seq: seq))
+            } else {
+                lines.append("")
+            }
+        }
+        return CheckpointNotes(doneNote: lines[0], nextNote: lines[1])
+    }
+
+    /// 두 줄 필드가 하나도 없으면 nil.
+    private static func optionalNotes(_ event: Object, seq: Int) throws(SimError) -> CheckpointNotes? {
+        guard noteKeys.contains(where: { field(event, $0) != nil }) else { return nil }
+        return try notes(event, seq: seq)
+    }
+
+    /// `add_task`. 값 검증은 data-model §5.6과 같고, 채우기(요일·주기)는 실행 때 `TaskWriteRules.prepareNew`가 한다.
+    private static func newTask(_ event: Object, seq: Int) throws(SimError) -> NewTask {
+        let title = try string(require(event, "title", path: "title", seq: seq), path: "title", seq: seq)
+        guard MokaTask.normalizedTitle(title) != nil else {
+            throw SimError(kind: .emptyTitle, seq: seq, message: "앞뒤 공백을 뺀 title이 비어 있다")
+        }
+
+        var deadline: LocalDay?
+        if let value = field(event, "deadline") {
+            let text = try string(value, path: "deadline", seq: seq)
+            guard let day = LocalDay(text: text) else {
+                throw SimError(
+                    kind: .invalidDate, seq: seq, message: "deadline \(SimError.quoted(text))는 있는 날짜의 YYYY-MM-DD가 아니다")
+            }
+            deadline = day
+        }
+
+        var recurrence = Recurrence.none
+        if let value = field(event, "recurrence") {
+            let text = try string(value, path: "recurrence", seq: seq)
+            guard let parsed = Recurrence(rawValue: text) else {
+                throw SimError(
+                    kind: .outOfRange, seq: seq, message: "recurrence \(SimError.quoted(text))는 none/daily/weekly가 아니다")
+            }
+            recurrence = parsed
+        }
+
+        var weekday: Weekday?
+        if let value = field(event, "weekday") {
+            let number = try integer(value, path: "weekday", seq: seq)
+            guard let parsed = Weekday(rawValue: number) else {
+                throw SimError(kind: .outOfRange, seq: seq, message: "weekday \(number)이 1...7 밖이다")
+            }
+            guard recurrence == .weekly else {
+                throw SimError(kind: .weekdayNotWeekly, seq: seq, message: "recurrence가 weekly가 아닌데 weekday가 있다")
+            }
+            weekday = parsed
+        }
+
+        var estMin: Int?
+        if let value = field(event, "est_min") {
+            let minutes = try integer(value, path: "est_min", seq: seq)
+            guard MokaTask.isValidEstMin(minutes) else {
+                throw SimError(kind: .outOfRange, seq: seq, message: "est_min \(minutes)이 1 이상이 아니다")
+            }
+            estMin = minutes
+        }
+        return NewTask(title: title, deadline: deadline, estMin: estMin, recurrence: recurrence, weekday: weekday)
     }
 
     private static func field(_ object: Object, _ key: String) -> SimJSON? {

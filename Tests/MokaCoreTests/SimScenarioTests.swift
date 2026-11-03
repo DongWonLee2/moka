@@ -327,7 +327,9 @@ func storageEnterTitleCreatesTask() {
         ) == true)
 }
 
-@Test("ADR-0003 R-117: storage 오류의 표준 오류에 할 일 제목·두 줄 본문이 없다", arguments: errorFixtures.filter { $0.name.hasPrefix("storage-") })
+@Test(
+    "ADR-0003 R-117: storage 오류의 표준 오류에 할 일 제목·두 줄 본문이 없다",
+    arguments: errorFixtures.filter { $0.name.hasPrefix("storage-") })
 func storageErrorStderrHasNoText(fixture: ErrorFixture) {
     let path = errorsURL.appendingPathComponent("\(fixture.name).json").path
     let command = SimCommand.run(arguments: ["run", path], readFile: readFixture)
