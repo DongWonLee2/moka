@@ -2,7 +2,6 @@ import AppKit
 import MokaCore
 import MokaStore
 import SwiftUI
-import os
 
 @main
 struct MokaApp: App {
@@ -21,6 +20,8 @@ struct MokaApp: App {
         }
         Settings {
             SettingsView(store: AppSettings.store, onSaved: { delegate.defaultQuantumChanged() })
+                // 설정 창 열기도 활성화다(research R11).
+                .onAppear { delegate.activate() }
         }
     }
 }
@@ -76,37 +77,38 @@ enum SettingsWindowRaiser {
     }
 }
 
-/// 기본 작업 시간 저장소. 앱 DB(ADR-0004)는 앱 코드만 이 경로로 연다. 테스트·`moka-sim`은 열지 않는다.
+/// 앱 저장소. 앱 DB(ADR-0004)는 앱 코드만 이 경로로 연다. 테스트·`moka-sim`은 열지 않는다.
 @MainActor
 enum AppSettings {
-    static let store: any SettingsStore = openStore()
+    /// DB를 한 번 열어 설정·할 일·일정 저장소에 나눠 준다. 못 열면 설정만 메모리로 동작한다(R-119).
+    static let storage = AppStorage.open(openDatabase)
+    static var store: any SettingsStore { storage.settings }
 
-    private static let logger = Logger(subsystem: "dev.dongwon.moka", category: "settings")
-
-    /// `~/Library/Application Support/dev.dongwon.moka/moka.sqlite`. 못 열면 메모리 저장소(기본값 25, 저장 안 남음)로 동작한다(research R2).
-    private static func openStore() -> any SettingsStore {
-        do {
-            let support = try FileManager.default.url(
-                for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
-            let url = support.appending(path: "dev.dongwon.moka", directoryHint: .isDirectory)
-                .appending(path: "moka.sqlite", directoryHint: .notDirectory)
-            return GRDBSettingsStore(try MokaDatabase.open(at: url))
-        } catch {
-            logger.error(
-                "설정 DB를 열지 못해 메모리 저장소로 동작: \(String(reflecting: type(of: error)), privacy: .public)")
-            return InMemorySettingsStore()
-        }
+    /// `~/Library/Application Support/dev.dongwon.moka/moka.sqlite`. 마이그레이션까지 끝나야 저장소를 만든다.
+    nonisolated private static func openDatabase() throws -> AppStorage {
+        let support = try FileManager.default.url(
+            for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
+        let url = support.appending(path: "dev.dongwon.moka", directoryHint: .isDirectory)
+            .appending(path: "moka.sqlite", directoryHint: .notDirectory)
+        let db = try MokaDatabase.open(at: url)
+        return AppStorage(
+            settings: GRDBSettingsStore(db), repository: GRDBTaskRepository(db), contexts: GRDBContextStore(db))
     }
 }
 
 /// `LSUIElement` 앱에서는 SwiftUI `Window`가 저절로 열리지 않으므로(spike) 노치 패널은 AppKit으로 띄운다.
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private let appState = AppState(clock: MokaClock { Date() }, settings: AppSettings.store)
+    /// 달력은 한 번 만들어 둔다. 시스템 시간대가 바뀌면 따라간다(ADR-0010 결정 검증 결과 (a)).
+    private let appState = AppState(
+        clock: MokaClock { Date() }, calendar: GregorianCalendar.make(timeZone: .autoupdatingCurrent),
+        storage: AppSettings.storage)
     private var panelHost: NotchPanelHost?
     private var screenWatcher: ScreenWatcher?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // 재시작 복구 → 하루 판정 → 고르기(R-111, R-113, R-104). 패널을 띄우기 전에 끝낸다.
+        appState.launch()
         let host = NotchPanelHost(appState: appState)
         host.move(to: ScreenWatcher.currentPlacement())
         // 화면 연결이 바뀌면 같은 패널을 새 위치로 옮긴다(R-011). 타이머는 AppState에 있어 끊기지 않는다.
@@ -116,7 +118,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panelHost = host
     }
 
+    /// 메뉴 "종료"·⌘Q(정상 종료). 도는 중이면 종료 체크포인트를 동기로 남긴다(R-110). 종료를 미루지 않는다.
+    func applicationWillTerminate(_ notification: Notification) {
+        appState.lifecycleCheckpoint(.quit)
+    }
+
     func defaultQuantumChanged() {
         appState.defaultQuantumChanged()
+    }
+
+    func activate() {
+        appState.activate()
     }
 }

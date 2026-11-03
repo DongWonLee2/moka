@@ -12,14 +12,15 @@ struct ScreenPlacement {
 /// 알림을 받은 쪽은 창을 다시 만들지 않고 옮기기만 한다(ADR-0008).
 @MainActor
 final class ScreenWatcher {
-    private var observer: (any NSObjectProtocol)?
+    /// 이 감시자가 없어지면 등록도 풀린다(#37).
+    private let observation: NotificationObservation
 
     /// `onChange`는 `didChangeScreenParametersNotification`마다 새 표시 위치로 불린다. 화면이 없으면 nil.
     init(onChange: @escaping @MainActor (ScreenPlacement?) -> Void) {
-        observer = NotificationCenter.default.addObserver(
-            forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
-        ) { _ in
-            MainActor.assumeIsolated { onChange(Self.currentPlacement()) }
+        observation = NotificationObservation(
+            center: .default, name: NSApplication.didChangeScreenParametersNotification
+        ) {
+            onChange(Self.currentPlacement())
         }
     }
 
