@@ -56,9 +56,9 @@ func deleteTitle(title: String, expected: String) {
 
 @Test("R-102 #42: 지우기 확인 본문은 도는 할 일이면 타이머가 멈춘다는 말이 앞에 붙는다")
 func deleteMessage() {
-    #expect(TaskFormText.deleteMessage(isActive: false) == "지우면 노치에 다시 뜨지 않아요. 지금까지 남긴 기록은 그대로 둬요.")
+    #expect(TaskFormText.deleteMessage(stopsTimer: false) == "지우면 노치에 다시 뜨지 않아요. 지금까지 남긴 기록은 그대로 둬요.")
     #expect(
-        TaskFormText.deleteMessage(isActive: true)
+        TaskFormText.deleteMessage(stopsTimer: true)
             == "지금 타이머가 도는 할 일이에요. 지우면 타이머가 멈추고 노치에 다시 뜨지 않아요. 지금까지 남긴 기록은 그대로 둬요.")
 }
 

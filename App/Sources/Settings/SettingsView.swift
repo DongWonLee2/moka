@@ -16,6 +16,9 @@ struct SettingsView: View {
     @State private var dayStart = Date()
     @State private var tab: SettingsTab = .basic
     @State private var isAddingTask = false
+    @State private var selectedTaskID: TaskID?
+    @State private var editingTaskID: TaskID?
+    @State private var isDeletingSelected = false
     private let calendar = GregorianCalendar.make(timeZone: .autoupdatingCurrent)
     private static let logger = Logger(subsystem: "dev.dongwon.moka", category: "settings")
 
@@ -42,8 +45,10 @@ struct SettingsView: View {
             case .tasks:
                 TaskListTabView(
                     rows: appState.taskListRows, nextMarkID: appState.nextMarkID, scope: $appState.taskListScope,
-                    order: $appState.taskListOrder, canAdd: !appState.storageUnavailable,
-                    onAdd: { isAddingTask = true }
+                    order: $appState.taskListOrder, selectedID: $selectedTaskID,
+                    canEdit: !appState.storageUnavailable,
+                    onAdd: { isAddingTask = true }, onEdit: { editingTaskID = $0 },
+                    onDelete: { isDeletingSelected = true }
                 )
             }
         }
@@ -51,10 +56,40 @@ struct SettingsView: View {
         .sheet(isPresented: $isAddingTask) {
             TaskFormView(
                 today: appState.logicalToday, calendar: calendar,
-                onSave: { task in
+                onSave: { values in
+                    let task = NewTask(
+                        title: values.title, deadline: values.deadline, estMin: values.estMin,
+                        recurrence: values.recurrence, weekday: values.weekday)
                     if appState.addTask(task) { isAddingTask = false }
                 },
                 onCancel: { isAddingTask = false })
+        }
+        .sheet(isPresented: Binding(get: { editingTaskID != nil }, set: { if !$0 { editingTaskID = nil } })) {
+            if let task = appState.tasks.first(where: { $0.id == editingTaskID }) {
+                TaskFormView(
+                    today: appState.logicalToday, calendar: calendar, editing: task,
+                    onSave: { values in
+                        if appState.editTask(task.id, Self.edit(from: values)) { editingTaskID = nil }
+                    },
+                    onCancel: { editingTaskID = nil },
+                    onDelete: {
+                        appState.dropTask(task.id)
+                        selectedTaskID = nil
+                        editingTaskID = nil
+                    })
+            }
+        }
+        .sheet(isPresented: $isDeletingSelected) {
+            if let task = appState.tasks.first(where: { $0.id == selectedTaskID }) {
+                DeleteConfirmView(
+                    title: task.title, stopsTimer: task.status == .active,
+                    onDelete: {
+                        appState.dropTask(task.id)
+                        selectedTaskID = nil
+                        isDeletingSelected = false
+                    },
+                    onCancel: { isDeletingSelected = false })
+            }
         }
         .background(MokaColors.settingsWindow)
         .frame(width: 460)
@@ -64,6 +99,12 @@ struct SettingsView: View {
             if previous == .basic { commitFields() }
         }
         .onDisappear(perform: commitFields)
+    }
+
+    private static func edit(from values: TaskFormValues) -> TaskEdit {
+        TaskEdit(
+            title: values.title, deadline: values.deadline.map { .set($0) } ?? .clear,
+            estMin: values.estMin.map { .set($0) } ?? .clear, recurrence: values.recurrence, weekday: values.weekday)
     }
 
     private func commitFields() {

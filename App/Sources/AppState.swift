@@ -165,6 +165,45 @@ final class AppState {
         return true
     }
 
+    /// 설정 창 고침(R-102, §4.2): 검증 → 저장 → `tasks()` 다시 읽기 → 노치의 할 일이면 제목 사본만 맞춘다(타이머 그대로).
+    @discardableResult
+    func editTask(_ id: TaskID, _ edit: TaskEdit) -> Bool {
+        guard let repository, let task = tasks.first(where: { $0.id == id }) else { return false }
+        guard
+            let edited = TaskWriteRules.applyEdit(
+                task, edit, now: clock.now(), dayStart: CoreSettings.readDayStart(from: settings), calendar: calendar),
+            write(StoreBatch(updatedTasks: [edited]), to: repository)
+        else { return false }
+        reloadTasks()
+        session = session.edited(edited)
+        return true
+    }
+
+    /// 설정 창 지움(R-102, §4.2): 행을 지우지 않고 버림으로 바꾼다(research R4). 노치의 할 일이면 타이머를 멈추고
+    /// 빈 상태에서 다시 고른다.
+    @discardableResult
+    func dropTask(_ id: TaskID) -> Bool {
+        guard let repository, var task = tasks.first(where: { $0.id == id }), task.status != .dropped else {
+            return false
+        }
+        task.status = .dropped
+        guard write(StoreBatch(updatedTasks: [task]), to: repository) else { return false }
+        reloadTasks()
+        let now = clock.now()
+        let next = session.taskDropped(id)
+        if next != session {
+            session = next
+            remainingSeconds = timer.remainingSeconds(at: now)
+            customText = nil
+            customFocus.cancel()
+            isPinnedOpen = false
+            updateExpansion()
+            updateRefreshTimer()
+        }
+        pickIfEmpty(at: now)
+        return true
+    }
+
     /// 활성화 판정(research R11): 앱 시작, 잠자기에서 깨어남, 노치 펼침, 설정 창 열기가 부른다.
     /// 반복 리셋(R-113)을 적용하고 빈 상태면 고른다(R-104). 같은 하루에 여러 번 돌아도 결과가 같다.
     func activate() {

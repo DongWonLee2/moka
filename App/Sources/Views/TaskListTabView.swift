@@ -7,9 +7,12 @@ struct TaskListTabView: View {
     let nextMarkID: TaskID?
     @Binding var scope: TaskListScope
     @Binding var order: TaskListOrder
-    /// 저장할 수 없으면(R-119) 꺼진다.
-    let canAdd: Bool
+    @Binding var selectedID: TaskID?
+    /// 저장할 수 없으면(R-119) 더하기·고치기·지우기가 꺼진다.
+    let canEdit: Bool
     let onAdd: () -> Void
+    let onEdit: (TaskID) -> Void
+    let onDelete: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -26,7 +29,15 @@ struct TaskListTabView: View {
                 VStack(spacing: 0) {
                     ForEach(Array(rows.enumerated()), id: \.element.id) { index, task in
                         if index > 0 { Divider() }
-                        TaskRow(task: task, isNext: task.id == nextMarkID)
+                        TaskRow(task: task, isNext: task.id == nextMarkID, isSelected: task.id == selectedID)
+                            .contentShape(Rectangle())
+                            .onTapGesture(count: 2) {
+                                selectedID = task.id
+                                if canEdit { onEdit(task.id) }
+                            }
+                            .onTapGesture { selectedID = task.id }
+                            .accessibilityAddTraits(.isButton)
+                            .accessibilityAction(named: "고치기") { if canEdit { onEdit(task.id) } }
                     }
                 }
             }
@@ -41,8 +52,15 @@ struct TaskListTabView: View {
                             ? Color(hex: 0xFFF0E1, opacity: 0.12) : Color(hex: 0x3C2314, opacity: 0.18),
                         lineWidth: 0.5))
             HStack(spacing: 6) {
-                ListEditButton(symbol: "plus", label: "새 할 일", action: onAdd)
-                    .disabled(!canAdd)
+                HStack(spacing: 1) {
+                    ListEditButton(symbol: "plus", label: "새 할 일", action: onAdd)
+                        .disabled(!canEdit)
+                    ListEditButton(symbol: "minus", label: "고른 할 일 지우기", action: onDelete)
+                        .disabled(!canEdit || selectedID == nil)
+                }
+                Text("두 번 클릭하면 고쳐요. **다음** 표시가 붙은 할 일이 노치에 떠요.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(.horizontal, 14)
@@ -95,6 +113,7 @@ private struct SortPill: View {
 private struct TaskRow: View {
     let task: MokaTask
     let isNext: Bool
+    let isSelected: Bool
     @Environment(\.colorScheme) private var colorScheme
 
     private var isDone: Bool { task.status == .done }
@@ -130,6 +149,8 @@ private struct TaskRow: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .frame(minHeight: 40)
+        .background(isSelected ? MokaColors.mocha.opacity(0.22) : Color.clear)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private var nextColor: Color { colorScheme == .dark ? MokaColors.crema : MokaColors.mocha }
