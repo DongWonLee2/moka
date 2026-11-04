@@ -40,6 +40,15 @@ public struct LocalDay: Comparable, Hashable, Sendable {
         (lhs.year, lhs.month, lhs.day) < (rhs.year, rhs.month, rhs.day)
     }
 
+    public init(date: Date, calendar: Calendar) {
+        self = LocalDay.containing(date, calendar: calendar)
+    }
+
+    /// 날짜 고르기에 넘길 시각. 그 날짜의 정오라 시간대가 바뀌어도 날짜가 밀리지 않는다.
+    public func date(calendar: Calendar) -> Date {
+        calendar.date(from: DateComponents(year: year, month: month, day: day, hour: 12))!
+    }
+
     /// 주입한 달력의 지역 날짜(시간대는 `calendar.timeZone`).
     static func containing(_ instant: Date, calendar: Calendar) -> LocalDay {
         let parts = calendar.dateComponents([.year, .month, .day], from: instant)

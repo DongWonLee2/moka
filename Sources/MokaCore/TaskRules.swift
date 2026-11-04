@@ -68,11 +68,14 @@ public enum RecurrenceReset {
 
 /// 할 일 쓰기 규칙(R-101, R-113, data-model §5.8).
 public enum TaskWriteRules {
-    /// 검증하고, .weekly인데 weekday가 nil이면 등록 순간이 속한 하루의 요일로 채우고, 반복이면 cycleDay = 지금 주기 첫 하루.
+    /// 검증하고(반복 할 일은 마감 없음), .weekly인데 weekday가 nil이면 등록 순간이 속한 하루의 요일로 채우고,
+    /// 반복이면 cycleDay = 지금 주기 첫 하루.
     public static func prepareNew(_ task: NewTask, now: Date, dayStart: DayStart, calendar: Calendar) -> (
         task: NewTask, cycleDay: LocalDay?
     )? {
-        guard let title = MokaTask.normalizedTitle(task.title), MokaTask.isValidEstMin(task.estMin) else { return nil }
+        guard let title = MokaTask.normalizedTitle(task.title), MokaTask.isValidEstMin(task.estMin),
+            task.recurrence == .none || task.deadline == nil
+        else { return nil }
         let today = DayBoundary.day(containing: now, dayStart: dayStart, calendar: calendar)
         var prepared = task
         prepared.title = title
@@ -85,7 +88,7 @@ public enum TaskWriteRules {
         return (prepared, cycleDay)
     }
 
-    /// 고침 결과. 검증에 실패하면 nil(저장 안 함). dropped는 고칠 수 없다(nil).
+    /// 고침 결과. 검증에 실패하면 nil(저장 안 함). dropped는 고칠 수 없다(nil). 반복이 되면 마감을 지운다.
     public static func applyEdit(_ task: MokaTask, _ edit: TaskEdit, now: Date, dayStart: DayStart, calendar: Calendar)
         -> MokaTask?
     {
@@ -117,6 +120,10 @@ public enum TaskWriteRules {
         } else {
             guard edit.weekday == nil else { return nil }
             weekday = nil
+        }
+        if recurrence != .none {
+            if case .set = edit.deadline { return nil }
+            edited.deadline = nil
         }
         if recurrence != task.recurrence || weekday != task.weekday {
             edited.recurrence = recurrence

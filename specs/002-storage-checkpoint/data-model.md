@@ -401,6 +401,7 @@ public enum DayBoundary {
 | `weekday` | `.weekly`면 1~7, 아니면 nil | 저장 안 함 |
 | 두 줄 | 앞뒤 공백 제거. 비면 `""` | — |
 | 마감, 컨텍스트 날짜 | `LocalDay`(날짜 고르기로만 받음) | 저장 안 함 |
+| 마감과 반복 | 반복(`.daily`·`.weekly`)이면 마감 nil(2026-11-04 사용자 결정) | 저장 안 함(고침에서 반복이 되면 마감을 지움, §5.8) |
 
 ### 5.7 할 일 목록 보기 `TaskListView` (R-118)
 
@@ -433,11 +434,13 @@ public enum TaskWriteRules {
 }
 ```
 
+- 반복(`.daily`·`.weekly`) 할 일은 마감이 없다(2026-11-04 사용자 결정). `prepareNew`는 반복 + 마감이면 nil이다.
 - "등록 순간이 속한 하루"는 `DayBoundary.day(containing: now, …)`다. 그래서 하루 시작 06:00이면 새벽 5시에 등록한 매주 할 일의 기본 요일은 전날의 요일이다.
 - 고침의 반복·요일 규칙:
   - 반복을 `.weekly`로 바꾸면서 `weekday`가 없으면 그 순간이 속한 하루의 요일로 채운다.
   - 반복을 `.daily`·`.none`으로 바꾸면 `weekday`를 지운다.
   - 반복을 `.none`으로 바꾸면 `cycle_day`를 지운다.
+  - 결과가 반복이면 마감을 지운다. 반복 할 일에 마감을 넣는 고침(`deadline: .set`)은 nil이다.
   - 반복 값이나 요일이 실제로 바뀌었을 때만 `cycle_day = c`(그 순간 기준)와 `streak = 0`으로 둔다. 같은 값을 다시 주면 아무것도 바꾸지 않는다. `skip_count`는 그대로다. 그 순간에는 리셋하지 않는다.
   - 상태는 바꾸지 않는다. `done`인 할 일도 제목·마감·예상 소요·반복을 고칠 수 있다.
 - 결과는 `StoreBatch(updatedTasks: [결과])`로 적용한다(§4.1).

@@ -7,13 +7,18 @@ struct TaskListTabView: View {
     let nextMarkID: TaskID?
     @Binding var scope: TaskListScope
     @Binding var order: TaskListOrder
+    /// 저장할 수 없으면(R-119) 꺼진다.
+    let canAdd: Bool
+    let onAdd: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                ScopeChips(selection: $scope)
+                ChoiceChips(
+                    label: "보기", items: [(TaskListScope.all, "전체"), (.today, "오늘"), (.thisWeek, "이번 주")],
+                    selection: $scope)
                 Spacer()
                 SortPill(selection: $order)
             }
@@ -35,46 +40,14 @@ struct TaskListTabView: View {
                         colorScheme == .dark
                             ? Color(hex: 0xFFF0E1, opacity: 0.12) : Color(hex: 0x3C2314, opacity: 0.18),
                         lineWidth: 0.5))
+            HStack(spacing: 6) {
+                ListEditButton(symbol: "plus", label: "새 할 일", action: onAdd)
+                    .disabled(!canAdd)
+            }
         }
         .padding(.horizontal, 14)
         .padding(.top, 10)
         .padding(.bottom, 14)
-    }
-}
-
-/// 보기 고르기(시안 7번 `.ms`). macOS 세그먼트는 고른 칸을 시스템 강조색으로 그려 직접 그린다.
-private struct ScopeChips: View {
-    @Binding var selection: TaskListScope
-    @Environment(\.colorScheme) private var colorScheme
-
-    private static let items: [(TaskListScope, String)] = [(.all, "전체"), (.today, "오늘"), (.thisWeek, "이번 주")]
-
-    var body: some View {
-        HStack(spacing: 0) {
-            ForEach(Self.items, id: \.0) { scope, title in
-                let isOn = scope == selection
-                Button {
-                    selection = scope
-                } label: {
-                    Text(title)
-                        .font(.system(size: 11.5, weight: isOn ? .semibold : .regular))
-                        .foregroundStyle(isOn ? MokaColors.textOnPrimary : Color.primary)
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 1)
-                        .background(isOn ? MokaColors.mocha : Color.clear, in: RoundedRectangle(cornerRadius: 4))
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(isOn ? .isSelected : [])
-            }
-        }
-        .padding(2)
-        .background(
-            colorScheme == .dark ? Color(hex: 0xFFF0E1, opacity: 0.09) : Color(hex: 0x3C2314, opacity: 0.08),
-            in: RoundedRectangle(cornerRadius: 6)
-        )
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("보기")
     }
 }
 
@@ -206,5 +179,33 @@ private struct StatusBadge: View {
         case .todo, .dropped: AnyShapeStyle(Color(hex: 0x806E5F, opacity: 0.16))
         case .done: AnyShapeStyle(Color.clear)
         }
+    }
+}
+
+private struct ListEditButton: View {
+    let symbol: String
+    let label: String
+    let action: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.isEnabled) private var isEnabled
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 11, weight: .medium))
+                .frame(width: 22, height: 20)
+                .background(
+                    colorScheme == .dark ? Color(hex: 0x3B342F) : Color.white, in: RoundedRectangle(cornerRadius: 5)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 5)
+                        .strokeBorder(
+                            colorScheme == .dark ? Color.clear : Color(hex: 0x3C2314, opacity: 0.2), lineWidth: 0.5)
+                )
+                .opacity(isEnabled ? 1 : 0.35)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 }

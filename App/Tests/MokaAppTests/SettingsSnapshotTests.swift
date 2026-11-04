@@ -37,14 +37,31 @@ final class SettingsSnapshotTests: XCTestCase {
             task(4, "장보기 목록 만들기"),
             task(5, "세탁기 돌리기", status: .done),
         ]
-        let size = CGSize(width: 460, height: 420)
+        let size = CGSize(width: 460, height: 450)
         let content = VStack(spacing: 0) {
             SettingsTabBar(selection: .constant(.tasks))
-            TaskListTabView(rows: rows, nextMarkID: 2, scope: .constant(.all), order: .constant(.created))
+            TaskListTabView(
+                rows: rows, nextMarkID: 2, scope: .constant(.all), order: .constant(.created), canAdd: true, onAdd: {})
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .background(MokaColors.settingsWindow)
         try write("s07-task-list", content: content, size: size)
+    }
+
+    func test_R101_newTaskSheet() throws {
+        let calendar = GregorianCalendar.make(timeZone: try XCTUnwrap(TimeZone(identifier: "Asia/Seoul")))
+        let today = try XCTUnwrap(LocalDay(text: "2026-11-06"))
+        let content = TaskFormView(today: today, calendar: calendar, onSave: { _ in }, onCancel: {})
+            .environment(\.timeZone, calendar.timeZone)
+        try write("s08-new-task", content: content, size: CGSize(width: 360, height: 190))
+    }
+
+    func test_R101_deadlineCalendar() throws {
+        let calendar = GregorianCalendar.make(timeZone: try XCTUnwrap(TimeZone(identifier: "Asia/Seoul")))
+        let content = MokaCalendar(
+            selected: LocalDay(text: "2026-11-11"), today: try XCTUnwrap(LocalDay(text: "2026-11-06")),
+            calendar: calendar, onPick: { _ in })
+        try write("s08-deadline-calendar", content: content, size: CGSize(width: 214, height: 230))
     }
 
     private func write(_ name: String, content: some View, size: CGSize) throws {

@@ -78,11 +78,14 @@ final class AppState {
     var taskListScope: TaskListScope = .all
     var taskListOrder: TaskListOrder = .created
 
-    /// 할 일 탭에 보일 줄. 오늘은 하루 시작 시각 기준이다(R-114).
-    var taskListRows: [MokaTask] {
-        let today = DayBoundary.day(
+    /// 지금이 속한 하루. 하루 시작 시각 기준이다(R-114).
+    var logicalToday: LocalDay {
+        DayBoundary.day(
             containing: clock.now(), dayStart: CoreSettings.readDayStart(from: settings), calendar: calendar)
-        return TaskListView.rows(tasks, scope: taskListScope, order: taskListOrder, today: today, calendar: calendar)
+    }
+
+    var taskListRows: [MokaTask] {
+        TaskListView.rows(tasks, scope: taskListScope, order: taskListOrder, today: logicalToday, calendar: calendar)
     }
 
     /// 할 일 탭 "다음" 표시(R-102). 보기·정렬과 무관하다.
@@ -139,6 +142,27 @@ final class AppState {
             reloadTasks()
         }
         activate()
+    }
+
+    /// 설정 창 할 일 추가(R-101, #70): 검증·채움 → 넣기 → `tasks()` 다시 읽기 → 빈 상태일 때만 고르기.
+    /// 초안·도는 중·시간 끝이면 세션을 그대로 둔다. 검증이나 쓰기에 실패하면 false.
+    @discardableResult
+    func addTask(_ new: NewTask) -> Bool {
+        guard let repository else { return false }
+        let now = clock.now()
+        guard
+            let prepared = TaskWriteRules.prepareNew(
+                new, now: now, dayStart: CoreSettings.readDayStart(from: settings), calendar: calendar)
+        else { return false }
+        do {
+            _ = try repository.insertTask(prepared.task, cycleDay: prepared.cycleDay, at: now)
+        } catch {
+            Self.logStorageFailure(error)
+            return false
+        }
+        reloadTasks()
+        pickIfEmpty(at: now)
+        return true
     }
 
     /// 활성화 판정(research R11): 앱 시작, 잠자기에서 깨어남, 노치 펼침, 설정 창 열기가 부른다.
