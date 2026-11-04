@@ -2,89 +2,75 @@ import MokaCore
 import SwiftUI
 import os
 
-/// 설정 화면: 기본 작업 시간(`default_quantum_min`) 하나(R-012). 시안 8번 "메뉴 막대 메뉴와 설정".
-/// 숫자 칸은 제출(Enter)이나 포커스를 잃을 때 저장하고, 1~180 정수가 아니거나 저장에 실패하면 저장된 값으로 되돌린다.
-/// 스테퍼는 누를 때마다 1분씩 바꿔 바로 저장한다.
+/// 설정 창: 위에 탭, 창 제목은 탭 이름(시안 6번, R-012). 지금은 기본 탭 하나이고 할 일·일정 탭은 T030·T060에서 더한다.
+/// 숫자 칸은 받는 값이면 저장하고, 아니거나 저장에 실패하면 저장된 값으로 되돌린다(`FieldCommit`).
+/// 스테퍼는 누를 때마다 1분씩 바꿔 바로 저장한다. 하루 시작 시각은 고를 때마다 저장한다.
 struct SettingsView: View {
     let store: any SettingsStore
-    /// 저장을 시도한 뒤 부른다. 펼친 판의 고르지 않은 칩이 새 기본값을 따르게 한다(R-013).
+    /// 기본 작업 시간 저장을 시도한 뒤 부른다. 펼친 판의 고르지 않은 칩이 새 기본값을 따르게 한다(R-013).
     let onSaved: @MainActor () -> Void
 
-    @State private var text = ""
+    @State private var quantumText = ""
+    @State private var extendText = ""
+    @State private var dayStart = Date()
+    private let calendar = GregorianCalendar.make(timeZone: .autoupdatingCurrent)
     private static let logger = Logger(subsystem: "dev.dongwon.moka", category: "settings")
-    @FocusState private var isFieldFocused: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 10) {
-                CupIcon()
-                    .frame(width: 20, height: 20)
-                    .foregroundStyle(MokaColors.foam)
-                    .frame(width: 34, height: 34)
-                    .background(MokaColors.mocha, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 1) {
-                    MokaWordmark(size: 13)
-                    Text("지금 할 일 하나")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            Divider()
-            HStack(spacing: 4) {
-                Text("기본 작업 시간")
-                Spacer()
-                // macOS는 TextField 제목을 칸 안 자리표시로 그리므로 제목은 비우고 접근성 라벨로만 둔다(#45).
-                TextField("", text: $text)
-                    .labelsHidden()
-                    .accessibilityLabel("기본 작업 시간")
-                    .multilineTextAlignment(.trailing)
-                    .frame(width: 44)
-                    .focused($isFieldFocused)
-                    .onSubmit(commit)
-                Stepper("기본 작업 시간", value: stepperValue, in: Defaults.quantumMinRange, step: 1)
-                    .labelsHidden()
-                Text("분")
-            }
-            Text("새 할 일에 먼저 골라 둘 시간이에요.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
+        TabView {
+            BasicTabView(
+                quantum: MinutesFieldInput(
+                    text: $quantumText,
+                    stepperValue: QuantumChip.parseCustom(quantumText) ?? QuantumSettings.readDefault(from: store),
+                    range: Defaults.quantumMinRange,
+                    onCommit: { applyQuantum(QuantumSettings.commitField(quantumText, to: store)) },
+                    onStep: { applyQuantum(QuantumSettings.saveField($0, to: store)) }),
+                extend: MinutesFieldInput(
+                    text: $extendText,
+                    stepperValue: QuantumChip.parseCustom(extendText) ?? CoreSettings.readExtendMin(from: store),
+                    range: Defaults.extendMinRange,
+                    onCommit: { applyExtend(CoreSettings.commitExtendField(extendText, to: store)) },
+                    onStep: { applyExtend(CoreSettings.saveExtendField($0, to: store)) }),
+                dayStart: Binding(get: { dayStart }, set: saveDayStart))
+            .tabItem { Label("기본", systemImage: "gearshape") }
         }
-        .padding(.horizontal, 14)
-        .padding(.top, 6)
-        .padding(.bottom, 14)
-        .frame(width: 320)
+        .frame(width: 460)
         .background(SettingsWindowRaiser.Anchor())
-        .navigationTitle("Moka 설정")
-        .onAppear { text = String(QuantumSettings.readDefault(from: store)) }
-        .onChange(of: isFieldFocused) { _, focused in
-            if !focused { commit() }
+        .onAppear(perform: load)
+        .onDisappear {
+            applyQuantum(QuantumSettings.commitField(quantumText, to: store))
+            applyExtend(CoreSettings.commitExtendField(extendText, to: store))
         }
-        .onDisappear(perform: commit)
     }
 
-    /// 칸에 유효한 값이 있으면 그 값에서, 없으면 저장된 값에서 한 칸 움직인다.
-    private var stepperValue: Binding<Int> {
-        Binding(
-            get: { QuantumChip.parseCustom(text) ?? QuantumSettings.readDefault(from: store) },
-            set: { save($0) })
+    private func load() {
+        quantumText = String(QuantumSettings.readDefault(from: store))
+        extendText = String(CoreSettings.readExtendMin(from: store))
+        dayStart = CoreSettings.readDayStart(from: store).date(calendar: calendar)
     }
 
-    private func commit() {
-        apply(QuantumSettings.commitField(text, to: store))
-    }
-
-    private func save(_ minutes: Int) {
-        apply(QuantumSettings.saveField(minutes, to: store))
-    }
-
-    private func apply(_ result: FieldCommit) {
-        if let error = result.error {
-            Self.logger.error("기본 작업 시간 저장 실패: \(String(reflecting: type(of: error)), privacy: .public)")
-        }
-        text = result.shown
+    private func applyQuantum(_ result: FieldCommit) {
+        log(result.error, "기본 작업 시간")
+        quantumText = result.shown
         if result.attempted { onSaved() }
+    }
+
+    private func applyExtend(_ result: FieldCommit) {
+        log(result.error, "추가 시간")
+        extendText = result.shown
+    }
+
+    private func saveDayStart(_ date: Date) {
+        do {
+            try CoreSettings.writeDayStart(DayStart(date: date, calendar: calendar), to: store)
+        } catch {
+            log(error, "하루 시작 시각")
+        }
+        dayStart = CoreSettings.readDayStart(from: store).date(calendar: calendar)
+    }
+
+    private func log(_ error: (any Error)?, _ field: String) {
+        guard let error else { return }
+        Self.logger.error("\(field, privacy: .public) 저장 실패: \(String(reflecting: type(of: error)), privacy: .public)")
     }
 }
