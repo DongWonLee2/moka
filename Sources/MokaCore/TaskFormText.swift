@@ -16,6 +16,11 @@ public enum TaskFormText {
         text.isEmpty || estMin(text) != nil ? nil : "1분 이상으로 넣어 주세요."
     }
 
+    public static func deadlineLabel(_ deadline: LocalDay?) -> String {
+        guard let deadline else { return "마감 없음" }
+        return "\(deadline.year)년 \(deadline.month)월 \(deadline.day)일"
+    }
+
     public static func weekdayHint(today: Weekday) -> String {
         "오늘(\(weekdayShortNames[today.rawValue - 1]))이 먼저 골라져 있어요. 하나만 고를 수 있어요."
     }
