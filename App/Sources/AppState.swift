@@ -90,20 +90,24 @@ final class AppState {
     private static let storageLogger = Logger(subsystem: "dev.dongwon.moka", category: "storage")
 
     /// `calendar`는 `GregorianCalendar.make(timeZone: .autoupdatingCurrent)`로 한 번 만든 것을 받는다(ADR-0010).
-    init(clock: MokaClock, calendar: Calendar, storage: AppStorage) {
+    /// `workspaceCenter`는 깨어남·잠자기 알림을 받는 곳이다. 시험은 전용 센터를 넘긴다.
+    init(
+        clock: MokaClock, calendar: Calendar, storage: AppStorage,
+        workspaceCenter: NotificationCenter = NSWorkspace.shared.notificationCenter
+    ) {
         self.clock = clock
         self.calendar = calendar
         settings = storage.settings
         repository = storage.repository
         storageUnavailable = storage.isUnavailable
         defaultQuantumMin = QuantumSettings.readDefault(from: storage.settings)
-        let workspace = NSWorkspace.shared.notificationCenter
         observations = [
-            NotificationObservation(center: workspace, name: NSWorkspace.didWakeNotification) { [weak self] in
+            NotificationObservation(center: workspaceCenter, name: NSWorkspace.didWakeNotification) { [weak self] in
                 self?.tick()
                 self?.activate()
             },
-            NotificationObservation(center: workspace, name: NSWorkspace.willSleepNotification) { [weak self] in
+            NotificationObservation(center: workspaceCenter, name: NSWorkspace.willSleepNotification) {
+                [weak self] in
                 self?.lifecycleCheckpoint(.sleep)
             },
         ]

@@ -18,11 +18,12 @@ final class AppLifecycleTests: XCTestCase {
 
     private func makeState(
         _ repository: (any TaskRepository)?, settings: any SettingsStore = InMemorySettingsStore(),
-        clock: TestClock = TestClock(noon)
+        clock: TestClock = TestClock(noon), workspaceCenter: NotificationCenter = NotificationCenter()
     ) -> AppState {
         AppState(
             clock: clock.mokaClock, calendar: Self.seoul,
-            storage: AppStorage(settings: settings, repository: repository, contexts: InMemoryContextStore()))
+            storage: AppStorage(settings: settings, repository: repository, contexts: InMemoryContextStore()),
+            workspaceCenter: workspaceCenter)
     }
 
     private static func seeded(_ count: Int) throws -> InMemoryTaskRepository {
@@ -170,12 +171,13 @@ final class AppLifecycleTests: XCTestCase {
     func test_FR09_R113_wakeNotificationRunsActivationAfterDayBoundary() throws {
         let repository = try Self.doneDailyToday()
         let clock = TestClock(Self.noon)
-        let state = makeState(repository, clock: clock)
+        let center = NotificationCenter()
+        let state = makeState(repository, clock: clock, workspaceCenter: center)
         state.launch()
         XCTAssertEqual(state.tasks.map(\.status), [.done])
 
         clock.advance(minutes: 19 * 60)  // 2027-01-14 07:00
-        NSWorkspace.shared.notificationCenter.post(name: NSWorkspace.didWakeNotification, object: nil)
+        center.post(name: NSWorkspace.didWakeNotification, object: nil)
 
         let reset = try XCTUnwrap(try repository.tasks().first)
         XCTAssertEqual(reset.status, .todo)
@@ -186,12 +188,13 @@ final class AppLifecycleTests: XCTestCase {
     func test_FR07_R110_willSleepNotificationSavesSleepCheckpoint() throws {
         let repository = try Self.seeded(1)
         let clock = TestClock(Self.noon)
-        let state = makeState(repository, clock: clock)
+        let center = NotificationCenter()
+        let state = makeState(repository, clock: clock, workspaceCenter: center)
         state.launch()
         state.start()
         clock.advance(minutes: 4)
 
-        NSWorkspace.shared.notificationCenter.post(name: NSWorkspace.willSleepNotification, object: nil)
+        center.post(name: NSWorkspace.willSleepNotification, object: nil)
 
         XCTAssertEqual(try repository.checkpoints().map(\.trigger), [.sleep])
         XCTAssertEqual(try repository.checkpoints().map(\.elapsedMin), [4])
