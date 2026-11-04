@@ -387,6 +387,41 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertEqual(state.taskListRows.map(\.title), ["가짜 할 일 어제 마감", "가짜 할 일 오늘 마감"])
     }
 
+    // MARK: - R-101·R-102 설정 창 할 일 추가(#70)
+
+    func test_FR01_R102_addFromSettingsPicksWhenEmpty() throws {
+        let repository = InMemoryTaskRepository()
+        let state = makeState(repository)
+        state.launch()
+
+        XCTAssertTrue(
+            state.addTask(NewTask(title: " 가짜 할 일 새것 ", deadline: nil, estMin: 30, recurrence: .none, weekday: nil)))
+        XCTAssertEqual(try repository.tasks().map(\.title), ["가짜 할 일 새것"])
+        XCTAssertEqual(state.tasks.map(\.title), ["가짜 할 일 새것"], "추가 뒤 tasks()를 다시 읽는다")
+        XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 새것", chipMin: 25)), "빈 상태면 고른다")
+    }
+
+    func test_FR01_R102_addFromSettingsKeepsDraft() throws {
+        let state = makeState(try Self.seeded(1))
+        state.launch()
+        let before = state.session
+
+        XCTAssertTrue(
+            state.addTask(NewTask(title: "가짜 할 일 2", deadline: nil, estMin: nil, recurrence: .daily, weekday: nil)))
+        XCTAssertEqual(state.tasks.count, 2)
+        XCTAssertEqual(state.session, before, "초안이 있으면 그대로(#70)")
+    }
+
+    func test_FR01_R101_addFromSettingsRejectsBlankTitle() throws {
+        let repository = InMemoryTaskRepository()
+        let state = makeState(repository)
+        state.launch()
+
+        XCTAssertFalse(
+            state.addTask(NewTask(title: "  ", deadline: nil, estMin: nil, recurrence: .none, weekday: nil)))
+        XCTAssertEqual(try repository.tasks(), [])
+    }
+
     // MARK: - #37 알림 처리기 해제
 
     func test_issue37_observationStopsWhenReleased() {
