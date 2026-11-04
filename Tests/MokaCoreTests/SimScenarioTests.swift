@@ -80,6 +80,8 @@ let errorFixtures: [ErrorFixture] = [
     ErrorFixture(name: "storage-deadline-format", kind: .invalidDate),
     ErrorFixture(name: "storage-deadline-nonexistent", kind: .invalidDate),
     ErrorFixture(name: "storage-deadline-not-string", kind: .wrongType),
+    ErrorFixture(name: "storage-deadline-daily", kind: .deadlineOnRecurring),
+    ErrorFixture(name: "storage-deadline-weekly", kind: .deadlineOnRecurring),
     ErrorFixture(name: "storage-day-start-format", kind: .invalidDayStart),
     ErrorFixture(name: "storage-day-start-out-of-range", kind: .invalidDayStart),
     ErrorFixture(name: "storage-day-start-not-string", kind: .wrongType),
