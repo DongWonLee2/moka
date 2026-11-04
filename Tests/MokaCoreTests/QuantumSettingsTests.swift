@@ -89,3 +89,60 @@ func defaultChangeAppliesOnlyThroughApplyDefaultQuantumChange() throws {
     timer.applyDefaultQuantumChange(QuantumSettings.readDefault(from: store), isEditingCustom: false)
     #expect(timer == .expired(title: "가짜 할 일 A", chipMin: 15))
 }
+
+/// 읽기는 되고 쓰기만 실패하는 저장소. 저장 실패 뒤 칸이 이전 값으로 돌아가는지 본다.
+private final class WriteFailingSettingsStore: SettingsStore {
+    struct Failure: Error {}
+    private let stored: InMemorySettingsStore
+
+    init(stored: InMemorySettingsStore) { self.stored = stored }
+
+    func value(for key: String) throws -> String? {
+        try stored.value(for: key)
+    }
+
+    func setValue(_ value: String, for key: String) throws {
+        throw Failure()
+    }
+}
+
+@Test("FR-16 R-012 #35: 칸에 받는 값을 제출하면 저장하고 칸은 저장된 값", arguments: [("45", "45"), ("+45", "45"), ("180", "180")])
+func commitFieldSavesAcceptedText(text: String, shown: String) throws {
+    let store = InMemorySettingsStore()
+    let result = QuantumSettings.commitField(text, to: store)
+    #expect(result.shown == shown)
+    #expect(result.attempted)
+    #expect(result.error == nil)
+    #expect(try store.value(for: QuantumSettings.key) == shown)
+}
+
+@Test("FR-16 R-012 #35: 칸에 받지 않는 값을 제출하면 저장하지 않고 칸은 저장된 값으로 되돌린다", arguments: ["", "0", "181", "4.5", "abc", " 45"])
+func commitFieldRevertsRejectedText(text: String) throws {
+    let store = InMemorySettingsStore()
+    try QuantumSettings.writeDefault(45, to: store)
+    let result = QuantumSettings.commitField(text, to: store)
+    #expect(result.shown == "45")
+    #expect(!result.attempted)
+    #expect(result.error == nil)
+    #expect(try store.value(for: QuantumSettings.key) == "45")
+}
+
+@Test("FR-16 R-012 #35: 저장에 실패하면 오류를 돌려주고 칸은 이전 값으로 되돌린다")
+func commitFieldRevertsWhenSaveFails() throws {
+    let stored = InMemorySettingsStore()
+    try QuantumSettings.writeDefault(45, to: stored)
+    let result = QuantumSettings.commitField("60", to: WriteFailingSettingsStore(stored: stored))
+    #expect(result.shown == "45")
+    #expect(result.attempted)
+    #expect(result.error is WriteFailingSettingsStore.Failure)
+}
+
+@Test("FR-16 R-012 #35: 스테퍼 값은 해석 없이 저장하고 칸은 저장된 값")
+func saveFieldStoresStepperValue() throws {
+    let store = InMemorySettingsStore()
+    let result = QuantumSettings.saveField(26, to: store)
+    #expect(result.shown == "26")
+    #expect(result.attempted)
+    #expect(result.error == nil)
+    #expect(QuantumSettings.readDefault(from: store) == 26)
+}
