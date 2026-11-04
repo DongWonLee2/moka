@@ -228,31 +228,16 @@ struct MokaCalendar: View {
 
     private static let weekdayNames = ["일", "월", "화", "수", "목", "금", "토"]
 
-    private var monthStart: Date {
-        let base = (selected ?? today).date(calendar: calendar)
-        let first = calendar.date(from: calendar.dateComponents([.year, .month], from: base))!
-        return calendar.date(byAdding: .month, value: monthOffset, to: first)!
-    }
-
-    private var cells: [LocalDay?] {
-        let start = monthStart
-        let blanks = calendar.component(.weekday, from: start) - 1
-        let count = calendar.range(of: .day, in: .month, for: start)!.count
-        let days = (0..<count).map { offset in
-            LocalDay(date: calendar.date(byAdding: .day, value: offset, to: start)!, calendar: calendar)
-        }
-        return Array(repeating: nil, count: blanks) + days.map { Optional($0) }
-    }
+    private var month: CalendarMonth { CalendarMonth(containing: selected ?? today).adding(months: monthOffset) }
 
     var body: some View {
-        let start = LocalDay(date: monthStart, calendar: calendar)
         VStack(spacing: 6) {
             HStack {
                 Button("‹") { monthOffset -= 1 }
                     .foregroundStyle(.secondary)
                     .accessibilityLabel("이전 달")
                 Spacer()
-                Text("\(String(start.year))년 \(start.month)월")
+                Text("\(String(month.year))년 \(month.month)월")
                     .font(.system(size: 12, weight: .semibold))
                 Spacer()
                 Button("›") { monthOffset += 1 }
@@ -266,7 +251,7 @@ struct MokaCalendar: View {
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                 }
-                ForEach(Array(cells.enumerated()), id: \.offset) { _, day in
+                ForEach(Array(month.cells(calendar: calendar).enumerated()), id: \.offset) { _, day in
                     if let day {
                         DayCell(day: day, isSelected: day == selected, isToday: day == today) { onPick(day) }
                     } else {
