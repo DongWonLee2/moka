@@ -73,21 +73,18 @@ struct SettingsView: View {
     }
 
     private func commit() {
-        if let minutes = QuantumChip.parseCustom(text) {
-            save(minutes)
-        } else {
-            text = String(QuantumSettings.readDefault(from: store))
-        }
+        apply(QuantumSettings.commitField(text, to: store))
     }
 
-    /// 저장하고 칸을 저장된 값으로 맞춘다. 저장에 실패하면 이전 값이 보인다.
     private func save(_ minutes: Int) {
-        do {
-            try QuantumSettings.writeDefault(minutes, to: store)
-        } catch {
+        apply(QuantumSettings.saveField(minutes, to: store))
+    }
+
+    private func apply(_ result: FieldCommit) {
+        if let error = result.error {
             Self.logger.error("기본 작업 시간 저장 실패: \(String(reflecting: type(of: error)), privacy: .public)")
         }
-        text = String(QuantumSettings.readDefault(from: store))
-        onSaved()
+        text = result.shown
+        if result.attempted { onSaved() }
     }
 }
