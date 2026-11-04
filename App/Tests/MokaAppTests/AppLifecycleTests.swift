@@ -153,6 +153,67 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertEqual(try repository.tasks(), afterLaunch)
     }
 
+    // MARK: - 실제 연결 경로(알림·노치 펼침)
+
+    /// 오늘(2027-01-13) 몫을 이미 끝낸 매일 할 일 하나. 켤 때는 판정 대상이 아니다.
+    private static func doneDailyToday() throws -> InMemoryTaskRepository {
+        let repository = InMemoryTaskRepository()
+        var daily = try repository.insertTask(
+            NewTask(title: "가짜 매일 할 일", deadline: nil, estMin: nil, recurrence: .daily, weekday: nil),
+            cycleDay: LocalDay(text: "2027-01-13"), at: noon)
+        daily.status = .done
+        daily.streak = 1
+        try repository.apply(StoreBatch(updatedTasks: [daily]))
+        return repository
+    }
+
+    func test_FR09_R113_wakeNotificationRunsActivationAfterDayBoundary() throws {
+        let repository = try Self.doneDailyToday()
+        let clock = TestClock(Self.noon)
+        let state = makeState(repository, clock: clock)
+        state.launch()
+        XCTAssertEqual(state.tasks.map(\.status), [.done])
+
+        clock.advance(minutes: 19 * 60)  // 2027-01-14 07:00
+        NSWorkspace.shared.notificationCenter.post(name: NSWorkspace.didWakeNotification, object: nil)
+
+        let reset = try XCTUnwrap(try repository.tasks().first)
+        XCTAssertEqual(reset.status, .todo)
+        XCTAssertEqual(reset.cycleDay, LocalDay(text: "2027-01-14"))
+        XCTAssertEqual(state.session.taskID, reset.id)
+    }
+
+    func test_FR07_R110_willSleepNotificationSavesSleepCheckpoint() throws {
+        let repository = try Self.seeded(1)
+        let clock = TestClock(Self.noon)
+        let state = makeState(repository, clock: clock)
+        state.launch()
+        state.start()
+        clock.advance(minutes: 4)
+
+        NSWorkspace.shared.notificationCenter.post(name: NSWorkspace.willSleepNotification, object: nil)
+
+        XCTAssertEqual(try repository.checkpoints().map(\.trigger), [.sleep])
+        XCTAssertEqual(try repository.checkpoints().map(\.elapsedMin), [4])
+        guard case .running = state.timer else { return XCTFail("잠자기는 타이머를 그대로 둔다: \(state.timer)") }
+    }
+
+    func test_FR09_R113_notchExpansionRunsActivationAfterDayBoundary() throws {
+        let repository = try Self.doneDailyToday()
+        let clock = TestClock(Self.noon)
+        let state = makeState(repository, clock: clock)
+        state.launch()
+
+        clock.advance(minutes: 18 * 60 + 1)  // 2027-01-14 06:01
+        state.setHovering(true)
+
+        XCTAssertTrue(state.isExpanded)
+        let reset = try XCTUnwrap(try repository.tasks().first)
+        XCTAssertEqual(reset.status, .todo)
+        XCTAssertEqual(reset.streak, 1)
+        XCTAssertEqual(state.session.taskID, reset.id)
+    }
+
     // MARK: - R-104 버튼 뒤 다시 읽고 고르기
 
     func test_FR05_R104_completeRereadsTasksAndPicksNext() throws {
