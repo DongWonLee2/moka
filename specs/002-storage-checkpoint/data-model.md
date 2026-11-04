@@ -293,14 +293,14 @@ public enum SessionCommit {
 public enum SessionError: Error, Equatable, Sendable { case notAllowed }    // 아래 표의 "거부"
 ```
 
-빠른 입력과 설정 창 추가는 두 단계다: (1) `TaskWriteRules.prepareNew`(§5.8)로 검증·채움 → 호출자가 `insertTask` → (2) 돌려받은 `MokaTask`로 `addedTask`. 새 id는 저장소만 정한다.
+빠른 입력과 설정 창 추가는 모두 (1) `TaskWriteRules.prepareNew`(§5.8)로 검증·채움 → 호출자가 `insertTask`로 시작하고, 다음 단계가 다르다. 빠른 입력(R-103 노치 빠른 입력 전용)은 (2) 돌려받은 `MokaTask`로 `addedTask`를 불러 초안을 새 할 일로 바꾼다. 설정 창 추가는 (2) 저장소 `tasks()`를 다시 읽어 `picked`를 부른다. 빈 상태(초안 없음)일 때만 고르고, 초안·도는 중·시간 끝이면 그대로다. 새 id는 저장소만 정한다.
 
-| 세션 상태 \ 동작 | 고르기 | 빠른 입력 | 다른 할 일 | 시작 | 완료 | 미루기·바꾸기 | 다시 시작 | 잠자기·종료 | 지움(노치의 할 일) | 고침(노치의 할 일) |
-|---|---|---|---|---|---|---|---|---|---|---|
-| `empty(nil)` | 후보 있으면 `empty(draft)` + `taskID` | 할 일 만듦 → 그 할 일로 초안 | 거부 | 거부 | 거부 | 거부 | 거부 | 기록 없음 | — | — |
-| `empty(draft)` | 그대로 | 할 일 만듦 → 그 할 일로 초안(칩 유지) | 커서 = 지금 초안 → 다음 후보로 초안(칩 유지) | `running`, 할 일 `active`, `run` 채움 | 거부 | 거부 | 거부 | 기록 없음 | `empty(nil)` → 고르기 | 초안 제목 교체 |
-| `running` | 그대로 | 거부 | 거부 | 거부 | `empty(nil)`, `run` nil → 고르기 | `empty(nil)`, `run` nil, 커서 = 그 할 일 → 고르기 | 거부 | 체크포인트(`sleep`/`quit`) | `empty(nil)`, `run` nil → 고르기 | 제목 교체, 시간 값 그대로 |
-| `expired` | 그대로 | 거부 | 거부 | 거부 | 같음 | 같음 | `running`, `run` = (지금, 고른 칩) | 기록 없음 | 같음 | 같음 |
+| 세션 상태 \ 동작 | 고르기 | 빠른 입력 | 설정 창 추가 | 다른 할 일 | 시작 | 완료 | 미루기·바꾸기 | 다시 시작 | 잠자기·종료 | 지움(노치의 할 일) | 고침(노치의 할 일) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `empty(nil)` | 후보 있으면 `empty(draft)` + `taskID` | 할 일 만듦 → 그 할 일로 초안 | 할 일 만듦 → 고르기(그 할 일) | 거부 | 거부 | 거부 | 거부 | 거부 | 기록 없음 | — | — |
+| `empty(draft)` | 그대로 | 할 일 만듦 → 그 할 일로 초안(칩 유지) | 할 일 만듦, 그대로 | 커서 = 지금 초안 → 다음 후보로 초안(칩 유지) | `running`, 할 일 `active`, `run` 채움 | 거부 | 거부 | 거부 | 기록 없음 | `empty(nil)` → 고르기 | 초안 제목 교체 |
+| `running` | 그대로 | 거부 | 할 일 만듦, 그대로 | 거부 | 거부 | `empty(nil)`, `run` nil → 고르기 | `empty(nil)`, `run` nil, 커서 = 그 할 일 → 고르기 | 거부 | 체크포인트(`sleep`/`quit`) | `empty(nil)`, `run` nil → 고르기 | 제목 교체, 시간 값 그대로 |
+| `expired` | 그대로 | 거부 | 할 일 만듦, 그대로 | 거부 | 거부 | 같음 | 같음 | `running`, `run` = (지금, 고른 칩) | 기록 없음 | 같음 | 같음 |
 
 - 초안의 칩은 그 순간의 `default_quantum_min`이다. 할 일별 마지막 칩(PRD `quantum_min`)은 범위 밖이다.
 - 타이머 전이는 spec 001 `NotchTimer.apply`를 그대로 쓴다. 초안을 만들거나 제목을 바꿀 때는 `.enterTitle(title)`(빈 상태·초안에서 받음, `Sources/MokaCore/NotchTimer.swift:52`), 시작·다시 시작은 `.start`, 완료·미루기·바꾸기는 `.complete`. 도는 중·시간 끝의 제목 교체는 같은 경우 값을 제목만 바꿔 다시 만든다(`.running(title:quantumMin:startedAt:endsAt:)`, `.expired(title:chipMin:chipPicked:)`). `NotchTimer`에 새 경우나 이벤트를 더하지 않는다.

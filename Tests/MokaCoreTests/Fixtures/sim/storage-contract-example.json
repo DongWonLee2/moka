@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "timezone": "Asia/Seoul",
+  "storage": true,
+  "settings": { "default_quantum_min": 25, "day_start": "06:00" },
+  "events": [
+    { "at": "2026-11-02T09:00:00+09:00", "type": "add_task", "title": "가짜 할 일 A" },
+    { "at": "2026-11-02T09:00:10+09:00", "type": "add_task", "title": "가짜 할 일 B", "recurrence": "daily" },
+    { "at": "2026-11-02T09:01:00+09:00", "type": "start" },
+    { "at": "2026-11-02T09:13:30+09:00", "type": "switch", "done_note": "가짜 한 일", "next_note": "가짜 첫 행동" },
+    { "at": "2026-11-02T09:14:00+09:00", "type": "start" },
+    { "at": "2026-11-02T09:20:00+09:00", "type": "complete" },
+    { "at": "2026-11-02T09:21:00+09:00", "type": "start" },
+    { "at": "2026-11-02T09:30:00+09:00", "type": "quit" },
+    { "at": "2026-11-03T07:00:00+09:00", "type": "relaunch" }
+  ]
+}

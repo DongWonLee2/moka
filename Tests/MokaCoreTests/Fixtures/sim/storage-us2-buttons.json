@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "timezone": "Asia/Seoul",
+  "storage": true,
+  "events": [
+    { "at": "2026-11-02T09:00:00+09:00", "type": "add_task", "title": "가짜 할 일 A" },
+    { "at": "2026-11-02T09:01:00+09:00", "type": "start" },
+    { "at": "2026-11-02T09:06:00+09:00", "type": "skip" },
+    { "at": "2026-11-02T09:07:00+09:00", "type": "add_task", "title": "가짜 할 일 B" },
+    { "at": "2026-11-02T09:07:00+09:00", "type": "choose_quantum", "quantum_min": 1 },
+    { "at": "2026-11-02T09:08:00+09:00", "type": "start" },
+    { "at": "2026-11-02T09:09:00+09:00", "type": "skip", "done_note": "가짜 한 일", "next_note": "가짜 이어서 할 일" },
+    { "at": "2026-11-02T09:10:00+09:00", "type": "choose_quantum", "quantum_min": 1 },
+    { "at": "2026-11-02T09:10:00+09:00", "type": "start" },
+    { "at": "2026-11-02T09:11:00+09:00", "type": "switch" },
+    { "at": "2026-11-02T09:12:00+09:00", "type": "choose_quantum", "quantum_min": 1 },
+    { "at": "2026-11-02T09:12:00+09:00", "type": "start" },
+    { "at": "2026-11-02T09:13:00+09:00", "type": "start", "done_note": "", "next_note": "   " },
+    { "at": "2026-11-02T09:38:00+09:00", "type": "tick" },
+    { "at": "2026-11-02T09:38:30+09:00", "type": "complete" },
+    { "at": "2026-11-02T09:39:00+09:00", "type": "choose_quantum", "quantum_min": 45 },
+    { "at": "2026-11-02T09:39:00+09:00", "type": "start" },
+    { "at": "2026-11-02T10:24:00+09:00", "type": "tick" },
+    { "at": "2026-11-02T10:24:30+09:00", "type": "choose_quantum", "quantum_min": 15 },
+    { "at": "2026-11-02T10:25:00+09:00", "type": "complete", "done_note": "가짜 한 일", "next_note": "가짜 다음 행동" }
+  ]
+}

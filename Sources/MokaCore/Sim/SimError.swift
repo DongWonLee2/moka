@@ -15,6 +15,14 @@ public enum SimErrorKind: Equatable, Sendable {
     case unknownTimezone
     case emptyTitle
     case notAllowedInPhase
+    /// `storage: true` 없이 storage 모드 이벤트·필드를 씀.
+    case storageOnly
+    /// `deadline`이 `YYYY-MM-DD`가 아니거나 없는 날짜.
+    case invalidDate
+    /// `settings.day_start`가 `HH:MM`이 아님.
+    case invalidDayStart
+    /// `recurrence`가 `weekly`가 아닌데 `weekday`를 줌.
+    case weekdayNotWeekly
     case invariantViolation
 }
 

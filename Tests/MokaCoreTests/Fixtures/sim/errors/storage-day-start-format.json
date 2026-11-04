@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "timezone": "Asia/Seoul",
+  "storage": true,
+  "settings": {
+    "day_start": "6:00"
+  },
+  "events": []
+}
