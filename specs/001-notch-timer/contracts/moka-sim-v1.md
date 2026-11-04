@@ -150,7 +150,7 @@ moka-sim run <scenario.json>
 
 | `type` | 추가 필드 | 의미(앱의 무엇) |
 |---|---|---|
-| `add_task` | `title`(필수), `deadline`, `recurrence`(`none`/`daily`/`weekly`, 없으면 `none`), `weekday`(`weekly`일 때만, 없으면 그 순간이 속한 하루의 요일), `est_min`(정수 1 이상) | 설정 창 할 일 탭에서 더함(data-model §5.8 `prepareNew` → `insertTask` → `tasks()` 다시 읽기 → `picked`. 빈 상태일 때만 고르고 초안이면 그대로다. 초안을 새 할 일로 바꾸는 `addedTask`는 노치 빠른 입력 `enter_title`(R-103) 전용) |
+| `add_task` | `title`(필수), `deadline`(`recurrence`가 `none`일 때만, 2026-11-04 정정), `recurrence`(`none`/`daily`/`weekly`, 없으면 `none`), `weekday`(`weekly`일 때만, 없으면 그 순간이 속한 하루의 요일), `est_min`(정수 1 이상) | 설정 창 할 일 탭에서 더함(data-model §5.8 `prepareNew` → `insertTask` → `tasks()` 다시 읽기 → `picked`. 빈 상태일 때만 고르고 초안이면 그대로다. 초안을 새 할 일로 바꾸는 `addedTask`는 노치 빠른 입력 `enter_title`(R-103) 전용) |
 | `skip` | `done_note`, `next_note`(문자열, 없으면 빈 줄) | 미루기 + 두 줄 등록/안 적기 |
 | `switch` | `done_note`, `next_note` | 바꾸기 + 두 줄 |
 | `quit` | 없음 | 앱 종료(메뉴 막대 "종료") |
@@ -222,7 +222,7 @@ storage 모드에서는 모든 줄(기존 이벤트 포함)에 위 "출력" 절�
 
 | 종료 코드 | 경우 |
 |---|---|
-| 2 | `storage`가 불리언이 아님. `storage` 없이 새 이벤트 종류나 `settings.day_start`를 씀. 새 이벤트의 모르는 키·필수 필드 없음·타입 틀림. 빈 제목. `recurrence` 값 밖. `weekday`가 1~7 밖이거나 `recurrence`가 `weekly`가 아닌데 `weekday`를 줌. `est_min` 0 이하. 날짜가 `YYYY-MM-DD`가 아니거나 없는 날짜. `day_start`가 `HH:MM`이 아님. 위 "단계 × 이벤트" 표의 "2". 도는 중 `complete`나 초안 `start`에 두 줄 필드 |
+| 2 | `storage`가 불리언이 아님. `storage` 없이 새 이벤트 종류나 `settings.day_start`를 씀. 새 이벤트의 모르는 키·필수 필드 없음·타입 틀림. 빈 제목. `recurrence` 값 밖. `weekday`가 1~7 밖이거나 `recurrence`가 `weekly`가 아닌데 `weekday`를 줌. `recurrence`가 `none`이 아닌데 `deadline`을 줌(반복 할 일은 마감 없음, R-101, 2026-11-04 사용자 결정). `est_min` 0 이하. 날짜가 `YYYY-MM-DD`가 아니거나 없는 날짜. `day_start`가 `HH:MM`이 아님. 위 "단계 × 이벤트" 표의 "2". 도는 중 `complete`나 초안 `start`에 두 줄 필드 |
 | 1 | 위 "오류" 절의 불변식에 더해, 이벤트마다 적용 뒤 검사한다: `active` 할 일은 최대 하나. 꺼짐이 아니면 타이머가 `running`·`expired`일 때만 `active`가 있고 그것이 `notch_task`다. 초안의 `notch_task`는 `todo`다. `recurrence`가 `weekly` ⇔ `weekday` 있음, `none` ⇔ `cycle_day` 없음. `skip_count`·`streak` ≥ 0. 체크포인트·로그 수는 줄지 않고 이전 줄이 바뀌지 않는다 |
 
 오류 종류(`SimErrorKind`)와 픽스처별 기대 값은 시험 코드의 표(`Tests/MokaCoreTests/SimScenarioTests.swift` `errorFixtures`)에 둔다.

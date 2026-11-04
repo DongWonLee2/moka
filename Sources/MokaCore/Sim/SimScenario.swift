@@ -228,6 +228,9 @@ extension SimScenario {
             }
             recurrence = parsed
         }
+        guard recurrence == .none || deadline == nil else {
+            throw SimError(kind: .deadlineOnRecurring, seq: seq, message: "recurrence가 none이 아닌데 deadline이 있다")
+        }
 
         var weekday: Weekday?
         if let value = field(event, "weekday") {

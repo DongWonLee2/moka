@@ -23,6 +23,8 @@ public enum SimErrorKind: Equatable, Sendable {
     case invalidDayStart
     /// `recurrence`가 `weekly`가 아닌데 `weekday`를 줌.
     case weekdayNotWeekly
+    /// `recurrence`가 `none`이 아닌데 `deadline`을 줌(반복 할 일은 마감 없음, R-101).
+    case deadlineOnRecurring
     case invariantViolation
 }
 
