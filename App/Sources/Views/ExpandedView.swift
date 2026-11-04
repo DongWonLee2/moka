@@ -16,12 +16,10 @@ struct ExpandedView: View {
     let titleFocusRequest: Int
     let chip: QuantumChipInput
     let onEnterTitle: (String) -> Void
-    let onNextDraft: () -> Void
+    /// 시작 전 화면에서 "+ 새 할 일"로 제목 칸을 연 상태(R-103). `AppState`가 갖는다.
+    let newTitle: NewTitleInput
     let onStart: () -> Void
     let onComplete: () -> Void
-
-    /// 시작 전 화면에서 "+ 새 할 일"을 눌러 제목 칸을 연 상태(R-103).
-    @State private var isAddingNew = false
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.panelPalette) private var palette
 
@@ -69,13 +67,10 @@ struct ExpandedView: View {
         case .empty(nil):
             TitleEntryRow(focusRequest: titleFocusRequest, onSubmit: onEnterTitle)
         case .empty(.some(let draft)):
-            if isAddingNew {
+            if newTitle.isEntering {
                 TitleEntryRow(
-                    focusRequest: titleFocusRequest, focusesOnAppear: true, onCancel: { isAddingNew = false },
-                    onSubmit: { title in
-                        onEnterTitle(title)
-                        isAddingNew = false
-                    })
+                    focusRequest: titleFocusRequest, focusesOnAppear: true, onCancel: newTitle.onCancel,
+                    onSubmit: onEnterTitle)
             } else {
                 TitleText(title: draft.title)
             }
@@ -91,16 +86,18 @@ struct ExpandedView: View {
                         if chip.canStart { onStart() }
                     }
                 } else {
-                    Button("다른 할 일", action: onNextDraft)
+                    Button("다른 할 일", action: newTitle.onNextDraft)
                         .buttonStyle(NotchButtonStyle(kind: .ghost))
-                    Button("+ 새 할 일") { isAddingNew = true }
+                    Button("+ 새 할 일", action: newTitle.onBegin)
                         .buttonStyle(NotchButtonStyle(kind: .ghost))
-                        .disabled(isAddingNew)
+                        .disabled(newTitle.isEntering)
+                        .accessibilityLabel("새 할 일")
                 }
                 Spacer(minLength: 0)
                 Button(action: onStart) { ButtonLabel(text: "시작", shortcut: "↵") }
                     .buttonStyle(NotchButtonStyle(kind: .primary))
-                    .keyboardShortcut(.defaultAction)
+                    // 제목 칸이 열려 있으면 Enter는 그 칸의 저장이다. 시작까지 함께 부르지 않게 단축키를 뗀다.
+                    .keyboardShortcut(newTitle.isEntering ? nil : .defaultAction)
                     .disabled(!chip.canStart)
             }
             if let message = QuantumChip.customIssueMessage(customText: chip.customText) {
@@ -285,4 +282,12 @@ struct NotchButtonStyle: ButtonStyle {
             shape.fill(palette.control)
         }
     }
+}
+
+/// 시작 전 화면 아래 줄의 "다른 할 일"·"+ 새 할 일"(R-103·R-104).
+struct NewTitleInput {
+    var isEntering = false
+    var onNextDraft: () -> Void = {}
+    var onBegin: () -> Void = {}
+    var onCancel: () -> Void = {}
 }
