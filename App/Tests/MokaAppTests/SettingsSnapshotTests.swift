@@ -56,6 +56,14 @@ final class SettingsSnapshotTests: XCTestCase {
         try write("s08-new-task", content: content, size: CGSize(width: 360, height: 190))
     }
 
+    func test_R101_deadlineCalendar() throws {
+        let calendar = GregorianCalendar.make(timeZone: try XCTUnwrap(TimeZone(identifier: "Asia/Seoul")))
+        let content = MokaCalendar(
+            selected: LocalDay(text: "2026-11-11"), today: try XCTUnwrap(LocalDay(text: "2026-11-06")),
+            calendar: calendar, onPick: { _ in })
+        try write("s08-deadline-calendar", content: content, size: CGSize(width: 214, height: 230))
+    }
+
     private func write(_ name: String, content: some View, size: CGSize) throws {
         let light = try renderPNG(view: content, size: size, appearance: .aqua)
         let dark = try renderPNG(view: content, size: size, appearance: .darkAqua)

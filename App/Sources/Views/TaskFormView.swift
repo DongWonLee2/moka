@@ -9,8 +9,8 @@ struct TaskFormView: View {
     let onCancel: () -> Void
 
     @State private var title = ""
-    @State private var hasDeadline = false
-    @State private var deadline = Date()
+    @State private var deadline: LocalDay?
+    @State private var isPickingDeadline = false
     @State private var recurrence: Recurrence = .none
     @State private var weekday: Weekday?
     @State private var estText = ""
@@ -35,25 +35,31 @@ struct TaskFormView: View {
                     TextField("무엇을 할까요?", text: $title)
                         .textFieldStyle(.roundedBorder)
                         .focused($isTitleFocused)
-                }
-                GridRow {
-                    FormLabel("마감")
-                    HStack(spacing: 8) {
-                        MokaCheckbox(title: "마감 있음", isOn: $hasDeadline)
-                        if hasDeadline {
-                            DatePicker("마감", selection: $deadline, displayedComponents: .date)
-                                .labelsHidden()
-                                .datePickerStyle(.field)
-                                .environment(\.calendar, calendar)
-                                .environment(\.timeZone, calendar.timeZone)
-                        }
-                    }
+                        .accessibilityLabel("제목")
                 }
                 GridRow {
                     FormLabel("반복")
                     ChoiceChips(
                         label: "반복", items: [(Recurrence.none, "없음"), (.daily, "매일"), (.weekly, "매주")],
                         selection: $recurrence)
+                }
+                if recurrence == .none {
+                    GridRow {
+                        FormLabel("마감")
+                        PillButton(title: TaskFormText.deadlineLabel(deadline), isMuted: deadline == nil) {
+                            isPickingDeadline = true
+                        }
+                        .accessibilityLabel("마감")
+                        .accessibilityValue(TaskFormText.deadlineLabel(deadline))
+                        .popover(isPresented: $isPickingDeadline, arrowEdge: .bottom) {
+                            MokaCalendar(
+                                selected: deadline, today: today, calendar: calendar,
+                                onPick: { day in
+                                    deadline = day
+                                    isPickingDeadline = false
+                                })
+                        }
+                    }
                 }
                 if recurrence == .weekly {
                     GridRow {
@@ -109,17 +115,15 @@ struct TaskFormView: View {
         .padding(14)
         .frame(width: 360)
         .background(colorScheme == .dark ? Color(hex: 0x332D29) : Color(hex: 0xFAF7F5))
-        .onAppear {
-            deadline = today.date(calendar: calendar)
-            isTitleFocused = true
-        }
+        .onAppear { isTitleFocused = true }
     }
 
+    /// 요일을 건드리지 않았으면 nil로 넘겨 `prepareNew`가 저장 순간의 하루로 채운다(§5.8).
     private func save() {
+        guard canSave else { return }
         let task = NewTask(
-            title: title, deadline: hasDeadline ? LocalDay(date: deadline, calendar: calendar) : nil,
-            estMin: TaskFormText.estMin(estText), recurrence: recurrence,
-            weekday: recurrence == .weekly ? (weekday ?? todayWeekday) : nil)
+            title: title, deadline: recurrence == .none ? deadline : nil, estMin: TaskFormText.estMin(estText),
+            recurrence: recurrence, weekday: recurrence == .weekly ? weekday : nil)
         onSave(task)
     }
 }
@@ -147,43 +151,6 @@ private struct Hint: View {
             .font(.system(size: 11))
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
-    }
-}
-
-/// 체크 상자(시안 `.cb`). macOS 체크 상자는 켠 상태를 시스템 강조색으로 그려 직접 그린다.
-private struct MokaCheckbox: View {
-    let title: String
-    @Binding var isOn: Bool
-    @Environment(\.colorScheme) private var colorScheme
-
-    var body: some View {
-        Button {
-            isOn.toggle()
-        } label: {
-            HStack(spacing: 6) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(isOn ? MokaColors.mocha : (colorScheme == .dark ? Color(hex: 0x1F1B18) : .white))
-                    if isOn {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(.white)
-                    } else {
-                        RoundedRectangle(cornerRadius: 4)
-                            .strokeBorder(
-                                colorScheme == .dark
-                                    ? Color(hex: 0xFFF0E1, opacity: 0.3) : Color(hex: 0x3C2314, opacity: 0.4),
-                                lineWidth: 0.5)
-                    }
-                }
-                .frame(width: 14, height: 14)
-                Text(title)
-                    .font(.system(size: 12.5))
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(isOn ? .isSelected : [])
     }
 }
 
@@ -217,5 +184,129 @@ private struct SheetButton: View {
     private var background: Color {
         if isPrimary { return MokaColors.mocha }
         return colorScheme == .dark ? Color(hex: 0x4A423C) : .white
+    }
+}
+
+private struct PillButton: View {
+    let title: String
+    let isMuted: Bool
+    let action: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Text(title)
+                    .foregroundStyle(isMuted ? Color.secondary : Color.primary)
+                Text("▾")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.secondary)
+            }
+            .font(.system(size: 12.5))
+            .padding(.horizontal, 9)
+            .frame(height: 22)
+            .background(colorScheme == .dark ? Color(hex: 0x1F1B18) : .white, in: RoundedRectangle(cornerRadius: 5))
+            .overlay(
+                RoundedRectangle(cornerRadius: 5)
+                    .strokeBorder(
+                        colorScheme == .dark ? Color(hex: 0xFFF0E1, opacity: 0.2) : Color(hex: 0x3C2314, opacity: 0.3),
+                        lineWidth: 0.5)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+struct MokaCalendar: View {
+    let selected: LocalDay?
+    let today: LocalDay
+    let calendar: Calendar
+    let onPick: (LocalDay?) -> Void
+
+    @State private var monthOffset = 0
+
+    private static let weekdayNames = ["일", "월", "화", "수", "목", "금", "토"]
+
+    private var monthStart: Date {
+        let base = (selected ?? today).date(calendar: calendar)
+        let first = calendar.date(from: calendar.dateComponents([.year, .month], from: base))!
+        return calendar.date(byAdding: .month, value: monthOffset, to: first)!
+    }
+
+    private var cells: [LocalDay?] {
+        let start = monthStart
+        let blanks = calendar.component(.weekday, from: start) - 1
+        let count = calendar.range(of: .day, in: .month, for: start)!.count
+        let days = (0..<count).map { offset in
+            LocalDay(date: calendar.date(byAdding: .day, value: offset, to: start)!, calendar: calendar)
+        }
+        return Array(repeating: nil, count: blanks) + days.map { Optional($0) }
+    }
+
+    var body: some View {
+        let start = LocalDay(date: monthStart, calendar: calendar)
+        VStack(spacing: 6) {
+            HStack {
+                Button("‹") { monthOffset -= 1 }
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel("이전 달")
+                Spacer()
+                Text("\(String(start.year))년 \(start.month)월")
+                    .font(.system(size: 12, weight: .semibold))
+                Spacer()
+                Button("›") { monthOffset += 1 }
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel("다음 달")
+            }
+            .buttonStyle(.plain)
+            LazyVGrid(columns: Array(repeating: GridItem(.fixed(26), spacing: 2), count: 7), spacing: 2) {
+                ForEach(Self.weekdayNames, id: \.self) { name in
+                    Text(name)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(Array(cells.enumerated()), id: \.offset) { _, day in
+                    if let day {
+                        DayCell(day: day, isSelected: day == selected, isToday: day == today) { onPick(day) }
+                    } else {
+                        Color.clear.frame(height: 22)
+                    }
+                }
+            }
+            if selected != nil {
+                Button("마감 지우기") { onPick(nil) }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(MokaColors.danger)
+            }
+        }
+        .padding(10)
+        .frame(width: 214)
+    }
+}
+
+private struct DayCell: View {
+    let day: LocalDay
+    let isSelected: Bool
+    let isToday: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text("\(day.day)")
+                .font(.system(size: 11, weight: isSelected ? .semibold : .regular))
+                .foregroundStyle(isSelected ? MokaColors.textOnPrimary : Color.primary)
+                .frame(width: 26, height: 22)
+                .background(isSelected ? MokaColors.mocha : Color.clear, in: RoundedRectangle(cornerRadius: 5))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 5)
+                        .strokeBorder(isToday && !isSelected ? MokaColors.mochaHighlight : Color.clear, lineWidth: 1)
+                )
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(day.month)월 \(day.day)일")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

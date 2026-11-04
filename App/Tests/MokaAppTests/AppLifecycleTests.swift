@@ -399,6 +399,7 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertEqual(try repository.tasks().map(\.title), ["가짜 할 일 새것"])
         XCTAssertEqual(state.tasks.map(\.title), ["가짜 할 일 새것"], "추가 뒤 tasks()를 다시 읽는다")
         XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 새것", chipMin: 25)), "빈 상태면 고른다")
+        XCTAssertEqual(state.pickedAt, Self.noon)
     }
 
     func test_FR01_R102_addFromSettingsKeepsDraft() throws {
@@ -420,6 +421,31 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertFalse(
             state.addTask(NewTask(title: "  ", deadline: nil, estMin: nil, recurrence: .none, weekday: nil)))
         XCTAssertEqual(try repository.tasks(), [])
+    }
+
+    func test_FR01_R102_addFromSettingsKeepsRunningTimer() throws {
+        let state = makeState(try Self.seeded(1))
+        state.launch()
+        state.start()
+        let before = state.session
+        let pickedAt = state.pickedAt
+
+        XCTAssertTrue(
+            state.addTask(NewTask(title: "가짜 할 일 2", deadline: nil, estMin: nil, recurrence: .none, weekday: nil)))
+        XCTAssertEqual(state.tasks.count, 2)
+        XCTAssertEqual(state.session, before, "도는 중이면 그대로(#70)")
+        XCTAssertEqual(state.pickedAt, pickedAt)
+    }
+
+    func test_FR11_R119_addFromSettingsFailsWhenInsertThrows() throws {
+        let state = makeState(InsertFailingRepository())
+        state.launch()
+        let before = state.session
+
+        XCTAssertFalse(
+            state.addTask(NewTask(title: "가짜 할 일", deadline: nil, estMin: nil, recurrence: .none, weekday: nil)))
+        XCTAssertEqual(state.tasks, [])
+        XCTAssertEqual(state.session, before)
     }
 
     // MARK: - #37 알림 처리기 해제
@@ -491,4 +517,14 @@ private final class CountingSettingsStore: SettingsStore {
     func setValue(_ value: String, for key: String) throws {
         try inner.setValue(value, for: key)
     }
+}
+
+private final class InsertFailingRepository: TaskRepository {
+    struct Failure: Error {}
+
+    func tasks() throws -> [MokaTask] { [] }
+    func insertTask(_ task: NewTask, cycleDay: LocalDay?, at: Date) throws -> MokaTask { throw Failure() }
+    func checkpoints() throws -> [Checkpoint] { [] }
+    func decisions() throws -> [DecisionLogEntry] { [] }
+    func apply(_ batch: StoreBatch) throws {}
 }
