@@ -115,4 +115,15 @@ private let cycle = Fake.day("2027-01-10")
         ]
         #expect(rows(tasks, .all, order) == expected)
     }
+
+    @Test(
+        "FR-01 R-118: 오늘·이번 주 보기에서도 완료한 할 일은 아래로",
+        arguments: [TaskListScope.today, .thisWeek])
+    func doneSinksInNarrowScopes(scope: TaskListScope) {
+        let tasks = [
+            Fake.task(1, status: .done, deadline: Fake.day("2027-01-12")),
+            Fake.task(2, deadline: Fake.day("2027-01-13")),
+        ]
+        #expect(rows(tasks, scope) == [2, 1])
+    }
 }
