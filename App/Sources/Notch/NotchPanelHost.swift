@@ -192,6 +192,8 @@ struct NotchPanelRoot: View {
             isPanelKey: appState.isInputFocused,
             metrics: metrics,
             style: style,
+            firstAction: appState.firstAction,
+            showsFirstActionCollapsed: appState.showsFirstActionCollapsed,
             titleFocusRequest: appState.titleFocusRequest,
             chip: QuantumChipInput(
                 customText: appState.customText,

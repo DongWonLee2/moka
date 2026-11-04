@@ -26,6 +26,8 @@ struct PanelPalette {
     var textDisabled: Color
     var segmentText: Color
     var danger: Color
+    /// 이어서 할 일 글자(R-109). 시안은 크레마색이다.
+    var firstAction: Color
     /// 떠 있는 창은 바탕 화면 위에 뜨므로 그림자로 떼어 보인다. 노치는 그림자가 없다.
     var hasShadow: Bool
 
@@ -47,6 +49,7 @@ struct PanelPalette {
         textDisabled: MokaColors.textDisabled,
         segmentText: MokaColors.segmentText,
         danger: MokaColors.danger,
+        firstAction: MokaColors.crema,
         hasShadow: false)
 
     /// 다크 떠 있는 창: 바탕 #26201C 90%. 노치 판 색을 쓰되 바탕이 밝아진 만큼 흐린 글자와 빈 점만 올렸다.
@@ -89,6 +92,8 @@ struct PanelPalette {
         segmentText: Color(hex: 0x3A322C),
         // 4.95:1. 시간 끝 #E5533D는 밝은 바탕 위 3.64:1이라 작은 안내 글자에 모자라 어둡게 했다.
         danger: Color(hex: 0xC73E2A),
+        // 5.43:1. 크레마는 밝은 바탕 위 글자로 읽히지 않는다.
+        firstAction: MokaColors.mochaLow,
         hasShadow: true)
 
     static func resolve(style: PanelStyle, colorScheme: ColorScheme) -> PanelPalette {

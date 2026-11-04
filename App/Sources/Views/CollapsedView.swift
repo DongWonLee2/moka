@@ -2,8 +2,11 @@ import MokaCore
 import SwiftUI
 
 /// 접힌 판 왼쪽 칸: 빈 상태는 회색 점(R-001), 초안은 회색 점·회색 제목(R-104), 도는 중·시간 끝은 점·제목(넘치면 끝 "…", R-006).
+/// 초안을 고른 뒤 2초는 점·제목 대신 "이어서 · <첫 행동>"(R-109).
 struct CollapsedLeadingView: View {
     let timer: NotchTimer
+    /// 지금 접힌 화면에 보일 첫 행동. 보이지 않을 때는 nil.
+    var firstAction: String?
 
     @Environment(\.panelPalette) private var palette
 
@@ -19,6 +22,24 @@ struct CollapsedLeadingView: View {
 
     @ViewBuilder
     private var content: some View {
+        if let firstAction, case .empty(.some) = timer {
+            HStack(spacing: 6) {
+                Text("이어서 ·")
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(palette.muted)
+                Text(firstAction)
+                    .font(.system(size: 11))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .foregroundStyle(palette.firstAction)
+            }
+        } else {
+            timerContent
+        }
+    }
+
+    @ViewBuilder
+    private var timerContent: some View {
         switch timer {
         case .empty(nil):
             StatusDot(active: false)
