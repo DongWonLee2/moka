@@ -85,7 +85,7 @@ struct ExpandedView: View {
                     .keyboardShortcut(.defaultAction)
                     .disabled(!chip.canStart)
             }
-            if let message = CustomIssueText.message(for: chip.customText) {
+            if let message = QuantumChip.customIssueMessage(customText: chip.customText) {
                 CustomIssueText(message: message)
             }
         case .running(let title, _, _, _):

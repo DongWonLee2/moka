@@ -80,7 +80,7 @@ struct CustomMinutesField: View {
                         .strokeBorder(borderColor, lineWidth: 1)
                 }
                 .accessibilityLabel("직접 입력 분")
-                .accessibilityHint(CustomIssueText.message(for: text) ?? "")
+                .accessibilityHint(QuantumChip.customIssueMessage(customText: text) ?? "")
             Text("분")
                 .font(.system(size: 11))
                 .foregroundStyle(palette.muted)
@@ -119,15 +119,5 @@ struct CustomIssueText: View {
             .foregroundStyle(palette.danger)
             .lineLimit(1)
             .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    /// 직접 입력 중이고 받지 않는 값이면 안내 문구, 아니면 nil.
-    static func message(for customText: String?) -> String? {
-        guard let customText, let issue = QuantumChip.customIssue(customText) else { return nil }
-        switch issue {
-        case .aboveMax: return "3시간(180분)까지 정할 수 있어요"
-        case .belowMin: return "1분부터 정할 수 있어요"
-        case .notInteger: return "분은 숫자로만 적어 주세요"
-        }
     }
 }

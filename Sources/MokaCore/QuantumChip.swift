@@ -1,5 +1,4 @@
-/// 직접 입력을 받지 않는 이유(R-004). 안내 문장은 아직 앱(`CustomIssueText.message(for:)`)이 고른다.
-/// 화면 문구 원칙(`NotchStatus` 주석, #42)에서 남은 예외다.
+/// 직접 입력을 받지 않는 이유(R-004).
 public enum CustomQuantumIssue: Equatable, Sendable {
     /// 180분을 넘는다(자릿수가 너무 커 `Int`로 못 읽는 숫자도 포함).
     case aboveMax
@@ -62,6 +61,16 @@ public enum QuantumChip {
         if value > Defaults.quantumMinRange.upperBound { return .aboveMax }
         if value < Defaults.quantumMinRange.lowerBound { return .belowMin }
         return nil
+    }
+
+    /// 직접 입력 칸 아래 줄의 이유 안내(R-004). 직접 입력 중이고 받지 않는 값이면 문장, 아니면 nil.
+    public static func customIssueMessage(customText: String?) -> String? {
+        guard let customText, let issue = customIssue(customText) else { return nil }
+        switch issue {
+        case .aboveMax: return "3시간(180분)까지 정할 수 있어요"
+        case .belowMin: return "1분부터 정할 수 있어요"
+        case .notInteger: return "분은 숫자로만 적어 주세요"
+        }
     }
 
     /// 시작할 수 있는가. `customText`가 nil이면 직접 입력을 쓰지 않아 칩 값으로 시작한다(R-003),
