@@ -73,6 +73,17 @@ public struct DayStart: Equatable, Sendable {
         twoDigits(hour) + ":" + twoDigits(minute)
     }
 
+    /// 시각 고르기(`DatePicker`)가 낸 시각의 시·분. 초는 버린다.
+    public init(date: Date, calendar: Calendar) {
+        let parts = calendar.dateComponents([.hour, .minute], from: date)
+        self.init(hour: parts.hour ?? 0, minute: parts.minute ?? 0)
+    }
+
+    /// 시각 고르기에 넘길 시각. 시·분만 의미가 있고 날짜는 2001-01-01로 둔다.
+    public func date(calendar: Calendar) -> Date {
+        calendar.date(from: DateComponents(year: 2001, month: 1, day: 1, hour: hour, minute: minute))!
+    }
+
     private func twoDigits(_ value: Int) -> String {
         value < 10 ? "0\(value)" : "\(value)"
     }
