@@ -31,11 +31,11 @@ struct TaskListTabView: View {
                         if index > 0 { Divider() }
                         TaskRow(task: task, isNext: task.id == nextMarkID, isSelected: task.id == selectedID)
                             .contentShape(Rectangle())
-                            .onTapGesture(count: 2) {
-                                selectedID = task.id
-                                if canEdit { onEdit(task.id) }
-                            }
+                            // 두 번 클릭을 동시에 들어야 한 번 클릭이 더블 클릭 간격을 기다리지 않는다.
                             .onTapGesture { selectedID = task.id }
+                            .simultaneousGesture(
+                                TapGesture(count: 2).onEnded { if canEdit { onEdit(task.id) } }
+                            )
                             .accessibilityAddTraits(.isButton)
                             .accessibilityAction(named: "고치기") { if canEdit { onEdit(task.id) } }
                     }
