@@ -45,7 +45,7 @@
 
 | `type` | 추가 필드 | 의미(앱의 무엇) |
 |---|---|---|
-| `add_task` | `title`(필수), `deadline`, `recurrence`(`none`/`daily`/`weekly`, 없으면 `none`), `weekday`(`weekly`일 때만, 없으면 그 순간이 속한 하루의 요일), `est_min`(정수 1 이상) | 설정 창 할 일 탭에서 더함(data-model §5.8 `prepareNew` → `insertTask` → `addedTask`) |
+| `add_task` | `title`(필수), `deadline`, `recurrence`(`none`/`daily`/`weekly`, 없으면 `none`), `weekday`(`weekly`일 때만, 없으면 그 순간이 속한 하루의 요일), `est_min`(정수 1 이상) | 설정 창 할 일 탭에서 더함(data-model §5.8 `prepareNew` → `insertTask` → `tasks()` 다시 읽기 → `picked`. 빈 상태일 때만 고르고 초안이면 그대로다. 초안을 새 할 일로 바꾸는 `addedTask`는 노치 빠른 입력 `enter_title`(R-103) 전용) |
 | `skip` | `done_note`, `next_note`(문자열, 없으면 빈 줄) | 미루기 + 두 줄 등록/안 적기 |
 | `switch` | `done_note`, `next_note` | 바꾸기 + 두 줄 |
 | `quit` | 없음 | 앱 종료(메뉴 막대 "종료") |
