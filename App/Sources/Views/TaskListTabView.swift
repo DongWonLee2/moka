@@ -2,10 +2,8 @@ import MokaCore
 import SwiftUI
 
 /// 설정 창 할 일 탭(시안 7번, R-102·R-118). 값과 콜백만 받는다(ADR-0009).
-/// 더하기·지우기와 고치기는 할 일 시트(T031)에서 더한다.
 struct TaskListTabView: View {
     let rows: [MokaTask]
-    /// 노치에 뜨거나 다음에 뜰 할 일(`NotchSession.nextMark`).
     let nextMarkID: TaskID?
     @Binding var scope: TaskListScope
     @Binding var order: TaskListOrder

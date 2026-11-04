@@ -7,7 +7,6 @@ import os
 /// 스테퍼는 누를 때마다 1분씩 바꿔 바로 저장한다. 하루 시작 시각은 고를 때마다 저장한다.
 struct SettingsView: View {
     let store: any SettingsStore
-    /// 할 일 탭의 단일 출처(data-model §8). 모든 쓰기는 `AppState` 한 곳에서 한다.
     @Bindable var appState: AppState
     /// 기본 작업 시간 저장을 시도한 뒤 부른다. 펼친 판의 고르지 않은 칩이 새 기본값을 따르게 한다(R-013).
     let onSaved: @MainActor () -> Void
