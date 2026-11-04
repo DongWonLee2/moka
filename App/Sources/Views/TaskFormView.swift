@@ -69,10 +69,6 @@ struct TaskFormView: View {
                             selection: Binding(get: { weekday ?? todayWeekday }, set: { weekday = $0 }),
                             horizontalPadding: 6)
                     }
-                    GridRow {
-                        Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])
-                        Hint(TaskFormText.weekdayHint(today: todayWeekday))
-                    }
                 }
                 GridRow {
                     FormLabel("예상 소요")

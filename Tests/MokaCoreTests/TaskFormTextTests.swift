@@ -26,14 +26,6 @@ func estMinRejected(text: String) {
 }
 
 @Test(
-    "R-101 #42: 매주를 고르면 오늘 요일이 먼저 골라져 있다고 안내한다",
-    arguments: [(1, "일"), (6, "금"), (7, "토")])
-func weekdayHint(weekday: Int, name: String) throws {
-    let day = try #require(Weekday(rawValue: weekday))
-    #expect(TaskFormText.weekdayHint(today: day) == "오늘(\(name))이 먼저 골라져 있어요. 하나만 고를 수 있어요.")
-}
-
-@Test(
     "R-101: 마감 날짜는 날짜 고르기의 Date와 오가도 같다(일광절약시간 바뀌는 날 포함)",
     arguments: ["2026-01-01", "2026-03-08", "2026-11-01", "2026-11-11", "2027-03-14"])
 func localDayRoundTripsThroughDate(text: String) throws {
