@@ -16,8 +16,7 @@ struct ExpandedView: View {
     let titleFocusRequest: Int
     let chip: QuantumChipInput
     let onEnterTitle: (String) -> Void
-    /// 시작 전 화면에서 "+ 새 할 일"로 제목 칸을 연 상태(R-103).
-    let newTitle: NewTitleInput
+    let draftInput: DraftInput
     let onStart: () -> Void
     let onComplete: () -> Void
     @Environment(\.colorSchemeContrast) private var contrast
@@ -67,41 +66,12 @@ struct ExpandedView: View {
         case .empty(nil):
             TitleEntryRow(focusRequest: titleFocusRequest, onSubmit: onEnterTitle)
         case .empty(.some(let draft)):
-            if newTitle.isEntering {
-                TitleEntryRow(
-                    focusRequest: titleFocusRequest, focusesOnAppear: true, onCancel: newTitle.onCancel,
-                    onSubmit: onEnterTitle)
+            if draftInput.isPickingOther {
+                OtherTaskPicker(
+                    items: draftInput.otherItems, onChoose: draftInput.onChooseOther,
+                    onCancel: draftInput.onCancelOther)
             } else {
-                TitleText(title: draft.title)
-            }
-            // 기본값으로 채운 칩이 선택된 채로 Enter나 시작 한 번이면 그 값으로 시작한다(R-003).
-            QuantumChipView(
-                chipMin: draft.chipMin, customText: chip.customText,
-                onChoose: chip.onChoose, onBeginCustom: chip.onBeginCustom, onEditCustom: chip.onEditCustom)
-            HStack(spacing: 6) {
-                if let customText = chip.customText {
-                    CustomMinutesField(
-                        text: customText, takeFocusRequest: chip.takeFocusRequest, onEdit: chip.onEditCustom
-                    ) {
-                        if chip.canStart { onStart() }
-                    }
-                } else {
-                    Button("다른 할 일", action: newTitle.onNextDraft)
-                        .buttonStyle(NotchButtonStyle(kind: .ghost))
-                    Button("+ 새 할 일", action: newTitle.onBegin)
-                        .buttonStyle(NotchButtonStyle(kind: .ghost))
-                        .disabled(newTitle.isEntering)
-                        .accessibilityLabel("새 할 일")
-                }
-                Spacer(minLength: 0)
-                Button(action: onStart) { ButtonLabel(text: "시작", shortcut: "↵") }
-                    .buttonStyle(NotchButtonStyle(kind: .primary))
-                    // 제목 칸이 열려 있으면 Enter는 그 칸의 저장이다. 시작까지 함께 부르지 않게 단축키를 뗀다.
-                    .keyboardShortcut(newTitle.isEntering ? nil : .defaultAction)
-                    .disabled(!chip.canStart)
-            }
-            if let message = QuantumChip.customIssueMessage(customText: chip.customText) {
-                CustomIssueText(message: message)
+                draftStage(draft)
             }
         case .running(let title, _, _, _):
             TitleText(title: title)
@@ -113,6 +83,46 @@ struct ExpandedView: View {
             }
         case .expired(let title, let chipMin, _):
             ExpiredView(title: title, chipMin: chipMin, chip: chip, onStart: onStart, onComplete: onComplete)
+        }
+    }
+
+    @ViewBuilder
+    private func draftStage(_ draft: Draft) -> some View {
+        if draftInput.isEnteringTitle {
+            TitleEntryRow(
+                focusRequest: titleFocusRequest, focusesOnAppear: true, onCancel: draftInput.onCancelNewTitle,
+                onSubmit: onEnterTitle)
+        } else {
+            TitleText(title: draft.title)
+        }
+        // 기본값으로 채운 칩이 선택된 채로 Enter나 시작 한 번이면 그 값으로 시작한다(R-003).
+        QuantumChipView(
+            chipMin: draft.chipMin, customText: chip.customText,
+            onChoose: chip.onChoose, onBeginCustom: chip.onBeginCustom, onEditCustom: chip.onEditCustom)
+        HStack(spacing: 6) {
+            if let customText = chip.customText {
+                CustomMinutesField(
+                    text: customText, takeFocusRequest: chip.takeFocusRequest, onEdit: chip.onEditCustom
+                ) {
+                    if chip.canStart { onStart() }
+                }
+            } else {
+                Button("다른 할 일", action: draftInput.onBeginOther)
+                    .buttonStyle(NotchButtonStyle(kind: .ghost))
+                Button("+ 새 할 일", action: draftInput.onBeginNewTitle)
+                    .buttonStyle(NotchButtonStyle(kind: .ghost))
+                    .disabled(draftInput.isEnteringTitle)
+                    .accessibilityLabel("새 할 일")
+            }
+            Spacer(minLength: 0)
+            Button(action: onStart) { ButtonLabel(text: "시작", shortcut: "↵") }
+                .buttonStyle(NotchButtonStyle(kind: .primary))
+                // 제목 칸이 열려 있으면 Enter는 그 칸의 저장이다. 시작까지 함께 부르지 않게 단축키를 뗀다.
+                .keyboardShortcut(draftInput.isEnteringTitle ? nil : .defaultAction)
+                .disabled(!chip.canStart)
+        }
+        if let message = QuantumChip.customIssueMessage(customText: chip.customText) {
+            CustomIssueText(message: message)
         }
     }
 
@@ -287,10 +297,98 @@ struct NotchButtonStyle: ButtonStyle {
     }
 }
 
-/// 시작 전 화면 아래 줄의 "다른 할 일"·"+ 새 할 일"(R-103·R-104).
-struct NewTitleInput {
-    var isEntering = false
-    var onNextDraft: () -> Void = {}
-    var onBegin: () -> Void = {}
-    var onCancel: () -> Void = {}
+/// 시작 전 화면의 "+ 새 할 일" 칸(R-103)과 "다른 할 일" 목록(R-104).
+struct DraftInput {
+    var isEnteringTitle = false
+    var onBeginNewTitle: () -> Void = {}
+    var onCancelNewTitle: () -> Void = {}
+    var isPickingOther = false
+    var otherItems: [OtherTaskItem] = []
+    var onBeginOther: () -> Void = {}
+    var onCancelOther: () -> Void = {}
+    var onChooseOther: (TaskID) -> Void = { _ in }
+}
+
+struct OtherTaskItem: Identifiable, Equatable {
+    let id: TaskID
+    let title: String
+    let note: String
+    let tone: OtherTaskText.Tone
+}
+
+private struct OtherTaskPicker: View {
+    let items: [OtherTaskItem]
+    let onChoose: (TaskID) -> Void
+    let onCancel: () -> Void
+
+    @Environment(\.panelPalette) private var palette
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("다른 할 일 고르기")
+                    .foregroundStyle(palette.muted)
+                Spacer(minLength: 0)
+                Button(action: onCancel) { ButtonLabel(text: "돌아가기", shortcut: "esc") }
+                    .buttonStyle(NotchButtonStyle(kind: .ghost))
+                    .keyboardShortcut(.cancelAction)
+            }
+            if items.isEmpty {
+                Text("다른 대기 할 일이 없어요.")
+                    .foregroundStyle(palette.muted)
+                    .padding(.vertical, 8)
+            } else {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                            if index > 0 { Divider().overlay(palette.control) }
+                            OtherTaskRow(item: item) { onChoose(item.id) }
+                        }
+                    }
+                }
+                .frame(maxHeight: 118)
+                .fixedSize(horizontal: false, vertical: true)
+                .background(palette.control.opacity(0.55), in: RoundedRectangle(cornerRadius: 7))
+            }
+        }
+    }
+}
+
+private struct OtherTaskRow: View {
+    let item: OtherTaskItem
+    let action: () -> Void
+
+    @State private var isHovering = false
+    @Environment(\.panelPalette) private var palette
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Text(item.title)
+                    .font(.system(size: 12.5))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Text(item.note)
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(noteColor)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(isHovering ? MokaColors.mocha.opacity(0.28) : Color.clear)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovering = $0 }
+        .accessibilityLabel(item.note.isEmpty ? item.title : "\(item.title), \(item.note)")
+    }
+
+    private var noteColor: Color {
+        switch item.tone {
+        case .overdue: palette.danger
+        case .soon: MokaColors.crema
+        case .plain: palette.muted
+        }
+    }
 }

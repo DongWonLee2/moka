@@ -99,7 +99,7 @@ description: "spec 002 저장과 체크포인트 작업 목록"
 - [ ] T027 [US1] 👁 `specs/001-notch-timer/contracts/moka-sim-v1.md`에 contracts/moka-sim-v1-additions.md 내용을 옮긴다. PR "사람이 볼 결정"에 계약 변경과 `scheduler_choice` 값 `rotate_by_id_v0`을 올린다 〔단위 3〕
 - [ ] T028 🔒 [US1] 노치 화면을 고친다(시안 1·2번, ADR-0009 뷰는 값과 콜백만):
   - `App/Sources/Views/CollapsedView.swift`: 초안은 회색 점 + 회색 제목(C1-B, 시간 없음, 왼쪽 104pt, 길면 …). 빈 상태와 도는 중은 spec 001 그대로
-  - `App/Sources/Views/ExpandedView.swift`: 시작 전 화면은 제목이 채워져 있고 제목 입력을 건너뛴다. 칩 아래 줄 왼쪽에 고스트 버튼 "다른 할 일"(세션 `nextDraft`)과 "+ 새 할 일"(누르면 제목 칸이 열리고 Enter로 빠른 입력, R-103), 오른쪽 "시작 ↵"(Enter는 늘 시작). 빈 상태의 새 할 일 입력은 그대로(시안 2번 메모)
+  - `App/Sources/Views/ExpandedView.swift`: 시작 전 화면은 제목이 채워져 있고 제목 입력을 건너뛴다. 칩 아래 줄 왼쪽에 고스트 버튼 "다른 할 일"(누르면 대기 할 일 목록, 급한 순, 고르면 세션 `chosenDraft`, 2026-11-04 사용자 결정)과 "+ 새 할 일"(누르면 제목 칸이 열리고 Enter로 빠른 입력, R-103), 오른쪽 "시작 ↵"(Enter는 늘 시작). 빈 상태의 새 할 일 입력은 그대로(시안 2번 메모)
   - `App/Sources/Views/NotchLayout.swift`: `collapsedSideWidths`에서 초안 왼쪽 폭 28 → 104pt, `panelSize` 높이를 가장 긴 판(시간 끝 + 두 줄)에 맞춤
   - `App/Sources/Views/NotchContentView.swift`·`App/Sources/Notch/NotchPanelHost.swift`(`NotchPanelRoot`): 새 값·콜백 전달(plan "앱 연결")
   - `App/Tests/MokaAppTests/ScreenStateSnapshotTests.swift`: 바뀐 `NotchContentView` 호출부를 고쳐 컴파일되게 한다(새 스냅샷은 T060)

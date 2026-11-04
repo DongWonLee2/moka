@@ -78,14 +78,15 @@ extension NotchSession {
         return drafting(task, input)
     }
 
-    /// "다른 할 일"(초안만). 커서를 지금 초안으로 두고 다음 후보로 초안을 바꾼다(칩 유지). 기록하지 않는다.
-    public func nextDraft(_ input: SessionInput) -> NotchSession {
-        guard case .empty(.some) = timer, let current = taskID,
-            let next = RotateByIDRule.pick(from: input.tasks, after: current)
+    /// "다른 할 일" 목록에서 고름(초안만, R-104). 커서를 지금 초안으로 두고 고른 대기 할 일로 초안을 바꾼다(칩 유지).
+    /// 기록하지 않는다. 없는·대기 아닌·지금 할 일이면 그대로.
+    public func chosenDraft(_ id: TaskID, _ input: SessionInput) -> NotchSession {
+        guard case .empty(.some) = timer, let current = taskID, id != current,
+            let chosen = input.tasks.first(where: { $0.id == id && $0.status == .todo })
         else { return self }
         var moved = self
         moved.previousTaskID = current
-        return moved.drafting(next, input)
+        return moved.drafting(chosen, input)
     }
 
     /// 노치의 할 일을 고쳤을 때 타이머 안 제목 사본만 바꾼다. 칩·시간 값은 그대로.

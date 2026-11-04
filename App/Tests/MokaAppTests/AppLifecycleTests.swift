@@ -533,31 +533,43 @@ final class AppLifecycleTests: XCTestCase {
 
     // MARK: - R-104 다른 할 일(T028)
 
-    func test_FR05_R104_nextDraftRotatesAndWraps() throws {
+    func test_FR05_R104_otherTaskPickerListsAndChooses() throws {
         let clock = TestClock(Self.noon)
         let state = makeState(try Self.seeded(3), clock: clock)
         state.launch()
-        XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 1", chipMin: 25)))
-
+        state.chooseQuantum(45)
         let first = state.session.taskID
+
+        state.beginOtherTask()
+        XCTAssertTrue(state.isPickingOtherTask)
+        XCTAssertEqual(state.otherTaskItems.map(\.title), ["가짜 할 일 2", "가짜 할 일 3"], "지금 할 일은 빼고 급한 순")
         clock.advance(minutes: 1)
-        state.nextDraft()
-        XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 2", chipMin: 25)))
+        let third = try XCTUnwrap(state.otherTaskItems.last?.id)
+        state.chooseOtherTask(third)
+        XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 3", chipMin: 45, chipPicked: true)))
         XCTAssertEqual(state.session.previousTaskID, first, "커서 = 그때의 초안 할 일(§4.2)")
-        XCTAssertEqual(state.pickedAt, Self.noon.addingTimeInterval(60), "다른 할 일로 바꾼 시각")
-        state.nextDraft()
-        state.nextDraft()
-        XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 1", chipMin: 25)), "끝까지 가면 처음으로")
-        XCTAssertEqual(try XCTUnwrap(state.tasks).allSatisfy { $0.status == .todo }, true, "기록하지 않는다")
+        XCTAssertEqual(state.pickedAt, Self.noon.addingTimeInterval(60), "고른 시각")
+        XCTAssertFalse(state.isPickingOtherTask, "고르면 목록을 닫는다")
+        XCTAssertTrue(state.tasks.allSatisfy { $0.status == .todo }, "기록하지 않는다")
     }
 
-    func test_FR05_R104_nextDraftKeepsChosenChip() throws {
+    func test_FR05_R104_otherTaskPickerAndNewTitleAreExclusive() throws {
         let state = makeState(try Self.seeded(2))
         state.launch()
-        state.chooseQuantum(45)
 
-        state.nextDraft()
-        XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 2", chipMin: 45, chipPicked: true)))
+        state.beginNewTitle()
+        state.beginOtherTask()
+        XCTAssertTrue(state.isPickingOtherTask)
+        XCTAssertFalse(state.isEnteringNewTitle)
+        state.beginNewTitle()
+        XCTAssertFalse(state.isPickingOtherTask)
+        state.cancelNewTitle()
+        state.beginOtherTask()
+        state.cancelOtherTask()
+        XCTAssertFalse(state.isPickingOtherTask)
+        state.beginOtherTask()
+        state.start()
+        XCTAssertFalse(state.isPickingOtherTask, "시작하면 닫는다")
     }
 
     func test_FR05_R103_quickInputInDraftKeepsOriginalAndChip() throws {
@@ -579,7 +591,7 @@ final class AppLifecycleTests: XCTestCase {
 
         state.beginNewTitle()
         XCTAssertTrue(state.isEnteringNewTitle)
-        state.nextDraft()
+        state.chooseOtherTask(try XCTUnwrap(state.otherTaskItems.first?.id))
         XCTAssertFalse(state.isEnteringNewTitle, "다른 할 일로 바꾸면 닫는다")
 
         state.beginNewTitle()

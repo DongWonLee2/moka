@@ -41,6 +41,20 @@ final class ScreenStateSnapshotTests: XCTestCase {
             expanded: true)
     }
 
+    func test_R104_otherTaskPicker() throws {
+        let items = [
+            OtherTaskItem(id: 2, title: "보고서 1절 쓰기", note: "마감 지남", tone: .overdue),
+            OtherTaskItem(id: 3, title: "스터디 발표 자료 정리", note: "오늘 마감", tone: .soon),
+            OtherTaskItem(id: 4, title: "치과 예약 전화", note: "내일 마감", tone: .soon),
+            OtherTaskItem(id: 5, title: "기말 과제 개요 잡기", note: "11월 20일", tone: .plain),
+            OtherTaskItem(id: 6, title: "영단어 30개 외우기", note: "매일", tone: .plain),
+            OtherTaskItem(id: 7, title: "책 반납하기", note: "", tone: .plain),
+        ]
+        try snapshot(
+            "11-other-task-picker", timer: .empty(draft: Draft(title: "장보기 목록 만들기", chipMin: 25)), remaining: nil,
+            expanded: true, hovering: true, draftInput: DraftInput(isPickingOther: true, otherItems: items))
+    }
+
     func test_R104_draftCollapsed() throws {
         try snapshot(
             "10-draft-collapsed", timer: .empty(draft: Draft(title: Self.title, chipMin: 25)), remaining: nil,
@@ -83,7 +97,7 @@ final class ScreenStateSnapshotTests: XCTestCase {
     /// 시안 2번(입력)·5번(도는 중 펼침)은 마우스를 올린 상태라 `hovering: true`로 모카 테두리를 그린다.
     private func snapshot(
         _ name: String, timer: NotchTimer, remaining: Int?, expanded: Bool, hovering: Bool = false,
-        style: PanelStyle = .notch
+        style: PanelStyle = .notch, draftInput: DraftInput = DraftInput()
     ) throws {
         let metrics = style == .notch ? Self.notchMetrics : Self.floatingMetrics
         let size = NotchLayout.panelSize(metrics: metrics)
@@ -94,7 +108,7 @@ final class ScreenStateSnapshotTests: XCTestCase {
             chip: QuantumChipInput(
                 customText: nil, canStart: true, onChoose: { _ in }, onBeginCustom: {}, onEditCustom: { _ in },
                 takeFocusRequest: { false }),
-            onEnterTitle: { _ in }, onStart: {}, onComplete: {})
+            onEnterTitle: { _ in }, draftInput: draftInput, onStart: {}, onComplete: {})
 
         let light = try renderPNG(view: content, size: size, appearance: .aqua)
         let dark = try renderPNG(view: content, size: size, appearance: .darkAqua)
