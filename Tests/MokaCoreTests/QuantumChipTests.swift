@@ -68,6 +68,26 @@ func customIssueNotInteger(text: String) {
     #expect(QuantumChip.customIssue(text) == .notInteger)
 }
 
+@Test("FR-05 R-004 #42: 180분을 넘으면 칸 아래 안내는 3시간(180분)까지")
+func customIssueMessageAboveMax() {
+    #expect(QuantumChip.customIssueMessage(customText: "181") == "3시간(180분)까지 정할 수 있어요")
+}
+
+@Test("FR-05 R-004 #42: 1분보다 작으면 칸 아래 안내는 1분부터")
+func customIssueMessageBelowMin() {
+    #expect(QuantumChip.customIssueMessage(customText: "0") == "1분부터 정할 수 있어요")
+}
+
+@Test("FR-05 R-004 #42: 정수가 아니면 칸 아래 안내는 숫자로만")
+func customIssueMessageNotInteger() {
+    #expect(QuantumChip.customIssueMessage(customText: "4.5") == "분은 숫자로만 적어 주세요")
+}
+
+@Test("FR-05 R-004 #42: 직접 입력 중이 아니거나 이유가 없으면 안내 없음", arguments: [nil, "", "45"] as [String?])
+func customIssueMessageNone(customText: String?) {
+    #expect(QuantumChip.customIssueMessage(customText: customText) == nil)
+}
+
 @Test(
     "FR-05 R-004: 이유가 없는 비지 않은 값만 parseCustom이 받는다",
     arguments: ["1", "180", "+45", "181", "0", "abc", "4.5", " 45"])
