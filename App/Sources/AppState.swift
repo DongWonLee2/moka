@@ -4,11 +4,60 @@ import Observation
 import SwiftUI
 import os
 
-/// 화면 상태와 타이머 값(data-model §6). 타이머 규칙은 MokaCore `NotchTimer`가 정하고 여기서는 이벤트를 전달만 한다.
-/// 할 일과 타이머는 메모리에만 둔다(R-014).
+/// 앱이 쓰는 저장소 묶음. DB 하나를 열어 나눠 준다(spec 002 plan "앱 연결").
+/// 할 일·일정 저장소가 nil이면 저장할 수 없는 상태다(R-119).
+struct AppStorage {
+    let settings: any SettingsStore
+    let repository: (any TaskRepository)?
+    let contexts: (any ContextStore)?
+
+    var isUnavailable: Bool { repository == nil }
+
+    private static let logger = Logger(subsystem: "dev.dongwon.moka", category: "storage")
+
+    /// `openStores`를 한 번만 부른다. 실패하면 설정만 메모리 저장소로 대체하고 할 일·일정 저장소는 만들지 않는다.
+    /// DB 파일을 지우거나, 새로 만들거나, 옮기지 않는다(R-119, research R20). 로그에는 오류 종류만 남긴다.
+    static func open(_ openStores: () throws -> AppStorage) -> AppStorage {
+        do {
+            return try openStores()
+        } catch {
+            logger.error(
+                "DB를 열지 못해 저장 없이 동작: \(String(reflecting: type(of: error)), privacy: .public)")
+            return AppStorage(settings: InMemorySettingsStore(), repository: nil, contexts: nil)
+        }
+    }
+}
+
+/// 알림 처리기 하나. 없어질 때 등록을 해제한다(#37). 처리기는 주 스레드에서 돈다.
+final class NotificationObservation {
+    private let center: NotificationCenter
+    private let token: any NSObjectProtocol
+
+    init(center: NotificationCenter, name: Notification.Name, handler: @escaping @MainActor () -> Void) {
+        self.center = center
+        token = center.addObserver(forName: name, object: nil, queue: .main) { _ in
+            MainActor.assumeIsolated { handler() }
+        }
+    }
+
+    deinit {
+        center.removeObserver(token)
+    }
+}
+
+/// 화면 상태와 노치 세션(spec 001 data-model §6, spec 002 data-model §8). 규칙은 MokaCore `NotchSession`·`NotchTimer`가
+/// 정하고 여기서는 이벤트를 전달하고 쓰기를 저장소에 적용한다. 저장할 수 없으면(R-119) spec 001처럼 타이머만 돈다.
 @Observable @MainActor
 final class AppState {
-    private(set) var timer: NotchTimer = .empty(draft: nil)
+    private(set) var session: NotchSession = .initial
+    /// 화면에 보이는 타이머. 세션 안의 spec 001 값이다.
+    var timer: NotchTimer { session.timer }
+    /// 저장소 `tasks()`의 지금 목록. 쓰기 뒤 다시 읽는다.
+    private(set) var tasks: [MokaTask] = []
+    /// 노치가 지금 할 일을 고른 시각(이어서 할 일 접힘 표시 2초, data-model §5.5).
+    private(set) var pickedAt: Date?
+    /// 앱 DB를 열지 못했거나 마이그레이션이 실패했다(R-119).
+    let storageUnavailable: Bool
     /// 화면에 쓰는 남은 초. 늘 `apply(.tick, …)` 뒤에 다시 계산한다(#13).
     private(set) var remainingSeconds: Int?
     /// 시간 끝 자동 펼침 고정(R-009). `running → expired`에서 켜고 시작·완료로 끈다(`pinnedOpenAfter`).
@@ -29,24 +78,102 @@ final class AppState {
     /// 주지 않는다(R-002, SC-003).
     @ObservationIgnored private var customFocus = OneShotRequest()
     @ObservationIgnored private let clock: MokaClock
+    @ObservationIgnored private let calendar: Calendar
     @ObservationIgnored private let settings: any SettingsStore
+    @ObservationIgnored private let repository: (any TaskRepository)?
+    /// 기본 작업 시간. 처음에 한 번 읽고 설정에서 바꿨을 때만 다시 읽는다(#35).
+    @ObservationIgnored private var defaultQuantumMin: Int
     @ObservationIgnored private var refreshTimer: Timer?
-    @ObservationIgnored private var wakeObserver: (any NSObjectProtocol)?
+    @ObservationIgnored private var observations: [NotificationObservation] = []
 
     private static let logger = Logger(subsystem: "dev.dongwon.moka", category: "timer")
+    private static let storageLogger = Logger(subsystem: "dev.dongwon.moka", category: "storage")
 
-    init(clock: MokaClock, settings: any SettingsStore) {
+    /// `calendar`는 `GregorianCalendar.make(timeZone: .autoupdatingCurrent)`로 한 번 만든 것을 받는다(ADR-0010).
+    /// `workspaceCenter`는 깨어남·잠자기 알림을 받는 곳이다. 시험은 전용 센터를 넘긴다.
+    init(
+        clock: MokaClock, calendar: Calendar, storage: AppStorage,
+        workspaceCenter: NotificationCenter = NSWorkspace.shared.notificationCenter
+    ) {
         self.clock = clock
-        self.settings = settings
-        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
-            forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.tick() }
-        }
+        self.calendar = calendar
+        settings = storage.settings
+        repository = storage.repository
+        storageUnavailable = storage.isUnavailable
+        defaultQuantumMin = QuantumSettings.readDefault(from: storage.settings)
+        observations = [
+            NotificationObservation(center: workspaceCenter, name: NSWorkspace.didWakeNotification) { [weak self] in
+                self?.tick()
+                self?.activate()
+            },
+            NotificationObservation(center: workspaceCenter, name: NSWorkspace.willSleepNotification) {
+                [weak self] in
+                self?.lifecycleCheckpoint(.sleep)
+            },
+        ]
     }
 
+    // MARK: - 앱 수명
+
+    /// 앱 시작: 재시작 복구(R-111) → 하루 판정 → 고르기. 저장할 수 없으면 아무것도 하지 않는다.
+    func launch() {
+        guard let repository else { return }
+        reloadTasks()
+        let reverted = LaunchRecovery.revert(tasks)
+        if !reverted.isEmpty {
+            guard write(StoreBatch(updatedTasks: reverted), to: repository) else { return }
+            reloadTasks()
+        }
+        activate()
+    }
+
+    /// 활성화 판정(research R11): 앱 시작, 잠자기에서 깨어남, 노치 펼침, 설정 창 열기가 부른다.
+    /// 반복 리셋(R-113)을 적용하고 빈 상태면 고른다(R-104). 같은 하루에 여러 번 돌아도 결과가 같다.
+    func activate() {
+        guard let repository else { return }
+        let now = clock.now()
+        let changed = RecurrenceReset.reset(
+            tasks, now: now, dayStart: CoreSettings.readDayStart(from: settings), calendar: calendar)
+        if !changed.isEmpty {
+            guard write(StoreBatch(updatedTasks: changed), to: repository) else { return }
+            reloadTasks()
+        }
+        pickIfEmpty(at: now)
+    }
+
+    /// 종료(`.quit`)·잠자기(`.sleep`) 체크포인트(R-110, research R12). 도는 중일 때만 빈 두 줄로 남기고 동기로 저장한다.
+    /// 할 일 상태와 타이머는 바꾸지 않는다. 종료를 미루지 않는다.
+    func lifecycleCheckpoint(_ trigger: CheckpointTrigger) {
+        guard let repository, let batch = session.lifecycleCheckpoint(trigger, input(at: clock.now())) else { return }
+        _ = write(batch, to: repository)
+    }
+
+    // MARK: - 노치 동작
+
+    /// 빠른 입력(R-103). 저장할 수 있으면 할 일을 만들어 그 할 일로 초안을 바꾼다. 아니면 spec 001 타이머만.
     func enterTitle(_ text: String) {
-        send(.enterTitle(text))
+        guard let repository else {
+            send(.enterTitle(text))
+            return
+        }
+        transition(.enterTitle(text)) { session, now in
+            guard case .empty = session.timer else { return .rejected(.notAllowedInPhase) }
+            guard
+                let prepared = TaskWriteRules.prepareNew(
+                    NewTask(title: text, deadline: nil, estMin: nil, recurrence: .none, weekday: nil), now: now,
+                    dayStart: CoreSettings.readDayStart(from: settings), calendar: calendar)
+            else { return .rejected(.emptyTitle) }
+            let task: MokaTask
+            do {
+                task = try repository.insertTask(prepared.task, cycleDay: prepared.cycleDay, at: now)
+            } catch {
+                Self.logStorageFailure(error)
+                return .rejected(.notAllowedInPhase)
+            }
+            reloadTasks()
+            session = session.addedTask(task, input(at: now))
+            return .applied
+        }
     }
 
     /// 프리셋 칩을 골랐다. 직접 입력을 그만둔다.
@@ -81,17 +208,17 @@ final class AppState {
 
     /// 설정에서 기본 작업 시간을 저장했다. 칩을 직접 고르지 않았고 직접 입력 중이 아니면 칩이 새 값이 된다(R-013).
     func defaultQuantumChanged() {
-        timer.applyDefaultQuantumChange(
-            QuantumSettings.readDefault(from: settings), isEditingCustom: customText != nil)
+        defaultQuantumMin = QuantumSettings.readDefault(from: settings)
+        session.timer.applyDefaultQuantumChange(defaultQuantumMin, isEditingCustom: customText != nil)
     }
 
     func start() {
         guard canStart else { return }
-        send(.start)
+        commit(.start) { session, input throws(SessionError) in try session.start(input) }
     }
 
     func complete() {
-        send(.complete)
+        commit(.complete) { session, input throws(SessionError) in try session.complete(nil, input) }
     }
 
     func tick() {
@@ -109,6 +236,7 @@ final class AppState {
     }
 
     /// 접힘 판정(`shouldStayExpanded`)이 바뀌면 방향에 맞는 애니메이션으로 펼치거나 접는다.
+    /// 노치가 펼쳐지면 활성화 판정을 돈다(research R11).
     private func updateExpansion() {
         let expanded = shouldStayExpanded(pinned: isPinnedOpen, focused: isInputFocused, hovering: isHovering)
         guard expanded != isExpanded else { return }
@@ -116,6 +244,9 @@ final class AppState {
             expanding: expanded, reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
         withAnimation(animation) {
             isExpanded = expanded
+        }
+        if expanded {
+            activate()
         }
     }
 
@@ -126,12 +257,63 @@ final class AppState {
         }
     }
 
+    // MARK: - 내부
+
+    private func input(at now: Date) -> SessionInput {
+        SessionInput(tasks: tasks, now: now, defaultQuantumMin: defaultQuantumMin, calendar: calendar)
+    }
+
+    /// 타이머만 바뀌는 이벤트(칩, tick). 저장할 수 없을 때는 빠른 입력·시작·완료도 여기로 온다.
     @discardableResult
     private func send(_ event: TimerEvent) -> TransitionResult {
+        transition(event) { session, now in
+            session.timer.apply(event, at: now, defaultQuantumMin: defaultQuantumMin)
+        }
+    }
+
+    /// 쓰기가 있는 세션 동작: 세션 함수 → `apply` → 성공하면 `tasks()` 다시 읽기 → 세션 교체 → 빈 상태면 고르기.
+    /// 거부되거나 쓰기가 실패하면 세션을 그대로 둔다(R-119).
+    private func commit(
+        _ event: TimerEvent, _ step: (NotchSession, SessionInput) throws(SessionError) -> SessionStep
+    ) {
+        guard let repository else {
+            send(event)
+            return
+        }
+        var picked = false
+        transition(event) { session, now in
+            let next: SessionStep
+            do {
+                next = try step(session, input(at: now))
+            } catch {
+                return .rejected(.notAllowedInPhase)
+            }
+            do {
+                session = try SessionCommit.commit(next, to: repository)
+            } catch {
+                Self.logStorageFailure(error)
+                return .rejected(.notAllowedInPhase)
+            }
+            reloadTasks()
+            picked = true
+            return .applied
+        }
+        if picked {
+            pickIfEmpty(at: clock.now())
+        }
+    }
+
+    /// 타이머 전이와 그 뒤 화면 상태(고정, 펼침, 직접 입력, 1초 tick)를 한 곳에서 맞춘다.
+    @discardableResult
+    private func transition(
+        _ event: TimerEvent, _ change: (inout NotchSession, Date) -> TransitionResult
+    ) -> TransitionResult {
         let now = clock.now()
         let before = Self.phaseName(timer)
         let previous = timer
-        let result = timer.apply(event, at: now, defaultQuantumMin: QuantumSettings.readDefault(from: settings))
+        var next = session
+        let result = change(&next, now)
+        session = next
         remainingSeconds = timer.remainingSeconds(at: now)
         let after = Self.phaseName(timer)
         if result == .applied, event == .start || event == .complete {
@@ -152,6 +334,40 @@ final class AppState {
         }
         updateRefreshTimer()
         return result
+    }
+
+    /// 빈 상태(초안 없음)면 고른다(R-104). 새로 고르면 `pickedAt`을 그 시각으로 둔다.
+    private func pickIfEmpty(at now: Date) {
+        let next = session.picked(input(at: now))
+        guard next != session else { return }
+        session = next
+        pickedAt = now
+        remainingSeconds = timer.remainingSeconds(at: now)
+    }
+
+    private func reloadTasks() {
+        guard let repository else { return }
+        do {
+            tasks = try repository.tasks()
+        } catch {
+            Self.logStorageFailure(error)
+        }
+    }
+
+    /// 동기로 적용한다. 실패하면 오류 종류만 로그에 남기고 false.
+    private func write(_ batch: StoreBatch, to repository: any TaskRepository) -> Bool {
+        do {
+            try repository.apply(batch)
+            return true
+        } catch {
+            Self.logStorageFailure(error)
+            return false
+        }
+    }
+
+    /// 제목·두 줄 본문을 남기지 않는다. 오류 종류만.
+    private static func logStorageFailure(_ error: any Error) {
+        storageLogger.error("저장 실패: \(String(reflecting: type(of: error)), privacy: .public)")
     }
 
     /// `running` 동안만 1초마다 tick을 보낸다(research R1).

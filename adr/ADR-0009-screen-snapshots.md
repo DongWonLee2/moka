@@ -71,3 +71,13 @@ Agent 추천안 채택(D4, 2026-10-28). 판단 이유: 사용자 위임(토론 �
 ### 보완 (2026-10-29, PR #49)
 
 위 "spec 001에서는 CI job을 두지 않는다", "단언은 sanity 3종만", "CI(`app-build`)는 이 번들을 돌리지 않는다"는 이 ADR을 채택할 때의 결정이고 문장은 그대로 둔다. 그 뒤 소수 의견(토론 A 자리)이 예고한 비필수 `app-snapshots` job 제안이 실행되었다. Issue #39 Q3 추천안 토론(2026-10-29, 3:0, 3라운드, 소수 의견 없음)과 사용자 승인으로, spec 001 뒤 CI에 비필수 `app-snapshots` job을 더했다(PR #49). 조건은 `continue-on-error: true`, main 보호 필수 검사 목록 불변, PNG artifact 없음, 같은 원인으로 2회 실패하면 `workflow_dispatch` 전용으로 내림이다. 같은 PR에서 sanity 단언에 픽셀 치수(`size × 2`), 노치 판(판 안 색이 테마와 무관하고 판 안에 그린 것이 있음), 떠 있는 창(라이트 판 휘도가 다크 판보다 확실히 높음)을 더했다. 기준 이미지 비교는 여전히 없고, 생성 PASS는 여전히 화면 정합 증거가 아니다.
+
+### 보완 (2026-11-04, PR #68)
+
+위 "`MokaApp.swift`·`AppState`·`App/Sources/Notch`·`App/Sources/Settings`는 넣지 않는다"는 이 ADR을 채택할 때의 결정이고 문장은 그대로 둔다. 앱 수명 연결 시험(Issue #58)을 위해 `App/Sources/AppState.swift` 한 파일만 번들 소스에 더한다. 근거는 추천안 토론(2026-11-04, 최종 3:0, 1라운드 2:1, 소수 의견은 조립 순서를 MokaCore 한 타입으로 빼는 방향으로 후속 #72)과 사용자 승인이다. 조건은 다음과 같다.
+
+1. 번들 소스는 `App/Sources/Views`, `App/Sources/AppState.swift`, `App/Tests/MokaAppTests`뿐이다. `AppState.swift`가 MokaStore·GRDB를 import하거나 `App/Sources/Notch`·`App/Sources/Settings`·`MokaApp.swift`가 번들에 들어오면 다시 토론한다.
+2. 번들 컴파일이 지켜 주던 "뷰는 `AppState`를 모른다" 경계는 필수 `core-test`의 가드 시험(`Tests/MokaCoreTests/ViewBoundaryTests.swift`)으로 대신한다.
+3. 이 번들은 비필수 `app-snapshots`에서만 돈다. 앱 시험 PASS는 앱 수명 연결 검증 완료가 아니며, 사람 확인(quickstart)은 따로 판정한다. 필수 검사로 올릴지는 #71에서 묻는다.
+
+재검토 트리거: 조건 1이 깨질 때, 가드 시험이 깨질 때.
