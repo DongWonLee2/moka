@@ -19,9 +19,11 @@ struct MokaApp: App {
                 .accessibilityLabel("Moka")
         }
         Settings {
-            SettingsView(store: AppSettings.store, onSaved: { delegate.defaultQuantumChanged() })
-                // 설정 창 열기도 활성화다(research R11).
-                .onAppear { delegate.activate() }
+            SettingsView(
+                store: AppSettings.store, appState: delegate.appState, onSaved: { delegate.defaultQuantumChanged() }
+            )
+            // 설정 창 열기도 활성화다(research R11).
+            .onAppear { delegate.activate() }
         }
     }
 }
@@ -71,6 +73,9 @@ enum SettingsWindowRaiser {
             super.viewDidMoveToWindow()
             guard let window else { return }
             SettingsWindowRaiser.window = window
+            // 제목줄까지 시안 바탕색이 보이게 한다(macOS 14에는 SwiftUI 창 바탕 지정이 없다).
+            window.titlebarAppearsTransparent = true
+            window.backgroundColor = MokaColors.settingsWindowNS
             guard SettingsWindowRaiser.pending.take() else { return }
             DispatchQueue.main.async { SettingsWindowRaiser.raise() }
         }
@@ -100,7 +105,7 @@ enum AppSettings {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     /// 달력은 한 번 만들어 둔다. 시스템 시간대가 바뀌면 따라간다(ADR-0010 결정 검증 결과 (a)).
-    private let appState = AppState(
+    let appState = AppState(
         clock: MokaClock { Date() }, calendar: GregorianCalendar.make(timeZone: .autoupdatingCurrent),
         storage: AppSettings.storage)
     private var panelHost: NotchPanelHost?

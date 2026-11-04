@@ -1,3 +1,4 @@
+import AppKit
 import MokaCore
 import SwiftUI
 
@@ -16,19 +17,18 @@ struct BasicTabView: View {
                 label: "추가 시간", hint: "시간이 끝났을 때 더 이어 갈 시간이에요.", input: extend)
             GridRow {
                 Text("하루 시작 시각")
-                DatePicker("하루 시작 시각", selection: $dayStart, displayedComponents: .hourAndMinute)
-                    .labelsHidden()
-                    .datePickerStyle(.field)
-                    .environment(\.locale, Self.twentyFourHour)
-                    .fixedSize()
+                TimeField(date: $dayStart, locale: Self.twentyFourHour)
+                    .accessibilityLabel("하루 시작 시각")
+                    .frame(width: 52)
             }
             GridRow {
                 Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])
                 HintText(text: "이 시각이 지나면 반복 할 일이 다시 대기로 돌아와요.", isIssue: false)
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 16)
+        .padding(.horizontal, 14)
+        .padding(.top, 10)
+        .padding(.bottom, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -100,5 +100,49 @@ private struct HintText: View {
             .foregroundStyle(isIssue ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
             .fixedSize()
             .padding(.bottom, 6)
+    }
+}
+
+/// 시·분 칸. SwiftUI `DatePicker`는 macOS에서 내용 폭보다 넓어지지 않아 `NSDatePicker`를 감싼다.
+private struct TimeField: NSViewRepresentable {
+    @Binding var date: Date
+    let locale: Locale
+
+    func makeNSView(context: Context) -> NSDatePicker {
+        let picker = NSDatePicker()
+        picker.datePickerStyle = .textField
+        picker.datePickerElements = .hourMinute
+        picker.isBezeled = true
+        picker.drawsBackground = true
+        picker.target = context.coordinator
+        picker.action = #selector(Coordinator.changed(_:))
+        return picker
+    }
+
+    func updateNSView(_ picker: NSDatePicker, context: Context) {
+        context.coordinator.date = $date
+        picker.locale = locale
+        picker.calendar = context.environment.calendar
+        picker.timeZone = context.environment.timeZone
+        if picker.dateValue != date {
+            picker.dateValue = date
+        }
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView picker: NSDatePicker, context: Context) -> CGSize? {
+        CGSize(width: proposal.width ?? picker.intrinsicContentSize.width, height: picker.intrinsicContentSize.height)
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(date: $date) }
+
+    @MainActor
+    final class Coordinator: NSObject {
+        var date: Binding<Date>
+
+        init(date: Binding<Date>) { self.date = date }
+
+        @objc func changed(_ sender: NSDatePicker) {
+            date.wrappedValue = sender.dateValue
+        }
     }
 }

@@ -344,6 +344,49 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 1", chipMin: 40)))
     }
 
+    // MARK: - R-102·R-118 할 일 탭
+
+    func test_FR01_R118_taskListStartsAllCreatedWithNextMark() throws {
+        let state = makeState(try Self.seeded(3))
+        state.launch()
+
+        XCTAssertEqual(state.taskListScope, .all)
+        XCTAssertEqual(state.taskListOrder, .created)
+        XCTAssertEqual(state.taskListRows.map(\.title), ["가짜 할 일 1", "가짜 할 일 2", "가짜 할 일 3"])
+        XCTAssertEqual(state.nextMarkID, state.taskListRows.first?.id, "초안이면 노치의 할 일에 다음 표시")
+    }
+
+    func test_FR01_R118_scopeChangesRowsButNotNextMark() throws {
+        let state = makeState(try Self.seeded(2))
+        state.launch()
+        let mark = state.nextMarkID
+        let before = state.session
+
+        state.taskListScope = .today
+        XCTAssertEqual(state.taskListRows, [], "마감 없는 일반 할 일은 전체에만")
+        XCTAssertEqual(state.nextMarkID, mark, "보기는 노치 고르기를 바꾸지 않는다")
+        XCTAssertEqual(state.session, before)
+    }
+
+    /// 오늘 보기는 하루 시작 시각(06:00) 기준이다(R-114). 05:59는 아직 어제라 오늘 마감 할 일은 빠진다.
+    func test_FR01_R118_todayScopeFollowsDayStart() throws {
+        let repository = InMemoryTaskRepository()
+        for (title, deadline) in [("가짜 할 일 어제 마감", "2027-01-12"), ("가짜 할 일 오늘 마감", "2027-01-13")] {
+            _ = try repository.insertTask(
+                NewTask(
+                    title: title, deadline: LocalDay(text: deadline), estMin: nil, recurrence: .none, weekday: nil),
+                cycleDay: nil, at: Self.at(2027, 1, 12, 9, 0))
+        }
+        let clock = TestClock(Self.at(2027, 1, 13, 5, 59))
+        let state = makeState(repository, clock: clock)
+        state.launch()
+        state.taskListScope = .today
+
+        XCTAssertEqual(state.taskListRows.map(\.title), ["가짜 할 일 어제 마감"])
+        clock.advance(minutes: 1)
+        XCTAssertEqual(state.taskListRows.map(\.title), ["가짜 할 일 어제 마감", "가짜 할 일 오늘 마감"])
+    }
+
     // MARK: - #37 알림 처리기 해제
 
     func test_issue37_observationStopsWhenReleased() {

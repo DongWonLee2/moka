@@ -6,7 +6,7 @@ import XCTest
 @MainActor
 final class SettingsSnapshotTests: XCTestCase {
     /// 설정 창 폭 460pt. 높이는 기본 탭 내용이 들어가는 만큼.
-    private static let size = CGSize(width: 460, height: 200)
+    private static let size = CGSize(width: 460, height: 240)
 
     func test_R012_basicTabDefaults() throws {
         try snapshot("s06-basic", quantumText: "25", extendText: "10")
@@ -17,25 +17,65 @@ final class SettingsSnapshotTests: XCTestCase {
         try snapshot("s06-basic-issue", quantumText: "181", extendText: "4.5")
     }
 
+    /// 시안 7번의 다섯 줄(가짜 예시): 진행 중, 매일 연속 + 다음, 매주 미룸 + 연속, 보조 줄 없음, 완료.
+    func test_R102_R118_taskListTab() throws {
+        let created = Date(timeIntervalSince1970: 1_800_000_000)
+        func task(
+            _ id: TaskID, _ title: String, deadline: String? = nil, estMin: Int? = nil, recurrence: Recurrence = .none,
+            weekday: Int? = nil, status: TaskStatus = .todo, skipCount: Int = 0, streak: Int = 0
+        ) -> MokaTask {
+            MokaTask(
+                id: id, title: title, deadline: deadline.flatMap(LocalDay.init(text:)), estMin: estMin,
+                recurrence: recurrence, weekday: weekday.flatMap(Weekday.init(rawValue:)),
+                cycleDay: recurrence == .none ? nil : LocalDay(text: "2026-11-04"), firstAction: nil, status: status,
+                skipCount: skipCount, streak: streak, createdAt: created)
+        }
+        let rows = [
+            task(1, "보고서 1절 쓰기", deadline: "2026-11-05", estMin: 50, status: .active),
+            task(2, "영단어 30개 외우기", recurrence: .daily, streak: 3),
+            task(3, "스터디 발표 자료 정리", recurrence: .weekly, weekday: 4, skipCount: 2, streak: 2),
+            task(4, "장보기 목록 만들기"),
+            task(5, "세탁기 돌리기", status: .done),
+        ]
+        let size = CGSize(width: 460, height: 420)
+        let content = VStack(spacing: 0) {
+            SettingsTabBar(selection: .constant(.tasks))
+            TaskListTabView(rows: rows, nextMarkID: 2, scope: .constant(.all), order: .constant(.created))
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(MokaColors.settingsWindow)
+        try write("s07-task-list", content: content, size: size)
+    }
+
+    private func write(_ name: String, content: some View, size: CGSize) throws {
+        let light = try renderPNG(view: content, size: size, appearance: .aqua)
+        let dark = try renderPNG(view: content, size: size, appearance: .darkAqua)
+        for (png, suffix) in [(light, "light"), (dark, "dark")] {
+            let url = try SnapshotOutput.write(png, name: "\(name)-\(suffix)")
+            let issue = SnapshotSanity.issue(in: png)
+            XCTAssertNil(issue, "\(url.lastPathComponent): \(issue ?? "")")
+            let sizeIssue = SnapshotSanity.sizeIssue(in: png, size: size)
+            XCTAssertNil(sizeIssue, "\(url.lastPathComponent): \(sizeIssue ?? "")")
+        }
+        XCTAssertNotEqual(light, dark, "\(name): 라이트와 다크 PNG가 같다")
+    }
+
     private func snapshot(_ name: String, quantumText: String, extendText: String) throws {
         let calendar = GregorianCalendar.make(timeZone: try XCTUnwrap(TimeZone(identifier: "Asia/Seoul")))
-        let content = BasicTabView(
+        let tab = BasicTabView(
             quantum: Self.input(quantumText, range: Defaults.quantumMinRange),
             extend: Self.input(extendText, range: Defaults.extendMinRange),
             dayStart: .constant(Defaults.dayStart.date(calendar: calendar))
         )
         .environment(\.timeZone, calendar.timeZone)
-
-        let light = try renderPNG(view: content, size: Self.size, appearance: .aqua)
-        let dark = try renderPNG(view: content, size: Self.size, appearance: .darkAqua)
-        for (png, suffix) in [(light, "light"), (dark, "dark")] {
-            let url = try SnapshotOutput.write(png, name: "\(name)-\(suffix)")
-            let issue = SnapshotSanity.issue(in: png)
-            XCTAssertNil(issue, "\(url.lastPathComponent): \(issue ?? "")")
-            let sizeIssue = SnapshotSanity.sizeIssue(in: png, size: Self.size)
-            XCTAssertNil(sizeIssue, "\(url.lastPathComponent): \(sizeIssue ?? "")")
+        let content = VStack(spacing: 0) {
+            SettingsTabBar(selection: .constant(.basic))
+            tab
         }
-        XCTAssertNotEqual(light, dark, "\(name): 라이트와 다크 PNG가 같다")
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(MokaColors.settingsWindow)
+
+        try write(name, content: content, size: Self.size)
     }
 
     private static func input(_ text: String, range: ClosedRange<Int>) -> MinutesFieldInput {

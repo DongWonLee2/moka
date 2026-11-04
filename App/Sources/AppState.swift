@@ -74,6 +74,20 @@ final class AppState {
     /// 펼침 여부. 바뀔 때는 `updateExpansion()` 한 곳에서 `withAnimation`으로 바꾼다.
     private(set) var isExpanded = false
 
+    /// 설정 창 할 일 탭의 보기·정렬(R-118). 앱이 켜져 있는 동안만 둔다(data-model §8).
+    var taskListScope: TaskListScope = .all
+    var taskListOrder: TaskListOrder = .created
+
+    /// 할 일 탭에 보일 줄. 오늘은 하루 시작 시각 기준이다(R-114).
+    var taskListRows: [MokaTask] {
+        let today = DayBoundary.day(
+            containing: clock.now(), dayStart: CoreSettings.readDayStart(from: settings), calendar: calendar)
+        return TaskListView.rows(tasks, scope: taskListScope, order: taskListOrder, today: today, calendar: calendar)
+    }
+
+    /// 할 일 탭 "다음" 표시(R-102). 보기·정렬과 무관하다.
+    var nextMarkID: TaskID? { session.nextMark(input(at: clock.now())) }
+
     /// "직접…"을 누른 뒤 칸이 처음 나타날 때 한 번만 포커스를 준다. 마우스로 다시 펼쳐 칸이 다시 만들어질 때는
     /// 주지 않는다(R-002, SC-003).
     @ObservationIgnored private var customFocus = OneShotRequest()

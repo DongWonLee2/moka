@@ -104,10 +104,10 @@ description: "spec 002 저장과 체크포인트 작업 목록"
   - `App/Sources/Views/NotchContentView.swift`·`App/Sources/Notch/NotchPanelHost.swift`(`NotchPanelRoot`): 새 값·콜백 전달(plan "앱 연결")
   - `App/Tests/MokaAppTests/ScreenStateSnapshotTests.swift`: 바뀐 `NotchContentView` 호출부를 고쳐 컴파일되게 한다(새 스냅샷은 T060)
   〔단위 4〕
-- [ ] T029 🔒 [US1] `App/Sources/Settings/SettingsView.swift`를 탭 셋(기본·할 일·일정) 틀로 바꾸고, 기본 탭 내용은 `App/Sources/Views/BasicTabView.swift`(값·콜백만)로 둔다(시안 6번, 폭 460pt, 창 제목은 탭 이름, 001의 로고 줄은 뺌). 기본 탭: 기본 작업 시간(기존), 추가 시간(`default_extend_min`, 숫자 칸 + 스테퍼, 1~180, 해석·이유 안내는 `QuantumChip.parseCustom`·`customIssue` 재사용, 안내 "시간이 끝났을 때 더 이어 갈 시간이에요."), 하루 시작 시각(`day_start`, 시·분 `DatePicker`(.hourAndMinute), 안내 "이 시각이 지나면 반복 할 일이 다시 대기로 돌아와요."). 메뉴 막대 항목은 spec 001 R-012 그대로 〔단위 4〕
+- [ ] T029 🔒 [US1] `App/Sources/Settings/SettingsView.swift`를 탭 셋(기본·할 일·일정) 틀로 바꾸고, 기본 탭 내용은 `App/Sources/Views/BasicTabView.swift`(값·콜백만)로 둔다(시안 6번, 폭 460pt, 창 제목은 "설정"(2026-11-04 사용자 결정, 시안의 탭 이름 제목 대신), 001의 로고 줄은 뺌). 기본 탭: 기본 작업 시간(기존), 추가 시간(`default_extend_min`, 숫자 칸 + 스테퍼, 1~180, 해석·이유 안내는 `QuantumChip.parseCustom`·`customIssue` 재사용, 안내 "시간이 끝났을 때 더 이어 갈 시간이에요."), 하루 시작 시각(`day_start`, 시·분 `DatePicker`(.hourAndMinute), 안내 "이 시각이 지나면 반복 할 일이 다시 대기로 돌아와요."). 메뉴 막대 항목은 spec 001 R-012 그대로 〔단위 4〕
 - [ ] T030 🔒 [US1] `App/Sources/Views/TaskListTabView.swift`에 할 일 탭을 만든다(시안 7번, R-102·R-118, 값·콜백만):
   - 위 줄: 보기 `[전체 · 오늘 · 이번 주]` 세그먼트, 오른쪽 정렬 메뉴 `만든 순 ▾ / 마감 순`(처음 값 `all`·`created`, data-model §8)
-  - 줄: 제목, 보조 줄(마감 "마감 11월 5일", 예상 "예상 50분", 반복 "매일"/"매주 수요일", "N번 미뤘어요"), 상태 배지(대기 / 진행 중(모카색) / 완료), 완료는 줄 긋고 흐리게. 반복 할 일의 `streak > 0`이면 잔 아이콘이 든 모카색 배지 — 매일은 "N일 연속 진행", 매주는 "N주 연속 진행"(0이면 배지 없음)
+  - 줄: 제목, 보조 줄(마감 "마감 11월 5일", 예상 "예상 50분", 반복 "매일"/"매주 수요일", "N번 미뤘어요". 완료한 할 일은 "완료"만), 상태 배지(대기 / 진행 중(모카색) / 완료), 완료는 줄 긋고 흐리게. 반복 할 일의 `streak > 0`이면 잔 아이콘이 든 모카색 배지 — 매일은 "N일 연속 진행", 매주는 "N주 연속 진행"(0이면 배지 없음)
   - "다음" 표시: `nextMark`(data-model §4.2) 할 일에만
   - 아래: `+`(새 할 일 시트) `−`(고른 할 일 지우기 확인), 안내 "두 번 클릭하면 고쳐요. **다음** 표시가 붙은 할 일이 노치에 떠요."
   - 버린 할 일은 보이지 않는다. 검색 없음

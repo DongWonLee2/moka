@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// 시안 v3.5의 색. 노치 판은 화면 테마와 상관없이 늘 검정 바탕이다.
@@ -8,6 +9,13 @@ enum MokaColors {
     static let crema = Color(hex: 0xE6C7B4)
     static let foam = Color(hex: 0xF5E9E1)
     static let danger = Color(hex: 0xE5533D)
+
+    static let settingsWindowNS = NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            ? NSColor(srgbRed: 0x2B / 255, green: 0x26 / 255, blue: 0x23 / 255, alpha: 1)
+            : NSColor(srgbRed: 0xF4 / 255, green: 0xF0 / 255, blue: 0xED / 255, alpha: 1)
+    }
+    static let settingsWindow = Color(nsColor: settingsWindowNS)
 
     static let notchBackground = Color.black
     static let notchForeground = Color(hex: 0xF5EFE9)
