@@ -17,6 +17,9 @@ struct NotchContentView: View {
     var isPanelKey = false
     let metrics: NotchMetrics
     var style: PanelStyle = .notch
+    /// 노치의 할 일의 첫 행동(R-109). 펼친 화면은 있으면 보이고, 접힌 화면은 `showsFirstActionCollapsed`일 때만.
+    var firstAction: String?
+    var showsFirstActionCollapsed = false
     let titleFocusRequest: Int
     let chip: QuantumChipInput
     let onEnterTitle: (String) -> Void
@@ -29,11 +32,14 @@ struct NotchContentView: View {
 
     var body: some View {
         let palette = PanelPalette.resolve(style: style, colorScheme: colorScheme)
-        let sides = NotchLayout.collapsedSideWidths(timer: timer, remainingSeconds: remainingSeconds, style: style)
+        let collapsedFirstAction = showsFirstActionCollapsed ? firstAction : nil
+        let sides = NotchLayout.collapsedSideWidths(
+            timer: timer, remainingSeconds: remainingSeconds, style: style,
+            showsFirstAction: collapsedFirstAction != nil)
         ZStack(alignment: .top) {
             HStack(spacing: 0) {
                 if !isExpanded {
-                    CollapsedLeadingView(timer: timer)
+                    CollapsedLeadingView(timer: timer, firstAction: collapsedFirstAction)
                         .frame(width: sides.leading, height: metrics.height)
                         .transition(sideTransition(towardHole: .trailing))
                 }
@@ -46,7 +52,7 @@ struct NotchContentView: View {
             }
             if isExpanded {
                 ExpandedView(
-                    timer: timer, remainingSeconds: remainingSeconds, metrics: metrics,
+                    timer: timer, remainingSeconds: remainingSeconds, metrics: metrics, firstAction: firstAction,
                     titleFocusRequest: titleFocusRequest, chip: chip,
                     onEnterTitle: onEnterTitle, draftInput: draftInput, onStart: onStart, onComplete: onComplete
                 )
@@ -80,7 +86,8 @@ struct NotchContentView: View {
         .environment(\.panelIsKey, isPanelKey)
         .offset(
             x: NotchLayout.horizontalOffset(
-                timer: timer, remainingSeconds: remainingSeconds, isExpanded: isExpanded, style: style))
+                timer: timer, remainingSeconds: remainingSeconds, isExpanded: isExpanded, style: style,
+                showsFirstAction: collapsedFirstAction != nil))
     }
 
     /// 시안 v3.5: 노치는 위쪽 오목 곡선 + 아래 둥근 모서리(접힘 10pt·펼침 18pt),

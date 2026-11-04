@@ -53,4 +53,19 @@ final class CollapsedLayoutTests: XCTestCase {
         XCTAssertEqual(floating.leading, 104)
         XCTAssertEqual(floating.trailing, 28)
     }
+
+    func test_R109_firstActionNotchIsSymmetric104() {
+        let draft = NotchTimer.empty(draft: Draft(title: "가짜 할 일", chipMin: 25))
+        let notch = NotchLayout.collapsedSideWidths(
+            timer: draft, remainingSeconds: nil, style: .notch, showsFirstAction: true)
+        XCTAssertEqual(notch.leading, 104)
+        XCTAssertEqual(notch.trailing, 104)
+        XCTAssertEqual(
+            NotchLayout.horizontalOffset(
+                timer: draft, remainingSeconds: nil, isExpanded: false, style: .notch, showsFirstAction: true), 0)
+        let floating = NotchLayout.collapsedSideWidths(
+            timer: draft, remainingSeconds: nil, style: .floating, showsFirstAction: true)
+        XCTAssertEqual(floating.leading, 104)
+        XCTAssertEqual(floating.trailing, 28)
+    }
 }

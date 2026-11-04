@@ -12,6 +12,8 @@ struct ExpandedView: View {
     let timer: NotchTimer
     let remainingSeconds: Int?
     let metrics: NotchMetrics
+    /// 이어서 할 일(R-109). 있으면 제목 아래 한 줄.
+    var firstAction: String?
     /// 값이 바뀔 때마다 빈 상태의 제목 칸에 포커스를 준다(펼친 판 클릭, data-model §6).
     let titleFocusRequest: Int
     let chip: QuantumChipInput
@@ -75,6 +77,9 @@ struct ExpandedView: View {
             }
         case .running(let title, _, _, _):
             TitleText(title: title)
+            if let firstAction {
+                FirstActionLine(text: firstAction)
+            }
             HStack(spacing: 6) {
                 RemainingText(seconds: remainingSeconds, expired: false)
                 Spacer(minLength: 0)
@@ -94,6 +99,9 @@ struct ExpandedView: View {
                 onSubmit: onEnterTitle)
         } else {
             TitleText(title: draft.title)
+            if let firstAction {
+                FirstActionLine(text: firstAction)
+            }
         }
         // 기본값으로 채운 칩이 선택된 채로 Enter나 시작 한 번이면 그 값으로 시작한다(R-003).
         QuantumChipView(
@@ -217,6 +225,27 @@ struct TitleText: View {
             .lineLimit(2)
             .truncationMode(.tail)
             .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct FirstActionLine: View {
+    let text: String
+
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.panelPalette) private var palette
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text("이어서 할 일")
+                .font(.system(size: 10.5))
+                .foregroundStyle(contrast == .increased ? palette.mutedHighContrast : palette.muted)
+            Text(text)
+                .font(.system(size: 11.5))
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .foregroundStyle(palette.firstAction)
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 

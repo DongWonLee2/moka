@@ -66,7 +66,10 @@ final class AppState {
     /// 저장소 `tasks()`의 지금 목록. 쓰기 뒤 다시 읽는다.
     private(set) var tasks: [MokaTask] = []
     /// 노치가 지금 할 일을 고른 시각(이어서 할 일 접힘 표시 2초, data-model §5.5).
-    private(set) var pickedAt: Date?
+    private(set) var pickedAt: Date? {
+        didSet { scheduleFirstActionRedraw() }
+    }
+    private var collapsedRedrawTick = 0
     /// 앱 DB를 열지 못했거나 마이그레이션이 실패했다(R-119).
     let storageUnavailable: Bool
     /// 화면에 쓰는 남은 초. 늘 `apply(.tick, …)` 뒤에 다시 계산한다(#13).
@@ -99,6 +102,19 @@ final class AppState {
         TaskListView.rows(tasks, scope: taskListScope, order: taskListOrder, today: logicalToday, calendar: calendar)
     }
 
+    /// 노치의 할 일의 첫 행동(화면 이름 "이어서 할 일", R-109). 펼친 화면은 있으면 늘 보인다.
+    var firstAction: String? {
+        guard let id = session.taskID else { return nil }
+        return tasks.first { $0.id == id }?.firstAction
+    }
+
+    /// 접힌 초안에 "이어서 · <첫 행동>"을 보이는지(R-109). 고른 뒤 2초만이고, 도는 중·시간 끝은 spec 001 그대로다.
+    var showsFirstActionCollapsed: Bool {
+        _ = collapsedRedrawTick
+        guard Self.isDraft(timer), firstAction != nil, let pickedAt else { return false }
+        return FirstActionDisplay.showsInCollapsed(pickedAt: pickedAt, now: clock.now())
+    }
+
     /// 할 일 탭 "다음" 표시(R-102). 보기·정렬과 무관하다.
     var nextMarkID: TaskID? { session.nextMark(input(at: clock.now())) }
 
@@ -112,6 +128,7 @@ final class AppState {
     /// 기본 작업 시간. 처음에 한 번 읽고 설정에서 바꿨을 때만 다시 읽는다(#35).
     @ObservationIgnored private var defaultQuantumMin: Int
     @ObservationIgnored private var refreshTimer: Timer?
+    @ObservationIgnored private var firstActionRedrawTask: Task<Void, Never>?
     @ObservationIgnored private var observations: [NotificationObservation] = []
 
     private static let logger = Logger(subsystem: "dev.dongwon.moka", category: "timer")
@@ -498,6 +515,19 @@ final class AppState {
     /// 제목·두 줄 본문을 남기지 않는다. 오류 종류만.
     private static func logStorageFailure(_ error: any Error) {
         storageLogger.error("저장 실패: \(String(reflecting: type(of: error)), privacy: .public)")
+    }
+
+    private func scheduleFirstActionRedraw() {
+        firstActionRedrawTask?.cancel()
+        firstActionRedrawTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled, let self else { return }
+            let animation = NotchLayout.expansionAnimation(
+                expanding: false, reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
+            withAnimation(animation) {
+                collapsedRedrawTick += 1
+            }
+        }
     }
 
     /// `running` 동안만 1초마다 tick을 보낸다(research R1).
