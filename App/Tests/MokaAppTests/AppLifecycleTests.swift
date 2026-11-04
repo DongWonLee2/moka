@@ -486,7 +486,8 @@ final class AppLifecycleTests: XCTestCase {
     }
 
     func test_FR01_R102_dropRunningTaskStopsAndPicksNext() throws {
-        let state = makeState(try Self.seeded(2))
+        let repository = try Self.seeded(2)
+        let state = makeState(repository)
         state.launch()
         state.start()
         let id = try XCTUnwrap(state.session.taskID)
@@ -495,6 +496,28 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertEqual(state.tasks.first { $0.id == id }?.status, .dropped, "행을 지우지 않고 버림으로(research R4)")
         XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 2", chipMin: 25)), "타이머를 멈추고 다음 할 일을 고른다")
         XCTAssertFalse(state.taskListRows.contains { $0.id == id }, "버린 할 일은 목록에 없다")
+        XCTAssertEqual(try repository.checkpoints(), [], "지운 회차의 경과 분은 남지 않는다(Edge Case, research R4)")
+        XCTAssertEqual(try repository.decisions(), [])
+    }
+
+    func test_FR01_R102_dropExpiredTaskClearsCustomAndPin() throws {
+        let clock = TestClock(Self.noon)
+        let state = makeState(try Self.seeded(2), clock: clock)
+        state.launch()
+        state.start()
+        clock.advance(minutes: 25)
+        state.tick()
+        guard case .expired = state.timer else { return XCTFail("시간 끝이어야 한다") }
+        state.beginCustom()
+        XCTAssertNotNil(state.customText)
+        XCTAssertTrue(state.isPinnedOpen)
+        let id = try XCTUnwrap(state.session.taskID)
+
+        XCTAssertTrue(state.dropTask(id))
+        XCTAssertNil(state.customText, "직접 입력을 닫는다")
+        XCTAssertFalse(state.isPinnedOpen, "시간 끝 고정 펼침을 푼다")
+        XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 2", chipMin: 25)))
+        XCTAssertNil(state.remainingSeconds)
     }
 
     func test_FR01_R102_dropOtherTaskKeepsSession() throws {

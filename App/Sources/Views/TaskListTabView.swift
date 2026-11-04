@@ -56,7 +56,7 @@ struct TaskListTabView: View {
                     ListEditButton(symbol: "plus", label: "새 할 일", action: onAdd)
                         .disabled(!canEdit)
                     ListEditButton(symbol: "minus", label: "고른 할 일 지우기", action: onDelete)
-                        .disabled(!canEdit || selectedID == nil)
+                        .disabled(!canEdit || !rows.contains { $0.id == selectedID })
                 }
                 Text("두 번 클릭하면 고쳐요. **다음** 표시가 붙은 할 일이 노치에 떠요.")
                     .font(.system(size: 11))
