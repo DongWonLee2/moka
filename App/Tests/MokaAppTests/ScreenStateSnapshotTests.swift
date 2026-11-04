@@ -20,6 +20,7 @@ final class ScreenStateSnapshotTests: XCTestCase {
         title: title, quantumMin: 25, startedAt: startedAt, endsAt: startedAt.addingTimeInterval(1500))
     /// 접힌 판 오른쪽 "18:42".
     private static let runningRemaining = 1122
+    private static let firstAction = "서론 첫 문장 고치기"
 
     func test_R001_emptyCollapsed() throws {
         try snapshot("01-empty", timer: .empty(draft: nil), remaining: nil, expanded: false)
@@ -67,6 +68,34 @@ final class ScreenStateSnapshotTests: XCTestCase {
             expanded: false)
     }
 
+    /// 고른 뒤 2초: 왼쪽 칸에 "이어서 · <첫 행동>"(시안 1번 아래 줄, R-109). 노치는 양쪽 104pt.
+    func test_R109_firstActionCollapsed() throws {
+        try snapshot(
+            "12-first-action-collapsed", timer: .empty(draft: Draft(title: Self.title, chipMin: 25)), remaining: nil,
+            expanded: false, firstAction: Self.firstAction, showsFirstActionCollapsed: true)
+    }
+
+    func test_R109_draftFirstAction() throws {
+        try snapshot(
+            "13-draft-first-action", timer: .empty(draft: Draft(title: Self.title, chipMin: 25)), remaining: nil,
+            expanded: true, hovering: true, firstAction: Self.firstAction)
+    }
+
+    /// 제목 두 줄 + 이어서 할 일 + 칩 + 버튼 줄이 패널 높이 안에 들어가는지 본다.
+    func test_R109_draftFirstActionLongTitle() throws {
+        try snapshot(
+            "13-draft-first-action-long",
+            timer: .empty(draft: Draft(title: "기말 보고서 1절 쓰기와 참고 문헌 목록 정리, 그림 번호 맞추기", chipMin: 25)),
+            remaining: nil, expanded: true, hovering: true,
+            firstAction: "서론 첫 문장을 고치고 둘째 문단의 인용 출처를 다시 확인하기")
+    }
+
+    func test_R109_runningFirstAction() throws {
+        try snapshot(
+            "14-running-first-action", timer: Self.running, remaining: Self.runningRemaining, expanded: true,
+            hovering: true, firstAction: Self.firstAction)
+    }
+
     func test_R006_runningCollapsed() throws {
         try snapshot("04-running-collapsed", timer: Self.running, remaining: Self.runningRemaining, expanded: false)
     }
@@ -103,13 +132,14 @@ final class ScreenStateSnapshotTests: XCTestCase {
     /// 시안 2번(입력)·5번(도는 중 펼침)은 마우스를 올린 상태라 `hovering: true`로 모카 테두리를 그린다.
     private func snapshot(
         _ name: String, timer: NotchTimer, remaining: Int?, expanded: Bool, hovering: Bool = false,
-        style: PanelStyle = .notch, draftInput: DraftInput = DraftInput()
+        style: PanelStyle = .notch, draftInput: DraftInput = DraftInput(), firstAction: String? = nil,
+        showsFirstActionCollapsed: Bool = false
     ) throws {
         let metrics = style == .notch ? Self.notchMetrics : Self.floatingMetrics
         let size = NotchLayout.panelSize(metrics: metrics)
         let content = NotchContentView(
             timer: timer, remainingSeconds: remaining, isExpanded: expanded, isHovering: hovering, metrics: metrics,
-            style: style,
+            style: style, firstAction: firstAction, showsFirstActionCollapsed: showsFirstActionCollapsed,
             titleFocusRequest: 0,
             chip: QuantumChipInput(
                 customText: nil, canStart: true, onChoose: { _ in }, onBeginCustom: {}, onEditCustom: { _ in },

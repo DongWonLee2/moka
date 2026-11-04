@@ -628,6 +628,55 @@ final class AppLifecycleTests: XCTestCase {
 
     // MARK: - #37 알림 처리기 해제
 
+    // MARK: - R-109 이어서 할 일
+
+    private static func seededWithFirstAction(_ firstAction: String) throws -> InMemoryTaskRepository {
+        let repository = try seeded(1)
+        var task = try XCTUnwrap(repository.tasks().first)
+        task.firstAction = firstAction
+        try repository.apply(StoreBatch(updatedTasks: [task]))
+        return repository
+    }
+
+    func test_FR07_R109_pickedTaskShowsFirstActionCollapsedForTwoSeconds() throws {
+        let clock = TestClock(Self.noon)
+        let state = makeState(try Self.seededWithFirstAction("서론 첫 문장 고치기"), clock: clock)
+        state.launch()
+
+        XCTAssertEqual(state.firstAction, "서론 첫 문장 고치기", "펼친 화면은 늘 보인다")
+        XCTAssertTrue(state.showsFirstActionCollapsed, "고른 순간")
+        clock.advance(seconds: 1.9)
+        XCTAssertTrue(state.showsFirstActionCollapsed)
+        clock.advance(seconds: 0.1)
+        XCTAssertFalse(state.showsFirstActionCollapsed, "2초가 지나면 접힌 화면에서 사라진다")
+        XCTAssertEqual(state.firstAction, "서론 첫 문장 고치기")
+    }
+
+    func test_FR07_R109_taskWithoutFirstActionShowsNothing() throws {
+        let state = makeState(try Self.seeded(1))
+        state.launch()
+
+        XCTAssertNil(state.firstAction)
+        XCTAssertFalse(state.showsFirstActionCollapsed, "첫 행동이 없으면 바로 회색 점·제목")
+    }
+
+    func test_FR07_R109_runningKeepsFirstActionOnlyExpanded() throws {
+        let state = makeState(try Self.seededWithFirstAction("서론 첫 문장 고치기"))
+        state.launch()
+
+        state.start()
+        XCTAssertEqual(state.firstAction, "서론 첫 문장 고치기", "도는 중 펼친 화면에도 보인다(시안 3번)")
+        XCTAssertFalse(state.showsFirstActionCollapsed, "도는 중 접힌 화면은 spec 001 그대로")
+    }
+
+    func test_FR07_R109_noStorageHasNoFirstAction() {
+        let state = makeState(nil)
+        state.enterTitle("가짜 할 일")
+
+        XCTAssertNil(state.firstAction)
+        XCTAssertFalse(state.showsFirstActionCollapsed)
+    }
+
     func test_issue37_observationStopsWhenReleased() {
         let center = NotificationCenter()
         let name = Notification.Name("dev.dongwon.moka.test")
@@ -661,7 +710,11 @@ private final class TestClock: Sendable {
     }
 
     func advance(minutes: Int) {
-        current.withLock { $0 += TimeInterval(minutes * 60) }
+        advance(seconds: TimeInterval(minutes * 60))
+    }
+
+    func advance(seconds: TimeInterval) {
+        current.withLock { $0 += seconds }
     }
 }
 
