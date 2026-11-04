@@ -39,3 +39,30 @@ func deadlineLabel() throws {
     #expect(TaskFormText.deadlineLabel(nil) == "마감 없음")
     #expect(TaskFormText.deadlineLabel(try #require(LocalDay(text: "2026-11-11"))) == "2026년 11월 11일")
 }
+
+@Test(
+    "R-102 #42: 지우기 확인 제목은 마지막 글자 받침에 맞춰 을/를",
+    arguments: [
+        ("보고서 1절 쓰기", "\"보고서 1절 쓰기\"를 지울까요?"),
+        ("영단어 외우기 30개", "\"영단어 외우기 30개\"를 지울까요?"),
+        ("장보기 목록", "\"장보기 목록\"을 지울까요?"),
+        ("가짜 할 일 1", "\"가짜 할 일 1\"을 지울까요?"),
+        ("가짜 할 일 2", "\"가짜 할 일 2\"를 지울까요?"),
+        ("Report", "\"Report\"을(를) 지울까요?"),
+    ])
+func deleteTitle(title: String, expected: String) {
+    #expect(TaskFormText.deleteTitle(title) == expected)
+}
+
+@Test("R-102 #42: 지우기 확인 본문은 도는 할 일이면 타이머가 멈춘다는 말이 앞에 붙는다")
+func deleteMessage() {
+    #expect(TaskFormText.deleteMessage(isActive: false) == "지우면 노치에 다시 뜨지 않아요. 지금까지 남긴 기록은 그대로 둬요.")
+    #expect(
+        TaskFormText.deleteMessage(isActive: true)
+            == "지금 타이머가 도는 할 일이에요. 지우면 타이머가 멈추고 노치에 다시 뜨지 않아요. 지금까지 남긴 기록은 그대로 둬요.")
+}
+
+@Test("R-102 #42: 고치기 시트의 이어서 할 일 줄은 읽기만 하고 출처를 붙인다")
+func firstActionNote() {
+    #expect(TaskFormText.firstActionNote("31번부터") == "31번부터 · 멈출 때 적어 둔 줄이에요.")
+}
