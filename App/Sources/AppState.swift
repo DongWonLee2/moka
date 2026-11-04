@@ -69,8 +69,7 @@ final class AppState {
     private(set) var pickedAt: Date? {
         didSet { scheduleFirstActionRedraw() }
     }
-    /// 고른 지 2초가 지나 접힌 화면을 다시 그릴 때 바뀐다. 초안에는 1초 tick이 없다(plan "앱 연결").
-    private var firstActionRedraw = 0
+    private var collapsedRedrawTick = 0
     /// 앱 DB를 열지 못했거나 마이그레이션이 실패했다(R-119).
     let storageUnavailable: Bool
     /// 화면에 쓰는 남은 초. 늘 `apply(.tick, …)` 뒤에 다시 계산한다(#13).
@@ -111,7 +110,7 @@ final class AppState {
 
     /// 접힌 초안에 "이어서 · <첫 행동>"을 보이는지(R-109). 고른 뒤 2초만이고, 도는 중·시간 끝은 spec 001 그대로다.
     var showsFirstActionCollapsed: Bool {
-        _ = firstActionRedraw
+        _ = collapsedRedrawTick
         guard Self.isDraft(timer), firstAction != nil, let pickedAt else { return false }
         return FirstActionDisplay.showsInCollapsed(pickedAt: pickedAt, now: clock.now())
     }
@@ -518,7 +517,6 @@ final class AppState {
         storageLogger.error("저장 실패: \(String(reflecting: type(of: error)), privacy: .public)")
     }
 
-    /// 고른 지 2초 뒤 한 번 다시 그린다(plan "앱 연결"의 일회성 타이머). 다시 고르면 앞의 것을 취소한다.
     private func scheduleFirstActionRedraw() {
         firstActionRedrawTask?.cancel()
         firstActionRedrawTask = Task { @MainActor [weak self] in
@@ -527,7 +525,7 @@ final class AppState {
             let animation = NotchLayout.expansionAnimation(
                 expanding: false, reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
             withAnimation(animation) {
-                firstActionRedraw += 1
+                collapsedRedrawTick += 1
             }
         }
     }

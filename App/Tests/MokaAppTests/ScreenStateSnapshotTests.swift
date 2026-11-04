@@ -81,7 +81,6 @@ final class ScreenStateSnapshotTests: XCTestCase {
             expanded: true, hovering: true, firstAction: Self.firstAction)
     }
 
-    /// 제목 두 줄 + 이어서 할 일 + 칩 + 버튼 줄이 패널 높이 안에 들어가는지 본다.
     func test_R109_draftFirstActionLongTitle() throws {
         try snapshot(
             "13-draft-first-action-long",

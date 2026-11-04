@@ -626,8 +626,6 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertFalse(state.isEnteringNewTitle, "저장할 수 없어도 제목을 바꾸면 칸을 닫는다")
     }
 
-    // MARK: - #37 알림 처리기 해제
-
     // MARK: - R-109 이어서 할 일
 
     private static func seededWithFirstAction(_ firstAction: String) throws -> InMemoryTaskRepository {
@@ -676,6 +674,8 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertNil(state.firstAction)
         XCTAssertFalse(state.showsFirstActionCollapsed)
     }
+
+    // MARK: - #37 알림 처리기 해제
 
     func test_issue37_observationStopsWhenReleased() {
         let center = NotificationCenter()

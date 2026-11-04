@@ -228,7 +228,6 @@ struct TitleText: View {
     }
 }
 
-/// "이어서 할 일 <첫 행동>" 한 줄(시안 2·3번). 길면 끝 "…".
 private struct FirstActionLine: View {
     let text: String
 

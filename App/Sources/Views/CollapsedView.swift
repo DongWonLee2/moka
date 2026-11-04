@@ -5,7 +5,6 @@ import SwiftUI
 /// 초안을 고른 뒤 2초는 점·제목 대신 "이어서 · <첫 행동>"(R-109).
 struct CollapsedLeadingView: View {
     let timer: NotchTimer
-    /// 지금 접힌 화면에 보일 첫 행동. 보이지 않을 때는 nil.
     var firstAction: String?
 
     @Environment(\.panelPalette) private var palette
