@@ -2,8 +2,9 @@
 public enum TaskRowText {
     private static let weekdayNames = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"]
 
-    /// 보조 줄: 마감 · 예상 · 반복 · 미룬 횟수. 보일 것이 없으면 "—".
+    /// 보조 줄: 완료면 "완료", 아니면 마감 · 예상 · 반복 · 미룬 횟수. 보일 것이 없으면 "—".
     public static func meta(_ task: MokaTask) -> String {
+        guard task.status != .done else { return "완료" }
         var parts: [String] = []
         if let deadline = task.deadline {
             parts.append("마감 \(deadline.month)월 \(deadline.day)일")
