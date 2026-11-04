@@ -41,7 +41,8 @@ final class SettingsSnapshotTests: XCTestCase {
         let content = VStack(spacing: 0) {
             SettingsTabBar(selection: .constant(.tasks))
             TaskListTabView(
-                rows: rows, nextMarkID: 2, scope: .constant(.all), order: .constant(.created), canAdd: true, onAdd: {})
+                rows: rows, nextMarkID: 2, scope: .constant(.all), order: .constant(.created),
+                selectedID: .constant(2), canEdit: true, onAdd: {}, onEdit: { _ in }, onDelete: {})
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .background(MokaColors.settingsWindow)
@@ -54,6 +55,23 @@ final class SettingsSnapshotTests: XCTestCase {
         let content = TaskFormView(today: today, calendar: calendar, onSave: { _ in }, onCancel: {})
             .environment(\.timeZone, calendar.timeZone)
         try write("s08-new-task", content: content, size: CGSize(width: 360, height: 190))
+    }
+
+    func test_R102_editTaskSheet() throws {
+        let calendar = GregorianCalendar.make(timeZone: try XCTUnwrap(TimeZone(identifier: "Asia/Seoul")))
+        let task = MokaTask(
+            id: 2, title: "영단어 30개 외우기", deadline: nil, estMin: 20, recurrence: .weekly,
+            weekday: Weekday(rawValue: 4), cycleDay: LocalDay(text: "2026-11-04"), firstAction: "31번부터",
+            status: .todo, skipCount: 0, streak: 3, createdAt: Date(timeIntervalSince1970: 1_800_000_000))
+        let content = TaskFormView(
+            today: try XCTUnwrap(LocalDay(text: "2026-11-06")), calendar: calendar, editing: task, onSave: { _ in },
+            onCancel: {})
+        try write("s09-edit-task", content: content, size: CGSize(width: 360, height: 240))
+    }
+
+    func test_R102_deleteConfirmActive() throws {
+        let content = DeleteConfirmView(title: "보고서 1절 쓰기", stopsTimer: true, onDelete: {}, onCancel: {})
+        try write("s09-delete-confirm", content: content, size: CGSize(width: 300, height: 130))
     }
 
     func test_R101_deadlineCalendar() throws {

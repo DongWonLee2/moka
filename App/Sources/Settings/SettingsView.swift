@@ -16,6 +16,9 @@ struct SettingsView: View {
     @State private var dayStart = Date()
     @State private var tab: SettingsTab = .basic
     @State private var isAddingTask = false
+    @State private var selectedTaskID: TaskID?
+    @State private var editing: TaskRequest?
+    @State private var deleting: TaskRequest?
     private let calendar = GregorianCalendar.make(timeZone: .autoupdatingCurrent)
     private static let logger = Logger(subsystem: "dev.dongwon.moka", category: "settings")
 
@@ -42,8 +45,10 @@ struct SettingsView: View {
             case .tasks:
                 TaskListTabView(
                     rows: appState.taskListRows, nextMarkID: appState.nextMarkID, scope: $appState.taskListScope,
-                    order: $appState.taskListOrder, canAdd: !appState.storageUnavailable,
-                    onAdd: { isAddingTask = true }
+                    order: $appState.taskListOrder, selectedID: $selectedTaskID,
+                    canEdit: !appState.storageUnavailable,
+                    onAdd: { isAddingTask = true }, onEdit: { editing = request(for: $0) },
+                    onDelete: { deleting = selectedTaskID.flatMap(request(for:)) }
                 )
             }
         }
@@ -51,10 +56,37 @@ struct SettingsView: View {
         .sheet(isPresented: $isAddingTask) {
             TaskFormView(
                 today: appState.logicalToday, calendar: calendar,
-                onSave: { task in
+                onSave: { values in
+                    let task = NewTask(
+                        title: values.title, deadline: values.deadline, estMin: values.estMin,
+                        recurrence: values.recurrence, weekday: values.weekday)
                     if appState.addTask(task) { isAddingTask = false }
                 },
                 onCancel: { isAddingTask = false })
+        }
+        // 시트 내용은 누른 순간의 할 일을 직접 받는다. 상태 id로 다시 찾으면 시트가 고르기 전 값으로 그려져 빈다.
+        .sheet(item: $editing) { request in
+            TaskFormView(
+                today: appState.logicalToday, calendar: calendar, editing: request.task,
+                onSave: { values in
+                    if appState.editTask(request.id, Self.edit(from: values)) { editing = nil }
+                },
+                onCancel: { editing = nil },
+                onDelete: {
+                    appState.dropTask(request.id)
+                    selectedTaskID = nil
+                    editing = nil
+                })
+        }
+        .sheet(item: $deleting) { request in
+            DeleteConfirmView(
+                title: request.task.title, stopsTimer: request.task.status == .active,
+                onDelete: {
+                    appState.dropTask(request.id)
+                    selectedTaskID = nil
+                    deleting = nil
+                },
+                onCancel: { deleting = nil })
         }
         .background(MokaColors.settingsWindow)
         .frame(width: 460)
@@ -64,6 +96,16 @@ struct SettingsView: View {
             if previous == .basic { commitFields() }
         }
         .onDisappear(perform: commitFields)
+    }
+
+    private func request(for id: TaskID) -> TaskRequest? {
+        appState.tasks.first { $0.id == id }.map(TaskRequest.init)
+    }
+
+    private static func edit(from values: TaskFormValues) -> TaskEdit {
+        TaskEdit(
+            title: values.title, deadline: values.deadline.map { .set($0) } ?? .clear,
+            estMin: values.estMin.map { .set($0) } ?? .clear, recurrence: values.recurrence, weekday: values.weekday)
     }
 
     private func commitFields() {
@@ -101,4 +143,10 @@ struct SettingsView: View {
         guard let error else { return }
         Self.logger.error("\(field, privacy: .public) 저장 실패: \(String(reflecting: type(of: error)), privacy: .public)")
     }
+}
+
+/// 고치기·지우기 시트를 띄울 때의 할 일.
+private struct TaskRequest: Identifiable {
+    let task: MokaTask
+    var id: TaskID { task.id }
 }

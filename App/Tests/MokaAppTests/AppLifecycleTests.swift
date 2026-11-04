@@ -448,6 +448,89 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertEqual(state.session, before)
     }
 
+    // MARK: - R-102 설정 창 고침·지움(§4.2)
+
+    func test_FR01_R102_editNotchTaskRenamesDraft() throws {
+        let state = makeState(try Self.seeded(2))
+        state.launch()
+        let id = try XCTUnwrap(state.session.taskID)
+
+        XCTAssertTrue(state.editTask(id, TaskEdit(title: "가짜 할 일 고친 것", estMin: .set(40))))
+        XCTAssertEqual(state.tasks.first { $0.id == id }?.estMin, 40, "고친 뒤 tasks()를 다시 읽는다")
+        XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 고친 것", chipMin: 25)), "노치 제목 사본을 맞춘다")
+    }
+
+    func test_FR01_R102_editRunningTaskKeepsTimer() throws {
+        let state = makeState(try Self.seeded(1))
+        state.launch()
+        state.start()
+        let id = try XCTUnwrap(state.session.taskID)
+        guard case .running(_, let quantumMin, let startedAt, let endsAt) = state.timer else {
+            return XCTFail("도는 중이어야 한다")
+        }
+
+        XCTAssertTrue(state.editTask(id, TaskEdit(title: "가짜 할 일 새 제목")))
+        XCTAssertEqual(
+            state.timer,
+            .running(title: "가짜 할 일 새 제목", quantumMin: quantumMin, startedAt: startedAt, endsAt: endsAt))
+    }
+
+    func test_FR01_R102_editRejectsBlankTitle() throws {
+        let state = makeState(try Self.seeded(1))
+        state.launch()
+        let id = try XCTUnwrap(state.session.taskID)
+        let before = state.tasks
+
+        XCTAssertFalse(state.editTask(id, TaskEdit(title: "  ")))
+        XCTAssertEqual(state.tasks, before)
+    }
+
+    func test_FR01_R102_dropRunningTaskStopsAndPicksNext() throws {
+        let repository = try Self.seeded(2)
+        let state = makeState(repository)
+        state.launch()
+        state.start()
+        let id = try XCTUnwrap(state.session.taskID)
+
+        XCTAssertTrue(state.dropTask(id))
+        XCTAssertEqual(state.tasks.first { $0.id == id }?.status, .dropped, "행을 지우지 않고 버림으로(research R4)")
+        XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 2", chipMin: 25)), "타이머를 멈추고 다음 할 일을 고른다")
+        XCTAssertFalse(state.taskListRows.contains { $0.id == id }, "버린 할 일은 목록에 없다")
+        XCTAssertEqual(try repository.checkpoints(), [], "지운 회차의 경과 분은 남지 않는다(Edge Case, research R4)")
+        XCTAssertEqual(try repository.decisions(), [])
+    }
+
+    func test_FR01_R102_dropExpiredTaskClearsCustomAndPin() throws {
+        let clock = TestClock(Self.noon)
+        let state = makeState(try Self.seeded(2), clock: clock)
+        state.launch()
+        state.start()
+        clock.advance(minutes: 25)
+        state.tick()
+        guard case .expired = state.timer else { return XCTFail("시간 끝이어야 한다") }
+        state.beginCustom()
+        XCTAssertNotNil(state.customText)
+        XCTAssertTrue(state.isPinnedOpen)
+        let id = try XCTUnwrap(state.session.taskID)
+
+        XCTAssertTrue(state.dropTask(id))
+        XCTAssertNil(state.customText, "직접 입력을 닫는다")
+        XCTAssertFalse(state.isPinnedOpen, "시간 끝 고정 펼침을 푼다")
+        XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 2", chipMin: 25)))
+        XCTAssertNil(state.remainingSeconds)
+    }
+
+    func test_FR01_R102_dropOtherTaskKeepsSession() throws {
+        let state = makeState(try Self.seeded(2))
+        state.launch()
+        let before = state.session
+        let other = try XCTUnwrap(state.tasks.first { $0.id != before.taskID }?.id)
+
+        XCTAssertTrue(state.dropTask(other))
+        XCTAssertEqual(state.session, before)
+        XCTAssertEqual(state.taskListRows.count, 1)
+    }
+
     // MARK: - #37 알림 처리기 해제
 
     func test_issue37_observationStopsWhenReleased() {

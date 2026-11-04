@@ -1,19 +1,48 @@
 import MokaCore
 import SwiftUI
 
-/// 새 할 일 시트(시안 8번, R-101). 값과 콜백만 받는다(ADR-0009). 저장 규칙 검증은 `TaskWriteRules`가 다시 한다.
+struct TaskFormValues: Equatable {
+    var title: String
+    var deadline: LocalDay?
+    var recurrence: Recurrence
+    var weekday: Weekday?
+    var estMin: Int?
+}
+
+/// 할 일 시트(시안 8·9번, R-101·R-102). `editing`이 있으면 고치기다. 값과 콜백만 받는다(ADR-0009).
+/// 저장 규칙 검증은 `TaskWriteRules`가 다시 한다.
 struct TaskFormView: View {
     let today: LocalDay
     let calendar: Calendar
-    let onSave: (NewTask) -> Void
+    let editing: MokaTask?
+    let onSave: (TaskFormValues) -> Void
     let onCancel: () -> Void
+    let onDelete: () -> Void
 
-    @State private var title = ""
+    @State private var title: String
     @State private var deadline: LocalDay?
     @State private var isPickingDeadline = false
-    @State private var recurrence: Recurrence = .none
+    @State private var recurrence: Recurrence
     @State private var weekday: Weekday?
-    @State private var estText = ""
+    @State private var estText: String
+    @State private var isConfirmingDelete = false
+
+    init(
+        today: LocalDay, calendar: Calendar, editing: MokaTask? = nil, onSave: @escaping (TaskFormValues) -> Void,
+        onCancel: @escaping () -> Void, onDelete: @escaping () -> Void = {}
+    ) {
+        self.today = today
+        self.calendar = calendar
+        self.editing = editing
+        self.onSave = onSave
+        self.onCancel = onCancel
+        self.onDelete = onDelete
+        _title = State(initialValue: editing?.title ?? "")
+        _deadline = State(initialValue: editing?.deadline)
+        _recurrence = State(initialValue: editing?.recurrence ?? .none)
+        _weekday = State(initialValue: editing?.weekday)
+        _estText = State(initialValue: editing?.estMin.map(String.init) ?? "")
+    }
     @FocusState private var isTitleFocused: Bool
     @Environment(\.colorScheme) private var colorScheme
 
@@ -27,7 +56,7 @@ struct TaskFormView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("새 할 일")
+            Text(editing == nil ? "새 할 일" : "할 일 고치기")
                 .font(.system(size: 13, weight: .semibold))
             Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 6) {
                 GridRow {
@@ -84,6 +113,16 @@ struct TaskFormView: View {
                         }
                     }
                 }
+                if let firstAction = editing?.firstAction {
+                    GridRow {
+                        FormLabel("이어서 할 일")
+                        Text(TaskFormText.firstActionNote(firstAction))
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
+                }
                 if let estIssue {
                     GridRow {
                         Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])
@@ -94,15 +133,18 @@ struct TaskFormView: View {
                 }
             }
             HStack(spacing: 6) {
+                if editing != nil {
+                    SheetButton(title: "지우기…", kind: .dangerText) { isConfirmingDelete = true }
+                }
                 if let titleIssue {
                     Text(titleIssue)
                         .font(.system(size: 11))
                         .foregroundStyle(MokaColors.danger)
                 }
                 Spacer()
-                SheetButton(title: "취소", isPrimary: false, action: onCancel)
+                SheetButton(title: "취소", kind: .normal, action: onCancel)
                     .keyboardShortcut(.cancelAction)
-                SheetButton(title: "저장", isPrimary: true, action: save)
+                SheetButton(title: "저장", kind: .primary, action: save)
                     .keyboardShortcut(.defaultAction)
                     .disabled(!canSave)
             }
@@ -112,15 +154,26 @@ struct TaskFormView: View {
         .frame(width: 360)
         .background(colorScheme == .dark ? Color(hex: 0x332D29) : Color(hex: 0xFAF7F5))
         .onAppear { isTitleFocused = true }
+        .sheet(isPresented: $isConfirmingDelete) {
+            if let editing {
+                DeleteConfirmView(
+                    title: editing.title, stopsTimer: editing.status == .active,
+                    onDelete: {
+                        isConfirmingDelete = false
+                        onDelete()
+                    },
+                    onCancel: { isConfirmingDelete = false })
+            }
+        }
     }
 
     /// 요일을 건드리지 않았으면 nil로 넘겨 `prepareNew`가 저장 순간의 하루로 채운다(§5.8).
     private func save() {
         guard canSave else { return }
-        let task = NewTask(
-            title: title, deadline: recurrence == .none ? deadline : nil, estMin: TaskFormText.estMin(estText),
-            recurrence: recurrence, weekday: recurrence == .weekly ? weekday : nil)
-        onSave(task)
+        onSave(
+            TaskFormValues(
+                title: title, deadline: recurrence == .none ? deadline : nil, recurrence: recurrence,
+                weekday: recurrence == .weekly ? weekday : nil, estMin: TaskFormText.estMin(estText)))
     }
 }
 
@@ -151,8 +204,10 @@ private struct Hint: View {
 }
 
 private struct SheetButton: View {
+    enum Kind { case normal, primary, danger, dangerText }
+
     let title: String
-    let isPrimary: Bool
+    let kind: Kind
     let action: () -> Void
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.isEnabled) private var isEnabled
@@ -160,16 +215,14 @@ private struct SheetButton: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 12.5, weight: isPrimary ? .semibold : .regular))
-                .foregroundStyle(isPrimary ? MokaColors.textOnPrimary : Color.primary)
+                .font(.system(size: 12.5, weight: kind == .primary || kind == .danger ? .semibold : .regular))
+                .foregroundStyle(foreground)
                 .padding(.horizontal, 12)
                 .frame(height: 22)
                 .background(background, in: RoundedRectangle(cornerRadius: 5))
                 .overlay(
                     RoundedRectangle(cornerRadius: 5)
-                        .strokeBorder(
-                            isPrimary || colorScheme == .dark ? Color.clear : Color(hex: 0x3C2314, opacity: 0.3),
-                            lineWidth: 0.5)
+                        .strokeBorder(hasBorder ? Color(hex: 0x3C2314, opacity: 0.3) : Color.clear, lineWidth: 0.5)
                 )
                 .opacity(isEnabled ? 1 : 0.4)
                 .contentShape(Rectangle())
@@ -177,9 +230,52 @@ private struct SheetButton: View {
         .buttonStyle(.plain)
     }
 
+    private var hasBorder: Bool { colorScheme == .light && (kind == .normal || kind == .dangerText) }
+
+    private var foreground: Color {
+        switch kind {
+        case .primary, .danger: MokaColors.textOnPrimary
+        case .normal: .primary
+        case .dangerText: MokaColors.danger
+        }
+    }
+
     private var background: Color {
-        if isPrimary { return MokaColors.mocha }
-        return colorScheme == .dark ? Color(hex: 0x4A423C) : .white
+        switch kind {
+        case .primary: MokaColors.mocha
+        case .danger: MokaColors.danger
+        case .normal, .dangerText: colorScheme == .dark ? Color(hex: 0x4A423C) : .white
+        }
+    }
+}
+
+struct DeleteConfirmView: View {
+    let title: String
+    let stopsTimer: Bool
+    let onDelete: () -> Void
+    let onCancel: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(TaskFormText.deleteTitle(title))
+                .font(.system(size: 13, weight: .semibold))
+                .fixedSize(horizontal: false, vertical: true)
+            Text(TaskFormText.deleteMessage(stopsTimer: stopsTimer))
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 6) {
+                Spacer()
+                SheetButton(title: "취소", kind: .normal, action: onCancel)
+                    .keyboardShortcut(.cancelAction)
+                SheetButton(title: "지우기", kind: .danger, action: onDelete)
+            }
+            .padding(.top, 2)
+        }
+        .padding(14)
+        .frame(width: 300)
+        .background(colorScheme == .dark ? Color(hex: 0x332D29) : Color(hex: 0xFAF7F5))
     }
 }
 
