@@ -41,6 +41,16 @@ public struct LocalDay: Comparable, Hashable, Sendable {
     }
 
     /// 주입한 달력의 지역 날짜(시간대는 `calendar.timeZone`).
+    /// 날짜 고르기(`DatePicker`)가 낸 시각이 `calendar` 시간대에서 속한 날짜.
+    public init(date: Date, calendar: Calendar) {
+        self = LocalDay.containing(date, calendar: calendar)
+    }
+
+    /// 날짜 고르기에 넘길 시각. 그 날짜의 정오라 시간대가 바뀌어도 날짜가 밀리지 않는다.
+    public func date(calendar: Calendar) -> Date {
+        calendar.date(from: DateComponents(year: year, month: month, day: day, hour: 12))!
+    }
+
     static func containing(_ instant: Date, calendar: Calendar) -> LocalDay {
         let parts = calendar.dateComponents([.year, .month, .day], from: instant)
         return LocalDay(year: parts.year!, month: parts.month!, day: parts.day!)
