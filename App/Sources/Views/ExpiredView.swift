@@ -52,7 +52,7 @@ struct ExpiredView: View {
                     .keyboardShortcut(.defaultAction)
             }
         }
-        if let message = CustomIssueText.message(for: chip.customText) {
+        if let message = QuantumChip.customIssueMessage(customText: chip.customText) {
             CustomIssueText(message: message)
         }
     }
