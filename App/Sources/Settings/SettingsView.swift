@@ -15,6 +15,7 @@ struct SettingsView: View {
     @State private var extendText = ""
     @State private var dayStart = Date()
     @State private var tab: SettingsTab = .basic
+    @State private var isAddingTask = false
     private let calendar = GregorianCalendar.make(timeZone: .autoupdatingCurrent)
     private static let logger = Logger(subsystem: "dev.dongwon.moka", category: "settings")
 
@@ -41,11 +42,20 @@ struct SettingsView: View {
             case .tasks:
                 TaskListTabView(
                     rows: appState.taskListRows, nextMarkID: appState.nextMarkID, scope: $appState.taskListScope,
-                    order: $appState.taskListOrder
+                    order: $appState.taskListOrder, canAdd: !appState.storageUnavailable,
+                    onAdd: { isAddingTask = true }
                 )
             }
         }
         .navigationTitle("설정")
+        .sheet(isPresented: $isAddingTask) {
+            TaskFormView(
+                today: appState.logicalToday, calendar: calendar,
+                onSave: { task in
+                    if appState.addTask(task) { isAddingTask = false }
+                },
+                onCancel: { isAddingTask = false })
+        }
         .background(MokaColors.settingsWindow)
         .frame(width: 460)
         .background(SettingsWindowRaiser.Anchor())
