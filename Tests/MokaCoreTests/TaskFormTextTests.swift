@@ -33,9 +33,15 @@ func weekdayHint(weekday: Int, name: String) throws {
     #expect(TaskFormText.weekdayHint(today: day) == "오늘(\(name))이 먼저 골라져 있어요. 하나만 고를 수 있어요.")
 }
 
-@Test("R-101: 마감 날짜는 날짜 고르기의 Date와 오가도 같다", arguments: ["2026-01-01", "2026-11-11", "2027-03-14"])
+@Test("R-101: 마감 날짜는 날짜 고르기의 Date와 오가도 같다(일광절약시간 바뀌는 날 포함)", arguments: ["2026-01-01", "2026-03-08", "2026-11-01", "2026-11-11", "2027-03-14"])
 func localDayRoundTripsThroughDate(text: String) throws {
     let calendar = GregorianCalendar.make(timeZone: try #require(TimeZone(identifier: "America/New_York")))
     let day = try #require(LocalDay(text: text))
     #expect(LocalDay(date: day.date(calendar: calendar), calendar: calendar) == day)
+}
+
+@Test("R-101 #42: 마감 버튼은 없으면 마감 없음, 있으면 년 월 일(2026-11-04 사용자 결정)")
+func deadlineLabel() throws {
+    #expect(TaskFormText.deadlineLabel(nil) == "마감 없음")
+    #expect(TaskFormText.deadlineLabel(try #require(LocalDay(text: "2026-11-11"))) == "2026년 11월 11일")
 }

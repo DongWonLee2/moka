@@ -193,3 +193,25 @@ private func edit(_ task: MokaTask, _ change: TaskEdit, now: Date = Fake.noon) -
         #expect(changed.skipCount == 4)
     }
 }
+
+/// 반복 할 일은 마감이 없다(2026-11-04 사용자 결정, R-101).
+@Suite struct RecurringHasNoDeadlineTests {
+    @Test("FR-01 R-101: 반복 할 일에 마감을 주면 저장하지 않는다", arguments: [Recurrence.daily, .weekly])
+    func prepareRejectsDeadlineOnRecurring(recurrence: Recurrence) {
+        #expect(prepare(newTask(recurrence: recurrence, deadline: Fake.day("2027-01-20"))) == nil)
+    }
+
+    @Test("FR-01 R-101: 마감 있는 할 일을 반복으로 바꾸면 마감을 지운다", arguments: [Recurrence.daily, .weekly])
+    func editToRecurringClearsDeadline(recurrence: Recurrence) throws {
+        let task = Fake.task(1, deadline: Fake.day("2027-01-20"))
+        let changed = try #require(edit(task, TaskEdit(recurrence: recurrence)))
+        #expect(changed.recurrence == recurrence)
+        #expect(changed.deadline == nil)
+    }
+
+    @Test("FR-01 R-101: 반복 할 일에 마감을 넣는 고침은 저장하지 않는다")
+    func editRejectsDeadlineOnRecurring() {
+        let daily = Fake.task(3, recurrence: .daily, cycleDay: Fake.day("2027-01-13"))
+        #expect(edit(daily, TaskEdit(deadline: .set(Fake.day("2027-01-20")))) == nil)
+    }
+}
