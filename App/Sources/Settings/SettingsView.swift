@@ -2,7 +2,7 @@ import MokaCore
 import SwiftUI
 import os
 
-/// 설정 창: 위에 탭 줄(`SettingsTabBar`), 창 제목은 탭 이름(시안 6·7번, R-012·R-102).
+/// 설정 창: 위에 탭 줄(`SettingsTabBar`), 창 제목은 "설정"(시안 6·7번, R-012·R-102, 2026-11-04 사용자 결정).
 /// 숫자 칸은 받는 값이면 저장하고, 아니거나 저장에 실패하면 저장된 값으로 되돌린다(`FieldCommit`).
 /// 스테퍼는 누를 때마다 1분씩 바꿔 바로 저장한다. 하루 시작 시각은 고를 때마다 저장한다.
 struct SettingsView: View {
@@ -45,7 +45,7 @@ struct SettingsView: View {
                 )
             }
         }
-        .navigationTitle(tab.title)
+        .navigationTitle("설정")
         .background(MokaColors.settingsWindow)
         .frame(width: 460)
         .background(SettingsWindowRaiser.Anchor())
