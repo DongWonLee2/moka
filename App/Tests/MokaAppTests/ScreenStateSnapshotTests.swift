@@ -41,6 +41,12 @@ final class ScreenStateSnapshotTests: XCTestCase {
             expanded: true)
     }
 
+    func test_R104_draftCollapsed() throws {
+        try snapshot(
+            "10-draft-collapsed", timer: .empty(draft: Draft(title: Self.title, chipMin: 25)), remaining: nil,
+            expanded: false)
+    }
+
     func test_R006_runningCollapsed() throws {
         try snapshot("04-running-collapsed", timer: Self.running, remaining: Self.runningRemaining, expanded: false)
     }

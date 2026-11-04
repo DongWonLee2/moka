@@ -49,7 +49,13 @@ final class NotificationObservation {
 /// 정하고 여기서는 이벤트를 전달하고 쓰기를 저장소에 적용한다. 저장할 수 없으면(R-119) spec 001처럼 타이머만 돈다.
 @Observable @MainActor
 final class AppState {
-    private(set) var session: NotchSession = .initial
+    private(set) var session: NotchSession = .initial {
+        didSet {
+            if session.taskID != oldValue.taskID || !Self.isDraft(session.timer) { isEnteringNewTitle = false }
+        }
+    }
+    /// 시작 전 화면에서 "+ 새 할 일"로 제목 칸을 연 상태(R-103). 노치의 할 일이 바뀌거나 초안이 아니게 되면 닫힌다.
+    private(set) var isEnteringNewTitle = false
     /// 화면에 보이는 타이머. 세션 안의 spec 001 값이다.
     var timer: NotchTimer { session.timer }
     /// 저장소 `tasks()`의 지금 목록. 쓰기 뒤 다시 읽는다.
@@ -227,10 +233,28 @@ final class AppState {
 
     // MARK: - 노치 동작
 
+    /// "다른 할 일"(R-104): 초안을 만든 순서의 다음 대기 할 일로 바꾼다. 칩은 그대로, 기록은 없다.
+    func nextDraft() {
+        let now = clock.now()
+        let next = session.nextDraft(input(at: now))
+        guard next != session else { return }
+        session = next
+        pickedAt = now
+    }
+
+    func beginNewTitle() {
+        guard Self.isDraft(timer) else { return }
+        isEnteringNewTitle = true
+    }
+
+    func cancelNewTitle() {
+        isEnteringNewTitle = false
+    }
+
     /// 빠른 입력(R-103). 저장할 수 있으면 할 일을 만들어 그 할 일로 초안을 바꾼다. 아니면 spec 001 타이머만.
     func enterTitle(_ text: String) {
         guard let repository else {
-            send(.enterTitle(text))
+            if send(.enterTitle(text)) == .applied { isEnteringNewTitle = false }
             return
         }
         transition(.enterTitle(text)) { session, now in
@@ -411,6 +435,11 @@ final class AppState {
         }
         updateRefreshTimer()
         return result
+    }
+
+    private static func isDraft(_ timer: NotchTimer) -> Bool {
+        if case .empty(.some) = timer { return true }
+        return false
     }
 
     /// 빈 상태(초안 없음)면 고른다(R-104). 새로 고르면 `pickedAt`을 그 시각으로 둔다.

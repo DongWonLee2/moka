@@ -13,7 +13,8 @@ final class CollapsedLayoutTests: XCTestCase {
             XCTAssertEqual(sides.leading, 64)
             XCTAssertEqual(sides.trailing, 64)
             XCTAssertEqual(
-                NotchLayout.horizontalOffset(timer: timer, remainingSeconds: seconds, isExpanded: false, style: .notch), 0)
+                NotchLayout.horizontalOffset(timer: timer, remainingSeconds: seconds, isExpanded: false, style: .notch),
+                0)
         }
     }
 
@@ -38,5 +39,18 @@ final class CollapsedLayoutTests: XCTestCase {
         let sides = NotchLayout.collapsedSideWidths(timer: .empty(draft: nil), remainingSeconds: nil, style: .notch)
         XCTAssertEqual(sides.leading, 28)
         XCTAssertEqual(sides.trailing, 28)
+    }
+
+    /// 초안도 도는 중처럼 노치 양쪽 64pt 대칭(사용자 결정 2026-11-04). 떠 있는 창은 내용대로 104 / 28.
+    func test_R104_draftNotchIsSymmetric() {
+        let draft = NotchTimer.empty(draft: Draft(title: "가짜 할 일", chipMin: 25))
+        let notch = NotchLayout.collapsedSideWidths(timer: draft, remainingSeconds: nil, style: .notch)
+        XCTAssertEqual(notch.leading, 64)
+        XCTAssertEqual(notch.trailing, 64)
+        XCTAssertEqual(
+            NotchLayout.horizontalOffset(timer: draft, remainingSeconds: nil, isExpanded: false, style: .notch), 0)
+        let floating = NotchLayout.collapsedSideWidths(timer: draft, remainingSeconds: nil, style: .floating)
+        XCTAssertEqual(floating.leading, 104)
+        XCTAssertEqual(floating.trailing, 28)
     }
 }

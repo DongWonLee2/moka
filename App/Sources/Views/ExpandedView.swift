@@ -16,9 +16,10 @@ struct ExpandedView: View {
     let titleFocusRequest: Int
     let chip: QuantumChipInput
     let onEnterTitle: (String) -> Void
+    /// 시작 전 화면에서 "+ 새 할 일"로 제목 칸을 연 상태(R-103).
+    let newTitle: NewTitleInput
     let onStart: () -> Void
     let onComplete: () -> Void
-
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.panelPalette) private var palette
 
@@ -66,7 +67,13 @@ struct ExpandedView: View {
         case .empty(nil):
             TitleEntryRow(focusRequest: titleFocusRequest, onSubmit: onEnterTitle)
         case .empty(.some(let draft)):
-            TitleText(title: draft.title)
+            if newTitle.isEntering {
+                TitleEntryRow(
+                    focusRequest: titleFocusRequest, focusesOnAppear: true, onCancel: newTitle.onCancel,
+                    onSubmit: onEnterTitle)
+            } else {
+                TitleText(title: draft.title)
+            }
             // 기본값으로 채운 칩이 선택된 채로 Enter나 시작 한 번이면 그 값으로 시작한다(R-003).
             QuantumChipView(
                 chipMin: draft.chipMin, customText: chip.customText,
@@ -78,11 +85,19 @@ struct ExpandedView: View {
                     ) {
                         if chip.canStart { onStart() }
                     }
+                } else {
+                    Button("다른 할 일", action: newTitle.onNextDraft)
+                        .buttonStyle(NotchButtonStyle(kind: .ghost))
+                    Button("+ 새 할 일", action: newTitle.onBegin)
+                        .buttonStyle(NotchButtonStyle(kind: .ghost))
+                        .disabled(newTitle.isEntering)
+                        .accessibilityLabel("새 할 일")
                 }
                 Spacer(minLength: 0)
                 Button(action: onStart) { ButtonLabel(text: "시작", shortcut: "↵") }
                     .buttonStyle(NotchButtonStyle(kind: .primary))
-                    .keyboardShortcut(.defaultAction)
+                    // 제목 칸이 열려 있으면 Enter는 그 칸의 저장이다. 시작까지 함께 부르지 않게 단축키를 뗀다.
+                    .keyboardShortcut(newTitle.isEntering ? nil : .defaultAction)
                     .disabled(!chip.canStart)
             }
             if let message = QuantumChip.customIssueMessage(customText: chip.customText) {
@@ -127,6 +142,8 @@ extension VerticalAlignment {
 /// 빈 상태 입력 줄. 앞뒤 공백을 뺀 제목이 비면 Enter·다음으로 넘어가지 않는다(R-002).
 private struct TitleEntryRow: View {
     let focusRequest: Int
+    var focusesOnAppear = false
+    var onCancel: (() -> Void)?
     let onSubmit: (String) -> Void
 
     @State private var text = ""
@@ -159,6 +176,11 @@ private struct TitleEntryRow: View {
                 .disabled(trimmed.isEmpty)
         }
         .onChange(of: focusRequest) { focused = true }
+        .onAppear {
+            // 나타나는 순간에는 칸이 아직 붙지 않아 포커스 요청이 버려진다. 다음 차례로 미룬다.
+            if focusesOnAppear { Task { @MainActor in focused = true } }
+        }
+        .onExitCommand { onCancel?() }
     }
 
     private var showsFocus: Bool {
@@ -221,6 +243,7 @@ struct NotchButtonStyle: ButtonStyle {
     enum Kind {
         case primary
         case secondary
+        case ghost
     }
 
     let kind: Kind
@@ -233,7 +256,7 @@ struct NotchButtonStyle: ButtonStyle {
             .font(.system(size: 12, weight: kind == .primary && isEnabled ? .semibold : .medium))
             .lineLimit(1)
             .foregroundStyle(foreground)
-            .padding(.horizontal, 12)
+            .padding(.horizontal, kind == .ghost ? 6 : 12)
             .frame(height: 24)
             .background { background }
             .opacity(configuration.isPressed ? 0.8 : 1)
@@ -242,13 +265,19 @@ struct NotchButtonStyle: ButtonStyle {
 
     private var foreground: Color {
         guard isEnabled else { return palette.textDisabled }
-        return kind == .primary ? MokaColors.textOnPrimary : palette.foreground
+        switch kind {
+        case .primary: return MokaColors.textOnPrimary
+        case .secondary: return palette.foreground
+        case .ghost: return palette.muted
+        }
     }
 
     @ViewBuilder
     private var background: some View {
         let shape = RoundedRectangle(cornerRadius: ExpandedView.controlRadius)
-        if !isEnabled {
+        if kind == .ghost {
+            Color.clear
+        } else if !isEnabled {
             shape.fill(palette.controlDisabled)
         } else if kind == .primary {
             shape.fill(MokaColors.primaryGradient)
@@ -256,4 +285,12 @@ struct NotchButtonStyle: ButtonStyle {
             shape.fill(palette.control)
         }
     }
+}
+
+/// 시작 전 화면 아래 줄의 "다른 할 일"·"+ 새 할 일"(R-103·R-104).
+struct NewTitleInput {
+    var isEntering = false
+    var onNextDraft: () -> Void = {}
+    var onBegin: () -> Void = {}
+    var onCancel: () -> Void = {}
 }

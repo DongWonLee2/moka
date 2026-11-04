@@ -531,6 +531,80 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertEqual(state.taskListRows.count, 1)
     }
 
+    // MARK: - R-104 다른 할 일(T028)
+
+    func test_FR05_R104_nextDraftRotatesAndWraps() throws {
+        let clock = TestClock(Self.noon)
+        let state = makeState(try Self.seeded(3), clock: clock)
+        state.launch()
+        XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 1", chipMin: 25)))
+
+        let first = state.session.taskID
+        clock.advance(minutes: 1)
+        state.nextDraft()
+        XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 2", chipMin: 25)))
+        XCTAssertEqual(state.session.previousTaskID, first, "커서 = 그때의 초안 할 일(§4.2)")
+        XCTAssertEqual(state.pickedAt, Self.noon.addingTimeInterval(60), "다른 할 일로 바꾼 시각")
+        state.nextDraft()
+        state.nextDraft()
+        XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 1", chipMin: 25)), "끝까지 가면 처음으로")
+        XCTAssertEqual(try XCTUnwrap(state.tasks).allSatisfy { $0.status == .todo }, true, "기록하지 않는다")
+    }
+
+    func test_FR05_R104_nextDraftKeepsChosenChip() throws {
+        let state = makeState(try Self.seeded(2))
+        state.launch()
+        state.chooseQuantum(45)
+
+        state.nextDraft()
+        XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 2", chipMin: 45, chipPicked: true)))
+    }
+
+    func test_FR05_R103_quickInputInDraftKeepsOriginalAndChip() throws {
+        let repository = try Self.seeded(1)
+        let state = makeState(repository)
+        state.launch()
+        state.chooseQuantum(45)
+        state.beginNewTitle()
+
+        state.enterTitle("가짜 할 일 새것")
+        XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 새것", chipMin: 45, chipPicked: true)))
+        XCTAssertEqual(try repository.tasks().map(\.status), [.todo, .todo], "원래 할 일은 대기에 남는다(R-103)")
+        XCTAssertFalse(state.isEnteringNewTitle, "저장하면 칸을 닫는다")
+    }
+
+    func test_FR05_R103_newTitleEntryClosesWhenDraftChanges() throws {
+        let state = makeState(try Self.seeded(2))
+        state.launch()
+
+        state.beginNewTitle()
+        XCTAssertTrue(state.isEnteringNewTitle)
+        state.nextDraft()
+        XCTAssertFalse(state.isEnteringNewTitle, "다른 할 일로 바꾸면 닫는다")
+
+        state.beginNewTitle()
+        state.start()
+        XCTAssertFalse(state.isEnteringNewTitle, "시작하면 닫는다")
+        state.complete()
+        guard case .empty(.some) = state.timer else { return XCTFail("완료 뒤 다음 초안") }
+        XCTAssertFalse(state.isEnteringNewTitle, "다음 초안은 제목으로 보인다(R-104)")
+
+        state.beginNewTitle()
+        state.cancelNewTitle()
+        XCTAssertFalse(state.isEnteringNewTitle)
+    }
+
+    func test_FR11_R119_newTitleEntryClosesWithoutStorage() throws {
+        let state = makeState(nil)
+        state.launch()
+        state.enterTitle("가짜 할 일 A")
+        state.beginNewTitle()
+
+        state.enterTitle("가짜 할 일 B")
+        XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 B", chipMin: 25)))
+        XCTAssertFalse(state.isEnteringNewTitle, "저장할 수 없어도 제목을 바꾸면 칸을 닫는다")
+    }
+
     // MARK: - #37 알림 처리기 해제
 
     func test_issue37_observationStopsWhenReleased() {
