@@ -17,6 +17,7 @@ struct TaskListTabView: View {
                     Text("이번 주").tag(TaskListScope.thisWeek)
                 }
                 .pickerStyle(.segmented)
+                .tint(MokaColors.mocha)
                 .labelsHidden()
                 .fixedSize()
                 Spacer()
