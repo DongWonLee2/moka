@@ -8,26 +8,14 @@ struct TaskListTabView: View {
     @Binding var scope: TaskListScope
     @Binding var order: TaskListOrder
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Picker("보기", selection: $scope) {
-                    Text("전체").tag(TaskListScope.all)
-                    Text("오늘").tag(TaskListScope.today)
-                    Text("이번 주").tag(TaskListScope.thisWeek)
-                }
-                .pickerStyle(.segmented)
-                .tint(MokaColors.mocha)
-                .labelsHidden()
-                .fixedSize()
+                ScopeChips(selection: $scope)
                 Spacer()
-                Picker("정렬", selection: $order) {
-                    Text("만든 순").tag(TaskListOrder.created)
-                    Text("마감 순").tag(TaskListOrder.deadline)
-                }
-                .pickerStyle(.menu)
-                .labelsHidden()
-                .fixedSize()
+                SortPill(selection: $order)
             }
             ScrollView {
                 VStack(spacing: 0) {
@@ -38,11 +26,93 @@ struct TaskListTabView: View {
                 }
             }
             .frame(height: 300)
-            .background(Color(nsColor: .textBackgroundColor), in: RoundedRectangle(cornerRadius: 7))
-            .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(Color(nsColor: .separatorColor)))
+            .background(
+                colorScheme == .dark ? Color(hex: 0x221E1B) : Color.white, in: RoundedRectangle(cornerRadius: 7)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 7)
+                    .strokeBorder(
+                        colorScheme == .dark
+                            ? Color(hex: 0xFFF0E1, opacity: 0.12) : Color(hex: 0x3C2314, opacity: 0.18),
+                        lineWidth: 0.5))
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 16)
+        .padding(.horizontal, 14)
+        .padding(.top, 10)
+        .padding(.bottom, 14)
+    }
+}
+
+/// 보기 고르기(시안 7번 `.ms`). macOS 세그먼트는 고른 칸을 시스템 강조색으로 그려 직접 그린다.
+private struct ScopeChips: View {
+    @Binding var selection: TaskListScope
+    @Environment(\.colorScheme) private var colorScheme
+
+    private static let items: [(TaskListScope, String)] = [(.all, "전체"), (.today, "오늘"), (.thisWeek, "이번 주")]
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(Self.items, id: \.0) { scope, title in
+                let isOn = scope == selection
+                Button {
+                    selection = scope
+                } label: {
+                    Text(title)
+                        .font(.system(size: 11.5, weight: isOn ? .semibold : .regular))
+                        .foregroundStyle(isOn ? MokaColors.textOnPrimary : Color.primary)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 1)
+                        .background(isOn ? MokaColors.mocha : Color.clear, in: RoundedRectangle(cornerRadius: 4))
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(isOn ? .isSelected : [])
+            }
+        }
+        .padding(2)
+        .background(
+            colorScheme == .dark ? Color(hex: 0xFFF0E1, opacity: 0.09) : Color(hex: 0x3C2314, opacity: 0.08),
+            in: RoundedRectangle(cornerRadius: 6)
+        )
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("보기")
+    }
+}
+
+private struct SortPill: View {
+    @Binding var selection: TaskListOrder
+    @Environment(\.colorScheme) private var colorScheme
+
+    private static let items: [(TaskListOrder, String)] = [(.created, "만든 순"), (.deadline, "마감 순")]
+
+    var body: some View {
+        Menu {
+            Picker("정렬", selection: $selection) {
+                ForEach(Self.items, id: \.0) { order, title in
+                    Text(title).tag(order)
+                }
+            }
+            .pickerStyle(.inline)
+            .labelsHidden()
+        } label: {
+            Text("\(Self.items.first { $0.0 == selection }?.1 ?? "") ▾")
+                .font(.system(size: 11.5))
+                .foregroundStyle(Color.primary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 1)
+                .background(
+                    colorScheme == .dark ? Color(hex: 0x3B342F) : Color.white, in: RoundedRectangle(cornerRadius: 5)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 5)
+                        .strokeBorder(
+                            colorScheme == .dark ? Color.clear : Color(hex: 0x3C2314, opacity: 0.3), lineWidth: 0.5)
+                )
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .accessibilityLabel("정렬")
     }
 }
 

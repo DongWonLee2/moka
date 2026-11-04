@@ -6,7 +6,7 @@ import XCTest
 @MainActor
 final class SettingsSnapshotTests: XCTestCase {
     /// 설정 창 폭 460pt. 높이는 기본 탭 내용이 들어가는 만큼.
-    private static let size = CGSize(width: 460, height: 200)
+    private static let size = CGSize(width: 460, height: 240)
 
     func test_R012_basicTabDefaults() throws {
         try snapshot("s06-basic", quantumText: "25", extendText: "10")
@@ -37,8 +37,11 @@ final class SettingsSnapshotTests: XCTestCase {
             task(4, "장보기 목록 만들기"),
             task(5, "세탁기 돌리기", status: .done),
         ]
-        let size = CGSize(width: 460, height: 380)
-        let content = TaskListTabView(rows: rows, nextMarkID: 2, scope: .constant(.all), order: .constant(.created))
+        let size = CGSize(width: 460, height: 420)
+        let content = VStack(spacing: 0) {
+            SettingsTabBar(selection: .constant(.tasks))
+            TaskListTabView(rows: rows, nextMarkID: 2, scope: .constant(.all), order: .constant(.created))
+        }
         try write("s07-task-list", content: content, size: size)
     }
 
@@ -57,12 +60,16 @@ final class SettingsSnapshotTests: XCTestCase {
 
     private func snapshot(_ name: String, quantumText: String, extendText: String) throws {
         let calendar = GregorianCalendar.make(timeZone: try XCTUnwrap(TimeZone(identifier: "Asia/Seoul")))
-        let content = BasicTabView(
+        let tab = BasicTabView(
             quantum: Self.input(quantumText, range: Defaults.quantumMinRange),
             extend: Self.input(extendText, range: Defaults.extendMinRange),
             dayStart: .constant(Defaults.dayStart.date(calendar: calendar))
         )
         .environment(\.timeZone, calendar.timeZone)
+        let content = VStack(spacing: 0) {
+            SettingsTabBar(selection: .constant(.basic))
+            tab
+        }
 
         try write(name, content: content, size: Self.size)
     }
