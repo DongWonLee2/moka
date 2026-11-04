@@ -176,7 +176,10 @@ private struct TitleEntryRow: View {
                 .disabled(trimmed.isEmpty)
         }
         .onChange(of: focusRequest) { focused = true }
-        .onAppear { if focusesOnAppear { focused = true } }
+        .onAppear {
+            // 나타나는 순간에는 칸이 아직 붙지 않아 포커스 요청이 버려진다. 다음 차례로 미룬다.
+            if focusesOnAppear { Task { @MainActor in focused = true } }
+        }
         .onExitCommand { onCancel?() }
     }
 
