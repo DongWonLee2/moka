@@ -2,11 +2,13 @@ import MokaCore
 import SwiftUI
 import os
 
-/// 설정 창: 위에 탭, 창 제목은 탭 이름(시안 6번, R-012). 지금은 기본 탭 하나이고 할 일·일정 탭은 T030·T060에서 더한다.
+/// 설정 창: 위에 탭, 창 제목은 탭 이름(시안 6·7번, R-012·R-102). 일정 탭은 T060에서 더한다.
 /// 숫자 칸은 받는 값이면 저장하고, 아니거나 저장에 실패하면 저장된 값으로 되돌린다(`FieldCommit`).
 /// 스테퍼는 누를 때마다 1분씩 바꿔 바로 저장한다. 하루 시작 시각은 고를 때마다 저장한다.
 struct SettingsView: View {
     let store: any SettingsStore
+    /// 할 일 탭의 단일 출처(data-model §8). 모든 쓰기는 `AppState` 한 곳에서 한다.
+    @Bindable var appState: AppState
     /// 기본 작업 시간 저장을 시도한 뒤 부른다. 펼친 판의 고르지 않은 칩이 새 기본값을 따르게 한다(R-013).
     let onSaved: @MainActor () -> Void
 
@@ -34,6 +36,11 @@ struct SettingsView: View {
                 dayStart: Binding(get: { dayStart }, set: { saveDayStart($0) })
             )
             .tabItem { Label("기본", systemImage: "gearshape") }
+            TaskListTabView(
+                rows: appState.taskListRows, nextMarkID: appState.nextMarkID, scope: $appState.taskListScope,
+                order: $appState.taskListOrder
+            )
+            .tabItem { Label("할 일", systemImage: "list.bullet") }
         }
         .frame(width: 460)
         .background(SettingsWindowRaiser.Anchor())

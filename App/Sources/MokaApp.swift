@@ -19,9 +19,11 @@ struct MokaApp: App {
                 .accessibilityLabel("Moka")
         }
         Settings {
-            SettingsView(store: AppSettings.store, onSaved: { delegate.defaultQuantumChanged() })
-                // 설정 창 열기도 활성화다(research R11).
-                .onAppear { delegate.activate() }
+            SettingsView(
+                store: AppSettings.store, appState: delegate.appState, onSaved: { delegate.defaultQuantumChanged() }
+            )
+            // 설정 창 열기도 활성화다(research R11).
+            .onAppear { delegate.activate() }
         }
     }
 }
@@ -100,7 +102,7 @@ enum AppSettings {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     /// 달력은 한 번 만들어 둔다. 시스템 시간대가 바뀌면 따라간다(ADR-0010 결정 검증 결과 (a)).
-    private let appState = AppState(
+    let appState = AppState(
         clock: MokaClock { Date() }, calendar: GregorianCalendar.make(timeZone: .autoupdatingCurrent),
         storage: AppSettings.storage)
     private var panelHost: NotchPanelHost?
