@@ -13,7 +13,8 @@ final class CollapsedLayoutTests: XCTestCase {
             XCTAssertEqual(sides.leading, 64)
             XCTAssertEqual(sides.trailing, 64)
             XCTAssertEqual(
-                NotchLayout.horizontalOffset(timer: timer, remainingSeconds: seconds, isExpanded: false, style: .notch), 0)
+                NotchLayout.horizontalOffset(timer: timer, remainingSeconds: seconds, isExpanded: false, style: .notch),
+                0)
         }
     }
 
@@ -38,5 +39,18 @@ final class CollapsedLayoutTests: XCTestCase {
         let sides = NotchLayout.collapsedSideWidths(timer: .empty(draft: nil), remainingSeconds: nil, style: .notch)
         XCTAssertEqual(sides.leading, 28)
         XCTAssertEqual(sides.trailing, 28)
+    }
+
+    /// 초안은 회색 점 + 회색 제목이 들어가게 왼쪽 104pt, 오른쪽은 시간이 없어 빈 상태와 같은 28pt(시안 1번 C1-B, T028).
+    func test_R104_draftShowsTitleOnLeft() {
+        let draft = NotchTimer.empty(draft: Draft(title: "가짜 할 일", chipMin: 25))
+        for style in [PanelStyle.notch, .floating] {
+            let sides = NotchLayout.collapsedSideWidths(timer: draft, remainingSeconds: nil, style: style)
+            XCTAssertEqual(sides.leading, 104)
+            XCTAssertEqual(sides.trailing, 28)
+        }
+        XCTAssertEqual(
+            NotchLayout.horizontalOffset(timer: draft, remainingSeconds: nil, isExpanded: false, style: .notch), -38,
+            "구멍 가운데가 노치 가운데에 오게 판을 민다")
     }
 }

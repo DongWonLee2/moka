@@ -531,6 +531,30 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertEqual(state.taskListRows.count, 1)
     }
 
+    // MARK: - R-104 다른 할 일(T028)
+
+    func test_FR02_R104_nextDraftRotatesAndWraps() throws {
+        let state = makeState(try Self.seeded(3))
+        state.launch()
+        XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 1", chipMin: 25)))
+
+        state.nextDraft()
+        XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 2", chipMin: 25)))
+        state.nextDraft()
+        state.nextDraft()
+        XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 1", chipMin: 25)), "끝까지 가면 처음으로")
+        XCTAssertEqual(try XCTUnwrap(state.tasks).allSatisfy { $0.status == .todo }, true, "기록하지 않는다")
+    }
+
+    func test_FR02_R104_nextDraftKeepsChosenChip() throws {
+        let state = makeState(try Self.seeded(2))
+        state.launch()
+        state.chooseQuantum(45)
+
+        state.nextDraft()
+        XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 2", chipMin: 45, chipPicked: true)))
+    }
+
     // MARK: - #37 알림 처리기 해제
 
     func test_issue37_observationStopsWhenReleased() {
