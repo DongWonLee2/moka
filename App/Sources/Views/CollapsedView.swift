@@ -1,7 +1,7 @@
 import MokaCore
 import SwiftUI
 
-/// 접힌 판 왼쪽 칸: 빈 상태는 회색 점(R-001), 할 일이 있으면 점·제목(넘치면 끝 "…", R-006).
+/// 접힌 판 왼쪽 칸: 빈 상태는 회색 점(R-001), 초안은 회색 점·회색 제목(R-104), 도는 중·시간 끝은 점·제목(넘치면 끝 "…", R-006).
 struct CollapsedLeadingView: View {
     let timer: NotchTimer
 
@@ -20,8 +20,16 @@ struct CollapsedLeadingView: View {
     @ViewBuilder
     private var content: some View {
         switch timer {
-        case .empty:
+        case .empty(nil):
             StatusDot(active: false)
+        case .empty(.some(let draft)):
+            HStack(spacing: 6) {
+                StatusDot(active: false)
+                Text(draft.title)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .foregroundStyle(palette.muted)
+            }
         case .running(let title, _, _, _), .expired(let title, _, _):
             HStack(spacing: 6) {
                 StatusDot(active: true)

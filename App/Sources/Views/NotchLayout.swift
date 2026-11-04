@@ -25,6 +25,7 @@ enum NotchLayout {
     static func collapsedSideWidths(
         timer: NotchTimer, remainingSeconds: Int?, style: PanelStyle
     ) -> (leading: CGFloat, trailing: CGFloat) {
+        if case .empty(.some) = timer { return (104, 28) }
         guard case .empty = timer else {
             // 노치는 판이 카메라 구멍 양옆으로 같은 폭이어야 화면 가운데에 맞아 보이고, 메뉴 막대를 덜 가리게
             // "1:04:59"가 들어가는 가장 작은 폭 64pt로 둔다(사용자 결정 2026-11-02).

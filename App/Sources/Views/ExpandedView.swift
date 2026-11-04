@@ -16,9 +16,12 @@ struct ExpandedView: View {
     let titleFocusRequest: Int
     let chip: QuantumChipInput
     let onEnterTitle: (String) -> Void
+    let onNextDraft: () -> Void
     let onStart: () -> Void
     let onComplete: () -> Void
 
+    /// 시작 전 화면에서 "+ 새 할 일"을 눌러 제목 칸을 연 상태(R-103).
+    @State private var isAddingNew = false
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.panelPalette) private var palette
 
@@ -66,7 +69,16 @@ struct ExpandedView: View {
         case .empty(nil):
             TitleEntryRow(focusRequest: titleFocusRequest, onSubmit: onEnterTitle)
         case .empty(.some(let draft)):
-            TitleText(title: draft.title)
+            if isAddingNew {
+                TitleEntryRow(
+                    focusRequest: titleFocusRequest, focusesOnAppear: true, onCancel: { isAddingNew = false },
+                    onSubmit: { title in
+                        onEnterTitle(title)
+                        isAddingNew = false
+                    })
+            } else {
+                TitleText(title: draft.title)
+            }
             // 기본값으로 채운 칩이 선택된 채로 Enter나 시작 한 번이면 그 값으로 시작한다(R-003).
             QuantumChipView(
                 chipMin: draft.chipMin, customText: chip.customText,
@@ -78,6 +90,12 @@ struct ExpandedView: View {
                     ) {
                         if chip.canStart { onStart() }
                     }
+                } else {
+                    Button("다른 할 일", action: onNextDraft)
+                        .buttonStyle(NotchButtonStyle(kind: .ghost))
+                    Button("+ 새 할 일") { isAddingNew = true }
+                        .buttonStyle(NotchButtonStyle(kind: .ghost))
+                        .disabled(isAddingNew)
                 }
                 Spacer(minLength: 0)
                 Button(action: onStart) { ButtonLabel(text: "시작", shortcut: "↵") }
@@ -127,6 +145,8 @@ extension VerticalAlignment {
 /// 빈 상태 입력 줄. 앞뒤 공백을 뺀 제목이 비면 Enter·다음으로 넘어가지 않는다(R-002).
 private struct TitleEntryRow: View {
     let focusRequest: Int
+    var focusesOnAppear = false
+    var onCancel: (() -> Void)?
     let onSubmit: (String) -> Void
 
     @State private var text = ""
@@ -159,6 +179,8 @@ private struct TitleEntryRow: View {
                 .disabled(trimmed.isEmpty)
         }
         .onChange(of: focusRequest) { focused = true }
+        .onAppear { if focusesOnAppear { focused = true } }
+        .onExitCommand { onCancel?() }
     }
 
     private var showsFocus: Bool {
@@ -221,6 +243,7 @@ struct NotchButtonStyle: ButtonStyle {
     enum Kind {
         case primary
         case secondary
+        case ghost
     }
 
     let kind: Kind
@@ -233,7 +256,7 @@ struct NotchButtonStyle: ButtonStyle {
             .font(.system(size: 12, weight: kind == .primary && isEnabled ? .semibold : .medium))
             .lineLimit(1)
             .foregroundStyle(foreground)
-            .padding(.horizontal, 12)
+            .padding(.horizontal, kind == .ghost ? 6 : 12)
             .frame(height: 24)
             .background { background }
             .opacity(configuration.isPressed ? 0.8 : 1)
@@ -242,13 +265,19 @@ struct NotchButtonStyle: ButtonStyle {
 
     private var foreground: Color {
         guard isEnabled else { return palette.textDisabled }
-        return kind == .primary ? MokaColors.textOnPrimary : palette.foreground
+        switch kind {
+        case .primary: return MokaColors.textOnPrimary
+        case .secondary: return palette.foreground
+        case .ghost: return palette.muted
+        }
     }
 
     @ViewBuilder
     private var background: some View {
         let shape = RoundedRectangle(cornerRadius: ExpandedView.controlRadius)
-        if !isEnabled {
+        if kind == .ghost {
+            Color.clear
+        } else if !isEnabled {
             shape.fill(palette.controlDisabled)
         } else if kind == .primary {
             shape.fill(MokaColors.primaryGradient)

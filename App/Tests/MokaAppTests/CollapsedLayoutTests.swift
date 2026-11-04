@@ -41,7 +41,6 @@ final class CollapsedLayoutTests: XCTestCase {
         XCTAssertEqual(sides.trailing, 28)
     }
 
-    /// 초안은 회색 점 + 회색 제목이 들어가게 왼쪽 104pt, 오른쪽은 시간이 없어 빈 상태와 같은 28pt(시안 1번 C1-B, T028).
     func test_R104_draftShowsTitleOnLeft() {
         let draft = NotchTimer.empty(draft: Draft(title: "가짜 할 일", chipMin: 25))
         for style in [PanelStyle.notch, .floating] {

@@ -228,6 +228,15 @@ final class AppState {
     // MARK: - 노치 동작
 
     /// 빠른 입력(R-103). 저장할 수 있으면 할 일을 만들어 그 할 일로 초안을 바꾼다. 아니면 spec 001 타이머만.
+    /// "다른 할 일"(R-104): 초안을 만든 순서의 다음 대기 할 일로 바꾼다. 칩은 그대로, 기록은 없다.
+    func nextDraft() {
+        let now = clock.now()
+        let next = session.nextDraft(input(at: now))
+        guard next != session else { return }
+        session = next
+        pickedAt = now
+    }
+
     func enterTitle(_ text: String) {
         guard let repository else {
             send(.enterTitle(text))
