@@ -84,6 +84,8 @@ private struct SortPill: View {
 
     private static let items: [(TaskListOrder, String)] = [(.created, "만든 순"), (.deadline, "마감 순")]
 
+    private var title: String { Self.items.first { $0.0 == selection }?.1 ?? "" }
+
     var body: some View {
         Menu {
             Picker("정렬", selection: $selection) {
@@ -94,7 +96,7 @@ private struct SortPill: View {
             .pickerStyle(.inline)
             .labelsHidden()
         } label: {
-            Text("\(Self.items.first { $0.0 == selection }?.1 ?? "") ▾")
+            Text("\(title) ▾")
                 .font(.system(size: 11.5))
                 .foregroundStyle(Color.primary)
                 .padding(.horizontal, 8)
@@ -113,6 +115,7 @@ private struct SortPill: View {
         .menuIndicator(.hidden)
         .fixedSize()
         .accessibilityLabel("정렬")
+        .accessibilityValue(title)
     }
 }
 

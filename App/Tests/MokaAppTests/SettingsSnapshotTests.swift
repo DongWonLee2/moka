@@ -42,6 +42,8 @@ final class SettingsSnapshotTests: XCTestCase {
             SettingsTabBar(selection: .constant(.tasks))
             TaskListTabView(rows: rows, nextMarkID: 2, scope: .constant(.all), order: .constant(.created))
         }
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(MokaColors.settingsWindow)
         try write("s07-task-list", content: content, size: size)
     }
 
@@ -70,6 +72,8 @@ final class SettingsSnapshotTests: XCTestCase {
             SettingsTabBar(selection: .constant(.basic))
             tab
         }
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(MokaColors.settingsWindow)
 
         try write(name, content: content, size: Self.size)
     }

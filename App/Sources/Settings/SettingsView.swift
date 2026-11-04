@@ -46,6 +46,7 @@ struct SettingsView: View {
             }
         }
         .navigationTitle(tab.title)
+        .background(MokaColors.settingsWindow)
         .frame(width: 460)
         .background(SettingsWindowRaiser.Anchor())
         .onAppear(perform: load)

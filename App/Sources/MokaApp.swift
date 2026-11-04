@@ -73,6 +73,9 @@ enum SettingsWindowRaiser {
             super.viewDidMoveToWindow()
             guard let window else { return }
             SettingsWindowRaiser.window = window
+            // 제목줄까지 시안 바탕색이 보이게 한다(macOS 14에는 SwiftUI 창 바탕 지정이 없다).
+            window.titlebarAppearsTransparent = true
+            window.backgroundColor = MokaColors.settingsWindowNS
             guard SettingsWindowRaiser.pending.take() else { return }
             DispatchQueue.main.async { SettingsWindowRaiser.raise() }
         }
