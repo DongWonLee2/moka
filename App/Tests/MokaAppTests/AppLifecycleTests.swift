@@ -534,15 +534,17 @@ final class AppLifecycleTests: XCTestCase {
     // MARK: - R-104 다른 할 일(T028)
 
     func test_FR05_R104_nextDraftRotatesAndWraps() throws {
-        let state = makeState(try Self.seeded(3))
+        let clock = TestClock(Self.noon)
+        let state = makeState(try Self.seeded(3), clock: clock)
         state.launch()
         XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 1", chipMin: 25)))
 
         let first = state.session.taskID
+        clock.advance(minutes: 1)
         state.nextDraft()
         XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 2", chipMin: 25)))
         XCTAssertEqual(state.session.previousTaskID, first, "커서 = 그때의 초안 할 일(§4.2)")
-        XCTAssertEqual(state.pickedAt, Self.noon)
+        XCTAssertEqual(state.pickedAt, Self.noon.addingTimeInterval(60), "다른 할 일로 바꾼 시각")
         state.nextDraft()
         state.nextDraft()
         XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 1", chipMin: 25)), "끝까지 가면 처음으로")
@@ -590,6 +592,17 @@ final class AppLifecycleTests: XCTestCase {
         state.beginNewTitle()
         state.cancelNewTitle()
         XCTAssertFalse(state.isEnteringNewTitle)
+    }
+
+    func test_FR11_R119_newTitleEntryClosesWithoutStorage() throws {
+        let state = makeState(nil)
+        state.launch()
+        state.enterTitle("가짜 할 일 A")
+        state.beginNewTitle()
+
+        state.enterTitle("가짜 할 일 B")
+        XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 B", chipMin: 25)))
+        XCTAssertFalse(state.isEnteringNewTitle, "저장할 수 없어도 제목을 바꾸면 칸을 닫는다")
     }
 
     // MARK: - #37 알림 처리기 해제
