@@ -209,6 +209,23 @@ private func edit(_ task: MokaTask, _ change: TaskEdit, now: Date = Fake.noon) -
         #expect(changed.deadline == nil)
     }
 
+    @Test("FR-01 R-101: 반복을 없음으로 바꾸면서 마감을 넣으면 저장한다")
+    func editToNoneWithDeadline() throws {
+        let daily = Fake.task(3, recurrence: .daily, cycleDay: Fake.day("2027-01-13"))
+        let changed = try #require(
+            edit(daily, TaskEdit(deadline: .set(Fake.day("2027-01-20")), recurrence: Recurrence.none)))
+        #expect(changed.recurrence == .none)
+        #expect(changed.deadline == Fake.day("2027-01-20"))
+    }
+
+    @Test("FR-01 R-101: 마감을 비우면서 반복으로 바꾸면 저장한다")
+    func editClearAndRecurring() throws {
+        let task = Fake.task(1, deadline: Fake.day("2027-01-20"))
+        let changed = try #require(edit(task, TaskEdit(deadline: .clear, recurrence: .weekly)))
+        #expect(changed.deadline == nil)
+        #expect(changed.recurrence == .weekly)
+    }
+
     @Test("FR-01 R-101: 반복 할 일에 마감을 넣는 고침은 저장하지 않는다")
     func editRejectsDeadlineOnRecurring() {
         let daily = Fake.task(3, recurrence: .daily, cycleDay: Fake.day("2027-01-13"))
