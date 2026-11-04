@@ -31,7 +31,8 @@ struct SettingsView: View {
                     range: Defaults.extendMinRange,
                     onCommit: { applyExtend(CoreSettings.commitExtendField(extendText, to: store)) },
                     onStep: { applyExtend(CoreSettings.saveExtendField($0, to: store)) }),
-                dayStart: Binding(get: { dayStart }, set: saveDayStart))
+                dayStart: Binding(get: { dayStart }, set: { saveDayStart($0) })
+            )
             .tabItem { Label("기본", systemImage: "gearshape") }
         }
         .frame(width: 460)

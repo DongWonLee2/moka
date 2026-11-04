@@ -22,8 +22,9 @@ final class SettingsSnapshotTests: XCTestCase {
         let content = BasicTabView(
             quantum: Self.input(quantumText, range: Defaults.quantumMinRange),
             extend: Self.input(extendText, range: Defaults.extendMinRange),
-            dayStart: .constant(Defaults.dayStart.date(calendar: calendar)))
-            .environment(\.timeZone, calendar.timeZone)
+            dayStart: .constant(Defaults.dayStart.date(calendar: calendar))
+        )
+        .environment(\.timeZone, calendar.timeZone)
 
         let light = try renderPNG(view: content, size: Self.size, appearance: .aqua)
         let dark = try renderPNG(view: content, size: Self.size, appearance: .darkAqua)

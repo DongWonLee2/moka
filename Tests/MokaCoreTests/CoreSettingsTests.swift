@@ -180,6 +180,7 @@ func dayStartRoundTripsThroughDate(text: String) throws {
 @Test("FR-16 #59: 시각 고르기가 낸 Date의 초는 버리고 시·분만 쓴다")
 func dayStartFromDateDropsSeconds() throws {
     let calendar = GregorianCalendar.make(timeZone: try #require(TimeZone(identifier: "America/New_York")))
-    let date = try #require(calendar.date(from: DateComponents(year: 2026, month: 3, day: 8, hour: 7, minute: 15, second: 42)))
+    let parts = DateComponents(year: 2026, month: 3, day: 8, hour: 7, minute: 15, second: 42)
+    let date = try #require(calendar.date(from: parts))
     #expect(DayStart(date: date, calendar: calendar).text == "07:15")
 }
