@@ -16,7 +16,7 @@ struct ExpandedView: View {
     let titleFocusRequest: Int
     let chip: QuantumChipInput
     let onEnterTitle: (String) -> Void
-    /// 시작 전 화면에서 "+ 새 할 일"로 제목 칸을 연 상태(R-103). `AppState`가 갖는다.
+    /// 시작 전 화면에서 "+ 새 할 일"로 제목 칸을 연 상태(R-103).
     let newTitle: NewTitleInput
     let onStart: () -> Void
     let onComplete: () -> Void

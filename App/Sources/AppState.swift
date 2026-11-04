@@ -254,7 +254,7 @@ final class AppState {
     /// 빠른 입력(R-103). 저장할 수 있으면 할 일을 만들어 그 할 일로 초안을 바꾼다. 아니면 spec 001 타이머만.
     func enterTitle(_ text: String) {
         guard let repository else {
-            send(.enterTitle(text))
+            if send(.enterTitle(text)) == .applied { isEnteringNewTitle = false }
             return
         }
         transition(.enterTitle(text)) { session, now in
