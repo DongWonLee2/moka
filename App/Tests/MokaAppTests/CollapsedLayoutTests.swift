@@ -41,15 +41,16 @@ final class CollapsedLayoutTests: XCTestCase {
         XCTAssertEqual(sides.trailing, 28)
     }
 
-    func test_R104_draftShowsTitleOnLeft() {
+    /// 초안도 도는 중처럼 노치 양쪽 64pt 대칭(사용자 결정 2026-11-04). 떠 있는 창은 내용대로 104 / 28.
+    func test_R104_draftNotchIsSymmetric() {
         let draft = NotchTimer.empty(draft: Draft(title: "가짜 할 일", chipMin: 25))
-        for style in [PanelStyle.notch, .floating] {
-            let sides = NotchLayout.collapsedSideWidths(timer: draft, remainingSeconds: nil, style: style)
-            XCTAssertEqual(sides.leading, 104)
-            XCTAssertEqual(sides.trailing, 28)
-        }
+        let notch = NotchLayout.collapsedSideWidths(timer: draft, remainingSeconds: nil, style: .notch)
+        XCTAssertEqual(notch.leading, 64)
+        XCTAssertEqual(notch.trailing, 64)
         XCTAssertEqual(
-            NotchLayout.horizontalOffset(timer: draft, remainingSeconds: nil, isExpanded: false, style: .notch), -38,
-            "구멍 가운데가 노치 가운데에 오게 판을 민다")
+            NotchLayout.horizontalOffset(timer: draft, remainingSeconds: nil, isExpanded: false, style: .notch), 0)
+        let floating = NotchLayout.collapsedSideWidths(timer: draft, remainingSeconds: nil, style: .floating)
+        XCTAssertEqual(floating.leading, 104)
+        XCTAssertEqual(floating.trailing, 28)
     }
 }
