@@ -55,6 +55,12 @@ final class ScreenStateSnapshotTests: XCTestCase {
             expanded: true, hovering: true, draftInput: DraftInput(isPickingOther: true, otherItems: items))
     }
 
+    func test_R104_otherTaskPickerEmpty() throws {
+        try snapshot(
+            "11-other-task-picker-empty", timer: .empty(draft: Draft(title: "장보기 목록 만들기", chipMin: 25)),
+            remaining: nil, expanded: true, hovering: true, draftInput: DraftInput(isPickingOther: true))
+    }
+
     func test_R104_draftCollapsed() throws {
         try snapshot(
             "10-draft-collapsed", timer: .empty(draft: Draft(title: Self.title, chipMin: 25)), remaining: nil,

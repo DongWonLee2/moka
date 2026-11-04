@@ -553,6 +553,15 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertTrue(state.tasks.allSatisfy { $0.status == .todo }, "기록하지 않는다")
     }
 
+    func test_FR05_R104_otherTaskPickerEmptyWithOneTask() throws {
+        let state = makeState(try Self.seeded(1))
+        state.launch()
+
+        state.beginOtherTask()
+        XCTAssertTrue(state.isPickingOtherTask)
+        XCTAssertEqual(state.otherTaskItems, [], "할 일이 하나뿐이면 목록이 빈다(Edge Case)")
+    }
+
     func test_FR05_R104_otherTaskPickerAndNewTitleAreExclusive() throws {
         let state = makeState(try Self.seeded(2))
         state.launch()
