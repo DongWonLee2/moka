@@ -19,7 +19,7 @@ private let cycle = Fake.day("2027-01-10")
             Fake.task(1), Fake.task(2, status: .active), Fake.task(3, status: .done), Fake.task(4, status: .dropped),
             Fake.task(5, deadline: Fake.day("2027-03-01")),
         ]
-        #expect(rows(tasks, .all) == [1, 2, 3, 5])
+        #expect(rows(tasks, .all) == [1, 2, 5, 3])
     }
 
     @Test("FR-01 R-118: 버린 할 일은 어느 보기에도 없다", arguments: [TaskListScope.all, .today, .thisWeek])
@@ -101,5 +101,18 @@ private let cycle = Fake.day("2027-01-10")
             Fake.task(6, deadline: Fake.day("2027-01-14")),
         ]
         #expect(rows(tasks, .all, .deadline) == [3, 6, 2, 4, 1, 5])
+    }
+
+    @Test(
+        "FR-01 R-118: 완료한 할 일은 어느 정렬에서도 아래로 모이고, 그 안의 순서는 정렬을 따른다(2026-11-04 사용자 결정)",
+        arguments: [(TaskListOrder.created, [TaskID]([2, 4, 1, 3])), (.deadline, [4, 2, 3, 1])])
+    func doneSinksToBottom(order: TaskListOrder, expected: [TaskID]) {
+        let tasks = [
+            Fake.task(1, status: .done),
+            Fake.task(2, deadline: Fake.day("2027-01-20")),
+            Fake.task(3, status: .done, deadline: Fake.day("2027-01-05")),
+            Fake.task(4, status: .active, deadline: Fake.day("2027-01-14")),
+        ]
+        #expect(rows(tasks, .all, order) == expected)
     }
 }

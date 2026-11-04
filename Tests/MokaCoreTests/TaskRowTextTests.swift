@@ -36,6 +36,11 @@ func metaEmptyIsDash() {
     #expect(TaskRowText.meta(task()) == "—")
 }
 
+@Test("R-102 #42: 완료한 할 일의 보조 줄은 완료(시안 7번, 2026-11-04 사용자 결정)")
+func metaDoneIsCompleted() {
+    #expect(TaskRowText.meta(task(deadline: "2026-11-05", estMin: 50, status: .done)) == "완료")
+}
+
 @Test("R-102 #42: 연속 기록 배지는 매일 N일, 매주 N주, 0이면 없음")
 func streakBadge() {
     #expect(TaskRowText.streakBadge(task(recurrence: .daily, streak: 3)) == "3일 연속 진행")
