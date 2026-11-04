@@ -130,3 +130,57 @@ func writesRethrowStoreFailure() throws {
     #expect(throws: ThrowingSettingsStore.Failure.self) { try CoreSettings.writeDayStart(seven, to: store) }
     #expect(throws: ThrowingSettingsStore.Failure.self) { try CoreSettings.markOnboardingDone(in: store) }
 }
+
+@Test("FR-16 R-012 #59: 추가 시간 칸에 받는 값을 제출하면 저장하고 칸은 저장된 값", arguments: [("15", "15"), ("+15", "15"), ("180", "180")])
+func commitExtendFieldSavesAcceptedText(text: String, shown: String) throws {
+    let store = InMemorySettingsStore()
+    let result = CoreSettings.commitExtendField(text, to: store)
+    #expect(result.shown == shown)
+    #expect(result.attempted)
+    #expect(result.error == nil)
+    #expect(try store.value(for: CoreSettings.extendMinKey) == shown)
+}
+
+@Test("FR-16 R-012 #59: 추가 시간 칸에 받지 않는 값을 제출하면 저장하지 않고 칸은 저장된 값으로 되돌린다", arguments: ["", "0", "181", "4.5", "abc"])
+func commitExtendFieldRevertsRejectedText(text: String) throws {
+    let store = InMemorySettingsStore()
+    try CoreSettings.writeExtendMin(15, to: store)
+    let result = CoreSettings.commitExtendField(text, to: store)
+    #expect(result.shown == "15")
+    #expect(!result.attempted)
+    #expect(try store.value(for: CoreSettings.extendMinKey) == "15")
+}
+
+@Test("FR-16 R-012 #59: 추가 시간 저장에 실패하면 오류를 돌려주고 칸은 읽기 기본값 10")
+func commitExtendFieldRevertsWhenSaveFails() {
+    let result = CoreSettings.commitExtendField("30", to: ThrowingSettingsStore())
+    #expect(result.shown == "10")
+    #expect(result.attempted)
+    #expect(result.error is ThrowingSettingsStore.Failure)
+}
+
+@Test("FR-16 R-012 #59: 추가 시간 스테퍼 값은 해석 없이 저장한다")
+func saveExtendFieldStoresStepperValue() {
+    let store = InMemorySettingsStore()
+    let result = CoreSettings.saveExtendField(11, to: store)
+    #expect(result.shown == "11")
+    #expect(CoreSettings.readExtendMin(from: store) == 11)
+}
+
+@Test("FR-16 #59: 하루 시작 시각은 시각 고르기의 Date로 바꿨다 되돌려도 같다", arguments: ["00:00", "06:00", "05:30", "23:59"])
+func dayStartRoundTripsThroughDate(text: String) throws {
+    let calendar = GregorianCalendar.make(timeZone: try #require(TimeZone(identifier: "Asia/Seoul")))
+    let dayStart = try #require(DayStart(text: text))
+    let date = dayStart.date(calendar: calendar)
+    #expect(calendar.component(.hour, from: date) == dayStart.hour)
+    #expect(calendar.component(.minute, from: date) == dayStart.minute)
+    #expect(DayStart(date: date, calendar: calendar) == dayStart)
+}
+
+@Test("FR-16 #59: 시각 고르기가 낸 Date의 초는 버리고 시·분만 쓴다")
+func dayStartFromDateDropsSeconds() throws {
+    let calendar = GregorianCalendar.make(timeZone: try #require(TimeZone(identifier: "America/New_York")))
+    let parts = DateComponents(year: 2026, month: 3, day: 8, hour: 7, minute: 15, second: 42)
+    let date = try #require(calendar.date(from: parts))
+    #expect(DayStart(date: date, calendar: calendar).text == "07:15")
+}

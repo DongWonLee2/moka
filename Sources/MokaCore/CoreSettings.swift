@@ -23,6 +23,15 @@ public enum CoreSettings {
         try store.setValue(String(minutes), for: extendMinKey)
     }
 
+    /// 설정 창 추가 시간 칸에 제출한 글자. 규칙은 `QuantumSettings.commitField`와 같다.
+    public static func commitExtendField(_ text: String, to store: some SettingsStore) -> FieldCommit {
+        FieldCommit.commit(text, read: { readExtendMin(from: store) }, write: { try writeExtendMin($0, to: store) })
+    }
+
+    public static func saveExtendField(_ minutes: Int, to store: some SettingsStore) -> FieldCommit {
+        FieldCommit.save(minutes, read: { readExtendMin(from: store) }, write: { try writeExtendMin($0, to: store) })
+    }
+
     /// 없거나 읽기 실패·형식이 틀리면 06:00.
     public static func readDayStart(from store: some SettingsStore) -> DayStart {
         guard let text = try? store.value(for: dayStartKey), let dayStart = DayStart(text: text) else {

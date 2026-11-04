@@ -26,21 +26,12 @@ public enum QuantumSettings {
 
     /// 설정 창 기본 작업 시간 칸에 제출한 글자. `QuantumChip.parseCustom`이 받으면 저장하고, 아니면 저장하지 않는다.
     public static func commitField(_ text: String, to store: some SettingsStore) -> FieldCommit {
-        guard let minutes = QuantumChip.parseCustom(text) else {
-            return FieldCommit(shown: String(readDefault(from: store)), attempted: false, error: nil)
-        }
-        return saveField(minutes, to: store)
+        FieldCommit.commit(text, read: { readDefault(from: store) }, write: { try writeDefault($0, to: store) })
     }
 
     /// 스테퍼가 고른 값을 저장한다. 실패해도 던지지 않고 칸에는 저장된 값을 보인다.
     public static func saveField(_ minutes: Int, to store: some SettingsStore) -> FieldCommit {
-        var failure: (any Error)?
-        do {
-            try writeDefault(minutes, to: store)
-        } catch {
-            failure = error
-        }
-        return FieldCommit(shown: String(readDefault(from: store)), attempted: true, error: failure)
+        FieldCommit.save(minutes, read: { readDefault(from: store) }, write: { try writeDefault($0, to: store) })
     }
 }
 
@@ -52,6 +43,23 @@ public struct FieldCommit: Sendable {
     public let attempted: Bool
     /// 저장 실패 이유. 앱이 기록한다.
     public let error: (any Error)?
+
+    static func commit(_ text: String, read: () -> Int, write: (Int) throws -> Void) -> FieldCommit {
+        guard let minutes = QuantumChip.parseCustom(text) else {
+            return FieldCommit(shown: String(read()), attempted: false, error: nil)
+        }
+        return save(minutes, read: read, write: write)
+    }
+
+    static func save(_ minutes: Int, read: () -> Int, write: (Int) throws -> Void) -> FieldCommit {
+        var failure: (any Error)?
+        do {
+            try write(minutes)
+        } catch {
+            failure = error
+        }
+        return FieldCommit(shown: String(read()), attempted: true, error: failure)
+    }
 }
 
 public final class InMemorySettingsStore: SettingsStore {
