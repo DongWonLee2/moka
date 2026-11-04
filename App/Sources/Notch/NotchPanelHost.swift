@@ -201,9 +201,12 @@ struct NotchPanelRoot: View {
                 onEditCustom: { appState.editCustom($0) },
                 takeFocusRequest: { appState.takeCustomFocusRequest() }),
             onEnterTitle: { appState.enterTitle($0) },
-            newTitle: NewTitleInput(
-                isEntering: appState.isEnteringNewTitle, onNextDraft: { appState.nextDraft() },
-                onBegin: { appState.beginNewTitle() }, onCancel: { appState.cancelNewTitle() }),
+            draftInput: DraftInput(
+                isEnteringTitle: appState.isEnteringNewTitle, onBeginNewTitle: { appState.beginNewTitle() },
+                onCancelNewTitle: { appState.cancelNewTitle() }, isPickingOther: appState.isPickingOtherTask,
+                otherItems: appState.isPickingOtherTask ? appState.otherTaskItems : [],
+                onBeginOther: { appState.beginOtherTask() }, onCancelOther: { appState.cancelOtherTask() },
+                onChooseOther: { appState.chooseOtherTask($0) }),
             onStart: onStart,
             onComplete: onComplete
         )

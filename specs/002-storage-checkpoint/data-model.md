@@ -272,7 +272,7 @@ extension NotchSession {
     public static let initial: NotchSession                                     // empty(nil), 나머지 nil
     public func picked(_ input: SessionInput) -> NotchSession                    // 고르기. empty(nil)일 때만 바뀜
     public func addedTask(_ task: MokaTask, _ input: SessionInput) -> NotchSession   // 빠른 입력 둘째 단계
-    public func nextDraft(_ input: SessionInput) -> NotchSession                 // "다른 할 일"(초안만)
+    public func chosenDraft(_ id: TaskID, _ input: SessionInput) -> NotchSession // "다른 할 일" 목록에서 고름(초안만, 대기 할 일만)
     public func edited(_ task: MokaTask) -> NotchSession                         // 노치의 할 일을 고쳤을 때 제목 사본만 교체
     public func start(_ input: SessionInput) throws(SessionError) -> SessionStep
     public func complete(_ notes: CheckpointNotes?, _ input: SessionInput) throws(SessionError) -> SessionStep
@@ -298,7 +298,7 @@ public enum SessionError: Error, Equatable, Sendable { case notAllowed }    // �
 | 세션 상태 \ 동작 | 고르기 | 빠른 입력 | 설정 창 추가 | 다른 할 일 | 시작 | 완료 | 미루기·바꾸기 | 다시 시작 | 잠자기·종료 | 지움(노치의 할 일) | 고침(노치의 할 일) |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `empty(nil)` | 후보 있으면 `empty(draft)` + `taskID` | 할 일 만듦 → 그 할 일로 초안 | 할 일 만듦 → 고르기(그 할 일) | 거부 | 거부 | 거부 | 거부 | 거부 | 기록 없음 | — | — |
-| `empty(draft)` | 그대로 | 할 일 만듦 → 그 할 일로 초안(칩 유지) | 할 일 만듦, 그대로 | 커서 = 지금 초안 → 다음 후보로 초안(칩 유지) | `running`, 할 일 `active`, `run` 채움 | 거부 | 거부 | 거부 | 기록 없음 | `empty(nil)` → 고르기 | 초안 제목 교체 |
+| `empty(draft)` | 그대로 | 할 일 만듦 → 그 할 일로 초안(칩 유지) | 할 일 만듦, 그대로 | 커서 = 지금 초안 → 고른 할 일로 초안(칩 유지) | `running`, 할 일 `active`, `run` 채움 | 거부 | 거부 | 거부 | 기록 없음 | `empty(nil)` → 고르기 | 초안 제목 교체 |
 | `running` | 그대로 | 거부 | 할 일 만듦, 그대로 | 거부 | 거부 | `empty(nil)`, `run` nil → 고르기 | `empty(nil)`, `run` nil, 커서 = 그 할 일 → 고르기 | 거부 | 체크포인트(`sleep`/`quit`) | `empty(nil)`, `run` nil → 고르기 | 제목 교체, 시간 값 그대로 |
 | `expired` | 그대로 | 거부 | 할 일 만듦, 그대로 | 거부 | 거부 | 같음 | 같음 | `running`, `run` = (지금, 고른 칩) | 기록 없음 | 같음 | 같음 |
 
@@ -316,7 +316,7 @@ public enum SessionError: Error, Equatable, Sendable { case notAllowed }    // �
 | 처음(`initial`), 재시작(`relaunch`, 앱 시작) | nil |
 | 완료 | nil |
 | 미루기·바꾸기(등록·안 적기) | 그 할 일 |
-| 다른 할 일(초안) | 그때의 초안 할 일 |
+| 다른 할 일(초안, 목록에서 고름) | 그때의 초안 할 일 |
 | 시작, 다시 시작, 돌아가기, 빠른 입력, 고침, 잠자기 | 그대로 |
 | 노치의 할 일을 지움 | 그대로(지운 할 일 id여도 §5.1 비교는 그대로 됨) |
 | 활성화(하루 판정) | 그대로 |
@@ -422,6 +422,12 @@ public enum TaskListView {
 - 어느 정렬에서도 완료(`done`)한 할 일은 그 정렬 순서를 지킨 채 맨 아래로 모은다. 마감 없는 미완료 할 일보다도 아래다(2026-11-04 사용자 결정, 시안 7번 메모).
 - 시험 경계값(`today: LocalDay` 기준): `today`가 토요일·일요일인 경우, 마감이 이번 주 토요일·다음 주 일요일, 매주 반복의 요일이 `today`와 같음·다름, 지난 마감. 시각 05:59:59/06:00:00 경계는 §5.4 시험이 맡는다.
 - 고른 보기·정렬은 앱 `AppState`에만 두고 저장하지 않는다(§8).
+
+### 5.7.1 다른 할 일 목록 `OtherTaskList` (R-104, 2026-11-04 사용자 결정)
+
+- `OtherTaskList.rows(tasks, current:, today:, calendar:)`: 지금 초안 할 일을 뺀 대기(`todo`) 할 일을 §5.7 마감 순(`deadline`)으로. 노치가 처음 고르는 규칙(§5.1)과 무관하다.
+- 줄 보조 글자 `OtherTaskText.note`: 마감이 지났으면 "마감 지남"(빨강), 오늘이면 "오늘 마감"·내일이면 "내일 마감"(크레마색), 그 밖 마감은 "1월 20일", 마감 없는 매일·매주는 "매일"·"매주 수요일", 그 밖은 빈 글자. 목록이 비면 "다른 대기 할 일이 없어요."
+- 고르면 `NotchSession.chosenDraft(id)`. 고른 할 일로 바뀌어도 그 뒤 버튼 로그의 `scheduler_choice`는 `rotate_by_id_v0` 그대로다(R18 알려진 한계, 새 로그 값 없음).
 
 ### 5.8 할 일 쓰기 규칙 `TaskWriteRules` (R-101, R-113)
 

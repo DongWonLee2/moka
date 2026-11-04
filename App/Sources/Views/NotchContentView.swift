@@ -20,7 +20,7 @@ struct NotchContentView: View {
     let titleFocusRequest: Int
     let chip: QuantumChipInput
     let onEnterTitle: (String) -> Void
-    var newTitle = NewTitleInput()
+    var draftInput = DraftInput()
     let onStart: () -> Void
     let onComplete: () -> Void
 
@@ -48,7 +48,7 @@ struct NotchContentView: View {
                 ExpandedView(
                     timer: timer, remainingSeconds: remainingSeconds, metrics: metrics,
                     titleFocusRequest: titleFocusRequest, chip: chip,
-                    onEnterTitle: onEnterTitle, newTitle: newTitle, onStart: onStart, onComplete: onComplete
+                    onEnterTitle: onEnterTitle, draftInput: draftInput, onStart: onStart, onComplete: onComplete
                 )
                 .transition(reduceMotion ? .opacity : .notchEntry(scaleY: 0.6, anchor: .top))
             }

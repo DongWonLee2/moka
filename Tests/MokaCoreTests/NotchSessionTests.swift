@@ -109,35 +109,28 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
     }
 }
 
-@Suite struct NotchSessionNextDraftTests {
-    @Test("FR-05 R-104: 다른 할 일은 커서를 지금 초안으로 두고 다음 후보로 초안을 바꾼다(칩 유지)")
-    func nextDraftAdvances() {
+@Suite struct NotchSessionChosenDraftTests {
+    @Test("FR-05 R-104: 다른 할 일 목록에서 고르면 커서를 지금 초안으로 두고 그 할 일로 초안을 바꾼다(칩 유지)")
+    func chosenDraftSwitches() {
         let session = NotchSession(
             timer: draft("가짜 할 일 1", chip: 45, picked: true), taskID: 1, previousTaskID: nil, run: nil)
-        let next = session.nextDraft(Fake.input(Fake.todos(1...3)))
-        #expect(next.timer == draft("가짜 할 일 2", chip: 45, picked: true))
-        #expect(next.taskID == 2)
+        let next = session.chosenDraft(3, Fake.input(Fake.todos(1...3)))
+        #expect(next.timer == draft("가짜 할 일 3", chip: 45, picked: true))
+        #expect(next.taskID == 3)
         #expect(next.previousTaskID == 1)
         #expect(next.run == nil)
     }
 
-    @Test("FR-05 R-104: 다른 할 일을 이어 누르면 1 → 2 → 3 → 1")
-    func nextDraftCycles() {
-        let tasks = Fake.todos(1...3)
-        var session = NotchSession.initial.picked(Fake.input(tasks))
-        var seen = [session.taskID!]
-        for _ in 0..<3 {
-            session = session.nextDraft(Fake.input(tasks))
-            seen.append(session.taskID!)
-        }
-        #expect(seen == [1, 2, 3, 1])
-    }
-
-    @Test("FR-05 R-104: 다른 할 일은 초안에서만 된다(빈 상태·도는 중은 그대로)")
-    func nextDraftOnlyInDraft() throws {
-        #expect(NotchSession.initial.nextDraft(Fake.input(Fake.todos(1...2))) == .initial)
-        let (running, tasks) = try started(Fake.todos(1...2))
-        #expect(running.nextDraft(Fake.input(tasks)) == running)
+    @Test("FR-05 R-104: 초안이 아니거나, 없는·대기 아닌·지금 할 일을 고르면 그대로")
+    func chosenDraftRejects() throws {
+        let tasks = Fake.todos(1...2) + [Fake.task(3, status: .done)]
+        #expect(NotchSession.initial.chosenDraft(2, Fake.input(tasks)) == .initial)
+        let drafted = NotchSession.initial.picked(Fake.input(tasks))
+        #expect(drafted.chosenDraft(9, Fake.input(tasks)) == drafted)
+        #expect(drafted.chosenDraft(3, Fake.input(tasks)) == drafted)
+        #expect(drafted.chosenDraft(1, Fake.input(tasks)) == drafted)
+        let (running, started) = try started(Fake.todos(1...2))
+        #expect(running.chosenDraft(2, Fake.input(started)) == running)
     }
 }
 
@@ -231,7 +224,7 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
     @Test("FR-01 R-102: 다음 표시는 초안이면 그 할 일")
     func draftMarksItself() {
         let tasks = Fake.todos(1...3)
-        let drafted = NotchSession.initial.picked(Fake.input(tasks)).nextDraft(Fake.input(tasks))
+        let drafted = NotchSession.initial.picked(Fake.input(tasks)).chosenDraft(2, Fake.input(tasks))
         #expect(drafted.nextMark(Fake.input(tasks)) == 2)
     }
 
@@ -480,12 +473,12 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
     }
 
     @Test("FR-05 R-104: 시작 전 화면 다른 할 일은 기록 없이 커서만 옮긴다")
-    func nextDraftWritesNothing() throws {
+    func chosenDraftWritesNothing() throws {
         let repository = try InMemoryTaskRepository.seeded(3)
         let before = try repository.tasks()
-        let session = NotchSession.initial.picked(Fake.input(before)).nextDraft(Fake.input(before))
+        let session = NotchSession.initial.picked(Fake.input(before)).chosenDraft(3, Fake.input(before))
         #expect(session.previousTaskID == 1)
-        #expect(session.taskID == 2)
+        #expect(session.taskID == 3)
         #expect(try repository.tasks() == before)
         #expect(try repository.checkpoints().isEmpty)
         #expect(try repository.decisions().isEmpty)
@@ -533,8 +526,8 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
     @Test("FR-05 R-104: 완료 뒤 고르기는 처음부터(가장 작은 id), 미루기 뒤는 다음 차례")
     func pickAfterButtons() throws {
         let repository = try InMemoryTaskRepository.seeded(3)
-        var session = NotchSession.initial.picked(Fake.input(try repository.tasks())).nextDraft(
-            Fake.input(try repository.tasks()))
+        var session = NotchSession.initial.picked(Fake.input(try repository.tasks())).chosenDraft(
+            2, Fake.input(try repository.tasks()))
         #expect(session.taskID == 2)
         session = try SessionCommit.commit(session.start(Fake.input(try repository.tasks())), to: repository)
         session = try SessionCommit.commit(
@@ -588,10 +581,10 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
 
 @Suite struct NotchSessionGapTests {
     @Test("FR-05 R-104: 시간 끝에서 다른 할 일은 거부(세션 그대로)")
-    func nextDraftRejectedWhenExpired() throws {
+    func chosenDraftRejectedWhenExpired() throws {
         var (expired, tasks) = try started(Fake.todos(1...2))
         _ = expired.timer.apply(.tick, at: t0.addingTimeInterval(25 * 60), defaultQuantumMin: 25)
-        #expect(expired.nextDraft(Fake.input(tasks, now: t0.addingTimeInterval(26 * 60))) == expired)
+        #expect(expired.chosenDraft(2, Fake.input(tasks, now: t0.addingTimeInterval(26 * 60))) == expired)
     }
 
     @Test("FR-07 R-107: 빈 상태에서 다시 시작은 거부")
