@@ -344,6 +344,28 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 1", chipMin: 40)))
     }
 
+    // MARK: - R-102·R-118 할 일 탭
+
+    func test_R118_taskListStartsAllCreatedWithNextMark() throws {
+        let state = makeState(try Self.seeded(3))
+        state.launch()
+
+        XCTAssertEqual(state.taskListScope, .all)
+        XCTAssertEqual(state.taskListOrder, .created)
+        XCTAssertEqual(state.taskListRows.map(\.title), ["가짜 할 일 1", "가짜 할 일 2", "가짜 할 일 3"])
+        XCTAssertEqual(state.nextMarkID, state.taskListRows.first?.id, "초안이면 노치의 할 일에 다음 표시")
+    }
+
+    func test_R118_scopeChangesRowsButNotNextMark() throws {
+        let state = makeState(try Self.seeded(2))
+        state.launch()
+        let mark = state.nextMarkID
+
+        state.taskListScope = .today
+        XCTAssertEqual(state.taskListRows, [], "마감 없는 일반 할 일은 전체에만")
+        XCTAssertEqual(state.nextMarkID, mark, "보기는 노치 고르기를 바꾸지 않는다")
+    }
+
     // MARK: - #37 알림 처리기 해제
 
     func test_issue37_observationStopsWhenReleased() {
