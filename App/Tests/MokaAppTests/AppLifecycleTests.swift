@@ -643,11 +643,29 @@ final class AppLifecycleTests: XCTestCase {
 
         XCTAssertEqual(state.firstAction, "서론 첫 문장 고치기", "펼친 화면은 늘 보인다")
         XCTAssertTrue(state.showsFirstActionCollapsed, "고른 순간")
-        clock.advance(seconds: 1.9)
+        clock.advance(seconds: 1.5)
         XCTAssertTrue(state.showsFirstActionCollapsed)
-        clock.advance(seconds: 0.1)
+        clock.advance(seconds: 0.5)
         XCTAssertFalse(state.showsFirstActionCollapsed, "2초가 지나면 접힌 화면에서 사라진다")
         XCTAssertEqual(state.firstAction, "서론 첫 문장 고치기")
+    }
+
+    func test_FR07_R109_choosingOtherTaskShowsFirstActionAgain() throws {
+        let clock = TestClock(Self.noon)
+        let repository = try Self.seeded(2)
+        var second = try XCTUnwrap(repository.tasks().last)
+        second.firstAction = "목차 다시 보기"
+        try repository.apply(StoreBatch(updatedTasks: [second]))
+        let state = makeState(repository, clock: clock)
+        state.launch()
+        XCTAssertFalse(state.showsFirstActionCollapsed, "첫 할 일은 첫 행동이 없다")
+
+        clock.advance(seconds: 5)
+        state.chooseOtherTask(second.id)
+        XCTAssertEqual(state.firstAction, "목차 다시 보기")
+        XCTAssertTrue(state.showsFirstActionCollapsed, "목록에서 고른 순간부터 다시 2초")
+        clock.advance(seconds: 2)
+        XCTAssertFalse(state.showsFirstActionCollapsed)
     }
 
     func test_FR07_R109_taskWithoutFirstActionShowsNothing() throws {
