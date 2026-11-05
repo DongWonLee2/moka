@@ -860,6 +860,33 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertTrue(state.showsFirstActionCollapsed, "접힌 화면에 3초")
     }
 
+    // MARK: - R-107 시간 끝
+
+    func test_FR07_R107_restartFromExpiredRunsSameTaskAgain() throws {
+        let repository = try Self.seeded(2)
+        let clock = TestClock(Self.noon)
+        let state = runningFor18Minutes(repository, clock: clock)
+        clock.advance(minutes: 7)
+        state.tick()
+        XCTAssertEqual(state.timer, .expired(title: "가짜 할 일 1", chipMin: 25))
+
+        state.chooseQuantum(15)
+        state.start()
+
+        let restartedAt = Self.noon.addingTimeInterval(25 * 60)
+        XCTAssertEqual(
+            state.timer,
+            .running(
+                title: "가짜 할 일 1", quantumMin: 15, startedAt: restartedAt,
+                endsAt: restartedAt.addingTimeInterval(15 * 60)),
+            "N분 더는 같은 할 일을 고른 시간으로 다시 돌린다")
+        let checkpoint = try XCTUnwrap(repository.checkpoints().first)
+        XCTAssertEqual(checkpoint.trigger, .quantum)
+        XCTAssertEqual(checkpoint.elapsedMin, 25)
+        XCTAssertEqual(try repository.decisions(), [], "다시 시작은 로그를 남기지 않는다")
+        XCTAssertEqual(try repository.tasks().map(\.status), [.active, .todo])
+    }
+
     // MARK: - #37 알림 처리기 해제
 
     func test_issue37_observationStopsWhenReleased() {
