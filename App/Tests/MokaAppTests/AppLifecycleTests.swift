@@ -636,17 +636,17 @@ final class AppLifecycleTests: XCTestCase {
         return repository
     }
 
-    func test_FR07_R109_pickedTaskShowsFirstActionCollapsedForTwoSeconds() throws {
+    func test_FR07_R109_pickedTaskShowsFirstActionCollapsedForThreeSeconds() throws {
         let clock = TestClock(Self.noon)
         let state = makeState(try Self.seededWithFirstAction("서론 첫 문장 고치기"), clock: clock)
         state.launch()
 
         XCTAssertEqual(state.firstAction, "서론 첫 문장 고치기", "펼친 화면은 늘 보인다")
         XCTAssertTrue(state.showsFirstActionCollapsed, "고른 순간")
-        clock.advance(seconds: 1.5)
+        clock.advance(seconds: 2.5)
         XCTAssertTrue(state.showsFirstActionCollapsed)
         clock.advance(seconds: 0.5)
-        XCTAssertFalse(state.showsFirstActionCollapsed, "2초가 지나면 접힌 화면에서 사라진다")
+        XCTAssertFalse(state.showsFirstActionCollapsed, "3초가 지나면 접힌 화면에서 사라진다")
         XCTAssertEqual(state.firstAction, "서론 첫 문장 고치기")
     }
 
@@ -663,8 +663,8 @@ final class AppLifecycleTests: XCTestCase {
         clock.advance(seconds: 5)
         state.chooseOtherTask(second.id)
         XCTAssertEqual(state.firstAction, "목차 다시 보기")
-        XCTAssertTrue(state.showsFirstActionCollapsed, "목록에서 고른 순간부터 다시 2초")
-        clock.advance(seconds: 2)
+        XCTAssertTrue(state.showsFirstActionCollapsed, "목록에서 고른 순간부터 다시 3초")
+        clock.advance(seconds: 3)
         XCTAssertFalse(state.showsFirstActionCollapsed)
     }
 
@@ -691,6 +691,173 @@ final class AppLifecycleTests: XCTestCase {
 
         XCTAssertNil(state.firstAction)
         XCTAssertFalse(state.showsFirstActionCollapsed)
+    }
+
+    // MARK: - R-105·R-106 미루기·바꾸기와 두 줄 입력
+
+    private func runningFor18Minutes(
+        _ repository: any TaskRepository, clock: TestClock
+    ) -> AppState {
+        let state = makeState(repository, clock: clock)
+        state.launch()
+        state.start()
+        clock.advance(minutes: 18)
+        state.tick()
+        return state
+    }
+
+    func test_FR07_R106_skipWithNotesWritesCheckpointLogAndPicksNext() throws {
+        let repository = try Self.seeded(2)
+        let clock = TestClock(Self.noon)
+        let state = runningFor18Minutes(repository, clock: clock)
+
+        state.beginSetAside(.skip)
+        XCTAssertEqual(state.pendingAction, .skip)
+        XCTAssertEqual(state.elapsedMinutes, 18, "제목 줄 오른쪽 경과")
+        state.editNotes(NotesDraft(done: "가짜 한 일", next: "가짜 다음 일"))
+        state.submitSetAside()
+
+        let tasks = try repository.tasks()
+        XCTAssertEqual(tasks.map(\.status), [.todo, .todo])
+        XCTAssertEqual(tasks[0].skipCount, 1, "미루기는 미룬 횟수 + 1")
+        XCTAssertEqual(tasks[0].firstAction, "가짜 다음 일", "다음 할 일 줄이 이어서 할 일이 된다(R-109)")
+        let checkpoint = try XCTUnwrap(repository.checkpoints().first)
+        XCTAssertEqual(checkpoint.trigger, .skip)
+        XCTAssertEqual(checkpoint.elapsedMin, 18)
+        XCTAssertEqual(checkpoint.notes, CheckpointNotes(doneNote: "가짜 한 일", nextNote: "가짜 다음 일"))
+        XCTAssertEqual(try repository.decisions().map(\.userAction), [.skip], "로그 한 줄(R-112)")
+        XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 2", chipMin: 25)), "다음 할 일을 고른다")
+        XCTAssertNil(state.pendingAction)
+        XCTAssertEqual(state.notesDraft, NotesDraft(), "두 줄 칸을 비운다")
+    }
+
+    func test_FR07_R106_switchWithoutNotesKeepsFirstActionAndCount() throws {
+        let repository = try Self.seeded(2)
+        let clock = TestClock(Self.noon)
+        let state = runningFor18Minutes(repository, clock: clock)
+
+        state.beginSetAside(.switch)
+        state.editNotes(NotesDraft(done: "적다가 만 줄", next: ""))
+        state.setAsideWithoutNotes()
+
+        let tasks = try repository.tasks()
+        XCTAssertEqual(tasks[0].status, .todo)
+        XCTAssertEqual(tasks[0].skipCount, 0, "바꾸기는 미룬 횟수를 올리지 않는다")
+        XCTAssertNil(tasks[0].firstAction)
+        let checkpoint = try XCTUnwrap(repository.checkpoints().first)
+        XCTAssertEqual(checkpoint.trigger, .switch)
+        XCTAssertEqual(checkpoint.notes, .empty, "안 적기는 적던 글자를 버리고 빈 두 줄")
+        XCTAssertEqual(try repository.decisions().map(\.userAction), [.switch])
+        XCTAssertEqual(state.session.taskID, 2)
+    }
+
+    func test_FR07_R106_emptyNotesKeepPreviousFirstAction() throws {
+        let clock = TestClock(Self.noon)
+        let state = runningFor18Minutes(try Self.seededWithFirstAction("가짜 이전 줄"), clock: clock)
+
+        state.beginSetAside(.switch)
+        state.setAsideWithoutNotes()
+
+        XCTAssertEqual(state.tasks.first?.firstAction, "가짜 이전 줄", "다음 할 일 줄이 비면 이전 값을 둔다(R-109)")
+        XCTAssertEqual(state.firstAction, "가짜 이전 줄")
+    }
+
+    func test_FR11_R119_setAsideWithoutStorageOnlyEndsTimer() {
+        let state = makeState(nil)
+        state.enterTitle("가짜 할 일")
+        state.start()
+
+        state.beginSetAside(.skip)
+        state.editNotes(NotesDraft(done: "가짜 한 일", next: ""))
+        state.submitSetAside()
+
+        XCTAssertEqual(state.timer, .empty(draft: nil), "저장할 수 없으면 spec 001 완료처럼 타이머만 끝난다")
+        XCTAssertNil(state.pendingAction)
+        XCTAssertEqual(state.notesDraft, NotesDraft())
+    }
+
+    func test_FR07_R106_cancelWritesNothingAndKeepsTimer() throws {
+        let repository = try Self.seeded(2)
+        let clock = TestClock(Self.noon)
+        let state = runningFor18Minutes(repository, clock: clock)
+        let running = state.timer
+
+        state.beginSetAside(.switch)
+        state.editNotes(NotesDraft(done: "가짜 한 일", next: "가짜 다음 일"))
+        clock.advance(minutes: 1)
+        state.tick()
+        XCTAssertEqual(state.elapsedMinutes, 19, "두 줄 입력 중에도 타이머는 돈다")
+        state.cancelSetAside()
+
+        XCTAssertNil(state.pendingAction)
+        XCTAssertEqual(state.notesDraft, NotesDraft())
+        XCTAssertEqual(state.timer, running)
+        XCTAssertEqual(try repository.tasks().map(\.status), [.active, .todo])
+        XCTAssertEqual(try repository.checkpoints(), [])
+        XCTAssertEqual(try repository.decisions(), [], "돌아가기는 로그를 남기지 않는다(R-112)")
+    }
+
+    func test_FR07_R106_onlyWhileRunning() throws {
+        let state = makeState(try Self.seeded(1))
+        state.launch()
+
+        state.beginSetAside(.skip)
+        XCTAssertNil(state.pendingAction, "초안에는 미루기가 없다")
+        XCTAssertFalse(state.takeNotesFocusRequest())
+    }
+
+    func test_FR07_R106_firstFieldFocusIsRequestedOnce() throws {
+        let state = runningFor18Minutes(try Self.seeded(1), clock: TestClock(Self.noon))
+
+        state.beginSetAside(.skip)
+        XCTAssertTrue(state.takeNotesFocusRequest(), "버튼을 누른 직후 첫 칸")
+        XCTAssertFalse(state.takeNotesFocusRequest(), "다시 펼쳐 칸이 다시 만들어질 때는 주지 않는다")
+    }
+
+    func test_FR07_R106_expiryWhilePendingClearsActionKeepsNotes() throws {
+        let clock = TestClock(Self.noon)
+        let state = runningFor18Minutes(try Self.seeded(1), clock: clock)
+        state.beginSetAside(.skip)
+        state.editNotes(NotesDraft(done: "가짜 한 일", next: ""))
+
+        clock.advance(minutes: 7)
+        state.tick()
+
+        XCTAssertEqual(state.timer, .expired(title: "가짜 할 일 1", chipMin: 25))
+        XCTAssertNil(state.pendingAction, "시간 끝 화면으로 바뀐다(§8)")
+        XCTAssertEqual(state.notesDraft, NotesDraft(done: "가짜 한 일", next: ""), "적던 글자는 이어진다")
+    }
+
+    func test_FR11_R119_failedSetAsideKeepsRunningAndNotes() throws {
+        let repository = FailingAfterStartRepository()
+        _ = try repository.inner.insertTask(
+            NewTask(title: "가짜 할 일 1", deadline: nil, estMin: nil, recurrence: .none, weekday: nil), cycleDay: nil,
+            at: Self.noon)
+        let clock = TestClock(Self.noon)
+        let state = runningFor18Minutes(repository, clock: clock)
+        let before = state.session
+        repository.failsApply = true
+
+        state.beginSetAside(.skip)
+        state.editNotes(NotesDraft(done: "가짜 한 일", next: ""))
+        state.submitSetAside()
+
+        XCTAssertEqual(state.session, before, "쓰기가 실패하면 세션을 바꾸지 않는다")
+        XCTAssertEqual(state.pendingAction, .skip, "두 줄 화면에 남아 다시 누를 수 있다")
+        XCTAssertEqual(state.notesDraft, NotesDraft(done: "가짜 한 일", next: ""))
+    }
+
+    func test_FR07_R109_skipOnlyTaskPicksItAgainWithFirstAction() throws {
+        let clock = TestClock(Self.noon)
+        let state = runningFor18Minutes(try Self.seeded(1), clock: clock)
+
+        state.beginSetAside(.skip)
+        state.editNotes(NotesDraft(done: "", next: "가짜 다음 일"))
+        state.submitSetAside()
+
+        XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 1", chipMin: 25)), "하나뿐이면 다시 뽑힌다")
+        XCTAssertEqual(state.firstAction, "가짜 다음 일")
+        XCTAssertTrue(state.showsFirstActionCollapsed, "접힌 화면에 3초")
     }
 
     // MARK: - #37 알림 처리기 해제
@@ -749,6 +916,24 @@ private final class ApplyFailingRepository: TaskRepository {
     func checkpoints() throws -> [Checkpoint] { try inner.checkpoints() }
     func decisions() throws -> [DecisionLogEntry] { try inner.decisions() }
     func apply(_ batch: StoreBatch) throws { throw Failure() }
+}
+
+private final class FailingAfterStartRepository: TaskRepository {
+    struct Failure: Error {}
+
+    let inner = InMemoryTaskRepository()
+    var failsApply = false
+
+    func tasks() throws -> [MokaTask] { try inner.tasks() }
+    func insertTask(_ task: NewTask, cycleDay: LocalDay?, at: Date) throws -> MokaTask {
+        try inner.insertTask(task, cycleDay: cycleDay, at: at)
+    }
+    func checkpoints() throws -> [Checkpoint] { try inner.checkpoints() }
+    func decisions() throws -> [DecisionLogEntry] { try inner.decisions() }
+    func apply(_ batch: StoreBatch) throws {
+        if failsApply { throw Failure() }
+        try inner.apply(batch)
+    }
 }
 
 /// 기본 작업 시간 읽기 횟수를 센다.

@@ -68,7 +68,7 @@ final class ScreenStateSnapshotTests: XCTestCase {
             expanded: false)
     }
 
-    /// 고른 뒤 2초: 왼쪽 칸에 "이어서 · <첫 행동>"(시안 1번 아래 줄, R-109). 노치는 양쪽 104pt.
+    /// 고른 뒤 3초: 왼쪽 칸에 "이어서 · <첫 행동>"(시안 1번 아래 줄, R-109). 노치는 양쪽 104pt.
     func test_R109_firstActionCollapsed() throws {
         try snapshot(
             "12-first-action-collapsed", timer: .empty(draft: Draft(title: Self.title, chipMin: 25)), remaining: nil,
@@ -93,6 +93,32 @@ final class ScreenStateSnapshotTests: XCTestCase {
         try snapshot(
             "14-running-first-action", timer: Self.running, remaining: Self.runningRemaining, expanded: true,
             hovering: true, firstAction: Self.firstAction)
+    }
+
+    func test_R106_notesSwitch() throws {
+        try snapshot(
+            "15-notes-switch", timer: Self.running, remaining: Self.runningRemaining, expanded: true,
+            notes: NotesInput(pending: .switch, draft: NotesDraft(done: "배경 문단 두 개 씀", next: ""), elapsedMinutes: 18))
+    }
+
+    func test_R106_notesLongTitle() throws {
+        let start = Self.startedAt
+        try snapshot(
+            "15-notes-long",
+            timer: .running(
+                title: "기말 보고서 1절 쓰기와 참고 문헌 목록 정리, 그림 번호 맞추기", quantumMin: 25, startedAt: start,
+                endsAt: start + 1500),
+            remaining: Self.runningRemaining, expanded: true,
+            notes: NotesInput(
+                pending: .skip,
+                draft: NotesDraft(done: "서론과 배경 문단 두 개를 쓰고 참고 문헌 다섯 개를 정리함", next: "그림 1 캡션과 표 번호 다시 맞추기"),
+                elapsedMinutes: 18))
+    }
+
+    func test_R106_notesSkipEmpty() throws {
+        try snapshot(
+            "15-notes-skip", timer: Self.running, remaining: Self.runningRemaining, expanded: true,
+            notes: NotesInput(pending: .skip, elapsedMinutes: 18))
     }
 
     func test_R006_runningCollapsed() throws {
@@ -132,7 +158,7 @@ final class ScreenStateSnapshotTests: XCTestCase {
     private func snapshot(
         _ name: String, timer: NotchTimer, remaining: Int?, expanded: Bool, hovering: Bool = false,
         style: PanelStyle = .notch, draftInput: DraftInput = DraftInput(), firstAction: String? = nil,
-        showsFirstActionCollapsed: Bool = false
+        showsFirstActionCollapsed: Bool = false, notes: NotesInput = NotesInput()
     ) throws {
         let metrics = style == .notch ? Self.notchMetrics : Self.floatingMetrics
         let size = NotchLayout.panelSize(metrics: metrics)
@@ -143,7 +169,7 @@ final class ScreenStateSnapshotTests: XCTestCase {
             chip: QuantumChipInput(
                 customText: nil, canStart: true, onChoose: { _ in }, onBeginCustom: {}, onEditCustom: { _ in },
                 takeFocusRequest: { false }),
-            onEnterTitle: { _ in }, draftInput: draftInput, onStart: {}, onComplete: {})
+            onEnterTitle: { _ in }, draftInput: draftInput, notes: notes, onStart: {}, onComplete: {})
 
         let light = try renderPNG(view: content, size: size, appearance: .aqua)
         let dark = try renderPNG(view: content, size: size, appearance: .darkAqua)

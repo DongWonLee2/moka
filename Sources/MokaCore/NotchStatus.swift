@@ -22,4 +22,8 @@ public enum NotchStatus {
             return "시간 끝"
         }
     }
+
+    public static func elapsed(minutes: Int) -> String {
+        "\(minutes)분 했어요"
+    }
 }

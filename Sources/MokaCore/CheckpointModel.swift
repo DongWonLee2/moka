@@ -53,10 +53,13 @@ extension Checkpoint {
 
 /// 이어서 할 일(첫 행동) 표시(R-109). 펼친 화면은 첫 행동이 있으면 늘 보인다.
 public enum FirstActionDisplay {
-    /// 접힌 화면은 고른 뒤 2초만: `0 ≤ now − pickedAt < 2초`.
+    /// 접힌 화면에 보이는 시간(사용자 결정 2026-11-05, 처음 2초).
+    public static let collapsedSeconds: TimeInterval = 3
+
+    /// 접힌 화면은 고른 뒤 `collapsedSeconds`만: `0 ≤ now − pickedAt < 3초`.
     public static func showsInCollapsed(pickedAt: Date, now: Date) -> Bool {
         let seconds = now.timeIntervalSince(pickedAt)
-        return seconds >= 0 && seconds < 2
+        return seconds >= 0 && seconds < collapsedSeconds
     }
 }
 

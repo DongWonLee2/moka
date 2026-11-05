@@ -81,6 +81,18 @@ final class NotchPanelHost: NSObject, NSWindowDelegate {
                     self?.appState.complete()
                     self?.giveUpKey()
                 },
+                onSetAside: { [weak self] withNotes in
+                    guard let self else { return }
+                    if withNotes {
+                        appState.submitSetAside()
+                    } else {
+                        appState.setAsideWithoutNotes()
+                    }
+                    // 쓰기가 실패하면 두 줄 화면에 남아 다시 누를 수 있게 key를 둔다.
+                    if appState.pendingAction == nil {
+                        giveUpKey()
+                    }
+                },
                 onLayoutChange: { [weak self] layout in
                     self?.contentLayout = layout
                     self?.updateHoverFrame()
@@ -109,7 +121,7 @@ final class NotchPanelHost: NSObject, NSWindowDelegate {
         appState.panelClicked()
     }
 
-    /// 시작·완료 뒤 key를 내려놓아 키 입력이 이전 앱으로 돌아가게 한다(T015 사람 확인).
+    /// 시작·완료·등록·안 적기 뒤 key를 내려놓아 키 입력이 이전 앱으로 돌아가게 한다(T015 사람 확인).
     private func giveUpKey() {
         panel.resignKey()
         appState.setInputFocused(false)
@@ -177,6 +189,7 @@ struct NotchPanelRoot: View {
     var style: PanelStyle = .notch
     var onStart: () -> Void = {}
     var onComplete: () -> Void = {}
+    var onSetAside: (_ withNotes: Bool) -> Void = { _ in }
     var onLayoutChange: (PanelContentLayout) -> Void = { _ in }
 
     var body: some View {
@@ -209,6 +222,12 @@ struct NotchPanelRoot: View {
                 otherItems: appState.isPickingOtherTask ? appState.otherTaskItems : [],
                 onBeginOther: { appState.beginOtherTask() }, onCancelOther: { appState.cancelOtherTask() },
                 onChooseOther: { appState.chooseOtherTask($0) }),
+            notes: NotesInput(
+                pending: appState.pendingAction, draft: appState.notesDraft,
+                elapsedMinutes: appState.pendingAction == nil ? 0 : appState.elapsedMinutes,
+                onBegin: { appState.beginSetAside($0) }, onEdit: { appState.editNotes($0) },
+                onSubmit: { onSetAside(true) }, onSkipWriting: { onSetAside(false) },
+                onCancel: { appState.cancelSetAside() }, takeFocusRequest: { appState.takeNotesFocusRequest() }),
             onStart: onStart,
             onComplete: onComplete
         )
