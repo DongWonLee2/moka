@@ -43,6 +43,11 @@ struct CheckpointNotesView: View {
                 .notchField(focused: focus == .done)
                 .focused($focus, equals: .done)
                 .onSubmit { focus = .next }
+                // 노치 패널에서는 기본 키 순서로 Tab이 다음 칸에 가지 않는다(2026-11-05 사람 확인).
+                .onKeyPress(.tab) {
+                    focus = .next
+                    return .handled
+                }
             label("다음엔 뭐부터 할까요?")
             TextField("", text: nextText, prompt: placeholder("비워 둬도 돼요"))
                 .notchField(focused: focus == .next)
