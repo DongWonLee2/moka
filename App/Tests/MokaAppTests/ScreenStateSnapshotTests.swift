@@ -141,7 +141,6 @@ final class ScreenStateSnapshotTests: XCTestCase {
             hovering: true, notes: NotesInput(draft: NotesDraft(done: "1절 초안 끝냄", next: "그림 1 캡션")))
     }
 
-    /// 가장 긴 판: 긴 제목 + 두 칸 + 칩 + 직접 입력 칸 + 버튼 줄 + 이유 줄.
     func test_R107_expiredCustomInvalid() throws {
         try snapshot(
             "16-expired-custom-invalid",

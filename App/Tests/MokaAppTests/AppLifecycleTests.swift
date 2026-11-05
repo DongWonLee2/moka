@@ -887,7 +887,6 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertEqual(try repository.tasks().map(\.status), [.active, .todo])
     }
 
-    /// 할 일 둘, 첫 할 일의 25분이 끝난 상태.
     private func expired(_ repository: any TaskRepository, clock: TestClock) -> AppState {
         let state = runningFor18Minutes(repository, clock: clock)
         clock.advance(minutes: 7)

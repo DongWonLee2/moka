@@ -57,7 +57,6 @@ struct CheckpointNotesView: View {
     }
 }
 
-/// 라벨 둘과 칸 둘(두 줄 입력·시간 끝 공통). 첫 칸 Enter·Tab은 둘째 칸으로(§8).
 struct NotesFields: View {
     enum Field { case done, next }
 
