@@ -142,16 +142,16 @@ description: "spec 002 저장과 체크포인트 작업 목록"
 - [ ] T037 [US2] `Sources/MokaCore/NotchSession.swift`에 완료·미루기·바꾸기·다시 시작·`SessionCommit`을, `Sources/MokaCore/CheckpointModel.swift`에 `Checkpoint.elapsedMinutes`·`FirstActionDisplay.showsInCollapsed`를 둔다(data-model §4.2·§5.5). T032·T033·T035 PASS 〔단위 1〕
 - [ ] T038 [US2] `Sources/MokaCore/NotchStatus.swift`에 `pending: PendingAction? = nil` 매개변수를 더한다(기존 호출부·시험은 그대로 통과). T034 PASS. Issue #52가 같은 파일의 다른 문구를 바꾸므로 먼저 병합된 쪽에 맞춘다 〔단위 1〕
 - [ ] T039 [US2] `Sources/MokaCore/Sim/SimRunner.swift`에 `skip`·`switch`와 `start`·`complete`의 두 줄 필드를 더한다(contracts). T021(US2 몫)·T036 PASS 〔단위 3〕
-- [ ] T040 🔒 [US2] `App/Sources/Views/ExpandedView.swift`에 도는 중 화면을 고친다(시안 3번): 제목 아래 "이어서 할 일 <첫 행동>" 한 줄(있을 때만, 크레마색, 길면 …), 남은 시간 오른쪽에 미루기·바꾸기·완료(같은 무게). 시작 전 화면(시안 2번)에도 같은 줄 〔단위 4〕
-- [ ] T041 🔒 [US2] `App/Sources/Views/CheckpointNotesView.swift`에 두 줄 입력 화면을 만든다(시안 4번, R-106, 키 규칙은 data-model §8):
-  - 오른쪽 위 상태 `NotchStatus.label(for:pending:)`("바꾸는 중"/"미루는 중"), 제목 줄 오른쪽 "N분 했어요"(지금까지의 경과)
+- [x] T040 🔒 [US2] `App/Sources/Views/ExpandedView.swift`에 도는 중 화면을 고친다(시안 3번): 제목 아래 "이어서 할 일 <첫 행동>" 한 줄(있을 때만, 크레마색, 길면 …), 남은 시간 오른쪽에 미루기·바꾸기·완료(같은 무게). 시작 전 화면(시안 2번)에도 같은 줄 〔단위 4〕
+- [x] T041 🔒 [US2] `App/Sources/Views/CheckpointNotesView.swift`에 두 줄 입력 화면을 만든다(시안 4번, R-106, 키 규칙은 data-model §8):
+  - 오른쪽 위 상태 `NotchStatus.label(for:pending:)`("바꾸는 중"/"미루는 중"), 제목 줄 오른쪽 "N분 했어요"(지금까지의 경과, 글자는 `NotchStatus.elapsed(minutes:)`). 제목은 한 줄(고정 패널 높이)
   - 라벨 "어디까지 했어요?" + 칸, 라벨 "다음엔 뭐부터 할까요?" + 칸(자리표시 "비워 둬도 돼요")
   - 아래 줄: 왼쪽 "돌아가기 esc", 오른쪽 "안 적기", "등록 ↵"
   - 첫 칸 자동 포커스는 `OneShotRequest`로 한 번만
   〔단위 4〕
 - [ ] T042 🔒 [US2] `App/Sources/Views/ExpiredView.swift`를 고친다(시안 5번, R-107): 제목 + 빨간 0:00, 라벨 둘과 두 칸, 시간 칩 줄(spec 001 그대로), 아래 줄 왼쪽 미루기·바꾸기, 오른쪽 다시 시작·완료 ↵. Enter 규칙은 data-model §8 마지막 줄(둘째 칸 Enter는 아무 동작 없음). 키보드 포커스를 가져가지 않는 규칙은 spec 001 그대로. Issue #52(다시 시작 → "N분 더")가 같은 파일을 고친다: 먼저 병합된 쪽에 맞춘다 〔단위 4〕
-- [ ] T043 🔒 [US2] `App/Sources/Views/CollapsedView.swift`에 이어서 할 일 2초 표시를 더한다(시안 1번 아래 줄, R-109): `showsInCollapsed`가 참인 동안 왼쪽 칸에 "이어서 · <첫 행동>"(크레마색, 길면 …), 그 뒤 C1-B. 노치는 그 2초 동안 양쪽 104pt 대칭(사용자 결정 2026-11-04, 시안 104 / 28 대신), 떠 있는 창은 104 / 28. 다시 그리기는 plan "앱 연결"의 일회성 타이머 〔단위 4〕
-- [ ] T044 🔒 [US2] `App/Sources/AppState.swift`에 버튼과 두 줄 입력을 잇는다(plan "앱 연결", data-model §8): 미루기·바꾸기 → `pendingAction`, 등록·안 적기·완료·다시 시작·다른 할 일 → 세션 함수 → `SessionCommit` → `tasks()` 다시 읽기 → 빈 상태면 고르기 → `pickedAt`. 두 줄 입력 중 시간 끝이면 `pendingAction` nil. 쓰기가 throw하면 세션·`tasks`를 바꾸지 않고 오류 종류만 로그 〔단위 4〕
+- [x] T043 🔒 [US2] `App/Sources/Views/CollapsedView.swift`에 이어서 할 일 2초 표시를 더한다(시안 1번 아래 줄, R-109): `showsInCollapsed`가 참인 동안 왼쪽 칸에 "이어서 · <첫 행동>"(크레마색, 길면 …), 그 뒤 C1-B. 노치는 그 2초 동안 양쪽 104pt 대칭(사용자 결정 2026-11-04, 시안 104 / 28 대신), 떠 있는 창은 104 / 28. 다시 그리기는 plan "앱 연결"의 일회성 타이머 〔단위 4〕
+- [ ] T044 🔒 [US2] `App/Sources/AppState.swift`에 버튼과 두 줄 입력을 잇는다(plan "앱 연결", data-model §8): 미루기·바꾸기 → `pendingAction`, 등록·안 적기·완료·다시 시작·다른 할 일 → 세션 함수 → `SessionCommit` → `tasks()` 다시 읽기 → 빈 상태면 고르기 → `pickedAt`. 두 줄 입력 중 시간 끝이면 `pendingAction` nil. 쓰기가 throw하면 세션·`tasks`를 바꾸지 않고 오류 종류만 로그. 도는 중 미루기·바꾸기(등록·안 적기·돌아가기)는 연결함, 시간 끝 버튼 넷은 T042와 함께 〔단위 4〕
 
 **확인 지점**: `swift test` PASS, us2 golden PASS, 앱 빌드 PASS. SC-102·SC-103은 시뮬레이터와 단위 시험으로, 화면은 사람이 quickstart 6
 
