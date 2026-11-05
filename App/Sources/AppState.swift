@@ -55,7 +55,7 @@ final class AppState {
                 isEnteringNewTitle = false
                 isPickingOtherTask = false
             }
-            if session.taskID != oldValue.taskID || session.run == nil {
+            if session.taskID != oldValue.taskID || session.run != oldValue.run || Self.isEmpty(session.timer) {
                 notesDraft = NotesDraft()
             }
             if !Self.isRunning(session.timer) {
@@ -370,9 +370,17 @@ final class AppState {
         session.timer.applyDefaultQuantumChange(defaultQuantumMin, isEditingCustom: customText != nil)
     }
 
+    /// 시작 전이면 시작, 시간 끝이면 같은 할 일을 고른 칩으로 다시 시작(N분 더, R-107).
     func start() {
         guard canStart else { return }
-        commit(.start) { session, input throws(SessionError) in try session.start(input) }
+        if case .expired(_, let chipMin, _) = timer {
+            let notes = currentNotes
+            commit(.start) { session, input throws(SessionError) in
+                try session.restart(notes, quantumMin: chipMin, input)
+            }
+        } else {
+            commit(.start) { session, input throws(SessionError) in try session.start(input) }
+        }
     }
 
     func complete() {
@@ -406,7 +414,7 @@ final class AppState {
     }
 
     func submitSetAside() {
-        setAside(CheckpointNotes(doneNote: notesDraft.done, nextNote: notesDraft.next))
+        setAside(currentNotes)
     }
 
     func setAsideWithoutNotes() {
@@ -524,6 +532,10 @@ final class AppState {
         return result
     }
 
+    private var currentNotes: CheckpointNotes {
+        CheckpointNotes(doneNote: notesDraft.done, nextNote: notesDraft.next)
+    }
+
     private func setAside(_ notes: CheckpointNotes) {
         guard let action = pendingAction else { return }
         commit(.complete) { session, input throws(SessionError) in
@@ -532,6 +544,11 @@ final class AppState {
             case .switch: try session.switchTask(notes, input)
             }
         }
+    }
+
+    private static func isEmpty(_ timer: NotchTimer) -> Bool {
+        if case .empty = timer { return true }
+        return false
     }
 
     private static func isRunning(_ timer: NotchTimer) -> Bool {
