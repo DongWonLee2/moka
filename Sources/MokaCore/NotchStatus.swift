@@ -23,7 +23,6 @@ public enum NotchStatus {
         }
     }
 
-    /// 두 줄 입력 제목 줄 오른쪽(시안 v2 4번). 지금까지의 경과 분(`Checkpoint.elapsedMinutes`).
     public static func elapsed(minutes: Int) -> String {
         "\(minutes)분 했어요"
     }

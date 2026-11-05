@@ -55,7 +55,6 @@ final class AppState {
                 isEnteringNewTitle = false
                 isPickingOtherTask = false
             }
-            // 두 줄 입력 중 시간이 끝나면 시간 끝 화면으로 바뀌고 적던 글자는 이어진다(§8).
             if session.taskID != oldValue.taskID || session.run == nil {
                 notesDraft = NotesDraft()
             }
@@ -71,7 +70,6 @@ final class AppState {
     private(set) var isPickingOtherTask = false
     /// 도는 중 미루기·바꾸기를 눌러 두 줄 입력 중인 동작(R-106). 도는 중이 아니게 되면 nil.
     private(set) var pendingAction: PendingAction?
-    /// 두 줄 칸의 글자. 할 일이 바뀌거나 회차가 끝나면 비운다.
     private(set) var notesDraft = NotesDraft()
     /// 화면에 보이는 타이머. 세션 안의 spec 001 값이다.
     var timer: NotchTimer { session.timer }
@@ -127,9 +125,7 @@ final class AppState {
         return FirstActionDisplay.showsInCollapsed(pickedAt: pickedAt, now: clock.now())
     }
 
-    /// 두 줄 입력 제목 줄의 지금까지 경과 분. 1초 tick(`remainingSeconds`)마다 다시 그린다.
     var elapsedMinutes: Int {
-        _ = remainingSeconds
         guard let run = session.run else { return 0 }
         return Checkpoint.elapsedMinutes(startedAt: run.startedAt, now: clock.now(), quantumMin: run.quantumMin)
     }
@@ -140,7 +136,6 @@ final class AppState {
     /// "직접…"을 누른 뒤 칸이 처음 나타날 때 한 번만 포커스를 준다. 마우스로 다시 펼쳐 칸이 다시 만들어질 때는
     /// 주지 않는다(R-002, SC-003).
     @ObservationIgnored private var customFocus = OneShotRequest()
-    /// 미루기·바꾸기를 누른 직후에만 첫 칸에 포커스를 준다.
     @ObservationIgnored private var notesFocus = OneShotRequest()
     @ObservationIgnored private let clock: MokaClock
     @ObservationIgnored private let calendar: Calendar
@@ -404,19 +399,16 @@ final class AppState {
         notesDraft = draft
     }
 
-    /// 돌아가기(Esc). 아무것도 쓰지 않고 타이머는 그대로 돈다.
     func cancelSetAside() {
         pendingAction = nil
         notesDraft = NotesDraft()
         notesFocus.cancel()
     }
 
-    /// 등록: 적은 두 줄로 체크포인트·로그를 남기고 할 일을 대기로 돌린다.
     func submitSetAside() {
         setAside(CheckpointNotes(doneNote: notesDraft.done, nextNote: notesDraft.next))
     }
 
-    /// 안 적기: 적던 글자를 버리고 빈 두 줄로 남긴다.
     func setAsideWithoutNotes() {
         setAside(.empty)
     }
@@ -532,7 +524,6 @@ final class AppState {
         return result
     }
 
-    /// 미루기·바꾸기는 타이머 쪽에서 보면 회차가 끝나 빈 상태로 가는 `.complete`와 같다.
     private func setAside(_ notes: CheckpointNotes) {
         guard let action = pendingAction else { return }
         commit(.complete) { session, input throws(SessionError) in

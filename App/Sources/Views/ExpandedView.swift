@@ -87,7 +87,6 @@ struct ExpandedView: View {
                 HStack(spacing: 6) {
                     RemainingText(seconds: remainingSeconds, expired: false)
                     Spacer(minLength: 0)
-                    // 세 버튼은 같은 무게(시안 v2 3번).
                     Button("미루기") { notes.onBegin(.skip) }
                         .buttonStyle(NotchButtonStyle(kind: .secondary))
                     Button("바꾸기") { notes.onBegin(.switch) }
@@ -212,7 +211,6 @@ private struct TitleEntryRow: View {
     }
 }
 
-/// 판 안 한 줄 입력 칸(빈 상태 제목 칸, 두 줄 칸).
 private struct NotchFieldModifier: ViewModifier {
     let focused: Bool
 

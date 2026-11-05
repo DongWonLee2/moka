@@ -695,7 +695,6 @@ final class AppLifecycleTests: XCTestCase {
 
     // MARK: - R-105·R-106 미루기·바꾸기와 두 줄 입력
 
-    /// 할 일 둘, 첫 할 일을 시작하고 18분 지난 상태.
     private func runningFor18Minutes(
         _ repository: any TaskRepository, clock: TestClock
     ) -> AppState {
@@ -894,7 +893,6 @@ private final class ApplyFailingRepository: TaskRepository {
     func apply(_ batch: StoreBatch) throws { throw Failure() }
 }
 
-/// `failsApply`를 켠 뒤부터 `apply`가 throw하는 가짜 저장소.
 private final class FailingAfterStartRepository: TaskRepository {
     struct Failure: Error {}
 

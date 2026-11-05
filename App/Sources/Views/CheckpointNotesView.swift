@@ -1,7 +1,6 @@
 import MokaCore
 import SwiftUI
 
-/// 두 줄 칸의 글자(data-model §8 `notesDraft`). 저장하지 않는다.
 struct NotesDraft: Equatable {
     var done = ""
     var next = ""
@@ -20,7 +19,6 @@ struct NotesInput {
     var takeFocusRequest: () -> Bool = { false }
 }
 
-/// 미루기·바꾸기를 누른 뒤 두 줄 입력(시안 v2 4번). 첫 칸 Enter는 둘째 칸, 둘째 칸 Enter는 등록, Esc는 돌아가기(§8).
 struct CheckpointNotesView: View {
     let title: String
     let input: NotesInput
@@ -33,7 +31,6 @@ struct CheckpointNotesView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                // 두 칸과 버튼 줄이 고정 패널 높이에 들어가게 제목은 한 줄(시안 v2 4번).
                 TitleText(title: title, lineLimit: 1)
                 Text(NotchStatus.elapsed(minutes: input.elapsedMinutes))
                     .font(.system(size: 11))
