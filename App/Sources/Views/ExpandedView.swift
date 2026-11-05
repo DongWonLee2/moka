@@ -96,7 +96,8 @@ struct ExpandedView: View {
                 }
             }
         case .expired(let title, let chipMin, _):
-            ExpiredView(title: title, chipMin: chipMin, chip: chip, onStart: onStart, onComplete: onComplete)
+            ExpiredView(
+                title: title, chipMin: chipMin, chip: chip, notes: notes, onStart: onStart, onComplete: onComplete)
         }
     }
 

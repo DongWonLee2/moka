@@ -23,9 +23,7 @@ struct CheckpointNotesView: View {
     let title: String
     let input: NotesInput
 
-    private enum Field { case done, next }
-
-    @FocusState private var focus: Field?
+    @FocusState private var focus: NotesFields.Field?
     @Environment(\.panelPalette) private var palette
 
     var body: some View {
@@ -38,21 +36,8 @@ struct CheckpointNotesView: View {
                     .foregroundStyle(palette.muted)
                     .fixedSize()
             }
-            label("어디까지 했어요?")
-            TextField("", text: doneText)
-                .notchField(focused: focus == .done)
-                .focused($focus, equals: .done)
-                .onSubmit { focus = .next }
-                // 노치 패널에서는 기본 키 순서로 Tab이 다음 칸에 가지 않는다(2026-11-05 사람 확인).
-                .onKeyPress(.tab) {
-                    focus = .next
-                    return .handled
-                }
-            label("다음엔 뭐부터 할까요?")
-            TextField("", text: nextText, prompt: placeholder("비워 둬도 돼요"))
-                .notchField(focused: focus == .next)
-                .focused($focus, equals: .next)
-                .onSubmit(input.onSubmit)
+            NotesFields(draft: input.draft, onEdit: input.onEdit, focus: $focus, onSubmitNext: input.onSubmit)
+                .padding(.top, 8)
             HStack(spacing: 6) {
                 Button(action: input.onCancel) { ButtonLabel(text: "돌아가기", shortcut: "esc") }
                     .buttonStyle(NotchButtonStyle(kind: .ghost))
@@ -70,24 +55,53 @@ struct CheckpointNotesView: View {
             if input.takeFocusRequest() { Task { @MainActor in focus = .done } }
         }
     }
+}
+
+/// 라벨 둘과 칸 둘(두 줄 입력·시간 끝 공통). 첫 칸 Enter·Tab은 둘째 칸으로(§8).
+struct NotesFields: View {
+    enum Field { case done, next }
+
+    let draft: NotesDraft
+    let onEdit: (NotesDraft) -> Void
+    var donePlaceholder: String?
+    let focus: FocusState<Field?>.Binding
+    let onSubmitNext: () -> Void
+
+    @Environment(\.panelPalette) private var palette
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            label("어디까지 했어요?")
+            TextField("", text: doneText, prompt: donePlaceholder.map(placeholder))
+                .notchField(focused: focus.wrappedValue == .done)
+                .focused(focus, equals: .done)
+                .onSubmit { focus.wrappedValue = .next }
+                // 노치 패널에서는 기본 키 순서로 Tab이 다음 칸에 가지 않는다(2026-11-05 사람 확인).
+                .onKeyPress(.tab) {
+                    focus.wrappedValue = .next
+                    return .handled
+                }
+            label("다음엔 뭐부터 할까요?")
+                .padding(.top, 8)
+            TextField("", text: nextText, prompt: placeholder("비워 둬도 돼요"))
+                .notchField(focused: focus.wrappedValue == .next)
+                .focused(focus, equals: .next)
+                .onSubmit(onSubmitNext)
+        }
+    }
 
     private var doneText: Binding<String> {
-        Binding(
-            get: { input.draft.done },
-            set: { input.onEdit(NotesDraft(done: $0, next: input.draft.next)) })
+        Binding(get: { draft.done }, set: { onEdit(NotesDraft(done: $0, next: draft.next)) })
     }
 
     private var nextText: Binding<String> {
-        Binding(
-            get: { input.draft.next },
-            set: { input.onEdit(NotesDraft(done: input.draft.done, next: $0)) })
+        Binding(get: { draft.next }, set: { onEdit(NotesDraft(done: draft.done, next: $0)) })
     }
 
     private func label(_ text: String) -> some View {
         Text(text)
             .font(.system(size: 11))
             .foregroundStyle(palette.muted)
-            .padding(.top, 8)
             .padding(.bottom, 3)
     }
 

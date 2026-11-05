@@ -383,8 +383,10 @@ final class AppState {
         }
     }
 
+    /// 시간 끝이면 적힌 두 줄(비어도 됨)을 체크포인트로 남긴다(R-107).
     func complete() {
-        commit(.complete) { session, input throws(SessionError) in try session.complete(nil, input) }
+        let notes = Self.isExpired(timer) ? currentNotes : nil
+        commit(.complete) { session, input throws(SessionError) in try session.complete(notes, input) }
     }
 
     func tick() {
@@ -393,7 +395,12 @@ final class AppState {
 
     // MARK: - 미루기·바꾸기(R-105·R-106)
 
+    /// 도는 중이면 두 줄 입력을 연다. 시간 끝이면 다시 묻지 않고 적힌 두 줄로 바로 남긴다(R-107).
     func beginSetAside(_ action: PendingAction) {
+        if Self.isExpired(timer) {
+            setAside(action, currentNotes)
+            return
+        }
         guard Self.isRunning(timer) else { return }
         pendingAction = action
         notesFocus.request()
@@ -414,11 +421,13 @@ final class AppState {
     }
 
     func submitSetAside() {
-        setAside(currentNotes)
+        guard let pendingAction else { return }
+        setAside(pendingAction, currentNotes)
     }
 
     func setAsideWithoutNotes() {
-        setAside(.empty)
+        guard let pendingAction else { return }
+        setAside(pendingAction, .empty)
     }
 
     func setHovering(_ hovering: Bool) {
@@ -536,8 +545,7 @@ final class AppState {
         CheckpointNotes(doneNote: notesDraft.done, nextNote: notesDraft.next)
     }
 
-    private func setAside(_ notes: CheckpointNotes) {
-        guard let action = pendingAction else { return }
+    private func setAside(_ action: PendingAction, _ notes: CheckpointNotes) {
         commit(.complete) { session, input throws(SessionError) in
             switch action {
             case .skip: try session.skip(notes, input)
@@ -548,6 +556,11 @@ final class AppState {
 
     private static func isEmpty(_ timer: NotchTimer) -> Bool {
         if case .empty = timer { return true }
+        return false
+    }
+
+    private static func isExpired(_ timer: NotchTimer) -> Bool {
+        if case .expired = timer { return true }
         return false
     }
 
