@@ -135,6 +135,20 @@ final class ScreenStateSnapshotTests: XCTestCase {
         try snapshot("06-expired", timer: .expired(title: Self.title, chipMin: 25), remaining: 0, expanded: true)
     }
 
+    func test_R107_expiredNotes() throws {
+        try snapshot(
+            "16-expired-notes", timer: .expired(title: Self.title, chipMin: 25), remaining: 0, expanded: true,
+            hovering: true, notes: NotesInput(draft: NotesDraft(done: "1절 초안 끝냄", next: "그림 1 캡션")))
+    }
+
+    /// 가장 긴 판: 긴 제목 + 두 칸 + 칩 + 직접 입력 칸 + 버튼 줄 + 이유 줄.
+    func test_R107_expiredCustomInvalid() throws {
+        try snapshot(
+            "16-expired-custom-invalid",
+            timer: .expired(title: "기말 보고서 1절 쓰기와 참고 문헌 목록 정리, 그림 번호 맞추기", chipMin: 25), remaining: 0,
+            expanded: true, customText: "200")
+    }
+
     func test_R011_floatingCollapsed() throws {
         try snapshot(
             "07-floating-collapsed", timer: Self.running, remaining: Self.runningRemaining, expanded: false,
@@ -158,7 +172,7 @@ final class ScreenStateSnapshotTests: XCTestCase {
     private func snapshot(
         _ name: String, timer: NotchTimer, remaining: Int?, expanded: Bool, hovering: Bool = false,
         style: PanelStyle = .notch, draftInput: DraftInput = DraftInput(), firstAction: String? = nil,
-        showsFirstActionCollapsed: Bool = false, notes: NotesInput = NotesInput()
+        showsFirstActionCollapsed: Bool = false, notes: NotesInput = NotesInput(), customText: String? = nil
     ) throws {
         let metrics = style == .notch ? Self.notchMetrics : Self.floatingMetrics
         let size = NotchLayout.panelSize(metrics: metrics)
@@ -167,7 +181,8 @@ final class ScreenStateSnapshotTests: XCTestCase {
             style: style, firstAction: firstAction, showsFirstActionCollapsed: showsFirstActionCollapsed,
             titleFocusRequest: 0,
             chip: QuantumChipInput(
-                customText: nil, canStart: true, onChoose: { _ in }, onBeginCustom: {}, onEditCustom: { _ in },
+                customText: customText, canStart: QuantumChip.startAllowed(customText: customText), onChoose: { _ in },
+                onBeginCustom: {}, onEditCustom: { _ in },
                 takeFocusRequest: { false }),
             onEnterTitle: { _ in }, draftInput: draftInput, notes: notes, onStart: {}, onComplete: {})
 
