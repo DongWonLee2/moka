@@ -636,17 +636,17 @@ final class AppLifecycleTests: XCTestCase {
         return repository
     }
 
-    func test_FR07_R109_pickedTaskShowsFirstActionCollapsedForTwoSeconds() throws {
+    func test_FR07_R109_pickedTaskShowsFirstActionCollapsedForThreeSeconds() throws {
         let clock = TestClock(Self.noon)
         let state = makeState(try Self.seededWithFirstAction("서론 첫 문장 고치기"), clock: clock)
         state.launch()
 
         XCTAssertEqual(state.firstAction, "서론 첫 문장 고치기", "펼친 화면은 늘 보인다")
         XCTAssertTrue(state.showsFirstActionCollapsed, "고른 순간")
-        clock.advance(seconds: 1.5)
+        clock.advance(seconds: 2.5)
         XCTAssertTrue(state.showsFirstActionCollapsed)
         clock.advance(seconds: 0.5)
-        XCTAssertFalse(state.showsFirstActionCollapsed, "2초가 지나면 접힌 화면에서 사라진다")
+        XCTAssertFalse(state.showsFirstActionCollapsed, "3초가 지나면 접힌 화면에서 사라진다")
         XCTAssertEqual(state.firstAction, "서론 첫 문장 고치기")
     }
 
@@ -663,8 +663,8 @@ final class AppLifecycleTests: XCTestCase {
         clock.advance(seconds: 5)
         state.chooseOtherTask(second.id)
         XCTAssertEqual(state.firstAction, "목차 다시 보기")
-        XCTAssertTrue(state.showsFirstActionCollapsed, "목록에서 고른 순간부터 다시 2초")
-        clock.advance(seconds: 2)
+        XCTAssertTrue(state.showsFirstActionCollapsed, "목록에서 고른 순간부터 다시 3초")
+        clock.advance(seconds: 3)
         XCTAssertFalse(state.showsFirstActionCollapsed)
     }
 
@@ -857,7 +857,7 @@ final class AppLifecycleTests: XCTestCase {
 
         XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 1", chipMin: 25)), "하나뿐이면 다시 뽑힌다")
         XCTAssertEqual(state.firstAction, "가짜 다음 일")
-        XCTAssertTrue(state.showsFirstActionCollapsed, "접힌 화면에 2초")
+        XCTAssertTrue(state.showsFirstActionCollapsed, "접힌 화면에 3초")
     }
 
     // MARK: - #37 알림 처리기 해제
