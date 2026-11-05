@@ -38,3 +38,10 @@ func statusLabelWithoutPending(timer: NotchTimer, expected: String) {
 func statusLabelWhilePending(pending: PendingAction, expected: String) {
     #expect(NotchStatus.label(for: runningTimer, pending: pending) == expected)
 }
+
+@Test(
+    "FR-07 R-106: 두 줄 입력 제목 줄 오른쪽은 지금까지의 경과 분",
+    arguments: [(0, "0분 했어요"), (18, "18분 했어요"), (180, "180분 했어요")])
+func elapsedText(minutes: Int, expected: String) {
+    #expect(NotchStatus.elapsed(minutes: minutes) == expected)
+}
