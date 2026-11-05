@@ -22,7 +22,7 @@ enum NotchLayout {
 
     /// 접힌 판의 구멍 왼쪽·오른쪽 칸 폭(시안 v3.5). 빈 상태는 점 하나 자리 28pt씩,
     /// 할 일이 있으면 노치는 양쪽 64pt(R-006), 떠 있는 창은 왼쪽 104pt·오른쪽 "18:42" 52pt·"1:04:59" 64pt.
-    /// 초안을 고른 뒤 2초 "이어서 · <첫 행동>"을 보이는 동안 노치는 양쪽 104pt(R-109, 사용자 결정 2026-11-04).
+    /// 초안을 고른 뒤 3초 "이어서 · <첫 행동>"을 보이는 동안 노치는 양쪽 104pt(R-109, 사용자 결정 2026-11-04).
     static func collapsedSideWidths(
         timer: NotchTimer, remainingSeconds: Int?, style: PanelStyle, showsFirstAction: Bool = false
     ) -> (leading: CGFloat, trailing: CGFloat) {

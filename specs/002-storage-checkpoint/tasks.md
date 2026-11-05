@@ -132,7 +132,7 @@ description: "spec 002 저장과 체크포인트 작업 목록"
 ### Tests (Red)
 
 - [ ] T032 [P] [US2] `Tests/MokaCoreTests/NotchSessionTests.swift`에 버튼 시험을 더하고 실패를 확인한다(data-model §4.1 표와 그 아래 줄, §4.2 표의 버튼 칸·커서 수명·경과 분 줄, `FR-06 R-105`·`FR-07 R-106`·`R-107`·`R-109`·`FR-11 R-112`): 칩 45분·기본값 25분 시간 끝 → `elapsed_min` 45, 로그 `schedulerChoice` = `rotate_by_id_v0`, 하루 시작을 넘겨 끝낸 매일 반복 할 일(§4.1 예) 〔단위 1〕
-- [ ] T033 [P] [US2] `Tests/MokaCoreTests/CheckpointRulesTests.swift`에 data-model §5.5 시험을 쓰고 실패를 확인한다(`FR-07 R-108`·`R-109`): 경과 분 자름, 시계를 되돌린 `now`는 0, `showsInCollapsed`의 1.999초 참·2초 거짓·음수 거짓 〔단위 1〕
+- [ ] T033 [P] [US2] `Tests/MokaCoreTests/CheckpointRulesTests.swift`에 data-model §5.5 시험을 쓰고 실패를 확인한다(`FR-07 R-108`·`R-109`): 경과 분 자름, 시계를 되돌린 `now`는 0, `showsInCollapsed`의 2.999초 참·3초 거짓·음수 거짓(사용자 결정 2026-11-05로 2초에서 3초) 〔단위 1〕
 - [ ] T034 [P] [US2] `Tests/MokaCoreTests/NotchStatusTests.swift`에 `NotchStatus.label(for:pending:)` 시험을 더하고 실패를 확인한다(`FR-07 R-106`): `pending` nil이면 지금 출력 그대로, `.switch` → "바꾸는 중", `.skip` → "미루는 중"(시안 4번) 〔단위 1〕
 - [ ] T035 [P] [US2] `Tests/MokaCoreTests/SessionCommitTests.swift`에 `SessionCommit.commit` 시험을 쓰고 실패를 확인한다(data-model §4.2, `FR-11 R-119`): `apply`가 throw하는 가짜 저장소면 같은 오류를 던지고 저장소에 아무것도 남지 않음, 성공하면 `step.session` 〔단위 1〕
 - [ ] T036 [P] [US2] 👁 `Tests/MokaCoreTests/Fixtures/sim/storage-us2-buttons.json`과 기대 출력을 둔다(quickstart 2의 버튼 항목: 하나뿐일 때 미루기, 시간 끝 네 동작, 칩 45분 시간 끝, 두 줄 비움) 〔단위 3〕
@@ -150,7 +150,7 @@ description: "spec 002 저장과 체크포인트 작업 목록"
   - 첫 칸 자동 포커스는 `OneShotRequest`로 한 번만
   〔단위 4〕
 - [ ] T042 🔒 [US2] `App/Sources/Views/ExpiredView.swift`를 고친다(시안 5번, R-107): 제목 + 빨간 0:00, 라벨 둘과 두 칸, 시간 칩 줄(spec 001 그대로), 아래 줄 왼쪽 미루기·바꾸기, 오른쪽 다시 시작·완료 ↵. Enter 규칙은 data-model §8 마지막 줄(둘째 칸 Enter는 아무 동작 없음). 키보드 포커스를 가져가지 않는 규칙은 spec 001 그대로. Issue #52(다시 시작 → "N분 더")가 같은 파일을 고친다: 먼저 병합된 쪽에 맞춘다 〔단위 4〕
-- [x] T043 🔒 [US2] `App/Sources/Views/CollapsedView.swift`에 이어서 할 일 2초 표시를 더한다(시안 1번 아래 줄, R-109): `showsInCollapsed`가 참인 동안 왼쪽 칸에 "이어서 · <첫 행동>"(크레마색, 길면 …), 그 뒤 C1-B. 노치는 그 2초 동안 양쪽 104pt 대칭(사용자 결정 2026-11-04, 시안 104 / 28 대신), 떠 있는 창은 104 / 28. 다시 그리기는 plan "앱 연결"의 일회성 타이머 〔단위 4〕
+- [x] T043 🔒 [US2] `App/Sources/Views/CollapsedView.swift`에 이어서 할 일 3초 표시를 더한다(시안 1번 아래 줄, R-109): `showsInCollapsed`가 참인 동안 왼쪽 칸에 "이어서 · <첫 행동>"(크레마색, 길면 …), 그 뒤 C1-B. 노치는 그 3초 동안 양쪽 104pt 대칭(사용자 결정 2026-11-04, 시안 104 / 28 대신), 떠 있는 창은 104 / 28. 다시 그리기는 plan "앱 연결"의 일회성 타이머 〔단위 4〕
 - [ ] T044 🔒 [US2] `App/Sources/AppState.swift`에 버튼과 두 줄 입력을 잇는다(plan "앱 연결", data-model §8): 미루기·바꾸기 → `pendingAction`, 등록·안 적기·완료·다시 시작·다른 할 일 → 세션 함수 → `SessionCommit` → `tasks()` 다시 읽기 → 빈 상태면 고르기 → `pickedAt`. 두 줄 입력 중 시간 끝이면 `pendingAction` nil. 쓰기가 throw하면 세션·`tasks`를 바꾸지 않고 오류 종류만 로그. 도는 중 미루기·바꾸기(등록·안 적기·돌아가기)는 연결함, 시간 끝 버튼 넷은 T042와 함께 〔단위 4〕
 
 **확인 지점**: `swift test` PASS, us2 golden PASS, 앱 빌드 PASS. SC-102·SC-103은 시뮬레이터와 단위 시험으로, 화면은 사람이 quickstart 6
@@ -235,7 +235,7 @@ description: "spec 002 저장과 체크포인트 작업 목록"
 
 ## Phase 8: Polish & Cross-Cutting
 
-- [ ] T062 🔒 `App/Tests/MokaAppTests/ScreenStateSnapshotTests.swift`에 새 화면 상태 스냅샷을 라이트·다크로 더한다(ADR-0009, quickstart 5): 접힌 초안(C1-B)과 이어서 할 일 2초, 시작 전 + 다른 할 일 + 이어서 할 일, 도는 중 + 세 버튼, 두 줄 입력(바꾸는 중·미루는 중), 시간 끝 + 두 줄, 저장할 수 없는 빈 상태, 설정 기본 탭, 할 일 탭(보기·정렬·다음·매일/매주 연속 배지), 할 일 시트(새로·매주·고치기·지우기 확인), 일정 탭과 시트, 온보딩 1·2단계. sanity 단언만(크기 0 아님, 단색 아님, 라이트≠다크). 출력 폴더는 `TEST_RUNNER_MOKA_SNAPSHOT_DIR=.verify/snapshots/002`로 준다(`SnapshotHelper` 기본값은 001, 커밋 안 함) 〔단위 4〕
+- [ ] T062 🔒 `App/Tests/MokaAppTests/ScreenStateSnapshotTests.swift`에 새 화면 상태 스냅샷을 라이트·다크로 더한다(ADR-0009, quickstart 5): 접힌 초안(C1-B)과 이어서 할 일 3초, 시작 전 + 다른 할 일 + 이어서 할 일, 도는 중 + 세 버튼, 두 줄 입력(바꾸는 중·미루는 중), 시간 끝 + 두 줄, 저장할 수 없는 빈 상태, 설정 기본 탭, 할 일 탭(보기·정렬·다음·매일/매주 연속 배지), 할 일 시트(새로·매주·고치기·지우기 확인), 일정 탭과 시트, 온보딩 1·2단계. sanity 단언만(크기 0 아님, 단색 아님, 라이트≠다크). 출력 폴더는 `TEST_RUNNER_MOKA_SNAPSHOT_DIR=.verify/snapshots/002`로 준다(`SnapshotHelper` 기본값은 001, 커밋 안 함) 〔단위 4〕
 - [ ] T063 🔒 모은 PNG를 `~/Dev/ai-platform/projects/moka/design/pr-<번호>/index.html`에 시안 `002-mockup.html` 같은 번호와 나란히 두고 PR "완료 증거"에 경로를 적는다(저장소 밖, 커밋 안 함) 〔단위 4〕
 - [ ] T064 quickstart 3 오류 주입을 돌린다(커밋 안 함, 결과만 PR) 〔단위 1·2·3〕
 - [ ] T065 단위 1·2·3·5 PR마다 quickstart 1~4 결과 표(PASS/FAIL/SKIP/NOT_RUN)와 기존 golden 변경 0줄 확인을 붙인다 〔단위 1·2·3·5〕

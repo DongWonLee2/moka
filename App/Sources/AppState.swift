@@ -75,7 +75,7 @@ final class AppState {
     var timer: NotchTimer { session.timer }
     /// 저장소 `tasks()`의 지금 목록. 쓰기 뒤 다시 읽는다.
     private(set) var tasks: [MokaTask] = []
-    /// 노치가 지금 할 일을 고른 시각(이어서 할 일 접힘 표시 2초, data-model §5.5).
+    /// 노치가 지금 할 일을 고른 시각(이어서 할 일 접힘 표시 3초, data-model §5.5).
     private(set) var pickedAt: Date? {
         didSet { scheduleFirstActionRedraw() }
     }
@@ -118,7 +118,7 @@ final class AppState {
         return tasks.first { $0.id == id }?.firstAction
     }
 
-    /// 접힌 초안에 "이어서 · <첫 행동>"을 보이는지(R-109). 고른 뒤 2초만이고, 도는 중·시간 끝은 spec 001 그대로다.
+    /// 접힌 초안에 "이어서 · <첫 행동>"을 보이는지(R-109). 고른 뒤 3초만이고, 도는 중·시간 끝은 spec 001 그대로다.
     var showsFirstActionCollapsed: Bool {
         _ = collapsedRedrawTick
         guard Self.isDraft(timer), firstAction != nil, let pickedAt else { return false }
@@ -581,7 +581,7 @@ final class AppState {
     private func scheduleFirstActionRedraw() {
         firstActionRedrawTask?.cancel()
         firstActionRedrawTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .seconds(2))
+            try? await Task.sleep(for: .seconds(FirstActionDisplay.collapsedSeconds))
             guard !Task.isCancelled, let self else { return }
             let animation = NotchLayout.expansionAnimation(
                 expanding: false, reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)

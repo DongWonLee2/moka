@@ -158,7 +158,7 @@ adr/ADR-0010-day-boundary-calendar.md # 기존. 결정 검증 결과((a)/(b), �
 - 노치 뷰에 넘기는 값: 세션 상태, 이어서 할 일, `showsInCollapsed` 결과, 상태 글자(`NotchStatus.label(for:pending:)`), 경과 분, 저장 불가 여부. 콜백: 시작, 완료, 미루기, 바꾸기, 등록, 안 적기, 돌아가기, 다른 할 일, 다시 시작, 빠른 입력.
 - 모든 쓰기는 `AppState` 한 곳에서 한다: 세션 함수 → `apply` → 성공하면 `tasks()` 다시 읽기 → 세션 교체 → 빈 상태면 고르기 → `pickedAt` 갱신.
 - 활성화 판정: 앱 시작(복구 뒤), 기존 `wakeObserver`(`App/Sources/AppState.swift:41`), 노치 펼침 콜백, 설정 창 `onAppear`. 같은 함수 하나를 부른다.
-- 초안의 이어서 할 일 2초 표시: 초안 상태에는 1초 타이머가 돌지 않으므로(`AppState` refresh timer) `pickedAt` + 2초에 한 번 다시 그리는 일회성 `Task.sleep`을 둔다(취소 가능).
+- 초안의 이어서 할 일 3초 표시: 초안 상태에는 1초 타이머가 돌지 않으므로(`AppState` refresh timer) `pickedAt` + 3초에 한 번 다시 그리는 일회성 `Task.sleep`을 둔다(취소 가능).
 - 온보딩 창: `LSUIElement` 앱에서 SwiftUI `Window`는 저절로 열리지 않으므로(spec 001 research, `MokaApp.swift:102`) AppKit `NSWindow` + `NSHostingController`로 띄우고 `NSApp.activate()`로 앞에 둔다. `windowWillClose`에서 끝내지 않은 것으로 본다. 온보딩 중에도 노치 패널은 그대로 뜬다.
 - 종료·잠자기 알림 처리기는 기존 패턴(`queue: .main` + `MainActor.assumeIsolated`)을 따른다.
 - 재사용: 숫자 칸 해석과 이유 안내는 `QuantumChip.parseCustom`·`customIssue`, 펼침을 다시 그릴 때 포커스를 한 번만 주는 것은 `OneShotRequest`.

@@ -28,7 +28,9 @@ private let elapsedCases: [(Double, Int, Int)] = [
 @Suite struct FirstActionDisplayTests {
     @Test(
         "FR-07 R-109: 접힌 화면의 이어서 할 일은 고른 뒤 0초 이상 3초 미만만 보인다(사용자 결정 2026-11-05)",
-        arguments: [(0.0, true), (2.0, true), (2.999, true), (3.0, false), (5.0, false), (-0.001, false), (-3.0, false)])
+        arguments: [
+            (0.0, true), (2.0, true), (2.999, true), (3.0, false), (5.0, false), (-0.001, false), (-3.0, false),
+        ])
     func showsForThreeSeconds(seconds: Double, shows: Bool) {
         let now = start.addingTimeInterval(seconds)
         #expect(FirstActionDisplay.showsInCollapsed(pickedAt: start, now: now) == shows)

@@ -390,7 +390,7 @@ public enum DayBoundary {
 
 - `Checkpoint.elapsedMinutes(startedAt:now:quantumMin:) -> Int` = `floor((now − startedAt) / 60)`를 `0...quantumMin`으로 자름. `now`는 체크포인트를 저장하는 순간이다(버튼을 누른 순간이 아니라 두 줄을 등록·안 적기 한 순간, 종료·잠자기는 알림을 받은 순간, F6). 시간 끝 버튼은 `run.quantumMin`(§4.2).
 - 끝 시각 기준 타이머라 잠자기에서 깨어난 뒤 남기는 체크포인트의 경과 분에는 잠든 시간이 들어간다(spec 001 R-008 그대로, 튜닝 때 해석에 참고).
-- `FirstActionDisplay.showsInCollapsed(pickedAt:now:) -> Bool` = `0 ≤ now − pickedAt < 2초`. 접힌 화면은 고른 뒤 2초만, 펼친 화면은 첫 행동이 있으면 늘 보인다(R-109).
+- `FirstActionDisplay.showsInCollapsed(pickedAt:now:) -> Bool` = `0 ≤ now − pickedAt < 3초`(`collapsedSeconds`, 사용자 결정 2026-11-05, 처음 2초). 접힌 화면은 고른 뒤 3초만, 펼친 화면은 첫 행동이 있으면 늘 보인다(R-109).
 
 ### 5.6 값 검증
 
@@ -515,7 +515,7 @@ CREATE TABLE tasks(…);
 |---|---|
 | `session` | `NotchSession`(spec 001의 `timer`를 대신함) |
 | `tasks` | 저장소 `tasks()`의 지금 목록. 노치·설정 창 할 일 탭의 단일 출처. 쓰기 뒤 다시 읽음 |
-| `pickedAt` | 노치가 지금 할 일을 고른 시각. 첫 행동 접힘 표시 2초에 씀 |
+| `pickedAt` | 노치가 지금 할 일을 고른 시각. 첫 행동 접힘 표시 3초에 씀 |
 | `pendingAction` | `PendingAction?`(§2). 미루기·바꾸기를 눌러 두 줄 입력 중이면 그 동작 |
 | `taskListScope`, `taskListOrder` | 할 일 탭의 보기·정렬(§5.7). 처음 값은 `all`·`created`, 앱을 끄면 사라짐 |
 | `notesDraft` | 두 줄 입력 칸의 글자(시간 끝 화면 포함) |

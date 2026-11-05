@@ -68,7 +68,7 @@ final class ScreenStateSnapshotTests: XCTestCase {
             expanded: false)
     }
 
-    /// 고른 뒤 2초: 왼쪽 칸에 "이어서 · <첫 행동>"(시안 1번 아래 줄, R-109). 노치는 양쪽 104pt.
+    /// 고른 뒤 3초: 왼쪽 칸에 "이어서 · <첫 행동>"(시안 1번 아래 줄, R-109). 노치는 양쪽 104pt.
     func test_R109_firstActionCollapsed() throws {
         try snapshot(
             "12-first-action-collapsed", timer: .empty(draft: Draft(title: Self.title, chipMin: 25)), remaining: nil,
