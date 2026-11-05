@@ -95,6 +95,18 @@ final class ScreenStateSnapshotTests: XCTestCase {
             hovering: true, firstAction: Self.firstAction)
     }
 
+    func test_R106_notesSwitch() throws {
+        try snapshot(
+            "15-notes-switch", timer: Self.running, remaining: Self.runningRemaining, expanded: true,
+            notes: NotesInput(pending: .switch, draft: NotesDraft(done: "배경 문단 두 개 씀", next: ""), elapsedMinutes: 18))
+    }
+
+    func test_R106_notesSkipEmpty() throws {
+        try snapshot(
+            "15-notes-skip", timer: Self.running, remaining: Self.runningRemaining, expanded: true,
+            notes: NotesInput(pending: .skip, elapsedMinutes: 18))
+    }
+
     func test_R006_runningCollapsed() throws {
         try snapshot("04-running-collapsed", timer: Self.running, remaining: Self.runningRemaining, expanded: false)
     }
@@ -132,7 +144,7 @@ final class ScreenStateSnapshotTests: XCTestCase {
     private func snapshot(
         _ name: String, timer: NotchTimer, remaining: Int?, expanded: Bool, hovering: Bool = false,
         style: PanelStyle = .notch, draftInput: DraftInput = DraftInput(), firstAction: String? = nil,
-        showsFirstActionCollapsed: Bool = false
+        showsFirstActionCollapsed: Bool = false, notes: NotesInput = NotesInput()
     ) throws {
         let metrics = style == .notch ? Self.notchMetrics : Self.floatingMetrics
         let size = NotchLayout.panelSize(metrics: metrics)
@@ -143,7 +155,7 @@ final class ScreenStateSnapshotTests: XCTestCase {
             chip: QuantumChipInput(
                 customText: nil, canStart: true, onChoose: { _ in }, onBeginCustom: {}, onEditCustom: { _ in },
                 takeFocusRequest: { false }),
-            onEnterTitle: { _ in }, draftInput: draftInput, onStart: {}, onComplete: {})
+            onEnterTitle: { _ in }, draftInput: draftInput, notes: notes, onStart: {}, onComplete: {})
 
         let light = try renderPNG(view: content, size: size, appearance: .aqua)
         let dark = try renderPNG(view: content, size: size, appearance: .darkAqua)
