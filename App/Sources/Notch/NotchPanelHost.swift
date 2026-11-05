@@ -209,6 +209,12 @@ struct NotchPanelRoot: View {
                 otherItems: appState.isPickingOtherTask ? appState.otherTaskItems : [],
                 onBeginOther: { appState.beginOtherTask() }, onCancelOther: { appState.cancelOtherTask() },
                 onChooseOther: { appState.chooseOtherTask($0) }),
+            notes: NotesInput(
+                pending: appState.pendingAction, draft: appState.notesDraft,
+                elapsedMinutes: appState.pendingAction == nil ? 0 : appState.elapsedMinutes,
+                onBegin: { appState.beginSetAside($0) }, onEdit: { appState.editNotes($0) },
+                onSubmit: { appState.submitSetAside() }, onSkipWriting: { appState.setAsideWithoutNotes() },
+                onCancel: { appState.cancelSetAside() }, takeFocusRequest: { appState.takeNotesFocusRequest() }),
             onStart: onStart,
             onComplete: onComplete
         )

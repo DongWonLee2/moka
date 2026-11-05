@@ -101,6 +101,20 @@ final class ScreenStateSnapshotTests: XCTestCase {
             notes: NotesInput(pending: .switch, draft: NotesDraft(done: "배경 문단 두 개 씀", next: ""), elapsedMinutes: 18))
     }
 
+    func test_R106_notesLongTitle() throws {
+        let start = Self.startedAt
+        try snapshot(
+            "15-notes-long",
+            timer: .running(
+                title: "기말 보고서 1절 쓰기와 참고 문헌 목록 정리, 그림 번호 맞추기", quantumMin: 25, startedAt: start,
+                endsAt: start + 1500),
+            remaining: Self.runningRemaining, expanded: true,
+            notes: NotesInput(
+                pending: .skip,
+                draft: NotesDraft(done: "서론과 배경 문단 두 개를 쓰고 참고 문헌 다섯 개를 정리함", next: "그림 1 캡션과 표 번호 다시 맞추기"),
+                elapsedMinutes: 18))
+    }
+
     func test_R106_notesSkipEmpty() throws {
         try snapshot(
             "15-notes-skip", timer: Self.running, remaining: Self.runningRemaining, expanded: true,

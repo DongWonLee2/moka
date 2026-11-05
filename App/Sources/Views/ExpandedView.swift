@@ -19,6 +19,7 @@ struct ExpandedView: View {
     let chip: QuantumChipInput
     let onEnterTitle: (String) -> Void
     let draftInput: DraftInput
+    var notes = NotesInput()
     let onStart: () -> Void
     let onComplete: () -> Void
     @Environment(\.colorSchemeContrast) private var contrast
@@ -51,7 +52,7 @@ struct ExpandedView: View {
             }
             .frame(width: 64, alignment: .leading)
             Spacer(minLength: 0)
-            Text(NotchStatus.label(for: timer))
+            Text(NotchStatus.label(for: timer, pending: notes.pending))
                 .font(.system(size: 10.5, weight: isExpired ? .semibold : .regular))
                 .monospacedDigit()
                 .lineLimit(1)
@@ -76,15 +77,24 @@ struct ExpandedView: View {
                 draftStage(draft)
             }
         case .running(let title, _, _, _):
-            TitleText(title: title)
-            if let firstAction {
-                FirstActionLine(text: firstAction)
-            }
-            HStack(spacing: 6) {
-                RemainingText(seconds: remainingSeconds, expired: false)
-                Spacer(minLength: 0)
-                Button(action: onComplete) { ButtonLabel(text: "완료") }
-                    .buttonStyle(NotchButtonStyle(kind: .secondary))
+            if notes.pending != nil {
+                CheckpointNotesView(title: title, input: notes)
+            } else {
+                TitleText(title: title)
+                if let firstAction {
+                    FirstActionLine(text: firstAction)
+                }
+                HStack(spacing: 6) {
+                    RemainingText(seconds: remainingSeconds, expired: false)
+                    Spacer(minLength: 0)
+                    // 세 버튼은 같은 무게(시안 v2 3번).
+                    Button("미루기") { notes.onBegin(.skip) }
+                        .buttonStyle(NotchButtonStyle(kind: .secondary))
+                    Button("바꾸기") { notes.onBegin(.switch) }
+                        .buttonStyle(NotchButtonStyle(kind: .secondary))
+                    Button(action: onComplete) { ButtonLabel(text: "완료") }
+                        .buttonStyle(NotchButtonStyle(kind: .secondary))
+                }
             }
         case .expired(let title, let chipMin, _):
             ExpiredView(title: title, chipMin: chipMin, chip: chip, onStart: onStart, onComplete: onComplete)
@@ -168,7 +178,6 @@ private struct TitleEntryRow: View {
     @FocusState private var focused: Bool
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.panelPalette) private var palette
-    @Environment(\.panelIsKey) private var panelIsKey
 
     var body: some View {
         HStack(spacing: 6) {
@@ -178,17 +187,9 @@ private struct TitleEntryRow: View {
                 prompt: Text("무엇을 할까요?").foregroundStyle(
                     contrast == .increased ? palette.placeholderHighContrast : palette.placeholder)
             )
-            .textFieldStyle(.plain)
+            .notchField(focused: focused)
             .focused($focused)
             .onSubmit(submit)
-            .padding(.horizontal, 8)
-            .frame(height: 24)
-            .background(palette.field, in: .rect(cornerRadius: ExpandedView.controlRadius))
-            .overlay {
-                RoundedRectangle(cornerRadius: ExpandedView.controlRadius)
-                    .strokeBorder(showsFocus ? MokaColors.mochaHighlight : palette.fieldLine, lineWidth: 1)
-            }
-            .shadow(color: showsFocus ? MokaColors.mocha.opacity(0.38) : .clear, radius: 3)
             Button(action: submit) { ButtonLabel(text: "다음", shortcut: "↵") }
                 .buttonStyle(NotchButtonStyle(kind: .primary))
                 .disabled(trimmed.isEmpty)
@@ -201,10 +202,6 @@ private struct TitleEntryRow: View {
         .onExitCommand { onCancel?() }
     }
 
-    private var showsFocus: Bool {
-        FieldBorder.kind(invalid: false, focused: focused, panelIsKey: panelIsKey) == .focus
-    }
-
     private var trimmed: String {
         text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
@@ -215,14 +212,43 @@ private struct TitleEntryRow: View {
     }
 }
 
+/// 판 안 한 줄 입력 칸(빈 상태 제목 칸, 두 줄 칸).
+private struct NotchFieldModifier: ViewModifier {
+    let focused: Bool
+
+    @Environment(\.panelPalette) private var palette
+    @Environment(\.panelIsKey) private var panelIsKey
+
+    func body(content: Content) -> some View {
+        let showsFocus = FieldBorder.kind(invalid: false, focused: focused, panelIsKey: panelIsKey) == .focus
+        content
+            .textFieldStyle(.plain)
+            .padding(.horizontal, 8)
+            .frame(height: 24)
+            .background(palette.field, in: .rect(cornerRadius: ExpandedView.controlRadius))
+            .overlay {
+                RoundedRectangle(cornerRadius: ExpandedView.controlRadius)
+                    .strokeBorder(showsFocus ? MokaColors.mochaHighlight : palette.fieldLine, lineWidth: 1)
+            }
+            .shadow(color: showsFocus ? MokaColors.mocha.opacity(0.38) : .clear, radius: 3)
+    }
+}
+
+extension View {
+    func notchField(focused: Bool) -> some View {
+        modifier(NotchFieldModifier(focused: focused))
+    }
+}
+
 struct TitleText: View {
     let title: String
+    var lineLimit = 2
 
     var body: some View {
         Text(title)
             .font(.system(size: 13, weight: .semibold))
             .lineSpacing(2)
-            .lineLimit(2)
+            .lineLimit(lineLimit)
             .truncationMode(.tail)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
