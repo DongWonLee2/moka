@@ -751,6 +751,31 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertEqual(state.session.taskID, 2)
     }
 
+    func test_FR07_R106_emptyNotesKeepPreviousFirstAction() throws {
+        let clock = TestClock(Self.noon)
+        let state = runningFor18Minutes(try Self.seededWithFirstAction("가짜 이전 줄"), clock: clock)
+
+        state.beginSetAside(.switch)
+        state.setAsideWithoutNotes()
+
+        XCTAssertEqual(state.tasks.first?.firstAction, "가짜 이전 줄", "다음 할 일 줄이 비면 이전 값을 둔다(R-109)")
+        XCTAssertEqual(state.firstAction, "가짜 이전 줄")
+    }
+
+    func test_FR11_R119_setAsideWithoutStorageOnlyEndsTimer() {
+        let state = makeState(nil)
+        state.enterTitle("가짜 할 일")
+        state.start()
+
+        state.beginSetAside(.skip)
+        state.editNotes(NotesDraft(done: "가짜 한 일", next: ""))
+        state.submitSetAside()
+
+        XCTAssertEqual(state.timer, .empty(draft: nil), "저장할 수 없으면 spec 001 완료처럼 타이머만 끝난다")
+        XCTAssertNil(state.pendingAction)
+        XCTAssertEqual(state.notesDraft, NotesDraft())
+    }
+
     func test_FR07_R106_cancelWritesNothingAndKeepsTimer() throws {
         let repository = try Self.seeded(2)
         let clock = TestClock(Self.noon)
