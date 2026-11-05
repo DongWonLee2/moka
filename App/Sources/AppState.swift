@@ -112,7 +112,7 @@ final class AppState {
         TaskListView.rows(tasks, scope: taskListScope, order: taskListOrder, today: logicalToday, calendar: calendar)
     }
 
-    /// 노치의 할 일의 첫 행동(화면 이름 "이어서 할 일", R-109). 펼친 화면은 있으면 늘 보인다.
+    /// 노치의 할 일의 첫 행동(화면 이름 "이어서 할 일", R-109). 시작 전·도는 중 펼친 화면은 있으면 늘 보인다.
     var firstAction: String? {
         guard let id = session.taskID else { return nil }
         return tasks.first { $0.id == id }?.firstAction

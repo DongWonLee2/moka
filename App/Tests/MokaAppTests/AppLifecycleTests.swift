@@ -920,6 +920,7 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertEqual(try repository.tasks().map(\.status), [.done, .todo])
         XCTAssertEqual(try repository.decisions().map(\.userAction), [.done])
         XCTAssertEqual(state.session.taskID, 2)
+        XCTAssertEqual(state.notesDraft, NotesDraft())
     }
 
     func test_FR07_R107_skipFromExpiredDoesNotAskAgain() throws {
@@ -939,6 +940,24 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertEqual(checkpoint.elapsedMin, 25)
         XCTAssertEqual(try repository.decisions().map(\.userAction), [.skip])
         XCTAssertEqual(state.session.taskID, 2)
+        XCTAssertEqual(state.notesDraft, NotesDraft())
+    }
+
+    func test_FR11_R119_failedSkipFromExpiredKeepsExpiredAndNotes() throws {
+        let repository = FailingAfterStartRepository()
+        _ = try repository.inner.insertTask(
+            NewTask(title: "가짜 할 일 1", deadline: nil, estMin: nil, recurrence: .none, weekday: nil), cycleDay: nil,
+            at: Self.noon)
+        let state = expired(repository, clock: TestClock(Self.noon))
+        let before = state.session
+        state.editNotes(NotesDraft(done: "가짜 한 일", next: ""))
+        repository.failsApply = true
+
+        state.beginSetAside(.skip)
+
+        XCTAssertEqual(state.session, before, "쓰기가 실패하면 시간 끝 화면에 남는다")
+        XCTAssertEqual(state.notesDraft, NotesDraft(done: "가짜 한 일", next: ""))
+        XCTAssertEqual(try repository.checkpoints(), [])
     }
 
     func test_FR07_R107_switchFromExpiredWithEmptyNotes() throws {
