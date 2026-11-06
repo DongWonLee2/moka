@@ -306,6 +306,20 @@ final class AppState {
         return true
     }
 
+    /// 일정 고치기(R-121). 이름은 앞뒤 공백을 빼고, 비면 거부한다. 쓰기에 실패하면 false.
+    @discardableResult
+    func editContext(_ id: ContextID, _ values: NewContext) -> Bool {
+        guard let contextStore, let name = MokaContext.normalizedName(values.name) else { return false }
+        do {
+            try contextStore.updateContext(MokaContext(id: id, name: name, date: values.date, impact: values.impact))
+        } catch {
+            Self.logStorageFailure(error)
+            return false
+        }
+        reloadContexts()
+        return true
+    }
+
     /// 일정 지우기(R-115). 행을 실제로 지운다(research R4).
     @discardableResult
     func deleteContext(_ id: ContextID) -> Bool {

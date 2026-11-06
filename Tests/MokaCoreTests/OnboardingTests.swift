@@ -40,6 +40,10 @@ private final class RecordingStores: SettingsStore, ContextStore {
     func deleteContext(id: ContextID) throws {
         try contextStore.deleteContext(id: id)
     }
+
+    func updateContext(_ context: MokaContext) throws {
+        try contextStore.updateContext(context)
+    }
 }
 
 private let fakeContext = NewContext(name: "가짜 일정", date: LocalDay(text: "2027-01-20")!, impact: .high)
