@@ -250,18 +250,33 @@ struct SheetButton: View {
 }
 
 struct DeleteConfirmView: View {
-    let title: String
-    let stopsTimer: Bool
+    private let heading: String
+    private let message: String
     let onDelete: () -> Void
     let onCancel: () -> Void
     @Environment(\.colorScheme) private var colorScheme
 
+    init(title: String, stopsTimer: Bool, onDelete: @escaping () -> Void, onCancel: @escaping () -> Void) {
+        heading = TaskFormText.deleteTitle(title)
+        message = TaskFormText.deleteMessage(stopsTimer: stopsTimer)
+        self.onDelete = onDelete
+        self.onCancel = onCancel
+    }
+
+    /// 여러 개 지우기(R-120).
+    init(count: Int, stopsTimer: Bool, onDelete: @escaping () -> Void, onCancel: @escaping () -> Void) {
+        heading = TaskFormText.deleteManyTitle(count: count)
+        message = TaskFormText.deleteManyMessage(stopsTimer: stopsTimer)
+        self.onDelete = onDelete
+        self.onCancel = onCancel
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(TaskFormText.deleteTitle(title))
+            Text(heading)
                 .font(.system(size: 13, weight: .semibold))
                 .fixedSize(horizontal: false, vertical: true)
-            Text(TaskFormText.deleteMessage(stopsTimer: stopsTimer))
+            Text(message)
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

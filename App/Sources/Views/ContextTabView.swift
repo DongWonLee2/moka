@@ -5,6 +5,8 @@ import SwiftUI
 struct ContextTabView: View {
     let rows: [MokaContext]
     @Binding var selectedID: ContextID?
+    /// 한꺼번에 지울 일정(R-120). 있으면 `−`가 이것들을 지운다.
+    @Binding var checkedIDs: Set<ContextID>
     /// 저장할 수 없으면(R-119) 더하기·지우기가 꺼진다.
     let canEdit: Bool
     let onAdd: () -> Void
@@ -18,10 +20,17 @@ struct ContextTabView: View {
                 VStack(spacing: 0) {
                     ForEach(Array(rows.enumerated()), id: \.element.id) { index, context in
                         if index > 0 { Divider() }
-                        ContextRow(context: context, isSelected: context.id == selectedID)
-                            .contentShape(Rectangle())
-                            .onTapGesture { selectedID = context.id }
-                            .accessibilityAddTraits(.isButton)
+                        ContextRow(
+                            context: context, isSelected: context.id == selectedID,
+                            isChecked: Binding(
+                                get: { checkedIDs.contains(context.id) },
+                                set: { isOn in
+                                    if isOn { checkedIDs.insert(context.id) } else { checkedIDs.remove(context.id) }
+                                })
+                        )
+                        .contentShape(Rectangle())
+                        .onTapGesture { selectedID = context.id }
+                        .accessibilityAddTraits(.isButton)
                     }
                 }
             }
@@ -40,7 +49,7 @@ struct ContextTabView: View {
                     ListEditButton(symbol: "plus", label: "새 일정", action: onAdd)
                         .disabled(!canEdit)
                     ListEditButton(symbol: "minus", label: "고른 일정 지우기", action: onDelete)
-                        .disabled(!canEdit || !rows.contains { $0.id == selectedID })
+                        .disabled(!canEdit || !rows.contains { $0.id == selectedID || checkedIDs.contains($0.id) })
                 }
                 Text("시험·제출처럼 할 일 순서에 영향을 주는 일정이에요.")
                     .font(.system(size: 11))
@@ -56,9 +65,11 @@ struct ContextTabView: View {
 private struct ContextRow: View {
     let context: MokaContext
     let isSelected: Bool
+    @Binding var isChecked: Bool
 
     var body: some View {
         HStack(spacing: 8) {
+            RowCheckBox(isOn: $isChecked, label: context.name)
             VStack(alignment: .leading, spacing: 2) {
                 Text(context.name)
                     .fontWeight(.medium)
@@ -75,7 +86,7 @@ private struct ContextRow: View {
         .padding(.vertical, 6)
         .frame(minHeight: 40)
         .background(isSelected ? MokaColors.mocha.opacity(0.22) : Color.clear)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

@@ -19,6 +19,9 @@ struct SettingsView: View {
     @State private var selectedTaskID: TaskID?
     @State private var editing: TaskRequest?
     @State private var deleting: TaskRequest?
+    @State private var checkedTaskIDs: Set<TaskID> = []
+    @State private var isDeletingChecked = false
+    @State private var checkedContextIDs: Set<ContextID> = []
     @State private var isAddingContext = false
     @State private var selectedContextID: ContextID?
     private let calendar = GregorianCalendar.make(timeZone: .autoupdatingCurrent)
@@ -47,17 +50,30 @@ struct SettingsView: View {
             case .tasks:
                 TaskListTabView(
                     rows: appState.taskListRows, nextMarkID: appState.nextMarkID, scope: $appState.taskListScope,
-                    order: $appState.taskListOrder, selectedID: $selectedTaskID,
+                    order: $appState.taskListOrder, selectedID: $selectedTaskID, checkedIDs: $checkedTaskIDs,
                     canEdit: !appState.storageUnavailable,
                     onAdd: { isAddingTask = true }, onEdit: { editing = request(for: $0) },
-                    onDelete: { deleting = selectedTaskID.flatMap(request(for:)) }
+                    onDelete: {
+                        if visibleCheckedTaskIDs.isEmpty {
+                            deleting = selectedTaskID.flatMap(request(for:))
+                        } else {
+                            isDeletingChecked = true
+                        }
+                    }
                 )
             case .contexts:
                 ContextTabView(
-                    rows: appState.contexts, selectedID: $selectedContextID, canEdit: appState.canEditContexts,
+                    rows: appState.contexts, selectedID: $selectedContextID, checkedIDs: $checkedContextIDs,
+                    canEdit: appState.canEditContexts,
                     onAdd: { isAddingContext = true },
                     onDelete: {
-                        if let id = selectedContextID, appState.deleteContext(id) { selectedContextID = nil }
+                        if checkedContextIDs.isEmpty {
+                            if let id = selectedContextID, appState.deleteContext(id) { selectedContextID = nil }
+                        } else {
+                            appState.deleteContexts(checkedContextIDs)
+                            checkedContextIDs = []
+                            selectedContextID = nil
+                        }
                     })
             }
         }
@@ -93,6 +109,18 @@ struct SettingsView: View {
                     editing = nil
                 })
         }
+        .sheet(isPresented: $isDeletingChecked) {
+            let ids = visibleCheckedTaskIDs
+            DeleteConfirmView(
+                count: ids.count, stopsTimer: appState.tasks.contains { ids.contains($0.id) && $0.status == .active },
+                onDelete: {
+                    appState.dropTasks(ids)
+                    checkedTaskIDs = []
+                    selectedTaskID = nil
+                    isDeletingChecked = false
+                },
+                onCancel: { isDeletingChecked = false })
+        }
         .sheet(item: $deleting) { request in
             DeleteConfirmView(
                 title: request.task.title, stopsTimer: request.task.status == .active,
@@ -111,6 +139,11 @@ struct SettingsView: View {
             if previous == .basic { commitFields() }
         }
         .onDisappear(perform: commitFields)
+    }
+
+    /// 체크한 할 일 가운데 지금 보기에 보이는 것만 지운다. 보기를 바꿔 숨은 할 일이 같이 지워지지 않게 한다.
+    private var visibleCheckedTaskIDs: Set<TaskID> {
+        checkedTaskIDs.intersection(appState.taskListRows.map(\.id))
     }
 
     private func request(for id: TaskID) -> TaskRequest? {
