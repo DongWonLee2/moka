@@ -66,12 +66,16 @@ struct NotesFields: View {
     let focus: FocusState<Field?>.Binding
     let onSubmitNext: () -> Void
 
+    // 글자는 칸 안 상태로 들고 바뀔 때만 알린다(직접 입력 분 칸과 같은 방식). 바깥 값을 바로 읽는 Binding이면
+    // 노치 패널에서 칸이 포커스를 잃은 뒤 글자가 안 보였다(2026-11-06 사람 확인).
+    @State private var done = ""
+    @State private var next = ""
     @Environment(\.panelPalette) private var palette
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             label("어디까지 했어요?")
-            TextField("", text: doneText, prompt: donePlaceholder.map(placeholder))
+            TextField("", text: $done, prompt: donePlaceholder.map(placeholder))
                 .notchField(focused: focus.wrappedValue == .done)
                 .focused(focus, equals: .done)
                 .onSubmit { focus.wrappedValue = .next }
@@ -82,19 +86,25 @@ struct NotesFields: View {
                 }
             label("다음엔 뭐부터 할까요?")
                 .padding(.top, 8)
-            TextField("", text: nextText, prompt: placeholder("비워 둬도 돼요"))
+            TextField("", text: $next, prompt: placeholder("비워 둬도 돼요"))
                 .notchField(focused: focus.wrappedValue == .next)
                 .focused(focus, equals: .next)
                 .onSubmit(onSubmitNext)
         }
-    }
-
-    private var doneText: Binding<String> {
-        Binding(get: { draft.done }, set: { onEdit(NotesDraft(done: $0, next: draft.next)) })
-    }
-
-    private var nextText: Binding<String> {
-        Binding(get: { draft.next }, set: { onEdit(NotesDraft(done: draft.done, next: $0)) })
+        .onAppear {
+            done = draft.done
+            next = draft.next
+        }
+        .onChange(of: draft) { _, newValue in
+            if newValue.done != done { done = newValue.done }
+            if newValue.next != next { next = newValue.next }
+        }
+        .onChange(of: done) { _, newValue in
+            if newValue != draft.done { onEdit(NotesDraft(done: newValue, next: next)) }
+        }
+        .onChange(of: next) { _, newValue in
+            if newValue != draft.next { onEdit(NotesDraft(done: done, next: newValue)) }
+        }
     }
 
     private func label(_ text: String) -> some View {
