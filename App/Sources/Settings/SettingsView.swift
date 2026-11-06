@@ -19,6 +19,8 @@ struct SettingsView: View {
     @State private var selectedTaskID: TaskID?
     @State private var editing: TaskRequest?
     @State private var deleting: TaskRequest?
+    @State private var isAddingContext = false
+    @State private var selectedContextID: ContextID?
     private let calendar = GregorianCalendar.make(timeZone: .autoupdatingCurrent)
     private static let logger = Logger(subsystem: "dev.dongwon.moka", category: "settings")
 
@@ -50,9 +52,22 @@ struct SettingsView: View {
                     onAdd: { isAddingTask = true }, onEdit: { editing = request(for: $0) },
                     onDelete: { deleting = selectedTaskID.flatMap(request(for:)) }
                 )
+            case .contexts:
+                ContextTabView(
+                    rows: appState.contexts, selectedID: $selectedContextID, canEdit: appState.canEditContexts,
+                    onAdd: { isAddingContext = true },
+                    onDelete: {
+                        if let id = selectedContextID, appState.deleteContext(id) { selectedContextID = nil }
+                    })
             }
         }
         .navigationTitle("설정")
+        .sheet(isPresented: $isAddingContext) {
+            ContextFormView(
+                today: appState.logicalToday, calendar: calendar,
+                onSave: { if appState.addContext($0) { isAddingContext = false } },
+                onCancel: { isAddingContext = false })
+        }
         .sheet(isPresented: $isAddingTask) {
             TaskFormView(
                 today: appState.logicalToday, calendar: calendar,

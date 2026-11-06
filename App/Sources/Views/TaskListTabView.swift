@@ -203,7 +203,7 @@ private struct StatusBadge: View {
     }
 }
 
-private struct ListEditButton: View {
+struct ListEditButton: View {
     let symbol: String
     let label: String
     let action: () -> Void
