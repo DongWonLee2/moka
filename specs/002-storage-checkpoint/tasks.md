@@ -243,6 +243,14 @@ description: "spec 002 저장과 체크포인트 작업 목록"
 
 ---
 
+## Phase 9: 여러 개 골라 지우기 (R-120, 사용자 요청 2026-11-06)
+
+- [ ] T067 [P] `Tests/MokaCoreTests/TaskFormTextTests.swift`에 여러 개 지우기 확인 문구 시험을 쓰고 실패를 확인한다(`FR-01 R-120`): 제목 "할 일 N개를 지울까요?", 안내는 도는 중 포함 여부에 따라 〔단위 4〕
+- [ ] T068 `Sources/MokaCore/TaskFormText.swift`에 `deleteManyTitle(count:)`·`deleteManyMessage(stopsTimer:)`를 둔다. T067 PASS 〔단위 4〕
+- [ ] T069 🔒 `App/Sources/AppState.swift`에 `dropTasks(_:)`(한 번의 `apply`로 모두 버림, 노치의 할 일이면 타이머를 멈추고 고르기)·`deleteContexts(_:)`를 두고, 할 일 탭·일정 탭 줄마다 체크 칸과 한꺼번에 지우기를 잇는다(시험은 `AppLifecycleTests`, 스냅샷은 `SettingsSnapshotTests`) 〔단위 4〕
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase 순서
@@ -327,6 +335,7 @@ implementer B: "단위 3 — T021·T022·T026·T027·T036·T039·T046·T048·T05
 | R-117 시뮬레이터 | T021, T022, T036, T046, T053, T056 | T026, T027, T039, T048, T055 | — |
 | R-118 목록 보기·정렬 | T019 | T024 | T030 |
 | R-119 저장 실패 | T035 | T037 | T049, T051 |
+| R-120 여러 개 골라 지우기 | T067 | T068 | T069 |
 | SC-101 다시 켜도 남음 | T007, T008 | T015 | T049, T066 |
 | SC-102 버튼 수 = 로그 수 | T032, T036 | T037, T039 | T044 |
 | SC-103 이어서 할 일 재진입 | T022, T036, T046 | T039, T048 | T043, T066 |

@@ -66,3 +66,18 @@ func deleteMessage() {
 func firstActionNote() {
     #expect(TaskFormText.firstActionNote("31번부터") == "31번부터 · 멈출 때 적어 둔 줄이에요.")
 }
+
+@Test("FR-01 R-120: 여러 개 지우기 확인 제목은 개수")
+func deleteManyTitle() {
+    #expect(TaskFormText.deleteManyTitle(count: 3) == "할 일 3개를 지울까요?")
+}
+
+@Test("FR-01 R-120: 여러 개 지우기 안내는 도는 중인 할 일이 끼어 있으면 타이머가 멈춘다고 알린다")
+func deleteManyMessage() {
+    #expect(
+        TaskFormText.deleteManyMessage(stopsTimer: false)
+            == "지우면 노치에 다시 뜨지 않아요. 지금까지 남긴 기록은 그대로 둬요.")
+    #expect(
+        TaskFormText.deleteManyMessage(stopsTimer: true)
+            == "지금 타이머가 도는 할 일이 들어 있어요. 지우면 타이머가 멈추고 노치에 다시 뜨지 않아요. 지금까지 남긴 기록은 그대로 둬요.")
+}
