@@ -65,8 +65,8 @@ enum NotchLayout {
         let collapsedWidth = metrics.holeWidth + 2 * 104
         let width = max(collapsedWidth, ExpandedView.width) + 2 * NotchShape.earRadius + 2 * overshoot
         // 폭을 짝수로 둬야 노치 가운데에 놓을 때 왼쪽 끝이 반 포인트로 떨어지지 않는다.
-        // 높이: 가장 긴 펼친 판(제목 두 줄 + 칩 + 버튼 줄 + 직접 입력 이유 줄, 노치 아래 약 156pt)에 스프링 여유.
-        return CGSize(width: (width / 2).rounded(.up) * 2, height: metrics.height + 184)
+        // 높이: 가장 긴 펼친 판(시간 끝: 제목 + 두 칸 + 칩 + 직접 입력 칸 + 버튼 줄 + 이유 줄, 노치 아래 약 280pt)에 스프링 여유.
+        return CGSize(width: (width / 2).rounded(.up) * 2, height: metrics.height + 308)
     }
 }
 

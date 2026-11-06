@@ -81,6 +81,14 @@ final class NotchPanelHost: NSObject, NSWindowDelegate {
                     self?.appState.complete()
                     self?.giveUpKey()
                 },
+                onBeginSetAside: { [weak self] action in
+                    guard let self else { return }
+                    appState.beginSetAside(action)
+                    // 시간 끝에서는 두 줄을 다시 묻지 않고 바로 남기므로 시작·완료처럼 key를 내려놓는다.
+                    if case .empty = appState.timer {
+                        giveUpKey()
+                    }
+                },
                 onSetAside: { [weak self] withNotes in
                     guard let self else { return }
                     if withNotes {
@@ -189,6 +197,7 @@ struct NotchPanelRoot: View {
     var style: PanelStyle = .notch
     var onStart: () -> Void = {}
     var onComplete: () -> Void = {}
+    var onBeginSetAside: (PendingAction) -> Void = { _ in }
     var onSetAside: (_ withNotes: Bool) -> Void = { _ in }
     var onLayoutChange: (PanelContentLayout) -> Void = { _ in }
 
@@ -225,7 +234,7 @@ struct NotchPanelRoot: View {
             notes: NotesInput(
                 pending: appState.pendingAction, draft: appState.notesDraft,
                 elapsedMinutes: appState.pendingAction == nil ? 0 : appState.elapsedMinutes,
-                onBegin: { appState.beginSetAside($0) }, onEdit: { appState.editNotes($0) },
+                onBegin: onBeginSetAside, onEdit: { appState.editNotes($0) },
                 onSubmit: { onSetAside(true) }, onSkipWriting: { onSetAside(false) },
                 onCancel: { appState.cancelSetAside() }, takeFocusRequest: { appState.takeNotesFocusRequest() }),
             onStart: onStart,

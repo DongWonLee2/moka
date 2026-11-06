@@ -55,7 +55,7 @@ final class AppState {
                 isEnteringNewTitle = false
                 isPickingOtherTask = false
             }
-            if session.taskID != oldValue.taskID || session.run == nil {
+            if session.taskID != oldValue.taskID || session.run != oldValue.run || Self.isEmpty(session.timer) {
                 notesDraft = NotesDraft()
             }
             if !Self.isRunning(session.timer) {
@@ -112,7 +112,7 @@ final class AppState {
         TaskListView.rows(tasks, scope: taskListScope, order: taskListOrder, today: logicalToday, calendar: calendar)
     }
 
-    /// 노치의 할 일의 첫 행동(화면 이름 "이어서 할 일", R-109). 펼친 화면은 있으면 늘 보인다.
+    /// 노치의 할 일의 첫 행동(화면 이름 "이어서 할 일", R-109). 시작 전·도는 중 펼친 화면은 있으면 늘 보인다.
     var firstAction: String? {
         guard let id = session.taskID else { return nil }
         return tasks.first { $0.id == id }?.firstAction
@@ -370,13 +370,23 @@ final class AppState {
         session.timer.applyDefaultQuantumChange(defaultQuantumMin, isEditingCustom: customText != nil)
     }
 
+    /// 시작 전이면 시작, 시간 끝이면 같은 할 일을 고른 칩으로 다시 시작(N분 더, R-107).
     func start() {
         guard canStart else { return }
-        commit(.start) { session, input throws(SessionError) in try session.start(input) }
+        if case .expired(_, let chipMin, _) = timer {
+            let notes = currentNotes
+            commit(.start) { session, input throws(SessionError) in
+                try session.restart(notes, quantumMin: chipMin, input)
+            }
+        } else {
+            commit(.start) { session, input throws(SessionError) in try session.start(input) }
+        }
     }
 
+    /// 시간 끝이면 적힌 두 줄(비어도 됨)을 체크포인트로 남긴다(R-107).
     func complete() {
-        commit(.complete) { session, input throws(SessionError) in try session.complete(nil, input) }
+        let notes = Self.isExpired(timer) ? currentNotes : nil
+        commit(.complete) { session, input throws(SessionError) in try session.complete(notes, input) }
     }
 
     func tick() {
@@ -385,7 +395,12 @@ final class AppState {
 
     // MARK: - 미루기·바꾸기(R-105·R-106)
 
+    /// 도는 중이면 두 줄 입력을 연다. 시간 끝이면 다시 묻지 않고 적힌 두 줄로 바로 남긴다(R-107).
     func beginSetAside(_ action: PendingAction) {
+        if Self.isExpired(timer) {
+            setAside(action, currentNotes)
+            return
+        }
         guard Self.isRunning(timer) else { return }
         pendingAction = action
         notesFocus.request()
@@ -406,11 +421,13 @@ final class AppState {
     }
 
     func submitSetAside() {
-        setAside(CheckpointNotes(doneNote: notesDraft.done, nextNote: notesDraft.next))
+        guard let pendingAction else { return }
+        setAside(pendingAction, currentNotes)
     }
 
     func setAsideWithoutNotes() {
-        setAside(.empty)
+        guard let pendingAction else { return }
+        setAside(pendingAction, .empty)
     }
 
     func setHovering(_ hovering: Bool) {
@@ -524,14 +541,27 @@ final class AppState {
         return result
     }
 
-    private func setAside(_ notes: CheckpointNotes) {
-        guard let action = pendingAction else { return }
+    private var currentNotes: CheckpointNotes {
+        CheckpointNotes(doneNote: notesDraft.done, nextNote: notesDraft.next)
+    }
+
+    private func setAside(_ action: PendingAction, _ notes: CheckpointNotes) {
         commit(.complete) { session, input throws(SessionError) in
             switch action {
             case .skip: try session.skip(notes, input)
             case .switch: try session.switchTask(notes, input)
             }
         }
+    }
+
+    private static func isEmpty(_ timer: NotchTimer) -> Bool {
+        if case .empty = timer { return true }
+        return false
+    }
+
+    private static func isExpired(_ timer: NotchTimer) -> Bool {
+        if case .expired = timer { return true }
+        return false
     }
 
     private static func isRunning(_ timer: NotchTimer) -> Bool {
