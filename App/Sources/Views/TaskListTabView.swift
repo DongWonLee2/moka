@@ -326,7 +326,6 @@ extension SelectAllHeader where Trailing == EmptyView {
     }
 }
 
-/// 머리 줄 오른쪽 글자 버튼("완료만 고르기").
 struct HeaderTextButton: View {
     let title: String
     let action: () -> Void
