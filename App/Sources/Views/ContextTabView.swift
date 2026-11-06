@@ -1,7 +1,7 @@
 import MokaCore
 import SwiftUI
 
-/// 설정 창 일정 탭(시안 10번, R-115). 날짜순 목록, 더하기·지우기만 있다(−는 확인 없이 바로 지움). 값과 콜백만 받는다(ADR-0009).
+/// 설정 창 일정 탭(시안 10번, R-115). 날짜순 목록, 더하기·지우기만 있다(지울 때 한 번 묻는다, R-120). 값과 콜백만 받는다(ADR-0009).
 struct ContextTabView: View {
     let rows: [MokaContext]
     @Binding var selectedID: ContextID?

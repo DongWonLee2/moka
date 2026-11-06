@@ -256,19 +256,24 @@ struct DeleteConfirmView: View {
     let onCancel: () -> Void
     @Environment(\.colorScheme) private var colorScheme
 
-    init(title: String, stopsTimer: Bool, onDelete: @escaping () -> Void, onCancel: @escaping () -> Void) {
-        heading = TaskFormText.deleteTitle(title)
-        message = TaskFormText.deleteMessage(stopsTimer: stopsTimer)
+    init(heading: String, message: String, onDelete: @escaping () -> Void, onCancel: @escaping () -> Void) {
+        self.heading = heading
+        self.message = message
         self.onDelete = onDelete
         self.onCancel = onCancel
     }
 
+    init(title: String, stopsTimer: Bool, onDelete: @escaping () -> Void, onCancel: @escaping () -> Void) {
+        self.init(
+            heading: TaskFormText.deleteTitle(title), message: TaskFormText.deleteMessage(stopsTimer: stopsTimer),
+            onDelete: onDelete, onCancel: onCancel)
+    }
+
     /// 여러 개 지우기(R-120).
     init(count: Int, stopsTimer: Bool, onDelete: @escaping () -> Void, onCancel: @escaping () -> Void) {
-        heading = TaskFormText.deleteManyTitle(count: count)
-        message = TaskFormText.deleteManyMessage(stopsTimer: stopsTimer)
-        self.onDelete = onDelete
-        self.onCancel = onCancel
+        self.init(
+            heading: TaskFormText.deleteManyTitle(count: count),
+            message: TaskFormText.deleteManyMessage(stopsTimer: stopsTimer), onDelete: onDelete, onCancel: onCancel)
     }
 
     var body: some View {
