@@ -31,21 +31,29 @@ struct TaskListTabView: View {
                 VStack(spacing: 0) {
                     ForEach(Array(rows.enumerated()), id: \.element.id) { index, task in
                         if index > 0 { Divider() }
-                        TaskRow(
-                            task: task, isNext: task.id == nextMarkID, isSelected: task.id == selectedID,
-                            isChecked: Binding(
-                                get: { checkedIDs.contains(task.id) },
-                                set: { isOn in
-                                    if isOn { checkedIDs.insert(task.id) } else { checkedIDs.remove(task.id) }
-                                })
-                        )
-                        .contentShape(Rectangle())
-                        // 두 번 클릭을 동시에 들어야 한 번 클릭이 더블 클릭 간격을 기다리지 않는다.
-                        .onTapGesture { selectedID = task.id }
-                        .simultaneousGesture(
-                            TapGesture(count: 2).onEnded { if canEdit { onEdit(task.id) } }
-                        )
-                        .accessibilityAddTraits(.isButton)
+                        // 체크 칸은 줄 고르기·두 번 클릭 고치기 영역 밖에 둔다. 안에 두면 체크 칸을 빠르게 두 번 누를 때
+                        // 고치기 시트가 같이 열렸다(PR #88 리뷰).
+                        HStack(spacing: 0) {
+                            RowCheckBox(
+                                isOn: Binding(
+                                    get: { checkedIDs.contains(task.id) },
+                                    set: { isOn in
+                                        if isOn { checkedIDs.insert(task.id) } else { checkedIDs.remove(task.id) }
+                                    }),
+                                label: task.title
+                            )
+                            .padding(.leading, 10)
+                            TaskRow(task: task, isNext: task.id == nextMarkID)
+                                .contentShape(Rectangle())
+                                // 두 번 클릭을 동시에 들어야 한 번 클릭이 더블 클릭 간격을 기다리지 않는다.
+                                .onTapGesture { selectedID = task.id }
+                                .simultaneousGesture(
+                                    TapGesture(count: 2).onEnded { if canEdit { onEdit(task.id) } }
+                                )
+                                .accessibilityAddTraits(.isButton)
+                                .accessibilityAddTraits(task.id == selectedID ? .isSelected : [])
+                        }
+                        .background(task.id == selectedID ? MokaColors.mocha.opacity(0.22) : Color.clear)
                         .accessibilityAction(named: "고치기") { if canEdit { onEdit(task.id) } }
                     }
                 }
@@ -122,15 +130,12 @@ private struct SortPill: View {
 private struct TaskRow: View {
     let task: MokaTask
     let isNext: Bool
-    let isSelected: Bool
-    @Binding var isChecked: Bool
     @Environment(\.colorScheme) private var colorScheme
 
     private var isDone: Bool { task.status == .done }
 
     var body: some View {
         HStack(spacing: 8) {
-            RowCheckBox(isOn: $isChecked, label: task.title)
             VStack(alignment: .leading, spacing: 2) {
                 Text(task.title)
                     .fontWeight(.medium)
@@ -160,8 +165,6 @@ private struct TaskRow: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .frame(minHeight: 40)
-        .background(isSelected ? MokaColors.mocha.opacity(0.22) : Color.clear)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private var nextColor: Color { colorScheme == .dark ? MokaColors.crema : MokaColors.mocha }

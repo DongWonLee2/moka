@@ -1147,6 +1147,14 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertEqual(state.tasks.map(\.status), [.todo])
     }
 
+    func test_FR11_R119_failedDeleteContextsReturnsFalse() throws {
+        let state = makeState(try Self.seeded(1), contexts: FailingContextStore())
+        state.launch()
+
+        XCTAssertFalse(state.deleteContexts([1, 2]))
+        XCTAssertEqual(state.contexts, [])
+    }
+
     func test_FR02_R120_deleteContextsRemovesAll() throws {
         let state = makeState(try Self.seeded(1))
         state.launch()
