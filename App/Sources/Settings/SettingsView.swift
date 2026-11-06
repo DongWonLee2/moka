@@ -19,6 +19,10 @@ struct SettingsView: View {
     @State private var selectedTaskID: TaskID?
     @State private var editing: TaskRequest?
     @State private var deleting: TaskRequest?
+    @State private var checkedTaskIDs: Set<TaskID> = []
+    @State private var deletingTasks: TaskDeletion?
+    @State private var checkedContextIDs: Set<ContextID> = []
+    @State private var deletingContexts: ContextDeletion?
     @State private var isAddingContext = false
     @State private var selectedContextID: ContextID?
     private let calendar = GregorianCalendar.make(timeZone: .autoupdatingCurrent)
@@ -47,18 +51,26 @@ struct SettingsView: View {
             case .tasks:
                 TaskListTabView(
                     rows: appState.taskListRows, nextMarkID: appState.nextMarkID, scope: $appState.taskListScope,
-                    order: $appState.taskListOrder, selectedID: $selectedTaskID,
+                    order: $appState.taskListOrder, selectedID: $selectedTaskID, checkedIDs: $checkedTaskIDs,
                     canEdit: !appState.storageUnavailable,
                     onAdd: { isAddingTask = true }, onEdit: { editing = request(for: $0) },
-                    onDelete: { deleting = selectedTaskID.flatMap(request(for:)) }
+                    onDelete: {
+                        let ids = visibleCheckedTaskIDs
+                        if ids.isEmpty {
+                            deleting = selectedTaskID.flatMap(request(for:))
+                        } else {
+                            deletingTasks = TaskDeletion(
+                                ids: ids,
+                                stopsTimer: appState.tasks.contains { ids.contains($0.id) && $0.status == .active })
+                        }
+                    }
                 )
             case .contexts:
                 ContextTabView(
-                    rows: appState.contexts, selectedID: $selectedContextID, canEdit: appState.canEditContexts,
+                    rows: appState.contexts, selectedID: $selectedContextID, checkedIDs: $checkedContextIDs,
+                    canEdit: appState.canEditContexts,
                     onAdd: { isAddingContext = true },
-                    onDelete: {
-                        if let id = selectedContextID, appState.deleteContext(id) { selectedContextID = nil }
-                    })
+                    onDelete: { deletingContexts = contextDeletion() })
             }
         }
         .navigationTitle("설정")
@@ -93,6 +105,29 @@ struct SettingsView: View {
                     editing = nil
                 })
         }
+        // 시트 내용은 누른 순간 모은 값을 받는다. 시트 안에서 체크 상태를 다시 읽으면 처음 뜰 때 0개로 그려졌다(2026-11-06 사람 확인).
+        .sheet(item: $deletingTasks) { deletion in
+            DeleteConfirmView(
+                count: deletion.ids.count, stopsTimer: deletion.stopsTimer,
+                onDelete: {
+                    appState.dropTasks(deletion.ids)
+                    checkedTaskIDs = []
+                    selectedTaskID = nil
+                    deletingTasks = nil
+                },
+                onCancel: { deletingTasks = nil })
+        }
+        .sheet(item: $deletingContexts) { deletion in
+            DeleteConfirmView(
+                heading: deletion.heading, message: ContextText.deleteMessage,
+                onDelete: {
+                    appState.deleteContexts(deletion.ids)
+                    checkedContextIDs.subtract(deletion.ids)
+                    selectedContextID = nil
+                    deletingContexts = nil
+                },
+                onCancel: { deletingContexts = nil })
+        }
         .sheet(item: $deleting) { request in
             DeleteConfirmView(
                 title: request.task.title, stopsTimer: request.task.status == .active,
@@ -111,6 +146,23 @@ struct SettingsView: View {
             if previous == .basic { commitFields() }
         }
         .onDisappear(perform: commitFields)
+    }
+
+    /// 체크한 할 일 가운데 지금 보기에 보이는 것만 지운다. 보기를 바꿔 숨은 할 일이 같이 지워지지 않게 한다.
+    private var visibleCheckedTaskIDs: Set<TaskID> {
+        checkedTaskIDs.intersection(appState.taskListRows.map(\.id))
+    }
+
+    /// 체크한 일정이 있으면 그것들, 없으면 고른 한 줄(R-120). 지울 것이 없으면 nil.
+    private func contextDeletion() -> ContextDeletion? {
+        let checked = checkedContextIDs.intersection(appState.contexts.map(\.id))
+        if !checked.isEmpty {
+            return ContextDeletion(ids: checked, heading: ContextText.deleteManyTitle(count: checked.count))
+        }
+        guard let id = selectedContextID, let context = appState.contexts.first(where: { $0.id == id }) else {
+            return nil
+        }
+        return ContextDeletion(ids: [id], heading: ContextText.deleteTitle(context.name))
     }
 
     private func request(for id: TaskID) -> TaskRequest? {
@@ -164,4 +216,18 @@ struct SettingsView: View {
 private struct TaskRequest: Identifiable {
     let task: MokaTask
     var id: TaskID { task.id }
+}
+
+/// 한꺼번에 지울 할 일(R-120). `−`를 누른 순간 모은 값이다.
+private struct TaskDeletion: Identifiable {
+    let id = UUID()
+    let ids: Set<TaskID>
+    let stopsTimer: Bool
+}
+
+/// 지울 일정(R-120). 하나든 여럿이든 한 번 묻는다.
+private struct ContextDeletion: Identifiable {
+    let id = UUID()
+    let ids: Set<ContextID>
+    let heading: String
 }

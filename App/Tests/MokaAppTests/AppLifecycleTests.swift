@@ -1097,6 +1097,77 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertFalse(state.showsOnboarding, "끝냄 표시를 저장할 수 없어 매번 뜨게 되므로 띄우지 않는다")
     }
 
+    // MARK: - R-120 여러 개 골라 지우기
+
+    func test_FR01_R120_dropTasksDropsAllAndStopsNotchTask() throws {
+        let repository = try Self.seeded(3)
+        let state = makeState(repository)
+        state.launch()
+        state.start()
+        let ids = try repository.tasks().map(\.id)
+
+        XCTAssertTrue(state.dropTasks([ids[0], ids[2]]))
+
+        XCTAssertEqual(try repository.tasks().map(\.status), [.dropped, .todo, .dropped], "행은 지우지 않고 버림")
+        XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 2", chipMin: 25)), "타이머를 멈추고 남은 할 일을 고른다")
+    }
+
+    func test_FR01_R120_dropTasksKeepsSessionWhenNotchTaskStays() throws {
+        let repository = try Self.seeded(3)
+        let state = makeState(repository)
+        state.launch()
+        let before = state.session
+        let ids = try repository.tasks().map(\.id)
+
+        XCTAssertTrue(state.dropTasks([ids[1], ids[2]]))
+
+        XCTAssertEqual(state.session, before)
+        XCTAssertEqual(state.tasks.map(\.status), [.todo, .dropped, .dropped])
+    }
+
+    func test_FR01_R120_dropTasksRejectsEmpty() throws {
+        let state = makeState(try Self.seeded(1))
+        state.launch()
+
+        XCTAssertFalse(state.dropTasks([]))
+    }
+
+    func test_FR11_R119_failedDropTasksChangesNothing() throws {
+        let repository = ApplyFailingRepository()
+        _ = try repository.inner.insertTask(
+            NewTask(title: "가짜 할 일 1", deadline: nil, estMin: nil, recurrence: .none, weekday: nil), cycleDay: nil,
+            at: Self.noon)
+        let state = makeState(repository)
+        state.launch()
+        let before = state.session
+
+        XCTAssertFalse(state.dropTasks([1]))
+
+        XCTAssertEqual(state.session, before)
+        XCTAssertEqual(state.tasks.map(\.status), [.todo])
+    }
+
+    func test_FR11_R119_failedDeleteContextsReturnsFalse() throws {
+        let state = makeState(try Self.seeded(1), contexts: FailingContextStore())
+        state.launch()
+
+        XCTAssertFalse(state.deleteContexts([1, 2]))
+        XCTAssertEqual(state.contexts, [])
+    }
+
+    func test_FR02_R120_deleteContextsRemovesAll() throws {
+        let state = makeState(try Self.seeded(1))
+        state.launch()
+        for (name, day) in [("가짜 회의", "2027-01-14"), ("가짜 제출", "2027-01-15"), ("가짜 시험", "2027-01-20")] {
+            _ = state.addContext(NewContext(name: name, date: Self.day(day), impact: .normal))
+        }
+        let ids = state.contexts.map(\.id)
+
+        XCTAssertTrue(state.deleteContexts([ids[0], ids[2]]))
+
+        XCTAssertEqual(state.contexts.map(\.name), ["가짜 제출"])
+    }
+
     // MARK: - #37 알림 처리기 해제
 
     func test_issue37_observationStopsWhenReleased() {

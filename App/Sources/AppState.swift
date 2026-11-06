@@ -232,14 +232,24 @@ final class AppState {
     /// 빈 상태에서 다시 고른다.
     @discardableResult
     func dropTask(_ id: TaskID) -> Bool {
-        guard let repository, var task = tasks.first(where: { $0.id == id }), task.status != .dropped else {
+        dropTasks([id])
+    }
+
+    /// 여러 개 골라 지우기(R-120). 한 번의 쓰기로 모두 버림으로 바꾸고, 노치의 할 일이 들어 있으면 타이머를 멈추고 다시 고른다.
+    /// 지울 할 일이 없거나 쓰기에 실패하면 false.
+    @discardableResult
+    func dropTasks(_ ids: Set<TaskID>) -> Bool {
+        let dropped = tasks.filter { ids.contains($0.id) && $0.status != .dropped }.map { task in
+            var task = task
+            task.status = .dropped
+            return task
+        }
+        guard let repository, !dropped.isEmpty, write(StoreBatch(updatedTasks: dropped), to: repository) else {
             return false
         }
-        task.status = .dropped
-        guard write(StoreBatch(updatedTasks: [task]), to: repository) else { return false }
         reloadTasks()
         let now = clock.now()
-        let next = session.taskDropped(id)
+        let next = session.taskID.flatMap { ids.contains($0) ? session.taskDropped($0) : nil } ?? session
         if next != session {
             session = next
             remainingSeconds = timer.remainingSeconds(at: now)
@@ -307,6 +317,22 @@ final class AppState {
             return false
         }
         reloadContexts()
+        return true
+    }
+
+    /// 일정 여러 개 지우기(R-120). 하나라도 실패하면 거기서 멈추고 false, 목록은 다시 읽는다.
+    @discardableResult
+    func deleteContexts(_ ids: Set<ContextID>) -> Bool {
+        guard let contextStore, !ids.isEmpty else { return false }
+        defer { reloadContexts() }
+        do {
+            for id in ids.sorted() {
+                try contextStore.deleteContext(id: id)
+            }
+        } catch {
+            Self.logStorageFailure(error)
+            return false
+        }
         return true
     }
 

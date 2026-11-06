@@ -221,7 +221,7 @@ description: "spec 002 저장과 체크포인트 작업 목록"
 ### Implementation (Green)
 
 - [x] T059 [US5] `Sources/MokaCore/Onboarding.swift`에 `Onboarding.finish`를 둔다. T058 PASS 〔단위 1〕
-- [x] T060 🔒 [US5] `App/Sources/Views/ContextTabView.swift`·`ContextFormView.swift`에 일정 탭을 만든다(시안 10번, R-115, 값·콜백만): 목록은 날짜순, 줄마다 이름·"11월 12일"·중요도 배지(아주=빨강 굵게, 꽤, 조금), 아래 `+`·`−`(−는 확인 없이 바로 지움), 안내 "시험·제출처럼 할 일 순서에 영향을 주는 일정이에요.". 새 일정 시트: 이름·날짜(날짜 고르기)·중요도 세그먼트 조금/꽤/아주(내용 폭), 셋 다 필수, 고치기 없음 〔단위 4〕
+- [x] T060 🔒 [US5] `App/Sources/Views/ContextTabView.swift`·`ContextFormView.swift`에 일정 탭을 만든다(시안 10번, R-115, 값·콜백만): 목록은 날짜순, 줄마다 이름·"11월 12일"·중요도 배지(아주=빨강 굵게, 꽤, 조금), 아래 `+`·`−`(−는 확인 없이 바로 지움, R-120에서 한 번 묻도록 바꿈), 안내 "시험·제출처럼 할 일 순서에 영향을 주는 일정이에요.". 새 일정 시트: 이름·날짜(날짜 고르기)·중요도 세그먼트 조금/꽤/아주(내용 폭), 셋 다 필수, 고치기 없음 〔단위 4〕
 - [x] T061 🔒 [US5] `App/Sources/Views/OnboardingView.swift`와 `App/Sources/MokaApp.swift`에 온보딩 창을 만든다(시안 11·12번, R-116, 폭 400pt, 창 제목 "Moka 시작하기", 단계 막대 1/2·2/2, 창 방식은 plan "앱 연결"):
   - 1단계: "다가오는 시험이나 제출이 있나요?", "하나만 넣어 두면 돼요. 나머지는 설정의 일정 탭에서 추가할 수 있어요.", 이름(자리표시 "예: 중간고사")·날짜(그 순간이 속한 하루)·중요도(기본 조금), 건너뛰기·다음(이름이 비면 꺼짐). 저장은 2단계에서 한꺼번에
   - 2단계: "이대로 시작할까요?", "언제든 설정에서 바꿀 수 있어요.", 기본 작업 시간·추가 시간·하루 시작 시각, 이전·시작하기 → `Onboarding.finish` → 창 닫힘 → 노치 빈 상태
@@ -240,6 +240,14 @@ description: "spec 002 저장과 체크포인트 작업 목록"
 - [x] T064 quickstart 3 오류 주입을 돌린다(커밋 안 함, 결과만 PR) 〔단위 1·2·3〕
 - [x] T065 단위 1·2·3·5 PR마다 quickstart 1~4 결과 표(PASS/FAIL/SKIP/NOT_RUN)와 기존 golden 변경 0줄 확인을 붙인다 〔단위 1·2·3·5〕
 - [ ] T066 🔒 사람이 quickstart 5~7을 돌려 결과 표를 마지막 PR에 붙인다(SC-101 다시 켜기, SC-105 온보딩, SC-107 다음 표시, 종료) 〔단위 4·5〕
+
+---
+
+## Phase 9: 여러 개 골라 지우기 (R-120, 사용자 요청 2026-11-06)
+
+- [x] T067 [P] `Tests/MokaCoreTests/TaskFormTextTests.swift`에 여러 개 지우기 확인 문구 시험을 쓰고 실패를 확인한다(`FR-01 R-120`): 제목 "할 일 N개를 지울까요?", 안내는 도는 중 포함 여부에 따라 〔단위 4〕
+- [x] T068 `Sources/MokaCore/TaskFormText.swift`에 `deleteManyTitle(count:)`·`deleteManyMessage(stopsTimer:)`를, `ContextModel.swift`의 `ContextText`에 `deleteTitle`·`deleteManyTitle`·`deleteMessage`를 둔다. T067 PASS 〔단위 4〕
+- [x] T069 🔒 `App/Sources/AppState.swift`에 `dropTasks(_:)`(한 번의 `apply`로 모두 버림, 노치의 할 일이면 타이머를 멈추고 고르기)·`deleteContexts(_:)`를 두고, 할 일 탭·일정 탭 줄마다 체크 칸과 한꺼번에 지우기를 잇는다. 확인 창은 할 일·일정 모두 한 번이고, 누른 순간 모은 값을 `sheet(item:)`에 넘긴다(시험은 `AppLifecycleTests`, 스냅샷은 `SettingsSnapshotTests`) 〔단위 4〕
 
 ---
 
@@ -327,6 +335,7 @@ implementer B: "단위 3 — T021·T022·T026·T027·T036·T039·T046·T048·T05
 | R-117 시뮬레이터 | T021, T022, T036, T046, T053, T056 | T026, T027, T039, T048, T055 | — |
 | R-118 목록 보기·정렬 | T019 | T024 | T030 |
 | R-119 저장 실패 | T035 | T037 | T049, T051 |
+| R-120 여러 개 골라 지우기 | T067 | T068 | T069 |
 | SC-101 다시 켜도 남음 | T007, T008 | T015 | T049, T066 |
 | SC-102 버튼 수 = 로그 수 | T032, T036 | T037, T039 | T044 |
 | SC-103 이어서 할 일 재진입 | T022, T036, T046 | T039, T048 | T043, T066 |

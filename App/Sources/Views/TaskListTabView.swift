@@ -8,6 +8,8 @@ struct TaskListTabView: View {
     @Binding var scope: TaskListScope
     @Binding var order: TaskListOrder
     @Binding var selectedID: TaskID?
+    /// 한꺼번에 지울 할 일(R-120). 있으면 `−`가 이것들을 지운다.
+    @Binding var checkedIDs: Set<TaskID>
     /// 저장할 수 없으면(R-119) 더하기·고치기·지우기가 꺼진다.
     let canEdit: Bool
     let onAdd: () -> Void
@@ -29,15 +31,30 @@ struct TaskListTabView: View {
                 VStack(spacing: 0) {
                     ForEach(Array(rows.enumerated()), id: \.element.id) { index, task in
                         if index > 0 { Divider() }
-                        TaskRow(task: task, isNext: task.id == nextMarkID, isSelected: task.id == selectedID)
-                            .contentShape(Rectangle())
-                            // 두 번 클릭을 동시에 들어야 한 번 클릭이 더블 클릭 간격을 기다리지 않는다.
-                            .onTapGesture { selectedID = task.id }
-                            .simultaneousGesture(
-                                TapGesture(count: 2).onEnded { if canEdit { onEdit(task.id) } }
+                        // 체크 칸은 줄 고르기·두 번 클릭 고치기 영역 밖에 둔다. 안에 두면 체크 칸을 빠르게 두 번 누를 때
+                        // 고치기 시트가 같이 열렸다(PR #88 리뷰).
+                        HStack(spacing: 0) {
+                            RowCheckBox(
+                                isOn: Binding(
+                                    get: { checkedIDs.contains(task.id) },
+                                    set: { isOn in
+                                        if isOn { checkedIDs.insert(task.id) } else { checkedIDs.remove(task.id) }
+                                    }),
+                                label: task.title
                             )
-                            .accessibilityAddTraits(.isButton)
-                            .accessibilityAction(named: "고치기") { if canEdit { onEdit(task.id) } }
+                            .padding(.leading, 10)
+                            TaskRow(task: task, isNext: task.id == nextMarkID)
+                                .contentShape(Rectangle())
+                                // 두 번 클릭을 동시에 들어야 한 번 클릭이 더블 클릭 간격을 기다리지 않는다.
+                                .onTapGesture { selectedID = task.id }
+                                .simultaneousGesture(
+                                    TapGesture(count: 2).onEnded { if canEdit { onEdit(task.id) } }
+                                )
+                                .accessibilityAddTraits(.isButton)
+                                .accessibilityAddTraits(task.id == selectedID ? .isSelected : [])
+                        }
+                        .background(task.id == selectedID ? MokaColors.mocha.opacity(0.22) : Color.clear)
+                        .accessibilityAction(named: "고치기") { if canEdit { onEdit(task.id) } }
                     }
                 }
             }
@@ -56,7 +73,7 @@ struct TaskListTabView: View {
                     ListEditButton(symbol: "plus", label: "새 할 일", action: onAdd)
                         .disabled(!canEdit)
                     ListEditButton(symbol: "minus", label: "고른 할 일 지우기", action: onDelete)
-                        .disabled(!canEdit || !rows.contains { $0.id == selectedID })
+                        .disabled(!canEdit || !rows.contains { $0.id == selectedID || checkedIDs.contains($0.id) })
                 }
                 Text("두 번 클릭하면 고쳐요. **다음** 표시가 붙은 할 일이 노치에 떠요.")
                     .font(.system(size: 11))
@@ -113,7 +130,6 @@ private struct SortPill: View {
 private struct TaskRow: View {
     let task: MokaTask
     let isNext: Bool
-    let isSelected: Bool
     @Environment(\.colorScheme) private var colorScheme
 
     private var isDone: Bool { task.status == .done }
@@ -149,8 +165,6 @@ private struct TaskRow: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .frame(minHeight: 40)
-        .background(isSelected ? MokaColors.mocha.opacity(0.22) : Color.clear)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private var nextColor: Color { colorScheme == .dark ? MokaColors.crema : MokaColors.mocha }
@@ -228,5 +242,37 @@ struct ListEditButton: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
+    }
+}
+
+/// 줄 왼쪽 체크 칸(R-120). macOS 체크 상자는 시스템 강조색이라 모카색으로 직접 그린다.
+struct RowCheckBox: View {
+    @Binding var isOn: Bool
+    let label: String
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        Button {
+            isOn.toggle()
+        } label: {
+            RoundedRectangle(cornerRadius: 3.5)
+                .fill(isOn ? MokaColors.mocha : (colorScheme == .dark ? Color(hex: 0x1F1B18) : .white))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 3.5)
+                        .strokeBorder(isOn ? Color.clear : Color(hex: 0x806E5F, opacity: 0.55), lineWidth: 1)
+                )
+                .overlay {
+                    if isOn {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 8.5, weight: .bold))
+                            .foregroundStyle(MokaColors.textOnPrimary)
+                    }
+                }
+                .frame(width: 14, height: 14)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(label) 고르기")
+        .accessibilityAddTraits(isOn ? .isSelected : [])
     }
 }
