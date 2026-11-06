@@ -123,7 +123,9 @@ struct OnboardingView: View {
                         .frame(width: 70)
                 }
             }
-            if let issue = QuantumChip.customIssueMessage(customText: quantumMin == nil ? quantumText : extendText) {
+            if let issue = [quantumText, extendText].lazy.compactMap({ QuantumChip.customIssueMessage(customText: $0) })
+                .first
+            {
                 Text(issue)
                     .font(.system(size: 11))
                     .foregroundStyle(MokaColors.danger)

@@ -519,7 +519,7 @@ CREATE TABLE tasks(…);
 | `pendingAction` | `PendingAction?`(§2). 미루기·바꾸기를 눌러 두 줄 입력 중이면 그 동작 |
 | `taskListScope`, `taskListOrder` | 할 일 탭의 보기·정렬(§5.7). 처음 값은 `all`·`created`, 앱을 끄면 사라짐 |
 | `notesDraft` | 두 줄 입력 칸의 글자(시간 끝 화면 포함) |
-| `showsOnboarding` | `onboarding_done`이 `true`가 아니면 참 |
+| `showsOnboarding` | `onboarding_done`이 `true`가 아니고 저장할 수 있으면(`storageUnavailable`이 거짓) 참. 저장할 수 없으면 끝냄 표시를 남길 수 없어 띄우지 않는다(2026-11-06 PR #86) |
 | `storageUnavailable` | 앱 DB를 열지 못했거나 마이그레이션이 실패하면 참(R-119) |
 
 - 미루기·바꾸기를 누르면 `pendingAction`을 켜고 두 줄 칸을 보인다. 등록 또는 안 적기에서 세션 함수를 부른다(안 적기는 두 줄을 `""`로). 돌아가기(Esc)는 `pendingAction`을 nil로 되돌리고 `notesDraft`를 비우며 아무것도 쓰지 않는다. 그동안 타이머는 그대로 돈다. 화면의 "N분 했어요"는 지금까지의 경과로 계속 바뀌고, 체크포인트에는 등록·안 적기를 누른 순간 값이 남는다(§5.5).

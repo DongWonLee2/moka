@@ -166,6 +166,7 @@ final class OnboardingWindow {
             onFinish: { [weak self] values in
                 guard let self, appState.finishOnboarding(values) else { return }
                 self.window?.close()
+                self.window = nil
             })
         let onboarding = NSWindow(contentViewController: NSHostingController(rootView: view))
         onboarding.title = "Moka 시작하기"
@@ -176,6 +177,8 @@ final class OnboardingWindow {
         onboarding.center()
         NSApp.activate()
         onboarding.makeKeyAndOrderFront(nil)
+        // macOS 14의 `activate()`는 요청이라 다른 앱 뒤에 열릴 수 있다. 설정 창(#45)처럼 다음 틱에 한 번 더 올린다.
+        DispatchQueue.main.async { onboarding.orderFrontRegardless() }
         window = onboarding
     }
 }
