@@ -23,6 +23,16 @@ public enum TaskFormText {
         return stopsTimer ? "지금 타이머가 도는 할 일이에요. 지우면 타이머가 멈추고 \(rest)" : "지우면 \(rest)"
     }
 
+    /// 여러 개 지우기(R-120).
+    public static func deleteManyTitle(count: Int) -> String {
+        "할 일 \(count)개를 지울까요?"
+    }
+
+    public static func deleteManyMessage(stopsTimer: Bool) -> String {
+        let rest = "노치에 다시 뜨지 않아요. 지금까지 남긴 기록은 그대로 둬요."
+        return stopsTimer ? "지금 타이머가 도는 할 일이 들어 있어요. 지우면 타이머가 멈추고 \(rest)" : "지우면 \(rest)"
+    }
+
     public static func firstActionNote(_ firstAction: String) -> String {
         "\(firstAction) · 멈출 때 적어 둔 줄이에요."
     }
