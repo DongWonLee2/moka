@@ -27,34 +27,46 @@ struct TaskListTabView: View {
                 Spacer()
                 SortPill(selection: $order)
             }
-            ScrollView {
-                VStack(spacing: 0) {
-                    ForEach(Array(rows.enumerated()), id: \.element.id) { index, task in
-                        if index > 0 { Divider() }
-                        // 체크 칸은 줄 고르기·두 번 클릭 고치기 영역 밖에 둔다. 안에 두면 체크 칸을 빠르게 두 번 누를 때
-                        // 고치기 시트가 같이 열렸다(PR #88 리뷰).
-                        HStack(spacing: 0) {
-                            RowCheckBox(
-                                isOn: Binding(
-                                    get: { checkedIDs.contains(task.id) },
-                                    set: { isOn in
-                                        if isOn { checkedIDs.insert(task.id) } else { checkedIDs.remove(task.id) }
-                                    }),
-                                label: task.title
-                            )
-                            .padding(.leading, 10)
-                            TaskRow(task: task, isNext: task.id == nextMarkID)
-                                .contentShape(Rectangle())
-                                // 두 번 클릭을 동시에 들어야 한 번 클릭이 더블 클릭 간격을 기다리지 않는다.
-                                .onTapGesture { selectedID = task.id }
-                                .simultaneousGesture(
-                                    TapGesture(count: 2).onEnded { if canEdit { onEdit(task.id) } }
+            VStack(spacing: 0) {
+                SelectAllHeader(
+                    state: RowSelection.state(checked: checkedIDs, visible: rows.map(\.id)),
+                    onToggle: { checkedIDs = RowSelection.toggledAll(checked: checkedIDs, visible: rows.map(\.id)) }
+                ) {
+                    HeaderTextButton(title: "완료만 고르기") {
+                        checkedIDs = RowSelection.doneOnly(rows.map { ($0.id, $0.status == .done) })
+                    }
+                    .disabled(!rows.contains { $0.status == .done })
+                }
+                Divider()
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ForEach(Array(rows.enumerated()), id: \.element.id) { index, task in
+                            if index > 0 { Divider() }
+                            // 체크 칸은 줄 고르기·두 번 클릭 고치기 영역 밖에 둔다. 안에 두면 체크 칸을 빠르게 두 번 누를 때
+                            // 고치기 시트가 같이 열렸다(PR #88 리뷰).
+                            HStack(spacing: 0) {
+                                RowCheckBox(
+                                    isOn: Binding(
+                                        get: { checkedIDs.contains(task.id) },
+                                        set: { isOn in
+                                            if isOn { checkedIDs.insert(task.id) } else { checkedIDs.remove(task.id) }
+                                        }),
+                                    label: task.title
                                 )
-                                .accessibilityAddTraits(.isButton)
-                                .accessibilityAddTraits(task.id == selectedID ? .isSelected : [])
+                                .padding(.leading, 10)
+                                TaskRow(task: task, isNext: task.id == nextMarkID)
+                                    .contentShape(Rectangle())
+                                    // 두 번 클릭을 동시에 들어야 한 번 클릭이 더블 클릭 간격을 기다리지 않는다.
+                                    .onTapGesture { selectedID = task.id }
+                                    .simultaneousGesture(
+                                        TapGesture(count: 2).onEnded { if canEdit { onEdit(task.id) } }
+                                    )
+                                    .accessibilityAddTraits(.isButton)
+                                    .accessibilityAddTraits(task.id == selectedID ? .isSelected : [])
+                            }
+                            .background(task.id == selectedID ? MokaColors.mocha.opacity(0.22) : Color.clear)
+                            .accessibilityAction(named: "고치기") { if canEdit { onEdit(task.id) } }
                         }
-                        .background(task.id == selectedID ? MokaColors.mocha.opacity(0.22) : Color.clear)
-                        .accessibilityAction(named: "고치기") { if canEdit { onEdit(task.id) } }
                     }
                 }
             }
@@ -249,21 +261,24 @@ struct ListEditButton: View {
 struct RowCheckBox: View {
     @Binding var isOn: Bool
     let label: String
+    /// 일부만 골랐을 때(R-122 머리 줄). 칸을 채우고 `−`를 그린다.
+    var isMixed = false
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
+        let filled = isOn || isMixed
         Button {
             isOn.toggle()
         } label: {
             RoundedRectangle(cornerRadius: 3.5)
-                .fill(isOn ? MokaColors.mocha : (colorScheme == .dark ? Color(hex: 0x1F1B18) : .white))
+                .fill(filled ? MokaColors.mocha : (colorScheme == .dark ? Color(hex: 0x1F1B18) : .white))
                 .overlay(
                     RoundedRectangle(cornerRadius: 3.5)
-                        .strokeBorder(isOn ? Color.clear : Color(hex: 0x806E5F, opacity: 0.55), lineWidth: 1)
+                        .strokeBorder(filled ? Color.clear : Color(hex: 0x806E5F, opacity: 0.55), lineWidth: 1)
                 )
                 .overlay {
-                    if isOn {
-                        Image(systemName: "checkmark")
+                    if filled {
+                        Image(systemName: isMixed ? "minus" : "checkmark")
                             .font(.system(size: 8.5, weight: .bold))
                             .foregroundStyle(MokaColors.textOnPrimary)
                     }
@@ -274,5 +289,55 @@ struct RowCheckBox: View {
         .buttonStyle(.plain)
         .accessibilityLabel("\(label) 고르기")
         .accessibilityAddTraits(isOn ? .isSelected : [])
+    }
+}
+
+/// 목록 맨 위 "전체" 줄(R-122). 체크 칸은 줄 체크 칸과 같은 자리이고, 일부만 골랐으면 `−`다.
+struct SelectAllHeader<Trailing: View>: View {
+    let state: RowSelection.State
+    let onToggle: () -> Void
+    @ViewBuilder var trailing: () -> Trailing
+
+    init(state: RowSelection.State, onToggle: @escaping () -> Void, @ViewBuilder trailing: @escaping () -> Trailing) {
+        self.state = state
+        self.onToggle = onToggle
+        self.trailing = trailing
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            RowCheckBox(
+                isOn: Binding(get: { state == .all }, set: { _ in onToggle() }), label: "전체",
+                isMixed: state == .some)
+            Text("전체")
+                .font(.system(size: 11.5))
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
+            trailing()
+        }
+        .padding(.horizontal, 10)
+        .frame(height: 28)
+    }
+}
+
+extension SelectAllHeader where Trailing == EmptyView {
+    init(state: RowSelection.State, onToggle: @escaping () -> Void) {
+        self.init(state: state, onToggle: onToggle) { EmptyView() }
+    }
+}
+
+/// 머리 줄 오른쪽 글자 버튼("완료만 고르기").
+struct HeaderTextButton: View {
+    let title: String
+    let action: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.isEnabled) private var isEnabled
+
+    var body: some View {
+        Button(title, action: action)
+            .buttonStyle(.plain)
+            .font(.system(size: 11.5, weight: .medium))
+            .foregroundStyle(colorScheme == .dark ? MokaColors.crema : MokaColors.mocha)
+            .opacity(isEnabled ? 1 : 0.4)
     }
 }

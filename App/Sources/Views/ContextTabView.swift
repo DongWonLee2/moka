@@ -17,35 +17,41 @@ struct ContextTabView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            ScrollView {
-                VStack(spacing: 0) {
-                    ForEach(Array(rows.enumerated()), id: \.element.id) { index, context in
-                        if index > 0 { Divider() }
-                        HStack(spacing: 0) {
-                            RowCheckBox(
-                                isOn: Binding(
-                                    get: { checkedIDs.contains(context.id) },
-                                    set: { isOn in
-                                        if isOn {
-                                            checkedIDs.insert(context.id)
-                                        } else {
-                                            checkedIDs.remove(context.id)
-                                        }
-                                    }),
-                                label: context.name
-                            )
-                            .padding(.leading, 10)
-                            ContextRow(context: context)
-                                .contentShape(Rectangle())
-                                .onTapGesture { selectedID = context.id }
-                                .simultaneousGesture(
-                                    TapGesture(count: 2).onEnded { if canEdit { onEdit(context.id) } }
+            VStack(spacing: 0) {
+                SelectAllHeader(
+                    state: RowSelection.state(checked: checkedIDs, visible: rows.map(\.id)),
+                    onToggle: { checkedIDs = RowSelection.toggledAll(checked: checkedIDs, visible: rows.map(\.id)) })
+                Divider()
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ForEach(Array(rows.enumerated()), id: \.element.id) { index, context in
+                            if index > 0 { Divider() }
+                            HStack(spacing: 0) {
+                                RowCheckBox(
+                                    isOn: Binding(
+                                        get: { checkedIDs.contains(context.id) },
+                                        set: { isOn in
+                                            if isOn {
+                                                checkedIDs.insert(context.id)
+                                            } else {
+                                                checkedIDs.remove(context.id)
+                                            }
+                                        }),
+                                    label: context.name
                                 )
-                                .accessibilityAddTraits(.isButton)
-                                .accessibilityAddTraits(context.id == selectedID ? .isSelected : [])
-                                .accessibilityAction(named: "고치기") { if canEdit { onEdit(context.id) } }
+                                .padding(.leading, 10)
+                                ContextRow(context: context)
+                                    .contentShape(Rectangle())
+                                    .onTapGesture { selectedID = context.id }
+                                    .simultaneousGesture(
+                                        TapGesture(count: 2).onEnded { if canEdit { onEdit(context.id) } }
+                                    )
+                                    .accessibilityAddTraits(.isButton)
+                                    .accessibilityAddTraits(context.id == selectedID ? .isSelected : [])
+                                    .accessibilityAction(named: "고치기") { if canEdit { onEdit(context.id) } }
+                            }
+                            .background(context.id == selectedID ? MokaColors.mocha.opacity(0.22) : Color.clear)
                         }
-                        .background(context.id == selectedID ? MokaColors.mocha.opacity(0.22) : Color.clear)
                     }
                 }
             }
