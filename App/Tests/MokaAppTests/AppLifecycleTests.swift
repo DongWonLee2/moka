@@ -1182,6 +1182,7 @@ final class AppLifecycleTests: XCTestCase {
 
         XCTAssertEqual(state.contexts.map(\.name), ["가짜 제출", "가짜 회의 2"], "날짜순 자리로 옮겨 간다")
         XCTAssertEqual(state.contexts.last?.impact, .critical)
+        XCTAssertEqual(state.contexts.last?.date, Self.day("2027-01-20"))
     }
 
     func test_FR02_R121_editContextRejectsBlankName() throws {
@@ -1192,6 +1193,13 @@ final class AppLifecycleTests: XCTestCase {
 
         XCTAssertFalse(state.editContext(id, NewContext(name: "  ", date: Self.day("2027-01-14"), impact: .normal)))
         XCTAssertEqual(state.contexts.map(\.name), ["가짜 회의"])
+    }
+
+    func test_FR11_R119_editContextUnavailableWithoutStorage() {
+        let state = makeState(nil, contexts: nil)
+        state.launch()
+
+        XCTAssertFalse(state.editContext(1, NewContext(name: "가짜 회의", date: Self.day("2027-01-14"), impact: .normal)))
     }
 
     func test_FR11_R119_failedEditContextReturnsFalse() throws {
