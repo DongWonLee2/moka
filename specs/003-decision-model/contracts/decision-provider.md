@@ -1,6 +1,6 @@
 # 계약: 판단 공급자 경계와 TypeSafe 요청·응답
 
-공개 계약이다(헌법 I "DecisionProvider 프로토콜"). 근거: spec R-201·R-208·R-209, research R7, TypeSafe 공식 문서(2026-11-06 확인: `https://docs.typesafe.ai/api/system-one.md`, `errors.md`, `models.md`).
+공개 계약이다(헌법 I "DecisionProvider 프로토콜"). 근거: spec R-201·R-210·R-211, research R7, TypeSafe 공식 문서(2026-11-06 확인: `https://docs.typesafe.ai/api/system-one.md`, `errors.md`, `models.md`).
 
 ## Swift 경계 (MokaCore)
 
@@ -11,8 +11,17 @@ public protocol DecisionProvider: Sendable {
 }
 ```
 
-- 타입 모양은 data-model §1. 요청 JSON 조립(`TypeSafeCodec.body(_:)`)과 응답 해석(`TypeSafeCodec.response(_:)`)은 MokaCore 순수 함수다. 앱 `TypeSafeProvider`는 키를 읽고 HTTP를 보내고 상태 코드를 `DecisionError`로 바꾸는 일만 한다.
+- 타입 모양은 data-model §1. `Question`·`Answer`에는 noul과 score만 둔다(TypeSafe의 choice 타입은 쓰지 않으므로 계약에 넣지 않는다). 요청 JSON 조립(`TypeSafeCodec.body(_:)`)과 응답 해석(`TypeSafeCodec.response(_:)`)은 MokaCore 순수 함수다. 앱 `TypeSafeProvider`는 키를 읽고 HTTP를 보내고 상태 코드를 `DecisionError`로 바꾸는 일만 한다.
 - 시험·CI·`moka-sim`은 `FakeDecisionProvider`만 쓴다. `TypeSafeProvider`는 앱 타깃에만 있어 링크되지 않는다(ADR-0001).
+
+## 질문 타입 (TypeSafe 용어)
+
+| 타입 | 뜻 | 요청 | 응답 |
+|---|---|---|---|
+| noul | 문장 하나가 참일 확률을 받는 예/아니오 질문 | `type`, `instructions` | `{"type":"noul","noul":p}`, p는 0~1. 확률 자체가 불확실성이라 신뢰도 칸이 없다 |
+| score | 낮음→높음 순서가 있는 옵션 가운데 어디인지 받는 질문 | `type`, `instructions`, `criteria`(옵션 배열, 0부터) | `score`(옵션 번호의 확률 가중 평균, 0~옵션 수−1), `confidence`(0~1), `probabilities`(옵션 번호 문자열 → 확률), `legend`(옵션 번호 → 옵션 글자, 읽지 않음) |
+
+TypeSafe에는 순서 없는 옵션을 고르는 choice 타입도 있지만 이번에는 쓰지 않는다.
 
 ## HTTP
 
@@ -30,7 +39,7 @@ public protocol DecisionProvider: Sendable {
 ```
 
 - `state`는 data-model §4의 정준 바이트를 그대로 끼운다(객체). 해시도 이 바이트로 만든다.
-- 키 순서는 `model`, `state`, `questions`. `questions` 안은 `questions.json`의 순서.
+- 바이트가 정준이어야 하는 것은 해시를 만드는 `state`뿐이다. 본문의 나머지(`model`, `questions`)는 일반 JSON 인코딩이고, 시험은 본문을 디코드해 구조가 기대와 같은지 비교한다(`questions` 안 키 순서는 의미가 없다).
 
 ## 응답 해석
 
@@ -56,11 +65,15 @@ public protocol DecisionProvider: Sendable {
 | 401, 403 | `unauthorized` (403은 문서에 없지만 같은 취급) |
 | 429 | `rateLimited` |
 | 529 | `overloaded` |
-| 그 밖의 4xx·5xx | `server(status)` |
+| 그 밖의 상태(200이 아닌 2xx, 1xx·3xx, 그 밖의 4xx·5xx) | `server(status)` |
 | 시간 초과 | `timeout` |
 | 연결 실패 등 | `network` |
-| 200인데 해석 실패 | `malformed(prefix)`(원문 앞 100자, 로그에만) |
+| 200인데 해석 실패 | `malformed` |
 
-## 첫 실제 호출 확인 (사람, SC-208)
+## 로그
+
+- `os.Logger`(subsystem `dev.dongwon.moka`, category `decision`)에 실패 종류와 상태 코드만 남긴다. 응답 본문, 요청 본문, 할 일 제목, 키는 남기지 않는다(`malformed`도 종류만).
+
+## 첫 실제 호출 확인 (사람, SC-209)
 
 사람이 확인용 빌드(개인 팀 서명)에 자기 키를 넣고 가짜 할 일 하나를 저장한다. 결과는 PASS/FAIL과 응답 최상위·답 안쪽 필드 이름만 적고, 응답 원문·할 일 제목은 PR·저장소에 넣지 않는다. 필드가 위와 다르면 `TypeSafeCodec.response`만 고치고 그 PR에서 픽스처를 맞춘다.
