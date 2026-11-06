@@ -180,7 +180,7 @@ description: "spec 002 저장과 체크포인트 작업 목록"
   - 기존 `send(_:)`, `isPinnedOpen`, `customText`의 동작은 세션 위에서 그대로
   〔단위 5〕
 - [ ] T050 🔒 [US3] `App/Sources/MokaApp.swift`·`App/Sources/AppState.swift`에 종료·잠자기를 잇는다(research R12): `NSApplication.willTerminateNotification`과 `NSWorkspace.willSleepNotification`(`queue: .main` + `MainActor.assumeIsolated`)에서 `lifecycleCheckpoint` → 동기 `apply`, `applicationShouldTerminate`로 종료를 미루지 않음. 사람 확인(quickstart 7): 메뉴 "종료" → 다시 켬 → 대기 + 이어서 할 일, 강제 종료 → 대기. 로그아웃·시스템 종료 기록은 미확인(실제 DB 조회만 가능하면 NOT_RUN) 〔단위 5〕
-- [ ] T051 🔒 [US3] `App/Sources/Views/StorageUnavailableView.swift`에 저장할 수 없을 때의 노치 빈 상태 안내를 만든다(R-119, 해요체, 메뉴 막대 항목 없음). 문구 초안: "할 일을 저장할 수 없어요. 지금은 타이머만 쓸 수 있어요." — 시안에 없으므로 PR "사람이 볼 결정"에 문구를 올린다 〔단위 4〕
+- [x] T051 🔒 [US3] `App/Sources/Views/StorageUnavailableView.swift`에 저장할 수 없을 때의 노치 빈 상태 안내를 만든다(R-119, 해요체, 메뉴 막대 항목 없음). 문구 초안: "할 일을 저장할 수 없어요. 지금은 타이머만 쓸 수 있어요." — 시안에 없으므로 PR "사람이 볼 결정"에 문구를 올린다 〔단위 4〕
 
 **확인 지점**: `swift test` PASS, us3 golden PASS. 앱 수명은 사람이 quickstart 7
 
