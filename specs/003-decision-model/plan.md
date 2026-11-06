@@ -22,7 +22,7 @@
 
 **Project Type**: 데스크톱 앱 + Swift Package(라이브러리 2개 + CLI) + Python 튜닝 스크립트
 
-**Performance Goals**: 판단 질의 전체 3초 상한. 저장 뒤 10초 안에 점수(SC-201). 질의는 MainActor를 막지 않는다. 질의는 할 일마다 하나씩 보내고 동시에 최대 4개(research R17 E2)
+**Performance Goals**: 판단 질의 전체 3초 상한. 저장 뒤 10초 안에 점수(SC-201). 질의는 MainActor를 막지 않는다. 질의는 할 일마다 하나씩 보내고, 실행기 하나가 동시에 최대 4개(research R17 E2)
 
 **Constraints**: 실제 시간을 기다리는 시험 금지(헌법 II). 실제 판단 API는 시험·CI·`moka-sim`·무인 실행에서 부르지 않는다(헌법 VIII, ADR-0001 빌드 구조). 판단 입력 금지 필드 시험(헌법 VIII). 키는 Keychain에만, 로그·DB·화면에 없음(헌법 보안). 기존 golden 바이트 그대로. `decisions_log`는 INSERT만. `eraseDatabaseOnSchemaChange` 금지
 
@@ -140,7 +140,7 @@ schema/moka-schema.sql                          # 스냅샷 갱신
 ### 앱 연결
 
 - `MokaApp`이 DB를 열 때 `GRDBScoreStore`도 만들어 `AppStorage.scores`로 넘긴다. `KeychainKeyStore`와 `TypeSafeProvider`(키는 질의 때마다 `KeyStore.read`)를 만든다.
-- 질의 흐름은 data-model §6·§9. 진행 중 `Task`를 할 일별로 들고 있지 않는다. 보내기 장부 `attempted`는 해시 사전이고 취소 기능은 없다. 겹친 답은 답 받기 판정(해시 비교)이 거른다. 앱 종료 때 진행 중 질의는 버린다.
+- 질의 흐름은 data-model §6·§9. 진행 중 `Task`는 할 일별이 아니라 실행기 하나만 든다. 보내기 장부 `attempted`는 해시 사전이고 취소 기능은 없다. 겹친 답은 답 받기 판정(해시 비교)이 거른다. 앱 종료 때 진행 중 질의는 버린다.
 - 묻는 곳은 `reloadTasks`·`reloadContexts`·`activate`·키 저장·"다시 물어보기"에서 부르는 `requestScores()` 하나다. 노치 빠른 입력(`enterTitle`)도 `reloadTasks`를 거치므로 따로 잇지 않는다.
 - 노치 고르기는 기존 `pickIfEmpty`가 `NotchSession`에 점수를 넘겨 그대로 돈다. 점수가 들어와도 초안·도는 중은 바꾸지 않는다.
 
@@ -181,10 +181,11 @@ spec "대안과 위험"의 번호와 같다.
 - 위험 6(PRD와 다름): blocked 삭제, impact 옵션, 6시간 캐시 대신 해시 규칙. 사람이 PRD 6·7·9장을 고친다.
 - 위험 7(실패 뒤 순서): 오늘 마감 할 일의 질의가 실패하면 점수 없는 무리로 뒤에 선다. 다음 활성화 때 한 번 다시 묻고, "다시 물어보기"·앱 재시작·다음 날에도 회복된다. 설정 창 priority 칸이 비어 알아챌 수 있다. 사람 확인(quickstart 6-4)이나 검증 첫 주에 한 번이라도 보이면 다음 spec에서 정렬 예외를 다시 본다.
 - 위험 8(`Bundle.module` 리눅스): SwiftPM의 `Bundle.module`은 번들을 못 찾으면 프로세스를 멈춘다. 단위 1a에서 리눅스 CI(`swift test`)와 호스트 없는 `MokaAppTests` 번들에서 각각 `QuestionSet.bundled()`를 부르는 시험으로 확인한다. 실패하면 대안(시험은 파일 경로로 읽기)을 PR "가정"에 적는다.
+- 위험 9(몰림 중 고친 할 일): 하루가 바뀐 뒤 전체 재질의 중에 이미 점수가 있는 할 일을 고치거나, 키를 처음 저장해 모든 할 일에 점수가 없을 때 새 할 일을 저장하면 그 할 일은 id 순서대로 줄에 서서 SC-201 10초를 넘길 수 있다. 검증 첫 주에 보이면 할 일별 마지막 트리거 순서(토론 소수안)를 다시 본다.
 
 ## 다음 단계
 
 1. `/speckit-tasks`
 2. EGM 금붕어 리뷰(spec·plan·tasks 묶음, `uninterrupted`), 판단이 필요한 지적은 토론 뒤 사용자 확인
-3. 설정 창 HTML 시안(키 칸 상태 다섯, priority 칸) → 사용자 확정
+3. 설정 창 HTML 시안(키 칸 상태 여섯, priority 칸) → 사용자 확정
 4. spec·plan·tasks PR → Issue 큐(단위 1a → 1b·2 → 3 → 4 → 5)

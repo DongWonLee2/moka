@@ -7,7 +7,7 @@ spec 001 `contracts/moka-sim-v1.md`와 spec 002 `contracts/moka-sim-v1-additions
 | 이벤트 | 필드 | 규칙 |
 |---|---|---|
 | `judge` | `task`(할 일 id, 정수), `urgency`(0~3 정수 또는 실수), `impact`(0~2), `concrete`(0~1), `avoiding`(0~1) | 그 값을 score·noul 답으로 하는 가짜 응답을 만들어 앱과 같은 `ScoreRules.score`로 판단 결과를 바로 저장한다(공급자 `fake`, 모델 `fake-1`, 질문 버전은 번들 `questions.json`, `stateHash`는 그 순간 판단 입력의 해시, score 답의 `confidence`·`probabilities`는 고정 가짜 값). 대기·진행 중 할 일만 받는다 |
-| `key` | `present`(불리언) | 키 유무. 시작 값은 `false` |
+| `key` | `present`(불리언) | 키 유무. 시작 값은 `false`. 키 유무와 `judge`로 저장한 판단 결과는 `quit`·`relaunch`를 넘어 남는다(Keychain과 앱 DB에 있는 값이라 메모리 상태로 버리지 않는다) |
 
 - 할 일은 제목이 아니라 id로 가리킨다(출력에 제목을 내지 않는 규칙과 맞춤).
 - 종료 코드 2: storage가 아닌데 새 이벤트, 모르는 키·필수 필드 없음·타입 틀림, 범위 밖 값, 없는 할 일 id, 완료·버린 할 일에 `judge`.

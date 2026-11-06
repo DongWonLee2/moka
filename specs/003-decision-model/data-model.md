@@ -65,7 +65,7 @@ CREATE TABLE scores(
 
 ## 4. 판단 입력 조립과 금지 필드
 
-`StateBuilder.state(task:contexts:checkpoints:today:calendar:)`는 다음만 넣는다(spec R-201).
+`JudgmentState.build(task:contexts:checkpoints:today:calendar:)`는 다음만 넣는다(spec R-201).
 
 | 칸 | 값 |
 |---|---|
@@ -86,7 +86,7 @@ CREATE TABLE scores(
 
 ## 6. 다시 물을 할 일과 보내기 (spec R-206·R-207)
 
-**다시 물을 할 일**(`ScoringPlan.needsQuery(tasks:scores:states:questionVersion:)` → id 오름차순): 대기·진행 중 할 일 가운데 다음 하나에 해당하는 것.
+**다시 물을 할 일**(`ScoringPlan.needsQuery(tasks:scores:states:questionVersion:)` → 판단 결과가 없는 할 일 먼저, 그 안에서 id 오름차순. 저장한 새 할 일이 하루가 바뀐 뒤의 전체 재질의 줄 뒤에 서지 않게 한다, 사용자 결정 2026-11-07): 대기·진행 중 할 일 가운데 다음 하나에 해당하는 것.
 - 판단 결과가 없다
 - `questionVersion`이 지금 버전과 다르다
 - 지금 판단 입력의 해시가 저장된 `stateHash`와 다르다
@@ -100,9 +100,9 @@ CREATE TABLE scores(
 - 키 저장, "다시 물어보기", 앱 재시작(메모리라 저절로)에는 장부를 비운다.
 - `unauthorized`면 `keyNeedsCheck = true`로 두고 아직 보내지 않은 대상은 보내지 않는다(장부에도 적지 않는다). 이미 떠난 질의의 답은 받기 판정대로 처리한다. 키를 저장하거나 지우면 `false`로 돌린다. `keyNeedsCheck`인 동안 "다시 물어보기"는 꺼진다(research R19 F5).
 
-**묻는 때**(같은 함수 `@discardableResult func requestScores() -> Task<Void, Never>?` 하나를 부름, 보낼 것이 없으면 `nil`. 앱 시험은 돌려받은 `Task`의 `value`를 기다린다): 할 일 다시 읽기(`reloadTasks`, 노치 빠른 입력·버튼·설정 창 쓰기 모두 거침) 뒤, 일정 다시 읽기(`reloadContexts`) 뒤, 활성화(`activate`) 끝, 키 저장 뒤, "다시 물어보기".
+**묻는 때**(같은 함수 `@discardableResult func requestScores() -> Task<Void, Never>?` 하나를 부름. 실행기가 돌고 있으면 새로 띄우지 않고 그 `Task`를 돌려주고, 돌지 않는데 보낼 것이 없으면 `nil`. 앱 시험은 돌려받은 `Task`의 `value`를 기다린다): 할 일 다시 읽기(`reloadTasks`, 노치 빠른 입력·버튼·설정 창 쓰기 모두 거침) 뒤, 일정 다시 읽기(`reloadContexts`) 뒤, 활성화(`activate`) 끝, 키 저장 뒤, "다시 물어보기".
 
-**보내기**: 대상마다 판단 입력을 조립·해시하고, `Task` 하나 안에서 `withTaskGroup`으로 진행 중인 질의가 `maxConcurrentDecisions`(4)개를 넘지 않게 하나가 끝날 때마다 다음을 넣는다(묶음 단위가 아니다). 취소·우선순위·백오프 없음. 답 받기와 저장은 MainActor에서 답마다 한다.
+**보내기**(단일 실행기, PR #92 리뷰 뒤 토론 3:0): AppState는 진행 중인 질의 실행기 `queryRunner: Task<Void, Never>?`를 최대 하나 든다. 실행기는 처음 한 번, 그리고 질의 하나가 끝날 때마다 MainActor에서 "지금 `needsQuery` − 장부에 같은 해시가 있는 것"을 다시 계산해 빈 자리만큼 앞에서 꺼내고, 꺼내는 순간 장부에 적고 판단 입력을 조립·해시해 `withTaskGroup`에 넣는다. 그래서 트리거가 겹쳐도 진행 중인 질의는 `maxConcurrentDecisions`(4)개를 넘지 않고 같은 해시는 한 번만 나간다. 진행 0개이고 꺼낼 것도 0개라는 판정과 `queryRunner = nil`은 같은 MainActor 동기 구간에서 한다(끝나는 순간 들어온 트리거를 잃지 않게). 따로 둔 대기 목록·"다시 계산" 표시는 없다. 취소·백오프 없음. 답 받기와 저장은 MainActor에서 답마다 한다. 실행기가 하나라 공급자 호출이 돌아오지 않으면 뒤 질의가 모두 멈추므로, 공급자는 `Defaults.decisionTimeout` 안에 성공 또는 오류로 돌아와야 한다(T026 리뷰 항목).
 
 **답 받기**(`ScoringPlan.accepts(requestHash:currentHash:taskStatus:)`, MainActor): 답이 왔을 때 그 할 일의 지금 판단 입력을 다시 조립해 해시가 요청 때와 같고, 할 일이 대기·진행 중일 때만 `ScoreRules.score` → `upsertScore` 한다. 다르면 버린다(질의 중 고침·일정 변경·버림·완료). 같은 할 일에 질의가 겹치면 각 답이 이 판정을 따로 거치므로 지금 입력과 맞는 답만 남는다.
 
@@ -135,9 +135,9 @@ spec 002 F5 CHECK(공급자가 없으면 나머지도 비어야 함)에 걸리�
 
 ## 9. 앱 상태 (AppState에 더함)
 
-- 저장소: `AppStorage`에 `scores: (any ScoreStore)? = nil`만 더한다(DB를 열지 못하면 `nil`, spec 002 R-119처럼 메모리로 대체하지 않는다). 기존 3인자 생성과 `AppStorage.open`의 실패 경로는 그대로 컴파일된다.
+- 저장소: `AppStorage`에 `var scores: (any ScoreStore)? = nil`만 더한다(기존 필드는 `let`이지만 이 필드는 `var`로 둬야 멤버와이즈 생성자에 인자로 남는다)(DB를 열지 못하면 `nil`, spec 002 R-119처럼 메모리로 대체하지 않는다). 기존 3인자 생성과 `AppStorage.open`의 실패 경로는 그대로 컴파일된다.
 - 판단 주입: `struct DecisionSetup { keyStore: any KeyStore; provider: any DecisionProvider; questions: QuestionSet? }`를 `AppState.init(..., decision: DecisionSetup? = nil)`로 받는다. `nil`이면 판단 기능 꺼짐(기존 앱 시험은 그대로). `MokaApp`이 DB 열기와 상관없이 `DecisionSetup(keyStore: KeychainKeyStore(), provider: TypeSafeProvider(), questions: try? QuestionSet.bundled())`을 만든다. `questions`가 `nil`(해석 실패)이면 판단 기능을 끄고 로그 한 줄을 남긴다. `AppState`는 `TypeSafeProvider`·`KeychainKeyStore`를 직접 가리키지 않는다(앱 시험 번들이 그 파일을 컴파일하지 않는다, research R19 F3).
-- 메모리 값: `hasKey`(`launch()` 첫머리·키 저장·키 지움 때 `KeyStore.hasKey()`로 갱신, 던지면 `false`. 첫 `requestScores()`보다 먼저 읽는다), `keyNeedsCheck`, `keyActionFailed`(저장·지우기가 던지면 `true`, 다음 성공에 `false`), `attempted`(§6), `scores` 사전(`launch()`와 답을 저장한 뒤 저장소에서 다시 읽음, 읽기가 던지면 빈 사전과 로그).
+- 메모리 값: `hasKey`(`launch()` 첫머리·키 저장·키 지움 때 `KeyStore.hasKey()`로 갱신, 던지면 `false`. 첫 `requestScores()`보다 먼저 읽는다), `keyNeedsCheck`, `keyActionFailed`(저장·지우기가 던지면 `true`, 다음 성공에 `false`), `attempted`·`queryRunner`(§6), `scores` 사전(`launch()`와 답을 저장한 뒤 저장소에서 다시 읽음, 읽기가 던지면 빈 사전과 로그).
 - 질의 흐름은 §6. 키는 AppState가 보내기 직전 `KeyStore.read()`로 읽어 `decide(_:key:)`에 넘긴다.
 - 키 입력: 붙여 넣은 값의 앞뒤 공백·줄바꿈을 지우고, 비면 "저장"을 끈다.
 - 답을 저장한 뒤 `scores`를 다시 읽고 "다음" 표시와 설정 창 priority 칸을 다시 계산한다. 질의 중에도 노치·타이머·버튼은 막히지 않는다.
@@ -163,5 +163,5 @@ spec 002 F5 CHECK(공급자가 없으면 나머지도 비어야 함)에 걸리�
 
 - 바뀌는 것: spec 002 storage 시뮬레이터 golden(`Tests/MokaCoreTests/Fixtures/sim/storage-*.expected.jsonl`)의 `notch_task` 순서와 `decision.scheduler_choice`(`rotate_by_id_v0` → `priority_rotate_v0`). 키가 없으므로 마감일 순이 된다. 시나리오 입력은 지우거나 바꾸지 않는다.
 - 바뀌지 않는 것: spec 001 타이머 golden(storage 아님), 이미 쌓인 앱 DB의 `rotate_by_id_v0` 로그 줄.
-- 같은 PR에서 계약 문서의 예시·설명도 고친다: spec 002 `contracts/moka-sim-v1-additions.md`의 `RotateByIDRule`·`rotate_by_id_v0` 서술, spec 001 `contracts/moka-sim-v1.md` storage 절. `ValueTypeTests`의 `SchedulerChoice.allCases` 리터럴은 `["rotate_by_id_v0", "priority_rotate_v0"]`로 바꾼다.
+- 같은 PR에서 계약 문서의 예시·설명도 고친다: spec 002 `contracts/moka-sim-v1-additions.md`의 `RotateByIDRule`·`rotate_by_id_v0` 서술, spec 001 `contracts/moka-sim-v1.md` storage 절, spec 002 `spec.md` R-104·R-112에 "spec 003 R-209가 대체" 표기. `ValueTypeTests`의 `SchedulerChoice.allCases` 리터럴은 `["rotate_by_id_v0", "priority_rotate_v0"]`로 바꾼다.
 - 갱신은 R-209 구현 PR(단위 2) 안에서 하고, PR 본문에 "spec 002 R-104 → spec 003 R-209 규칙 교체, 테스트 약화 아님"과 바뀐 시나리오·줄 목록을 적는다.

@@ -62,8 +62,8 @@ description: "spec 003 판단 모델 연동 MVP 작업 목록"
   - `usable`: 키 없음·버전 다름이면 빠짐, 해시가 달라도 남음
   - `probs_json`: 질문 이름 순, `probabilities` 키 숫자 순, 숫자는 Swift 최단 표기(golden)
   - priority 서식(`TaskRowText`): 둘째 자리까지(`1.20`)
-- [ ] T007 [P] `Tests/MokaCoreTests/TypeSafeCodecTests.swift`와 픽스처 `Tests/MokaCoreTests/Fixtures/decision/`(가짜 값 응답: 정상, 질문 빠짐, 타입 다름, 범위 밖, `model` 없음, 모르는 칸, 기존 `SimGoldenTests`처럼 `#filePath` 기준 URL로 읽음): contracts/decision-provider.md 요청 본문(디코드 비교, `state`는 정준 바이트 그대로), 응답 해석, 상태 코드 → 오류 표 전부를 쓰고 실패를 확인한다(`FR-14 R-210`, `FR-14 R-211`) 〔단위 1b〕
-- [ ] T008 [P] `Tests/MokaCoreTests/ScoringPlanTests.swift`: data-model §6 "다시 물을 할 일"(판단 결과 없음·버전 다름·해시 다름, 완료·버림 제외, 하루가 바뀌면 전부, 같은 입력이면 빈 목록)과 "답 받기"(해시가 같고 대기·진행 중일 때만, 질의 중 고침·일정 변경·버림·완료면 버림, 겹친 질의는 지금 입력과 맞는 답만)를 쓰고 실패를 확인한다(`FR-03 R-206`, spec 엣지) 〔단위 1b〕
+- [ ] T007 [P] `Tests/MokaCoreTests/TypeSafeCodecTests.swift`와 픽스처 `Tests/MokaCoreTests/Fixtures/decision/`(가짜 값 응답: 정상, 질문 빠짐, 타입 다름, 범위 밖, `model` 없음, 모르는 칸, 기존 `SimGoldenTests`처럼 `#filePath` 기준 URL로 읽음): contracts/decision-provider.md 요청 본문(디코드 비교, `state`는 정준 바이트 그대로), 응답 해석, 상태 코드 → 오류 표 전부를 쓴다. 가짜 공급자 붙잡기·풀기·`maxInFlight`·`calls` 시험도 `Tests/MokaCoreTests/FakeDecisionProviderTests.swift`에 쓴다. 실패를 확인한다(`FR-14 R-210`, `FR-14 R-211`) 〔단위 1b〕
+- [ ] T008 [P] `Tests/MokaCoreTests/ScoringPlanTests.swift`: data-model §6 "다시 물을 할 일"(판단 결과 없음·버전 다름·해시 다름, 완료·버림 제외, 하루가 바뀌면 전부, 같은 입력이면 빈 목록, 판단 결과 없는 할 일이 먼저이고 그 안에서 id 오름차순)과 "답 받기"(해시가 같고 대기·진행 중일 때만, 질의 중 고침·일정 변경·버림·완료면 버림, 겹친 질의는 지금 입력과 맞는 답만)를 쓰고 실패를 확인한다(`FR-03 R-206`, spec 엣지) 〔단위 1b〕
 - [ ] T009 [P] `ScoreStore` 시험(왕복, 같은 할 일 덮어쓰기, 초 아래 시각, `model_snapshot` 없음, 없는 할 일이면 `taskNotFound`)을 쓰고 실패를 확인한다(`FR-04 R-205`). 단위 1b에서는 `Tests/MokaCoreTests/ScoreStoreTests.swift`에 메모리 구현만 두고(필수 CI가 Red로 남지 않게), 단위 3에서 `Tests/MokaStoreTests/StorageContractTests.swift`의 `StoreKind.makeStores()`에 판단 결과 저장소를 더해 같은 시험을 두 구현에 돌린다 〔단위 1b·3〕
 - [ ] T010 [P] `Tests/MokaStoreTests/MigrationTests.swift`: 이름 리터럴을 `["v1_settings", "v2_tasks_contexts_checkpoints_log", "v3_scores"]`로, 스키마 스냅샷에 data-model §2 표가 있는지 실패로 확인한다(ADR-0007) 〔단위 3〕
 - [ ] T011 [P] `tuning/tests/test_schema_contract.py`에 `scores` 열 이름 집합 시험, `tuning/tests/test_questions_contract.py`에 `Sources/MokaCore/Resources/questions.json`을 저장소 루트 상대 경로로 읽어 넷·`thresholds[model]`을 확인하는 시험을 쓰고 실패를 확인한다 〔단위 3〕
@@ -75,7 +75,7 @@ description: "spec 003 판단 모델 연동 MVP 작업 목록"
 - [ ] T014 `Sources/MokaCore/Decision/ScoreRules.swift`, `TaskScore`, `Answer`(noul·score), `DecisionResponse`: data-model §3, `TaskRowText`에 priority 서식. T006 PASS 〔단위 1a〕
 - [ ] T015 `Sources/MokaCore/Decision/DecisionProvider.swift`(프로토콜 `decide(_:key:)`, `DecisionRequest`(`taskID` 포함), `DecisionError`, `actor FakeDecisionProvider`: 정한 답·오류, `hold`·`release(taskID:)`·`releaseAll`, `maxInFlight`, `calls`)와 `Sources/MokaCore/Decision/TypeSafeCodec.swift`. T007 PASS. 👁(DecisionProvider 경계) 〔단위 1b〕
 - [ ] T016 `Sources/MokaCore/Decision/ScoringPlan.swift`(`needsQuery`, `accepts`). T008 PASS 〔단위 1b〕
-- [ ] T017 `Sources/MokaCore/Decision/KeyStore.swift`(프로토콜, `InMemoryKeyStore`: 정한 오류를 던질 수 있음, `save`는 덮어쓰기). 가짜 공급자 붙잡기·풀기 시험을 `Tests/MokaCoreTests/FakeDecisionProviderTests.swift`에 함께 둔다 〔단위 1b〕
+- [ ] T017 `Sources/MokaCore/Decision/KeyStore.swift`(프로토콜, `InMemoryKeyStore`: 정한 오류를 던질 수 있음, `save`는 덮어쓰기) 〔단위 1b〕
 - [ ] T018 `Sources/MokaCore/Storage.swift`에 `ScoreStore`·`InMemoryScoreStore(tasks:)`(없는 할 일이면 `taskNotFound`). T009(메모리) PASS 〔단위 1b〕
 - [ ] T019 `Sources/MokaStore/Migrations.swift`에 `v3_scores`(data-model §2의 SQL을 기존 규칙대로 한 줄 문자열로), `Sources/MokaStore/GRDBScoreStore.swift`(UPSERT, `taskExists` → `taskNotFound`, 시각은 `Row.timestamp`·`UTCTimestamp`), `schema/moka-schema.sql` 갱신, `StoreKind.makeStores()`에 판단 결과 저장소를 더하고 T009 시험을 공용 계약으로 옮김. T009(두 구현)·T010·T011 PASS. 👁(스키마 스냅샷) 〔단위 3〕
 
@@ -97,6 +97,8 @@ description: "spec 003 판단 모델 연동 MVP 작업 목록"
   - 묻는 때마다(설정 창 저장, 노치 빠른 입력, 버튼, 일정 변경, 활성화, 하루가 바뀐 뒤 활성화, 키 저장) 다시 물을 할 일로만 불림
   - 같은 입력은 다시 보내지 않음
   - 붙잡기로 동시 진행이 4를 넘지 않음(`maxInFlight`)
+  - 트리거 둘이 겹쳐도(하루가 바뀐 뒤 활성화로 여러 건을 붙잡은 사이 할 일 저장) `maxInFlight ≤ 4`, 같은 해시는 한 번만 보냄, 저장한 새 할 일이 남은 할 일보다 먼저 보내짐, 두 번째 `requestScores()`가 같은 `Task`를 돌려줌. 지금 설계(트리거마다 그룹)였다면 실패하는 시험이다
+  - 실행기가 끝나는 순간 들어온 트리거가 사라지지 않음, 붙잡은 사이 버리거나 고친 할 일은 낡은 해시로 보내지지 않음
   - 답이 오면 저장되고 "다음" 표시가 바뀜
   - 붙잡은 사이 고치면 그 답은 버림
   - `decision`이 `nil`이면 아무것도 묻지 않음(기존 동작)
@@ -104,9 +106,9 @@ description: "spec 003 판단 모델 연동 MVP 작업 목록"
 ### Implementation (Green)
 
 - [ ] T023 [US1] `Sources/MokaCore/PriorityOrder.swift`(`PriorityOrder`, `PriorityRotateRule`, 마감 순 비교는 `TaskListView`의 비교를 꺼내 함께 씀), `Sources/MokaCore/DecisionLog.swift`에 `priorityRotateV0`, `NotchSession.swift`에 `SessionScoring`과 `SessionInput.scoring: SessionScoring? = nil`. T020 PASS. 👁(`scheduler_choice` 값) 〔단위 2〕
-- [ ] T024 [US1] `Sources/MokaCore/NotchSession.swift`의 `picked`·`nextMark`·`logLine`과 `Sources/MokaCore/Sim/SimStorageRunner.swift`가 `PriorityRotateRule`을 쓴다(data-model §7·§8, `scoring`이 `nil`이면 마감 순). `Sources/MokaCore/TaskRules.swift`의 `RotateByIDRule`과 `Tests/MokaCoreTests/TaskRulesTests.swift`의 그 시험을 지운다(이유는 PR에). 계약 문서 둘(data-model §11)의 고르기 규칙 서술을 고친다. spec 002 단위 시험은 키 없는 입력에서 순서가 마감 순으로 바뀌는 곳만 기대를 고치고, spec 002 storage 시뮬레이터 golden(`Tests/MokaCoreTests/Fixtures/sim/storage-*.expected.jsonl`)의 기대 출력을 새 규칙으로 갱신한다(data-model §11, 시나리오 입력은 그대로). PR에 "spec 002 R-104 → spec 003 R-209 규칙 교체, 테스트 약화 아님"과 바뀐 시나리오·줄 목록을 적는다. spec 001 타이머 golden은 바이트 그대로. T021 PASS. 👁(golden 갱신) 〔단위 2〕
-- [ ] T025 [US1] `App/Sources/AppState.swift`: `AppStorage.scores` 선택 필드, `AppState.init(..., decision: DecisionSetup? = nil)`(data-model §9), `input(at:)`에 `scoring`, `requestScores()`(data-model §6 묻지 않는 경우·키 읽기·보내기 장부·동시 4·답 받기·체크포인트는 그때그때 읽기)와 묻는 곳(`reloadTasks`·`reloadContexts`·`activate`·키 저장), `launch()` 첫머리에 `hasKey`·`scores` 읽기, 화면 값(할 일별 priority). T022 PASS 〔단위 4〕
-- [ ] T026 [P] [US1] `App/Sources/Decision/TypeSafeProvider.swift`(상태 없는 `struct`): contracts/decision-provider.md HTTP 표(URLSession, `timeoutIntervalForResource = Defaults.decisionTimeout`, 받은 키는 헤더에만, 상태 코드 → 오류, 본문은 `TypeSafeCodec`, 로그는 종류·상태 코드만). 시험에서 링크하지 않는다 〔단위 4〕
+- [ ] T024 [US1] `Sources/MokaCore/NotchSession.swift`의 `picked`·`nextMark`·`logLine`과 `Sources/MokaCore/Sim/SimStorageRunner.swift`가 `PriorityRotateRule`을 쓴다(data-model §7·§8, `scoring`이 `nil`이면 마감 순). `Sources/MokaCore/TaskRules.swift`의 `RotateByIDRule`과 `Tests/MokaCoreTests/TaskRulesTests.swift`의 그 시험을 지운다(이유는 PR에). 계약 문서 둘의 고르기 규칙 서술을 고치고 spec 002 `spec.md` R-104·R-112에 대체 표기를 넣는다(data-model §11). spec 002 단위 시험은 키 없는 입력에서 순서가 마감 순으로 바뀌는 곳만 기대를 고치고, spec 002 storage 시뮬레이터 golden(`Tests/MokaCoreTests/Fixtures/sim/storage-*.expected.jsonl`)의 기대 출력을 새 규칙으로 갱신한다(data-model §11, 시나리오 입력은 그대로). PR에 "spec 002 R-104 → spec 003 R-209 규칙 교체, 테스트 약화 아님"과 바뀐 시나리오·줄 목록을 적는다. spec 001 타이머 golden은 바이트 그대로. T021 PASS. 👁(golden 갱신) 〔단위 2〕
+- [ ] T025 [US1] `App/Sources/AppState.swift`: `AppStorage.scores` 선택 필드, `AppState.init(..., decision: DecisionSetup? = nil)`(data-model §9), `input(at:)`에 `scoring`, `requestScores()`(data-model §6 묻지 않는 경우·키 읽기·보내기 장부·단일 실행기와 동시 4·답 받기·체크포인트는 그때그때 읽기)와 묻는 곳(`reloadTasks`·`reloadContexts`·`activate`·키 저장), `launch()` 첫머리에 `hasKey`·`scores` 읽기, 화면 값(할 일별 priority). T022 PASS 〔단위 4〕
+- [ ] T026 [P] [US1] `App/Sources/Decision/TypeSafeProvider.swift`(상태 없는 `struct`): contracts/decision-provider.md HTTP 표(URLSession, `timeoutIntervalForResource = Defaults.decisionTimeout`, 받은 키는 헤더에만, 상태 코드 → 오류, 본문은 `TypeSafeCodec`, 로그는 종류·상태 코드만). 어떤 경우에도 `Defaults.decisionTimeout` 안에 성공 또는 오류로 돌아온다(단일 실행기가 멈추지 않게, data-model §6, 리뷰 항목). 시험에서 링크하지 않는다 〔단위 4〕
 - [ ] T027 [P] [US1] `App/Sources/Decision/KeychainKeyStore.swift`: research R10(로그인 키체인 generic password, service `dev.dongwon.moka`, account `typesafe`, `hasKey`는 `kSecReturnAttributes`만, 접근성 속성 없음). 시험에서 쓰지 않는다(`FR-16 R-214`) 〔단위 4〕
 - [ ] T028 [US1] `App/Sources/MokaApp.swift`: DB를 열 때 `GRDBScoreStore`를 `AppStorage.scores`로(못 열면 nil, spec 002 R-119), DB와 상관없이 `DecisionSetup(keyStore: KeychainKeyStore(), provider: TypeSafeProvider(), questions: try? QuestionSet.bundled())`을 `AppState`에 넘긴다(질문 파일 해석 실패면 로그 한 줄). T026·T027 뒤 〔단위 4〕
 - [ ] T029 🔒 [US1] 설정 창 시안 `~/Dev/ai-platform/projects/moka/design/003-mockup.html`: data-model §10 키 칸 상태 여섯과 할 일 탭 priority 칸(점수 있음·없음 섞임). 사용자 확정을 받는다. 하루 넘게 밀리면 R-215를 다음 spec으로(plan 위험 1) 〔단위 4〕
@@ -134,6 +136,7 @@ description: "spec 003 판단 모델 연동 MVP 작업 목록"
   - 키 지운 뒤 마감 순
   - `InMemoryKeyStore.read`가 던지거나 `nil`이면 보내지 않고 `hasKey`가 `false`
   - 질문 세트가 `nil`이면 아무것도 묻지 않음
+  - `AppStorage.scores`가 `nil`(앱 DB를 열 수 없음)이면 아무것도 보내지 않음(`FR-03 R-206`)
   - 주입한 시계로 1시간 동안 시작·완료·바꾸기가 동작
 
 ### Implementation (Green)
@@ -176,7 +179,7 @@ description: "spec 003 판단 모델 연동 MVP 작업 목록"
 
 ## Phase 7: Polish & Cross-Cutting
 
-- [ ] T042 [P] `GLOSSARY.md`: 판단 질문 넷(blocked 없앰, 2026-11-06 사용자 결정), noul·score, impact 옵션 "조금/꽤/아주", 판단 결과(`scores`, priority 저장 안 함), `priority_rotate_v0`, 키 보관함("마일스톤 3에서 만든다" → 만들었음), 온보딩 절(169행 "판단 공급자 키 단계는 마일스톤 3에서 더한다" → 다음 spec) 〔단위 1a〕
+- [ ] T042 [P] `GLOSSARY.md`: 판단 질문 넷(blocked 없앰, 2026-11-06 사용자 결정), noul·score, impact 옵션 "조금/꽤/아주", 판단 결과(`scores`, priority 저장 안 함), `priority_rotate_v0`(`scheduler_choice` 항목의 "만든 순서 순환·`RotateByIDRule`" 서술 갱신), 키 보관함("마일스톤 3에서 만든다" → 만들었음), 온보딩 절(169행 "판단 공급자 키 단계는 마일스톤 3에서 더한다" → 다음 spec) 〔단위 1a〕
 - [ ] T043 🔒 quickstart 1~6 전체를 돌려 결과 표를 마지막 PR에 붙인다 〔단위 4〕
 - [ ] T044 PRD 고칠 문장(6장 blocked 줄·impact 옵션, 7장 w_b·정책 1·7번 6시간 캐시, 9장 `scores` 열)을 마지막 PR "사람이 볼 결정"에 적는다. PRD는 저장소 밖이라 고치지 않는다 〔단위 4〕
 
