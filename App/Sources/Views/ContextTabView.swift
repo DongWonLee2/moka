@@ -21,7 +21,6 @@ struct ContextTabView: View {
                 VStack(spacing: 0) {
                     ForEach(Array(rows.enumerated()), id: \.element.id) { index, context in
                         if index > 0 { Divider() }
-                        // 체크 칸은 두 번 클릭 고치기 영역 밖에 둔다(할 일 탭과 같음).
                         HStack(spacing: 0) {
                             RowCheckBox(
                                 isOn: Binding(
