@@ -45,6 +45,17 @@ public enum ContextText {
         "\(day.year)년 \(day.month)월 \(day.day)일"
     }
 
+    /// 지우기 확인(R-120). 일정은 행을 지워 되돌릴 수 없다(research R4).
+    public static func deleteTitle(_ name: String) -> String {
+        "\"\(name)\"\(TaskFormText.objectParticle(after: name)) 지울까요?"
+    }
+
+    public static func deleteManyTitle(count: Int) -> String {
+        "일정 \(count)개를 지울까요?"
+    }
+
+    public static let deleteMessage = "지운 일정은 되돌릴 수 없어요."
+
     public static func impact(_ impact: ContextImpact) -> String {
         switch impact {
         case .normal: "조금"

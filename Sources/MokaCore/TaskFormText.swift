@@ -39,7 +39,7 @@ public enum TaskFormText {
 
     private static let digitsWithFinalConsonant = "013678"
 
-    private static func objectParticle(after text: String) -> String {
+    static func objectParticle(after text: String) -> String {
         guard let last = text.unicodeScalars.last else { return "을(를)" }
         switch last.value {
         case 0xAC00...0xD7A3:
