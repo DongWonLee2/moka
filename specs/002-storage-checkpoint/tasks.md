@@ -40,8 +40,8 @@ description: "spec 002 저장과 체크포인트 작업 목록"
 
 **Purpose**: 기준 상태와 상수 자리
 
-- [ ] T001 기준 상태 확인: `swift test`, `cd tuning && python3 -m pytest`, 앱 빌드를 돌려 기존 시험이 PASS인지 기록한다(원래 실패와 새 회귀 구분). 기존 golden(`Tests/MokaCoreTests/Fixtures/sim/*.expected.jsonl`)의 해시를 PR "완료 증거"에 적어 둔다(contracts "원칙") 〔단위 1〕
-- [ ] T002 [P] `Sources/MokaCore/Defaults.swift`에 data-model §6의 초기값 상수(`extendMin`, `extendMinRange`, `dayStart`)를 더한다. 기존 상수는 그대로 〔단위 1〕
+- [x] T001 기준 상태 확인: `swift test`, `cd tuning && python3 -m pytest`, 앱 빌드를 돌려 기존 시험이 PASS인지 기록한다(원래 실패와 새 회귀 구분). 기존 golden(`Tests/MokaCoreTests/Fixtures/sim/*.expected.jsonl`)의 해시를 PR "완료 증거"에 적어 둔다(contracts "원칙") 〔단위 1〕
+- [x] T002 [P] `Sources/MokaCore/Defaults.swift`에 data-model §6의 초기값 상수(`extendMin`, `extendMinRange`, `dayStart`)를 더한다. 기존 상수는 그대로 〔단위 1〕
 
 ---
 
@@ -53,23 +53,23 @@ description: "spec 002 저장과 체크포인트 작업 목록"
 
 ### Tests (Red)
 
-- [ ] T003 [P] `Tests/MokaCoreTests/ValueTypeTests.swift`에 값 타입·값 검증 시험을 쓰고 실패를 확인한다: data-model §2(`Weekday`, `LocalDay`, `DayStart`, `TaskEdit`, 열거형 `rawValue` 전부 — `SchedulerChoice.rotateByIDV0` = `"rotate_by_id_v0"` 포함)와 §5.6 표 〔단위 1〕
-- [ ] T004 [P] `Tests/MokaCoreTests/DayBoundaryTests.swift`에 하루 경계 시험을 쓰고 실패를 확인한다: data-model §5.4의 경계값·전환일·단조성 시험, `start(of:)`와 `day(containing:)` 왕복, §2.2 `GregorianCalendar.make(timeZone:)`. 같은 파일에 ADR-0010 결정 검증 시험 둘을 둔다: (1) 같은 순간을 시간대만 바꿔 넣으면 판정이 새 시간대를 따르는지(시간대를 한 번 넘겨 두는 방식과 판정마다 새로 만드는 방식 비교), (2) `make`가 늘 그레고리력을 돌려주는지(`LocalDay` 텍스트가 바뀌지 않음) 〔단위 1〕
-- [ ] T005 [P] `Tests/MokaCoreTests/UTCTimestampTests.swift`에 data-model §2.1 시험을 쓰고 실패를 확인한다: `format`(초 아래 버림)·`parse`(형식 밖 nil)·`floorToSecond` 왕복, 윤년·월말 날짜 〔단위 1〕
-- [ ] T006 [P] `Tests/MokaCoreTests/CoreSettingsTests.swift`에 data-model §6 읽기·쓰기 규칙 시험을 쓰고 실패를 확인한다(`FR-16`): 세 키의 읽기 규칙, `"TRUE"`·`"1"`은 온보딩을 보임, 틀린 값 쓰기는 이전 값 유지, 저장소가 throw하면 읽기 기본값 〔단위 1〕
-- [ ] T007 [P] `Tests/MokaStoreTests/StorageContractTests.swift`에 공용 계약 시험을 `@Test(arguments: StoreKind.allCases)`로 쓰고 실패를 확인한다. data-model §3 "공용 계약 시험" 항목 전부(초 아래 시각 왕복, 묶음 셋 이상 뒤 id 순서·값 포함). 이 태스크에서는 `StoreKind.memory`만 통과 대상이고 `.grdb`는 T015에서 켠다 〔단위 1·2〕
-- [ ] T008 [P] 👁 `Tests/MokaStoreTests/MigrationTests.swift`의 이름 시험 리터럴과 `schema/moka-schema.sql`을 data-model §7대로 먼저 고쳐 스냅샷·이름 시험이 실패하는지 확인한다(§7 "Red 단계"). `Tests/MokaStoreTests/StoreConstraintTests.swift`에 GRDB 전용 시험을 쓴다: §7 CHECK 칸 전부의 허용·거부(원시 SQL), `ON DELETE RESTRICT`(외래 키가 켜져 있는지 확인), 모르는 `user_action`·`scheduler_choice` 읽기 → `StoreError.unknownValue`. 첫 실행은 리눅스 CI에서도(`trigger` 열 이름, plan 위험 6) 〔단위 2〕
-- [ ] T009 [P] `tuning/tests/test_schema_contract.py`를 research R16 범위로 쓰고 실패를 확인한다(`decisions_log` 열 이름 집합, 판단 칸 CHECK 허용·거부만). 표준 라이브러리만 〔단위 2〕
+- [x] T003 [P] `Tests/MokaCoreTests/ValueTypeTests.swift`에 값 타입·값 검증 시험을 쓰고 실패를 확인한다: data-model §2(`Weekday`, `LocalDay`, `DayStart`, `TaskEdit`, 열거형 `rawValue` 전부 — `SchedulerChoice.rotateByIDV0` = `"rotate_by_id_v0"` 포함)와 §5.6 표 〔단위 1〕
+- [x] T004 [P] `Tests/MokaCoreTests/DayBoundaryTests.swift`에 하루 경계 시험을 쓰고 실패를 확인한다: data-model §5.4의 경계값·전환일·단조성 시험, `start(of:)`와 `day(containing:)` 왕복, §2.2 `GregorianCalendar.make(timeZone:)`. 같은 파일에 ADR-0010 결정 검증 시험 둘을 둔다: (1) 같은 순간을 시간대만 바꿔 넣으면 판정이 새 시간대를 따르는지(시간대를 한 번 넘겨 두는 방식과 판정마다 새로 만드는 방식 비교), (2) `make`가 늘 그레고리력을 돌려주는지(`LocalDay` 텍스트가 바뀌지 않음) 〔단위 1〕
+- [x] T005 [P] `Tests/MokaCoreTests/UTCTimestampTests.swift`에 data-model §2.1 시험을 쓰고 실패를 확인한다: `format`(초 아래 버림)·`parse`(형식 밖 nil)·`floorToSecond` 왕복, 윤년·월말 날짜 〔단위 1〕
+- [x] T006 [P] `Tests/MokaCoreTests/CoreSettingsTests.swift`에 data-model §6 읽기·쓰기 규칙 시험을 쓰고 실패를 확인한다(`FR-16`): 세 키의 읽기 규칙, `"TRUE"`·`"1"`은 온보딩을 보임, 틀린 값 쓰기는 이전 값 유지, 저장소가 throw하면 읽기 기본값 〔단위 1〕
+- [x] T007 [P] `Tests/MokaStoreTests/StorageContractTests.swift`에 공용 계약 시험을 `@Test(arguments: StoreKind.allCases)`로 쓰고 실패를 확인한다. data-model §3 "공용 계약 시험" 항목 전부(초 아래 시각 왕복, 묶음 셋 이상 뒤 id 순서·값 포함). 이 태스크에서는 `StoreKind.memory`만 통과 대상이고 `.grdb`는 T015에서 켠다 〔단위 1·2〕
+- [x] T008 [P] 👁 `Tests/MokaStoreTests/MigrationTests.swift`의 이름 시험 리터럴과 `schema/moka-schema.sql`을 data-model §7대로 먼저 고쳐 스냅샷·이름 시험이 실패하는지 확인한다(§7 "Red 단계"). `Tests/MokaStoreTests/StoreConstraintTests.swift`에 GRDB 전용 시험을 쓴다: §7 CHECK 칸 전부의 허용·거부(원시 SQL), `ON DELETE RESTRICT`(외래 키가 켜져 있는지 확인), 모르는 `user_action`·`scheduler_choice` 읽기 → `StoreError.unknownValue`. 첫 실행은 리눅스 CI에서도(`trigger` 열 이름, plan 위험 6) 〔단위 2〕
+- [x] T009 [P] `tuning/tests/test_schema_contract.py`를 research R16 범위로 쓰고 실패를 확인한다(`decisions_log` 열 이름 집합, 판단 칸 CHECK 허용·거부만). 표준 라이브러리만 〔단위 2〕
 
 ### Implementation (Green)
 
-- [ ] T010 `Sources/MokaCore/`에 data-model §2 값 타입과 §5.6 값 검증을 둔다: `TaskModel.swift`, `ContextModel.swift`, `CheckpointModel.swift`, `DecisionLog.swift`(파일 배치는 plan "Source Code"). T003 PASS 〔단위 1〕
-- [ ] T011 `Sources/MokaCore/UTCTimestamp.swift`에 `UTCTimestamp`와 내부 `GregorianCivil`을 두고, `Sources/MokaCore/Sim/SimScenario.swift`의 `SimTimestamp`가 `GregorianCivil`을 쓰게 옮긴다(data-model §2.1). T005 PASS, 기존 golden 변경 0줄(quickstart 1 명령) 〔단위 1〕
-- [ ] T012 `Sources/MokaCore/LocalDay.swift`에 `LocalDay`, `DayStart`, `DayBoundary`, `GregorianCalendar`를 구현한다(data-model §2·§2.2·§5.4). T004 PASS. 리눅스 컨테이너(quickstart 1의 `docker run`)에서도 PASS인지 PR에 적는다(plan 위험 6). ADR-0010 결정 검증 결과(어느 방식을 골랐는지, 시험 이름)를 `adr/ADR-0010-day-boundary-calendar.md` 끝에 덧붙인다 〔단위 1〕
-- [ ] T013 `Sources/MokaCore/CoreSettings.swift`에 data-model §6 규칙을 둔다. 기존 `QuantumSettings.swift`는 바꾸지 않는다. T006 PASS 〔단위 1〕
-- [ ] T014 `Sources/MokaCore/Storage.swift`에 data-model §3의 `StoreError`, `StoreBatch`, `TaskRepository`, `ContextStore`, `InMemoryTaskRepository`, `InMemoryContextStore`를 둔다(시각 내림, 되돌림 포함). T007(`.memory`) PASS 〔단위 1〕
-- [ ] T015 👁 `Sources/MokaStore/Migrations.swift`에 data-model §7 마이그레이션을 등록하고 `Sources/MokaStore/GRDBTaskRepository.swift`·`GRDBContextStore.swift`를 구현한다(시각·날짜는 `UTCTimestamp`·`LocalDay`만, 열거 값은 `rawValue`, `apply`는 `write` 한 트랜잭션). T007에 `.grdb`를 켜고 T007·T008 PASS. 스냅샷 시험 출력과 `schema/moka-schema.sql`이 바이트로 같은지 확인한다(ADR-0004). 스냅샷 변경은 PR "사람이 볼 결정" 〔단위 2〕
-- [ ] T016 T009 PASS 확인(`cd tuning && python3 -m pytest`). T015의 스냅샷만으로 통과해야 한다 〔단위 2〕
+- [x] T010 `Sources/MokaCore/`에 data-model §2 값 타입과 §5.6 값 검증을 둔다: `TaskModel.swift`, `ContextModel.swift`, `CheckpointModel.swift`, `DecisionLog.swift`(파일 배치는 plan "Source Code"). T003 PASS 〔단위 1〕
+- [x] T011 `Sources/MokaCore/UTCTimestamp.swift`에 `UTCTimestamp`와 내부 `GregorianCivil`을 두고, `Sources/MokaCore/Sim/SimScenario.swift`의 `SimTimestamp`가 `GregorianCivil`을 쓰게 옮긴다(data-model §2.1). T005 PASS, 기존 golden 변경 0줄(quickstart 1 명령) 〔단위 1〕
+- [x] T012 `Sources/MokaCore/LocalDay.swift`에 `LocalDay`, `DayStart`, `DayBoundary`, `GregorianCalendar`를 구현한다(data-model §2·§2.2·§5.4). T004 PASS. 리눅스 컨테이너(quickstart 1의 `docker run`)에서도 PASS인지 PR에 적는다(plan 위험 6). ADR-0010 결정 검증 결과(어느 방식을 골랐는지, 시험 이름)를 `adr/ADR-0010-day-boundary-calendar.md` 끝에 덧붙인다 〔단위 1〕
+- [x] T013 `Sources/MokaCore/CoreSettings.swift`에 data-model §6 규칙을 둔다. 기존 `QuantumSettings.swift`는 바꾸지 않는다. T006 PASS 〔단위 1〕
+- [x] T014 `Sources/MokaCore/Storage.swift`에 data-model §3의 `StoreError`, `StoreBatch`, `TaskRepository`, `ContextStore`, `InMemoryTaskRepository`, `InMemoryContextStore`를 둔다(시각 내림, 되돌림 포함). T007(`.memory`) PASS 〔단위 1〕
+- [x] T015 👁 `Sources/MokaStore/Migrations.swift`에 data-model §7 마이그레이션을 등록하고 `Sources/MokaStore/GRDBTaskRepository.swift`·`GRDBContextStore.swift`를 구현한다(시각·날짜는 `UTCTimestamp`·`LocalDay`만, 열거 값은 `rawValue`, `apply`는 `write` 한 트랜잭션). T007에 `.grdb`를 켜고 T007·T008 PASS. 스냅샷 시험 출력과 `schema/moka-schema.sql`이 바이트로 같은지 확인한다(ADR-0004). 스냅샷 변경은 PR "사람이 볼 결정" 〔단위 2〕
+- [x] T016 T009 PASS 확인(`cd tuning && python3 -m pytest`). T015의 스냅샷만으로 통과해야 한다 〔단위 2〕
 
 **확인 지점**: `swift test`·pytest PASS. 메모리·GRDB 두 저장소가 같은 계약을 통과한다(SC-101의 저장 몫)
 
@@ -83,36 +83,36 @@ description: "spec 002 저장과 체크포인트 작업 목록"
 
 ### Tests (Red)
 
-- [ ] T017 [P] [US1] `Tests/MokaCoreTests/TaskRulesTests.swift`에 `RotateByIDRule` 시험을 쓰고 실패를 확인한다(data-model §5.1 규칙 넷과 "시험" 줄 전부, `FR-05 R-104`) 〔단위 1〕
-- [ ] T018 [P] [US1] `Tests/MokaCoreTests/TaskWriteRulesTests.swift`에 `TaskWriteRules` 시험을 쓰고 실패를 확인한다(data-model §5.8, `FR-01 R-101`·`FR-09 R-113`): `prepareNew`의 검증·요일 채움(하루 시작 06:00에 05:00 등록 → 전날 요일)·`cycleDay`, `applyEdit`의 반복·요일 규칙 다섯 줄 전부, 같은 값을 다시 주면 그대로, `dropped`는 nil, `done`은 고칠 수 있음 〔단위 1〕
-- [ ] T019 [P] [US1] `Tests/MokaCoreTests/TaskListViewTests.swift`에 목록 보기 시험을 쓰고 실패를 확인한다(data-model §5.7 규칙과 경계값 전부, `FR-01 R-118`) 〔단위 1〕
-- [ ] T020 [P] [US1] `Tests/MokaCoreTests/NotchSessionTests.swift`에 세션 시험(할 일 연결 몫)을 쓰고 실패를 확인한다(data-model §4.2, `FR-01 R-103`·`FR-05 R-104`): 표의 고르기·빠른 입력(빈 상태·초안)·다른 할 일·시작(`run` 채움)·지움·고침 칸과 "거부" 칸마다 하나(`SessionError.notAllowed`), 커서 수명 표 가운데 이 동작들의 줄, 고침은 제목 사본만 바뀌고 시간 값이 그대로(초안·도는 중·시간 끝), `nextMark` 세 경우, 초안의 칩은 그 순간의 기본값 〔단위 1〕
-- [ ] T021 [P] [US1] 👁 `Tests/MokaCoreTests/SimScenarioTests.swift`에 storage 모드 디코딩 오류 시험을 더한다(contracts "오류 덧붙임" 종료 코드 2 줄 전부). 픽스처는 `Tests/MokaCoreTests/Fixtures/sim/errors/storage-<이름>.json`, 기대 오류 종류(`SimErrorKind`, 새 경우 포함)는 시험 코드 표에 먼저 적는다 〔단위 3〕
-- [ ] T022 [P] [US1] 👁 `Tests/MokaCoreTests/Fixtures/sim/`에 storage golden 둘을 둔다(`SimGoldenTests`가 같은 이름 `.expected.jsonl`을 요구): `storage-contract-example.json`(contracts 입력 예시와 출력 아홉 줄 그대로)과 `storage-us1-pick.json`(`add_task` 셋 → `relaunch` → `notch_task` 1, 시작·바꾸기 반복 → 1 → 2 → 3 → 1, 초안에서 `enter_title` → 새 할 일이 초안). 기존 golden 파일은 고치지 않는다 〔단위 3〕
+- [x] T017 [P] [US1] `Tests/MokaCoreTests/TaskRulesTests.swift`에 `RotateByIDRule` 시험을 쓰고 실패를 확인한다(data-model §5.1 규칙 넷과 "시험" 줄 전부, `FR-05 R-104`) 〔단위 1〕
+- [x] T018 [P] [US1] `Tests/MokaCoreTests/TaskWriteRulesTests.swift`에 `TaskWriteRules` 시험을 쓰고 실패를 확인한다(data-model §5.8, `FR-01 R-101`·`FR-09 R-113`): `prepareNew`의 검증·요일 채움(하루 시작 06:00에 05:00 등록 → 전날 요일)·`cycleDay`, `applyEdit`의 반복·요일 규칙 다섯 줄 전부, 같은 값을 다시 주면 그대로, `dropped`는 nil, `done`은 고칠 수 있음 〔단위 1〕
+- [x] T019 [P] [US1] `Tests/MokaCoreTests/TaskListViewTests.swift`에 목록 보기 시험을 쓰고 실패를 확인한다(data-model §5.7 규칙과 경계값 전부, `FR-01 R-118`) 〔단위 1〕
+- [x] T020 [P] [US1] `Tests/MokaCoreTests/NotchSessionTests.swift`에 세션 시험(할 일 연결 몫)을 쓰고 실패를 확인한다(data-model §4.2, `FR-01 R-103`·`FR-05 R-104`): 표의 고르기·빠른 입력(빈 상태·초안)·다른 할 일·시작(`run` 채움)·지움·고침 칸과 "거부" 칸마다 하나(`SessionError.notAllowed`), 커서 수명 표 가운데 이 동작들의 줄, 고침은 제목 사본만 바뀌고 시간 값이 그대로(초안·도는 중·시간 끝), `nextMark` 세 경우, 초안의 칩은 그 순간의 기본값 〔단위 1〕
+- [x] T021 [P] [US1] 👁 `Tests/MokaCoreTests/SimScenarioTests.swift`에 storage 모드 디코딩 오류 시험을 더한다(contracts "오류 덧붙임" 종료 코드 2 줄 전부). 픽스처는 `Tests/MokaCoreTests/Fixtures/sim/errors/storage-<이름>.json`, 기대 오류 종류(`SimErrorKind`, 새 경우 포함)는 시험 코드 표에 먼저 적는다 〔단위 3〕
+- [x] T022 [P] [US1] 👁 `Tests/MokaCoreTests/Fixtures/sim/`에 storage golden 둘을 둔다(`SimGoldenTests`가 같은 이름 `.expected.jsonl`을 요구): `storage-contract-example.json`(contracts 입력 예시와 출력 아홉 줄 그대로)과 `storage-us1-pick.json`(`add_task` 셋 → `relaunch` → `notch_task` 1, 시작·바꾸기 반복 → 1 → 2 → 3 → 1, 초안에서 `enter_title` → 새 할 일이 초안). 기존 golden 파일은 고치지 않는다 〔단위 3〕
 
 ### Implementation (Green)
 
-- [ ] T023 [US1] `Sources/MokaCore/TaskRules.swift`에 `RotateByIDRule`과 `TaskWriteRules`를 둔다(data-model §5.1·§5.8). T017·T018 PASS 〔단위 1〕
-- [ ] T024 [US1] `Sources/MokaCore/TaskListView.swift`에 data-model §5.7 타입과 함수를 둔다. T019 PASS 〔단위 1〕
-- [ ] T025 [US1] `Sources/MokaCore/NotchSession.swift`에 `NotchSession`, `RunInfo`, `SessionInput`, `SessionStep`, `SessionError`와 고르기·빠른 입력·다른 할 일·시작·지움·고침·`nextMark`를 둔다(data-model §4.2, `NotchTimer`는 바꾸지 않음). T020 PASS 〔단위 1〕
-- [ ] T026 [US1] 👁 `Sources/MokaCore/Sim/`에 storage 모드를 더한다(contracts 전체): `SimScenario.swift`(`storage`, `settings.day_start`, 새 이벤트 여섯과 기존 `start`·`complete`의 두 줄 필드 디코딩), `SimRunner.swift`(메모리 저장소, 앱과 같은 MokaCore 함수만, 단계 × 이벤트 표, 꺼짐 단계, 쓰기는 `SessionCommit`), `SimOutput.swift`(덧붙임 키 다섯, 직접 조립), 불변식 검사(종료 코드 1 줄 전부). 이 태스크는 US1 이벤트(`add_task`·`enter_title`·`start`·`relaunch`)와 출력 형식까지. T021(US1 몫)·T022 PASS, 기존 golden 변경 0줄(quickstart 1 명령) 〔단위 3〕
-- [ ] T027 [US1] 👁 `specs/001-notch-timer/contracts/moka-sim-v1.md`에 contracts/moka-sim-v1-additions.md 내용을 옮긴다. PR "사람이 볼 결정"에 계약 변경과 `scheduler_choice` 값 `rotate_by_id_v0`을 올린다 〔단위 3〕
-- [ ] T028 🔒 [US1] 노치 화면을 고친다(시안 1·2번, ADR-0009 뷰는 값과 콜백만):
+- [x] T023 [US1] `Sources/MokaCore/TaskRules.swift`에 `RotateByIDRule`과 `TaskWriteRules`를 둔다(data-model §5.1·§5.8). T017·T018 PASS 〔단위 1〕
+- [x] T024 [US1] `Sources/MokaCore/TaskListView.swift`에 data-model §5.7 타입과 함수를 둔다. T019 PASS 〔단위 1〕
+- [x] T025 [US1] `Sources/MokaCore/NotchSession.swift`에 `NotchSession`, `RunInfo`, `SessionInput`, `SessionStep`, `SessionError`와 고르기·빠른 입력·다른 할 일·시작·지움·고침·`nextMark`를 둔다(data-model §4.2, `NotchTimer`는 바꾸지 않음). T020 PASS 〔단위 1〕
+- [x] T026 [US1] 👁 `Sources/MokaCore/Sim/`에 storage 모드를 더한다(contracts 전체): `SimScenario.swift`(`storage`, `settings.day_start`, 새 이벤트 여섯과 기존 `start`·`complete`의 두 줄 필드 디코딩), `SimRunner.swift`(메모리 저장소, 앱과 같은 MokaCore 함수만, 단계 × 이벤트 표, 꺼짐 단계, 쓰기는 `SessionCommit`), `SimOutput.swift`(덧붙임 키 다섯, 직접 조립), 불변식 검사(종료 코드 1 줄 전부). 이 태스크는 US1 이벤트(`add_task`·`enter_title`·`start`·`relaunch`)와 출력 형식까지. T021(US1 몫)·T022 PASS, 기존 golden 변경 0줄(quickstart 1 명령) 〔단위 3〕
+- [x] T027 [US1] 👁 `specs/001-notch-timer/contracts/moka-sim-v1.md`에 contracts/moka-sim-v1-additions.md 내용을 옮긴다. PR "사람이 볼 결정"에 계약 변경과 `scheduler_choice` 값 `rotate_by_id_v0`을 올린다 〔단위 3〕
+- [x] T028 🔒 [US1] 노치 화면을 고친다(시안 1·2번, ADR-0009 뷰는 값과 콜백만):
   - `App/Sources/Views/CollapsedView.swift`: 초안은 회색 점 + 회색 제목(C1-B, 시간 없음, 왼쪽 104pt, 길면 …). 빈 상태와 도는 중은 spec 001 그대로
   - `App/Sources/Views/ExpandedView.swift`: 시작 전 화면은 제목이 채워져 있고 제목 입력을 건너뛴다. 칩 아래 줄 왼쪽에 고스트 버튼 "다른 할 일"(누르면 대기 할 일 목록, 급한 순, 고르면 세션 `chosenDraft`, 2026-11-04 사용자 결정)과 "+ 새 할 일"(누르면 제목 칸이 열리고 Enter로 빠른 입력, R-103), 오른쪽 "시작 ↵"(Enter는 늘 시작). 빈 상태의 새 할 일 입력은 그대로(시안 2번 메모)
   - `App/Sources/Views/NotchLayout.swift`: `collapsedSideWidths`에서 초안 왼쪽 폭 28 → 104pt, `panelSize` 높이를 가장 긴 판(시간 끝 + 두 줄)에 맞춤
   - `App/Sources/Views/NotchContentView.swift`·`App/Sources/Notch/NotchPanelHost.swift`(`NotchPanelRoot`): 새 값·콜백 전달(plan "앱 연결")
   - `App/Tests/MokaAppTests/ScreenStateSnapshotTests.swift`: 바뀐 `NotchContentView` 호출부를 고쳐 컴파일되게 한다(새 스냅샷은 T060)
   〔단위 4〕
-- [ ] T029 🔒 [US1] `App/Sources/Settings/SettingsView.swift`를 탭 셋(기본·할 일·일정) 틀로 바꾸고, 기본 탭 내용은 `App/Sources/Views/BasicTabView.swift`(값·콜백만)로 둔다(시안 6번, 폭 460pt, 창 제목은 "설정"(2026-11-04 사용자 결정, 시안의 탭 이름 제목 대신), 001의 로고 줄은 뺌). 기본 탭: 기본 작업 시간(기존), 추가 시간(`default_extend_min`, 숫자 칸 + 스테퍼, 1~180, 해석·이유 안내는 `QuantumChip.parseCustom`·`customIssue` 재사용, 안내 "시간이 끝났을 때 더 이어 갈 시간이에요."), 하루 시작 시각(`day_start`, 시·분 `DatePicker`(.hourAndMinute), 안내 "이 시각이 지나면 반복 할 일이 다시 대기로 돌아와요."). 메뉴 막대 항목은 spec 001 R-012 그대로 〔단위 4〕
-- [ ] T030 🔒 [US1] `App/Sources/Views/TaskListTabView.swift`에 할 일 탭을 만든다(시안 7번, R-102·R-118, 값·콜백만):
+- [x] T029 🔒 [US1] `App/Sources/Settings/SettingsView.swift`를 탭 셋(기본·할 일·일정) 틀로 바꾸고, 기본 탭 내용은 `App/Sources/Views/BasicTabView.swift`(값·콜백만)로 둔다(시안 6번, 폭 460pt, 창 제목은 "설정"(2026-11-04 사용자 결정, 시안의 탭 이름 제목 대신), 001의 로고 줄은 뺌). 기본 탭: 기본 작업 시간(기존), 추가 시간(`default_extend_min`, 숫자 칸 + 스테퍼, 1~180, 해석·이유 안내는 `QuantumChip.parseCustom`·`customIssue` 재사용, 안내 "시간이 끝났을 때 더 이어 갈 시간이에요."), 하루 시작 시각(`day_start`, 시·분 `DatePicker`(.hourAndMinute), 안내 "이 시각이 지나면 반복 할 일이 다시 대기로 돌아와요."). 메뉴 막대 항목은 spec 001 R-012 그대로 〔단위 4〕
+- [x] T030 🔒 [US1] `App/Sources/Views/TaskListTabView.swift`에 할 일 탭을 만든다(시안 7번, R-102·R-118, 값·콜백만):
   - 위 줄: 보기 `[전체 · 오늘 · 이번 주]` 세그먼트, 오른쪽 정렬 메뉴 `만든 순 ▾ / 마감 순`(처음 값 `all`·`created`, data-model §8)
   - 줄: 제목, 보조 줄(마감 "마감 11월 5일", 예상 "예상 50분", 반복 "매일"/"매주 수요일", "N번 미뤘어요". 완료한 할 일은 "완료"만), 상태 배지(대기 / 진행 중(모카색) / 완료), 완료는 줄 긋고 흐리게. 반복 할 일의 `streak > 0`이면 잔 아이콘이 든 모카색 배지 — 매일은 "N일 연속 진행", 매주는 "N주 연속 진행"(0이면 배지 없음)
   - "다음" 표시: `nextMark`(data-model §4.2) 할 일에만
   - 아래: `+`(새 할 일 시트) `−`(고른 할 일 지우기 확인), 안내 "두 번 클릭하면 고쳐요. **다음** 표시가 붙은 할 일이 노치에 떠요."
   - 버린 할 일은 보이지 않는다. 검색 없음
   〔단위 4〕
-- [ ] T031 🔒 [US1] `App/Sources/Views/TaskFormView.swift`에 할 일 시트를 만든다(시안 8·9번, R-101·R-102, 값 검증은 `TaskWriteRules`):
+- [x] T031 🔒 [US1] `App/Sources/Views/TaskFormView.swift`에 할 일 시트를 만든다(시안 8·9번, R-101·R-102, 값 검증은 `TaskWriteRules`):
   - 새로 만들기: 제목(자리표시 "무엇을 할까요?", 비면 저장 꺼짐 + 왼쪽 아래 "제목을 넣어 주세요."), 마감(체크 "마감 있음" + 날짜 고르기), 반복 세그먼트 없음/매일/매주(내용 폭), 매주면 요일 줄 일~토(하나만, 기본은 등록 순간이 속한 하루의 요일, 안내 문장 없음 — 2026-11-04 사용자 결정), 예상 소요(비워도 됨, 1 이상 정수가 아니면 "1분 이상으로 넣어 주세요."), 취소·저장
   - 고치기(줄 두 번 클릭): 같은 칸 + "이어서 할 일"은 읽기만(안내 "멈출 때 적어 둔 줄이에요."), 왼쪽 "지우기…"
   - 지우기 확인 시트: 제목 `"<제목>"을/를 지울까요?`(받침에 맞춤), 본문 "지우면 노치에 다시 뜨지 않아요. 지금까지 남긴 기록은 그대로 둬요."(도는 할 일이면 앞에 "지금 타이머가 도는 할 일이에요. 지우면 타이머가 멈추고"), 취소·지우기(빨강). 지우면 `dropped`(research R4)
@@ -131,17 +131,17 @@ description: "spec 002 저장과 체크포인트 작업 목록"
 
 ### Tests (Red)
 
-- [ ] T032 [P] [US2] `Tests/MokaCoreTests/NotchSessionTests.swift`에 버튼 시험을 더하고 실패를 확인한다(data-model §4.1 표와 그 아래 줄, §4.2 표의 버튼 칸·커서 수명·경과 분 줄, `FR-06 R-105`·`FR-07 R-106`·`R-107`·`R-109`·`FR-11 R-112`): 칩 45분·기본값 25분 시간 끝 → `elapsed_min` 45, 로그 `schedulerChoice` = `rotate_by_id_v0`, 하루 시작을 넘겨 끝낸 매일 반복 할 일(§4.1 예) 〔단위 1〕
-- [ ] T033 [P] [US2] `Tests/MokaCoreTests/CheckpointRulesTests.swift`에 data-model §5.5 시험을 쓰고 실패를 확인한다(`FR-07 R-108`·`R-109`): 경과 분 자름, 시계를 되돌린 `now`는 0, `showsInCollapsed`의 2.999초 참·3초 거짓·음수 거짓(사용자 결정 2026-11-05로 2초에서 3초) 〔단위 1〕
-- [ ] T034 [P] [US2] `Tests/MokaCoreTests/NotchStatusTests.swift`에 `NotchStatus.label(for:pending:)` 시험을 더하고 실패를 확인한다(`FR-07 R-106`): `pending` nil이면 지금 출력 그대로, `.switch` → "바꾸는 중", `.skip` → "미루는 중"(시안 4번) 〔단위 1〕
-- [ ] T035 [P] [US2] `Tests/MokaCoreTests/SessionCommitTests.swift`에 `SessionCommit.commit` 시험을 쓰고 실패를 확인한다(data-model §4.2, `FR-11 R-119`): `apply`가 throw하는 가짜 저장소면 같은 오류를 던지고 저장소에 아무것도 남지 않음, 성공하면 `step.session` 〔단위 1〕
-- [ ] T036 [P] [US2] 👁 `Tests/MokaCoreTests/Fixtures/sim/storage-us2-buttons.json`과 기대 출력을 둔다(quickstart 2의 버튼 항목: 하나뿐일 때 미루기, 시간 끝 네 동작, 칩 45분 시간 끝, 두 줄 비움) 〔단위 3〕
+- [x] T032 [P] [US2] `Tests/MokaCoreTests/NotchSessionTests.swift`에 버튼 시험을 더하고 실패를 확인한다(data-model §4.1 표와 그 아래 줄, §4.2 표의 버튼 칸·커서 수명·경과 분 줄, `FR-06 R-105`·`FR-07 R-106`·`R-107`·`R-109`·`FR-11 R-112`): 칩 45분·기본값 25분 시간 끝 → `elapsed_min` 45, 로그 `schedulerChoice` = `rotate_by_id_v0`, 하루 시작을 넘겨 끝낸 매일 반복 할 일(§4.1 예) 〔단위 1〕
+- [x] T033 [P] [US2] `Tests/MokaCoreTests/CheckpointRulesTests.swift`에 data-model §5.5 시험을 쓰고 실패를 확인한다(`FR-07 R-108`·`R-109`): 경과 분 자름, 시계를 되돌린 `now`는 0, `showsInCollapsed`의 2.999초 참·3초 거짓·음수 거짓(사용자 결정 2026-11-05로 2초에서 3초) 〔단위 1〕
+- [x] T034 [P] [US2] `Tests/MokaCoreTests/NotchStatusTests.swift`에 `NotchStatus.label(for:pending:)` 시험을 더하고 실패를 확인한다(`FR-07 R-106`): `pending` nil이면 지금 출력 그대로, `.switch` → "바꾸는 중", `.skip` → "미루는 중"(시안 4번) 〔단위 1〕
+- [x] T035 [P] [US2] `Tests/MokaCoreTests/SessionCommitTests.swift`에 `SessionCommit.commit` 시험을 쓰고 실패를 확인한다(data-model §4.2, `FR-11 R-119`): `apply`가 throw하는 가짜 저장소면 같은 오류를 던지고 저장소에 아무것도 남지 않음, 성공하면 `step.session` 〔단위 1〕
+- [x] T036 [P] [US2] 👁 `Tests/MokaCoreTests/Fixtures/sim/storage-us2-buttons.json`과 기대 출력을 둔다(quickstart 2의 버튼 항목: 하나뿐일 때 미루기, 시간 끝 네 동작, 칩 45분 시간 끝, 두 줄 비움) 〔단위 3〕
 
 ### Implementation (Green)
 
-- [ ] T037 [US2] `Sources/MokaCore/NotchSession.swift`에 완료·미루기·바꾸기·다시 시작·`SessionCommit`을, `Sources/MokaCore/CheckpointModel.swift`에 `Checkpoint.elapsedMinutes`·`FirstActionDisplay.showsInCollapsed`를 둔다(data-model §4.2·§5.5). T032·T033·T035 PASS 〔단위 1〕
-- [ ] T038 [US2] `Sources/MokaCore/NotchStatus.swift`에 `pending: PendingAction? = nil` 매개변수를 더한다(기존 호출부·시험은 그대로 통과). T034 PASS. Issue #52가 같은 파일의 다른 문구를 바꾸므로 먼저 병합된 쪽에 맞춘다 〔단위 1〕
-- [ ] T039 [US2] `Sources/MokaCore/Sim/SimRunner.swift`에 `skip`·`switch`와 `start`·`complete`의 두 줄 필드를 더한다(contracts). T021(US2 몫)·T036 PASS 〔단위 3〕
+- [x] T037 [US2] `Sources/MokaCore/NotchSession.swift`에 완료·미루기·바꾸기·다시 시작·`SessionCommit`을, `Sources/MokaCore/CheckpointModel.swift`에 `Checkpoint.elapsedMinutes`·`FirstActionDisplay.showsInCollapsed`를 둔다(data-model §4.2·§5.5). T032·T033·T035 PASS 〔단위 1〕
+- [x] T038 [US2] `Sources/MokaCore/NotchStatus.swift`에 `pending: PendingAction? = nil` 매개변수를 더한다(기존 호출부·시험은 그대로 통과). T034 PASS. Issue #52가 같은 파일의 다른 문구를 바꾸므로 먼저 병합된 쪽에 맞춘다 〔단위 1〕
+- [x] T039 [US2] `Sources/MokaCore/Sim/SimRunner.swift`에 `skip`·`switch`와 `start`·`complete`의 두 줄 필드를 더한다(contracts). T021(US2 몫)·T036 PASS 〔단위 3〕
 - [x] T040 🔒 [US2] `App/Sources/Views/ExpandedView.swift`에 도는 중 화면을 고친다(시안 3번): 제목 아래 "이어서 할 일 <첫 행동>" 한 줄(있을 때만, 크레마색, 길면 …), 남은 시간 오른쪽에 미루기·바꾸기·완료(같은 무게). 시작 전 화면(시안 2번)에도 같은 줄 〔단위 4〕
 - [x] T041 🔒 [US2] `App/Sources/Views/CheckpointNotesView.swift`에 두 줄 입력 화면을 만든다(시안 4번, R-106, 키 규칙은 data-model §8):
   - 오른쪽 위 상태 `NotchStatus.label(for:pending:)`("바꾸는 중"/"미루는 중"), 제목 줄 오른쪽 "N분 했어요"(지금까지의 경과, 글자는 `NotchStatus.elapsed(minutes:)`). 제목은 한 줄(고정 패널 높이)
@@ -165,21 +165,21 @@ description: "spec 002 저장과 체크포인트 작업 목록"
 
 ### Tests (Red)
 
-- [ ] T045 [P] [US3] `Tests/MokaCoreTests/TaskRulesTests.swift`에 복구·종료·잠자기 시험을 더하고 실패를 확인한다(`FR-07 R-110`·`R-111`): data-model §5.2, §4.2 `lifecycleCheckpoint`(running만, 계기 `sleep`/`quit`, 빈 두 줄, 경과 분, 할 일 상태와 타이머 그대로, `expired`·빈 상태는 nil) 〔단위 1〕
-- [ ] T046 [P] [US3] 👁 `Tests/MokaCoreTests/Fixtures/sim/storage-us3-lifecycle.json`과 기대 출력, `errors/storage-start-after-quit.json`을 둔다(quickstart 2의 `quit`·`relaunch` 항목) 〔단위 3〕
+- [x] T045 [P] [US3] `Tests/MokaCoreTests/TaskRulesTests.swift`에 복구·종료·잠자기 시험을 더하고 실패를 확인한다(`FR-07 R-110`·`R-111`): data-model §5.2, §4.2 `lifecycleCheckpoint`(running만, 계기 `sleep`/`quit`, 빈 두 줄, 경과 분, 할 일 상태와 타이머 그대로, `expired`·빈 상태는 nil) 〔단위 1〕
+- [x] T046 [P] [US3] 👁 `Tests/MokaCoreTests/Fixtures/sim/storage-us3-lifecycle.json`과 기대 출력, `errors/storage-start-after-quit.json`을 둔다(quickstart 2의 `quit`·`relaunch` 항목) 〔단위 3〕
 
 ### Implementation (Green)
 
-- [ ] T047 [US3] `Sources/MokaCore/TaskRules.swift`에 `LaunchRecovery.revert`, `Sources/MokaCore/NotchSession.swift`에 `lifecycleCheckpoint`를 둔다. T045 PASS 〔단위 1〕
-- [ ] T048 [US3] `Sources/MokaCore/Sim/SimRunner.swift`에 `quit`·`relaunch`를 더한다(contracts "시작"). T046 PASS 〔단위 3〕
-- [ ] T049 🔒 [US3] `App/Sources/AppState.swift`·`App/Sources/MokaApp.swift`에서 `AppState.timer`를 `session`(data-model §8)으로 바꾸고 저장소를 잇는다:
+- [x] T047 [US3] `Sources/MokaCore/TaskRules.swift`에 `LaunchRecovery.revert`, `Sources/MokaCore/NotchSession.swift`에 `lifecycleCheckpoint`를 둔다. T045 PASS 〔단위 1〕
+- [x] T048 [US3] `Sources/MokaCore/Sim/SimRunner.swift`에 `quit`·`relaunch`를 더한다(contracts "시작"). T046 PASS 〔단위 3〕
+- [x] T049 🔒 [US3] `App/Sources/AppState.swift`·`App/Sources/MokaApp.swift`에서 `AppState.timer`를 `session`(data-model §8)으로 바꾸고 저장소를 잇는다:
   - `AppSettings.openStore()`(기존, `App/Sources/MokaApp.swift`)가 DB를 한 번 열어 `GRDBSettingsStore`·`GRDBTaskRepository`·`GRDBContextStore`에 나눠 준다. 시험 쪽 경로 가드는 `Tests/MokaStoreTests/Support/TestDatabase.swift`에만 있고 앱 경로에는 없다(그대로 둔다)
   - R-119: 열기·마이그레이션이 실패하면 설정만 `InMemorySettingsStore`로 대체하고, 할 일·일정 저장소는 만들지 않으며 `storageUnavailable` = true. DB 파일을 지우거나 새로 만들거나 옮기지 않는다. 오류 종류만 로그
   - 시작 때 `LaunchRecovery` → 하루 판정(자리만 두고 T057에서 채움) → 고르기
   - 빠른 입력(`enterTitle`)은 `TaskWriteRules.prepareNew` → `insertTask` → `addedTask`, 시작은 세션 `start` → `SessionCommit`
   - 기존 `send(_:)`, `isPinnedOpen`, `customText`의 동작은 세션 위에서 그대로
   〔단위 5〕
-- [ ] T050 🔒 [US3] `App/Sources/MokaApp.swift`·`App/Sources/AppState.swift`에 종료·잠자기를 잇는다(research R12): `NSApplication.willTerminateNotification`과 `NSWorkspace.willSleepNotification`(`queue: .main` + `MainActor.assumeIsolated`)에서 `lifecycleCheckpoint` → 동기 `apply`, `applicationShouldTerminate`로 종료를 미루지 않음. 사람 확인(quickstart 7): 메뉴 "종료" → 다시 켬 → 대기 + 이어서 할 일, 강제 종료 → 대기. 로그아웃·시스템 종료 기록은 미확인(실제 DB 조회만 가능하면 NOT_RUN) 〔단위 5〕
+- [x] T050 🔒 [US3] `App/Sources/MokaApp.swift`·`App/Sources/AppState.swift`에 종료·잠자기를 잇는다(research R12): `NSApplication.willTerminateNotification`과 `NSWorkspace.willSleepNotification`(`queue: .main` + `MainActor.assumeIsolated`)에서 `lifecycleCheckpoint` → 동기 `apply`, `applicationShouldTerminate`로 종료를 미루지 않음. 사람 확인(quickstart 7): 메뉴 "종료" → 다시 켬 → 대기 + 이어서 할 일, 강제 종료 → 대기. 로그아웃·시스템 종료 기록은 미확인(실제 DB 조회만 가능하면 NOT_RUN) 〔단위 5〕
 - [x] T051 🔒 [US3] `App/Sources/Views/StorageUnavailableView.swift`에 저장할 수 없을 때의 노치 빈 상태 안내를 만든다(R-119, 해요체, 메뉴 막대 항목 없음). 문구 초안: "할 일을 저장할 수 없어요. 지금은 타이머만 쓸 수 있어요." — 시안에 없으므로 PR "사람이 볼 결정"에 문구를 올린다 〔단위 4〕
 
 **확인 지점**: `swift test` PASS, us3 golden PASS. 앱 수명은 사람이 quickstart 7
@@ -194,15 +194,15 @@ description: "spec 002 저장과 체크포인트 작업 목록"
 
 ### Tests (Red)
 
-- [ ] T052 [P] [US4] `Tests/MokaCoreTests/RecurrenceResetTests.swift`에 반복 리셋 시험을 쓰고 실패를 확인한다(data-model §5.3 전부와 §4.1의 넘겨 끝낸 예, `FR-09 R-113`): 매주 수요일은 목~화 그대로·다음 수요일 06:00 뒤 `todo`, 하루 시작 시각을 바꿔 오늘이 앞 하루로 돌아가도 되돌리지 않음, 두 시간대 〔단위 1〕
-- [ ] T053 [P] [US4] 👁 `Tests/MokaCoreTests/Fixtures/sim/storage-us4-recurrence.json`과 `storage-us4-newyork.json`, 기대 출력을 둔다(quickstart 2의 반복 항목: 매일 완료·놓침·같은 하루 두 번·05:50 → 06:10, 매주 수요일, `America/New_York` 3월 전환일) 〔단위 3〕
+- [x] T052 [P] [US4] `Tests/MokaCoreTests/RecurrenceResetTests.swift`에 반복 리셋 시험을 쓰고 실패를 확인한다(data-model §5.3 전부와 §4.1의 넘겨 끝낸 예, `FR-09 R-113`): 매주 수요일은 목~화 그대로·다음 수요일 06:00 뒤 `todo`, 하루 시작 시각을 바꿔 오늘이 앞 하루로 돌아가도 되돌리지 않음, 두 시간대 〔단위 1〕
+- [x] T053 [P] [US4] 👁 `Tests/MokaCoreTests/Fixtures/sim/storage-us4-recurrence.json`과 `storage-us4-newyork.json`, 기대 출력을 둔다(quickstart 2의 반복 항목: 매일 완료·놓침·같은 하루 두 번·05:50 → 06:10, 매주 수요일, `America/New_York` 3월 전환일) 〔단위 3〕
 
 ### Implementation (Green)
 
-- [ ] T054 [US4] `Sources/MokaCore/TaskRules.swift`에 `RecurrenceReset`을 둔다(data-model §5.3). T052 PASS 〔단위 1〕
-- [ ] T055 [US4] `Sources/MokaCore/Sim/SimRunner.swift`에 `activate`를 더한다(판정 → 빈 상태면 고르기, research R11). T053 PASS 〔단위 3〕
-- [ ] T056 [P] [US4] `Tests/MokaCoreTests/Fixtures/sim/errors/`의 storage 오류 픽스처가 contracts "오류 덧붙임" 종료 코드 2 줄을 모두 하나 이상 갖는지 `everyErrorFixtureIsListed`(기존)로 확인하고 빠진 것을 채운다 〔단위 3〕
-- [ ] T057 🔒 [US4] `App/Sources/AppState.swift`에 활성화 판정을 잇는다(research R11, plan "앱 연결"): 앱 시작(T049의 복구 뒤 자리), 기존 `wakeObserver`, 노치 펼침 콜백, 설정 창 `onAppear`에서 같은 함수 → `RecurrenceReset.reset` → 바뀐 할 일 `apply` → 빈 상태면 고르기. `NSApplication.didBecomeActiveNotification`은 쓰지 않는다. 달력은 `GregorianCalendar.make(timeZone:)`에 ADR-0010 결정 검증(T012)에서 고른 방식으로 시간대를 넘긴다. 사람 확인은 다음 날 아침 실제로 한 번(시스템 시계를 바꾸지 않는다) 〔단위 5〕
+- [x] T054 [US4] `Sources/MokaCore/TaskRules.swift`에 `RecurrenceReset`을 둔다(data-model §5.3). T052 PASS 〔단위 1〕
+- [x] T055 [US4] `Sources/MokaCore/Sim/SimRunner.swift`에 `activate`를 더한다(판정 → 빈 상태면 고르기, research R11). T053 PASS 〔단위 3〕
+- [x] T056 [P] [US4] `Tests/MokaCoreTests/Fixtures/sim/errors/`의 storage 오류 픽스처가 contracts "오류 덧붙임" 종료 코드 2 줄을 모두 하나 이상 갖는지 `everyErrorFixtureIsListed`(기존)로 확인하고 빠진 것을 채운다 〔단위 3〕
+- [x] T057 🔒 [US4] `App/Sources/AppState.swift`에 활성화 판정을 잇는다(research R11, plan "앱 연결"): 앱 시작(T049의 복구 뒤 자리), 기존 `wakeObserver`, 노치 펼침 콜백, 설정 창 `onAppear`에서 같은 함수 → `RecurrenceReset.reset` → 바뀐 할 일 `apply` → 빈 상태면 고르기. `NSApplication.didBecomeActiveNotification`은 쓰지 않는다. 달력은 `GregorianCalendar.make(timeZone:)`에 ADR-0010 결정 검증(T012)에서 고른 방식으로 시간대를 넘긴다. 사람 확인은 다음 날 아침 실제로 한 번(시스템 시계를 바꾸지 않는다) 〔단위 5〕
 
 **확인 지점**: `swift test` PASS. SC-104는 시뮬레이터와 두 시간대 단위 시험으로
 
@@ -216,11 +216,11 @@ description: "spec 002 저장과 체크포인트 작업 목록"
 
 ### Tests (Red)
 
-- [ ] T058 [P] [US5] `Tests/MokaCoreTests/OnboardingTests.swift`에 `Onboarding.finish` 시험을 쓰고 실패를 확인한다(data-model §6, `FR-21 R-116`): 순서(컨텍스트 → 세 설정 → `onboarding_done`), 중간 실패(가짜 저장소가 throw)면 `onboarding_done`을 쓰지 않음, 값을 그대로 두면 25·10·`06:00`, 일정 없이 끝내도 할 일 추가·고르기가 됨 〔단위 1〕
+- [x] T058 [P] [US5] `Tests/MokaCoreTests/OnboardingTests.swift`에 `Onboarding.finish` 시험을 쓰고 실패를 확인한다(data-model §6, `FR-21 R-116`): 순서(컨텍스트 → 세 설정 → `onboarding_done`), 중간 실패(가짜 저장소가 throw)면 `onboarding_done`을 쓰지 않음, 값을 그대로 두면 25·10·`06:00`, 일정 없이 끝내도 할 일 추가·고르기가 됨 〔단위 1〕
 
 ### Implementation (Green)
 
-- [ ] T059 [US5] `Sources/MokaCore/Onboarding.swift`에 `Onboarding.finish`를 둔다. T058 PASS 〔단위 1〕
+- [x] T059 [US5] `Sources/MokaCore/Onboarding.swift`에 `Onboarding.finish`를 둔다. T058 PASS 〔단위 1〕
 - [x] T060 🔒 [US5] `App/Sources/Views/ContextTabView.swift`·`ContextFormView.swift`에 일정 탭을 만든다(시안 10번, R-115, 값·콜백만): 목록은 날짜순, 줄마다 이름·"11월 12일"·중요도 배지(아주=빨강 굵게, 꽤, 조금), 아래 `+`·`−`(−는 확인 없이 바로 지움), 안내 "시험·제출처럼 할 일 순서에 영향을 주는 일정이에요.". 새 일정 시트: 이름·날짜(날짜 고르기)·중요도 세그먼트 조금/꽤/아주(내용 폭), 셋 다 필수, 고치기 없음 〔단위 4〕
 - [x] T061 🔒 [US5] `App/Sources/Views/OnboardingView.swift`와 `App/Sources/MokaApp.swift`에 온보딩 창을 만든다(시안 11·12번, R-116, 폭 400pt, 창 제목 "Moka 시작하기", 단계 막대 1/2·2/2, 창 방식은 plan "앱 연결"):
   - 1단계: "다가오는 시험이나 제출이 있나요?", "하나만 넣어 두면 돼요. 나머지는 설정의 일정 탭에서 추가할 수 있어요.", 이름(자리표시 "예: 중간고사")·날짜(그 순간이 속한 하루)·중요도(기본 조금), 건너뛰기·다음(이름이 비면 꺼짐). 저장은 2단계에서 한꺼번에
@@ -235,10 +235,10 @@ description: "spec 002 저장과 체크포인트 작업 목록"
 
 ## Phase 8: Polish & Cross-Cutting
 
-- [ ] T062 🔒 `App/Tests/MokaAppTests/ScreenStateSnapshotTests.swift`에 새 화면 상태 스냅샷을 라이트·다크로 더한다(ADR-0009, quickstart 5): 접힌 초안(C1-B)과 이어서 할 일 3초, 시작 전 + 다른 할 일 + 이어서 할 일, 도는 중 + 세 버튼, 두 줄 입력(바꾸는 중·미루는 중), 시간 끝 + 두 줄, 저장할 수 없는 빈 상태, 설정 기본 탭, 할 일 탭(보기·정렬·다음·매일/매주 연속 배지), 할 일 시트(새로·매주·고치기·지우기 확인), 일정 탭과 시트, 온보딩 1·2단계. sanity 단언만(크기 0 아님, 단색 아님, 라이트≠다크). 출력 폴더는 `TEST_RUNNER_MOKA_SNAPSHOT_DIR=.verify/snapshots/002`로 준다(`SnapshotHelper` 기본값은 001, 커밋 안 함) 〔단위 4〕
-- [ ] T063 🔒 모은 PNG를 `~/Dev/ai-platform/projects/moka/design/pr-<번호>/index.html`에 시안 `002-mockup.html` 같은 번호와 나란히 두고 PR "완료 증거"에 경로를 적는다(저장소 밖, 커밋 안 함) 〔단위 4〕
-- [ ] T064 quickstart 3 오류 주입을 돌린다(커밋 안 함, 결과만 PR) 〔단위 1·2·3〕
-- [ ] T065 단위 1·2·3·5 PR마다 quickstart 1~4 결과 표(PASS/FAIL/SKIP/NOT_RUN)와 기존 golden 변경 0줄 확인을 붙인다 〔단위 1·2·3·5〕
+- [x] T062 🔒 `App/Tests/MokaAppTests/ScreenStateSnapshotTests.swift`에 새 화면 상태 스냅샷을 라이트·다크로 더한다(ADR-0009, quickstart 5): 접힌 초안(C1-B)과 이어서 할 일 3초, 시작 전 + 다른 할 일 + 이어서 할 일, 도는 중 + 세 버튼, 두 줄 입력(바꾸는 중·미루는 중), 시간 끝 + 두 줄, 저장할 수 없는 빈 상태, 설정 기본 탭, 할 일 탭(보기·정렬·다음·매일/매주 연속 배지), 할 일 시트(새로·매주·고치기·지우기 확인), 일정 탭과 시트, 온보딩 1·2단계. sanity 단언만(크기 0 아님, 단색 아님, 라이트≠다크). 출력 폴더는 `TEST_RUNNER_MOKA_SNAPSHOT_DIR=.verify/snapshots/002`로 준다(`SnapshotHelper` 기본값은 001, 커밋 안 함) 〔단위 4〕
+- [x] T063 🔒 모은 PNG를 `~/Dev/ai-platform/projects/moka/design/pr-<번호>/index.html`에 시안 `002-mockup.html` 같은 번호와 나란히 두고 PR "완료 증거"에 경로를 적는다(저장소 밖, 커밋 안 함) 〔단위 4〕
+- [x] T064 quickstart 3 오류 주입을 돌린다(커밋 안 함, 결과만 PR) 〔단위 1·2·3〕
+- [x] T065 단위 1·2·3·5 PR마다 quickstart 1~4 결과 표(PASS/FAIL/SKIP/NOT_RUN)와 기존 golden 변경 0줄 확인을 붙인다 〔단위 1·2·3·5〕
 - [ ] T066 🔒 사람이 quickstart 5~7을 돌려 결과 표를 마지막 PR에 붙인다(SC-101 다시 켜기, SC-105 온보딩, SC-107 다음 표시, 종료) 〔단위 4·5〕
 
 ---
