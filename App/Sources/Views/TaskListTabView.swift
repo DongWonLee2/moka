@@ -37,6 +37,7 @@ struct TaskListTabView: View {
                     }
                     .disabled(!rows.contains { $0.status == .done })
                 }
+                .disabled(rows.isEmpty)
                 Divider()
                 ScrollView {
                     VStack(spacing: 0) {
@@ -308,10 +309,13 @@ struct SelectAllHeader<Trailing: View>: View {
         HStack(spacing: 8) {
             RowCheckBox(
                 isOn: Binding(get: { state == .all }, set: { _ in onToggle() }), label: "전체",
-                isMixed: state == .some)
+                isMixed: state == .some
+            )
+            .accessibilityValue(state == .some ? "일부 고름" : "")
             Text("전체")
                 .font(.system(size: 11.5))
                 .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
             Spacer(minLength: 0)
             trailing()
         }

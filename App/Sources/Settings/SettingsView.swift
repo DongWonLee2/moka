@@ -152,6 +152,8 @@ struct SettingsView: View {
         .frame(width: 460)
         .background(SettingsWindowRaiser.Anchor())
         .onAppear(perform: load)
+        // 보기를 바꾸면 체크를 비운다. 숨은 줄에 체크가 남아 전체 고르기·지우기와 엇갈리지 않게 한다(R-122).
+        .onChange(of: appState.taskListScope) { checkedTaskIDs = [] }
         .onChange(of: tab) { previous, _ in
             if previous == .basic { commitFields() }
         }

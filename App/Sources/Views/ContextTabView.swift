@@ -20,7 +20,9 @@ struct ContextTabView: View {
             VStack(spacing: 0) {
                 SelectAllHeader(
                     state: RowSelection.state(checked: checkedIDs, visible: rows.map(\.id)),
-                    onToggle: { checkedIDs = RowSelection.toggledAll(checked: checkedIDs, visible: rows.map(\.id)) })
+                    onToggle: { checkedIDs = RowSelection.toggledAll(checked: checkedIDs, visible: rows.map(\.id)) }
+                )
+                .disabled(rows.isEmpty)
                 Divider()
                 ScrollView {
                     VStack(spacing: 0) {
