@@ -165,17 +165,17 @@ final class OnboardingWindow {
             initialDayStart: CoreSettings.readDayStart(from: settings),
             onFinish: { [weak self] values in
                 guard let self, appState.finishOnboarding(values) else { return }
-                window?.close()
+                self.window?.close()
             })
-        let window = NSWindow(contentViewController: NSHostingController(rootView: view))
-        window.title = "Moka 시작하기"
-        window.styleMask = [.titled, .closable]
-        window.titlebarAppearsTransparent = true
-        window.backgroundColor = MokaColors.settingsWindowNS
-        window.isReleasedWhenClosed = false
-        window.center()
+        let onboarding = NSWindow(contentViewController: NSHostingController(rootView: view))
+        onboarding.title = "Moka 시작하기"
+        onboarding.styleMask = [.titled, .closable]
+        onboarding.titlebarAppearsTransparent = true
+        onboarding.backgroundColor = MokaColors.settingsWindowNS
+        onboarding.isReleasedWhenClosed = false
+        onboarding.center()
         NSApp.activate()
-        window.makeKeyAndOrderFront(nil)
-        self.window = window
+        onboarding.makeKeyAndOrderFront(nil)
+        window = onboarding
     }
 }
