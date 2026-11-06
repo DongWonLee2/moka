@@ -1168,6 +1168,39 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertEqual(state.contexts.map(\.name), ["가짜 제출"])
     }
 
+    // MARK: - R-121 일정 고치기
+
+    func test_FR02_R121_editContextChangesFieldsAndOrder() throws {
+        let state = makeState(try Self.seeded(1))
+        state.launch()
+        _ = state.addContext(NewContext(name: "가짜 회의", date: Self.day("2027-01-14"), impact: .normal))
+        _ = state.addContext(NewContext(name: "가짜 제출", date: Self.day("2027-01-15"), impact: .normal))
+        let id = try XCTUnwrap(state.contexts.first?.id)
+
+        XCTAssertTrue(
+            state.editContext(id, NewContext(name: " 가짜 회의 2 ", date: Self.day("2027-01-20"), impact: .critical)))
+
+        XCTAssertEqual(state.contexts.map(\.name), ["가짜 제출", "가짜 회의 2"], "날짜순 자리로 옮겨 간다")
+        XCTAssertEqual(state.contexts.last?.impact, .critical)
+    }
+
+    func test_FR02_R121_editContextRejectsBlankName() throws {
+        let state = makeState(try Self.seeded(1))
+        state.launch()
+        _ = state.addContext(NewContext(name: "가짜 회의", date: Self.day("2027-01-14"), impact: .normal))
+        let id = try XCTUnwrap(state.contexts.first?.id)
+
+        XCTAssertFalse(state.editContext(id, NewContext(name: "  ", date: Self.day("2027-01-14"), impact: .normal)))
+        XCTAssertEqual(state.contexts.map(\.name), ["가짜 회의"])
+    }
+
+    func test_FR11_R119_failedEditContextReturnsFalse() throws {
+        let state = makeState(try Self.seeded(1), contexts: FailingContextStore())
+        state.launch()
+
+        XCTAssertFalse(state.editContext(1, NewContext(name: "가짜 회의", date: Self.day("2027-01-14"), impact: .normal)))
+    }
+
     // MARK: - #37 알림 처리기 해제
 
     func test_issue37_observationStopsWhenReleased() {

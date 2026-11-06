@@ -93,6 +93,16 @@ final class SettingsSnapshotTests: XCTestCase {
         try write(name, content: content, size: CGSize(width: 400, height: 250))
     }
 
+    func test_R121_editContextSheet() throws {
+        let calendar = GregorianCalendar.make(timeZone: try XCTUnwrap(TimeZone(identifier: "Asia/Seoul")))
+        let content = ContextFormView(
+            today: try XCTUnwrap(LocalDay(text: "2026-11-06")), calendar: calendar,
+            editing: MokaContext(
+                id: 1, name: "가짜 중간고사", date: try XCTUnwrap(LocalDay(text: "2026-11-12")), impact: .critical),
+            onSave: { _ in }, onCancel: {})
+        try write("s21-edit-context", content: content, size: CGSize(width: 360, height: 170))
+    }
+
     func test_R101_newTaskSheet() throws {
         let calendar = GregorianCalendar.make(timeZone: try XCTUnwrap(TimeZone(identifier: "Asia/Seoul")))
         let today = try XCTUnwrap(LocalDay(text: "2026-11-06"))
