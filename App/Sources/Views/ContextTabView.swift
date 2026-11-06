@@ -80,7 +80,6 @@ private struct ContextRow: View {
     }
 }
 
-/// 중요도 배지(시안 `.imp`): 아주는 빨강 굵게, 꽤는 진한 모카 바탕, 조금은 옅은 바탕.
 private struct ImpactBadge: View {
     let impact: ContextImpact
 

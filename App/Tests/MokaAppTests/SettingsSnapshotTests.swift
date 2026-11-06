@@ -49,7 +49,6 @@ final class SettingsSnapshotTests: XCTestCase {
         try write("s07-task-list", content: content, size: size)
     }
 
-    /// 시안 10번(가짜 예시): 날짜순, 중요도 조금·꽤·아주.
     func test_R115_contextTab() throws {
         let rows = [
             MokaContext(id: 3, name: "동아리 회의", date: try XCTUnwrap(LocalDay(text: "2026-11-04")), impact: .normal),
