@@ -214,6 +214,7 @@ struct NotchPanelRoot: View {
             isPanelKey: appState.isInputFocused,
             metrics: metrics,
             style: style,
+            storageUnavailable: appState.storageUnavailable,
             firstAction: appState.firstAction,
             showsFirstActionCollapsed: appState.showsFirstActionCollapsed,
             titleFocusRequest: appState.titleFocusRequest,

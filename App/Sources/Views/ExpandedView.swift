@@ -12,6 +12,7 @@ struct ExpandedView: View {
     let timer: NotchTimer
     let remainingSeconds: Int?
     let metrics: NotchMetrics
+    var storageUnavailable = false
     /// 이어서 할 일(R-109). 있으면 제목 아래 한 줄.
     var firstAction: String?
     /// 값이 바뀔 때마다 빈 상태의 제목 칸에 포커스를 준다(펼친 판 클릭, data-model §6).
@@ -68,6 +69,9 @@ struct ExpandedView: View {
         switch timer {
         case .empty(nil):
             TitleEntryRow(focusRequest: titleFocusRequest, onSubmit: onEnterTitle)
+            if storageUnavailable {
+                StorageUnavailableView()
+            }
         case .empty(.some(let draft)):
             if draftInput.isPickingOther {
                 OtherTaskPicker(
