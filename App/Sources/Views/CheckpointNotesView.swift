@@ -78,10 +78,10 @@ struct NotesFields: View {
             TextField("", text: $done, prompt: donePlaceholder.map(placeholder))
                 .notchField(focused: focus.wrappedValue == .done)
                 .focused(focus, equals: .done)
-                .onSubmit { focus.wrappedValue = .next }
+                .onSubmit(moveToNext)
                 // 노치 패널에서는 기본 키 순서로 Tab이 다음 칸에 가지 않는다(2026-11-05 사람 확인).
                 .onKeyPress(.tab) {
-                    focus.wrappedValue = .next
+                    moveToNext()
                     return .handled
                 }
             label("다음엔 뭐부터 할까요?")
@@ -105,6 +105,12 @@ struct NotesFields: View {
         .onChange(of: next) { _, newValue in
             if newValue != draft.next { onEdit(NotesDraft(done: done, next: newValue)) }
         }
+    }
+
+    /// 첫 칸이 편집을 마무리한 다음 차례에 옮긴다. Enter 처리 도중 바로 옮기면 첫 칸이 글자를 다시 그리지 못했다
+    /// (2026-11-06 사람 확인, 클릭으로 옮길 때는 보임).
+    private func moveToNext() {
+        Task { @MainActor in focus.wrappedValue = .next }
     }
 
     private func label(_ text: String) -> some View {
