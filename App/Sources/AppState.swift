@@ -253,6 +253,32 @@ final class AppState {
         return true
     }
 
+    /// 첫 실행 온보딩을 띄울지(R-116). 저장할 수 없으면(R-119) 끝냄 표시도 남길 수 없어 띄우지 않는다.
+    var showsOnboarding: Bool {
+        !storageUnavailable && !CoreSettings.isOnboardingDone(in: settings)
+    }
+
+    /// 온보딩 끝내기(R-116, data-model §6): 일정·세 설정·끝냄 표시를 저장하고, 일정 목록과 기본 작업 시간을 다시 읽는다.
+    /// 실패하면 false이고 끝냄 표시가 남지 않아 다음 실행에 다시 보인다.
+    @discardableResult
+    func finishOnboarding(_ values: OnboardingValues) -> Bool {
+        guard let contextStore else { return false }
+        let context = values.context.flatMap { new in
+            MokaContext.normalizedName(new.name).map { NewContext(name: $0, date: new.date, impact: new.impact) }
+        }
+        do {
+            try Onboarding.finish(
+                context: context, quantumMin: values.quantumMin, extendMin: values.extendMin,
+                dayStart: values.dayStart, settings: settings, contexts: contextStore)
+        } catch {
+            Self.logStorageFailure(error)
+            return false
+        }
+        reloadContexts()
+        defaultQuantumChanged()
+        return true
+    }
+
     /// 저장할 수 없으면(R-119) 일정을 더하거나 지울 수 없다.
     var canEditContexts: Bool { contextStore != nil }
 

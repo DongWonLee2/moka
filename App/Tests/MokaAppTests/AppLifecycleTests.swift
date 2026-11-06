@@ -1067,7 +1067,7 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertEqual(CoreSettings.readExtendMin(from: settings), 15)
         XCTAssertEqual(CoreSettings.readDayStart(from: settings), DayStart(text: "05:30"))
         state.enterTitle("가짜 새 할 일")
-        XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 할 일 1", chipMin: 45)), "새 기본 작업 시간을 쓴다")
+        XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 새 할 일", chipMin: 45)), "새 기본 작업 시간을 쓴다")
     }
 
     func test_FR21_R116_finishWithoutContext() throws {

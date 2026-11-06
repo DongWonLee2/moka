@@ -33,7 +33,7 @@ struct BasicTabView: View {
     }
 
     /// 시안 6번처럼 `06:00`(24시간)으로 보인다. 언어·지역은 시스템 설정을 따른다.
-    private static let twentyFourHour: Locale = {
+    static let twentyFourHour: Locale = {
         var components = Locale.Components(locale: .autoupdatingCurrent)
         components.hourCycle = .zeroToTwentyThree
         return Locale(components: components)
@@ -104,7 +104,7 @@ private struct HintText: View {
 }
 
 /// 시·분 칸. SwiftUI `DatePicker`는 macOS에서 내용 폭보다 넓어지지 않아 `NSDatePicker`를 감싼다.
-private struct TimeField: NSViewRepresentable {
+struct TimeField: NSViewRepresentable {
     @Binding var date: Date
     let locale: Locale
 

@@ -110,6 +110,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         storage: AppSettings.storage)
     private var panelHost: NotchPanelHost?
     private var screenWatcher: ScreenWatcher?
+    private var onboardingWindow: OnboardingWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // 재시작 복구 → 하루 판정 → 고르기(R-111, R-113, R-104). 패널을 띄우기 전에 끝낸다.
@@ -121,6 +122,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             host?.move(to: placement)
         }
         panelHost = host
+        if appState.showsOnboarding {
+            let onboarding = OnboardingWindow(appState: appState, settings: AppSettings.store)
+            onboarding.show()
+            onboardingWindow = onboarding
+        }
     }
 
     /// 메뉴 "종료"·⌘Q(정상 종료). 도는 중이면 종료 체크포인트를 동기로 남긴다(R-110). 종료를 미루지 않는다.
@@ -134,5 +140,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func activate() {
         appState.activate()
+    }
+}
+
+/// 첫 실행 온보딩 창(R-116, plan "앱 연결"). `LSUIElement` 앱이라 SwiftUI `Window` 대신 AppKit 창으로 띄운다.
+/// 빨간 버튼으로 닫으면 아무것도 쓰지 않아 다음 실행에 다시 보인다. 온보딩 중에도 노치 패널은 그대로 뜬다.
+@MainActor
+final class OnboardingWindow {
+    private let appState: AppState
+    private let settings: any SettingsStore
+    private var window: NSWindow?
+
+    init(appState: AppState, settings: any SettingsStore) {
+        self.appState = appState
+        self.settings = settings
+    }
+
+    func show() {
+        let calendar = GregorianCalendar.make(timeZone: .autoupdatingCurrent)
+        // 2단계는 지금 저장된 값으로 채워, 그대로 시작해도 쓰던 설정이 바뀌지 않게 한다.
+        let view = OnboardingView(
+            today: appState.logicalToday, calendar: calendar,
+            initialQuantum: QuantumSettings.readDefault(from: settings),
+            initialExtend: CoreSettings.readExtendMin(from: settings),
+            initialDayStart: CoreSettings.readDayStart(from: settings),
+            onFinish: { [weak self] values in
+                guard let self, appState.finishOnboarding(values) else { return }
+                window?.close()
+            })
+        let window = NSWindow(contentViewController: NSHostingController(rootView: view))
+        window.title = "Moka 시작하기"
+        window.styleMask = [.titled, .closable]
+        window.titlebarAppearsTransparent = true
+        window.backgroundColor = MokaColors.settingsWindowNS
+        window.isReleasedWhenClosed = false
+        window.center()
+        NSApp.activate()
+        window.makeKeyAndOrderFront(nil)
+        self.window = window
     }
 }
