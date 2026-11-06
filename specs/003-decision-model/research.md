@@ -122,3 +122,18 @@ EGM 금붕어 리뷰 5단계 보고서는 로컬 `.audit/egm/003/`(커밋 안 �
 - 미루기 뒤 "다음 순위"는 버튼 처리를 저장한 뒤 다시 계산한 순서 기준(Stage 7 설계 M5).
 - 단위 1을 1a(질문 파일·판단 입력·해시·점수 규칙)와 1b(공급자·TypeSafe 조립·해석·질의 대상·키 보관함·판단 결과 저장 프로토콜)로 나눴다(Stage 5 N6, 헌법 V).
 - spec 문장 정리(용어 절, R-206·R-207을 셋으로 나눔, 대안 표 근거 열, 위험 번호 맞춤, SC 보강).
+
+## R19. EGM Stage 9(구현 준비도) 뒤 결정 (2026-11-07)
+
+보고서 `.audit/egm/003/stage9_*.md`(커밋 안 함). 설계 항목 F1~F9는 토론(`.audit/debate/20261107-egm9-spec003.md`)을 거쳤다. F1~F8은 3:0(사용자 위임, F7은 spec 002 동작 변경이라 사용자 확인), F9는 2:1 뒤 사용자 승인.
+
+- **F1 키 전달**: AppState(MainActor)가 보내기 직전 `KeyStore.read()`로 읽어 `decide(_:key:)`의 별도 인자로 넘긴다. 공급자는 키 보관함을 들지 않는다. Rationale: `KeyStore: AnyObject`는 Sendable이 아니고 `@unchecked Sendable`은 금지, `Mutex`는 macOS 15+. 키를 `DecisionRequest`에 넣으면 본문·해시·로그·픽스처로 흘러갈 길이 생긴다. 읽기 실패를 앱 시험으로 덮을 수 있다. Alternatives: `KeyStore: Sendable` + 공급자가 보관함을 듦.
+- **F2 가짜 공급자**: `actor FakeDecisionProvider`(붙잡기·풀기·`maxInFlight`), `requestScores()`가 `Task`를 돌려준다. Rationale: 헌법 II(실제 시간 대기 금지)에서 동시 4·질의 중 고침을 재현하려면 응답을 붙잡아야 한다. Alternatives: 바로 답하는 가짜 + 순수 함수 시험만(AppState 연결이 검증 밖).
+- **F3 주입**: `AppStorage.scores` 선택 필드 + `AppState.init(decision: DecisionSetup? = nil)`. Rationale: 키 칸은 DB와 상관없이 보여야 하고, 기존 앱 시험을 요구와 무관하게 고치지 않는다(헌법 V). 주입을 빠뜨린 경우는 앱 실행 확인(quickstart 6)이 잡는다.
+- **F4 질문 파일 실패**: 해석 실패만 `throws`, 번들 없음은 빌드 결함(단위 1a에서 리눅스·앱 시험 번들 각각 시험, 앱 실행 확인에 시작 포함). Alternatives: 빌드 때 Swift 상수 생성(진실 둘).
+- **F5 401 상태**: "다시 물어보기"를 끈다. 키를 다시 저장하거나 지우면 풀린다.
+- **F6 `probs_json` 숫자**: Swift 최단 표기, `probabilities` 키 숫자 오름차순, pytest `json.loads` 왕복. Alternatives: `%.6f`(1e-7 같은 작은 확률을 잃음).
+- **F7 커서 할 일이 빠짐**: 1위를 고른다(spec 002 `droppedPreviousStillAdvances`와 달라짐, 사용자 확인). `RotateByIDRule`과 그 시험은 교체 PR에서 지운다. `rotate_by_id_v0` 값은 남긴다.
+- **F8 없는 할 일**: 두 저장소 모두 `taskNotFound`, 공용 계약 시험에 넣는다.
+- **F9 체크포인트**: 사본 없이 그때그때 읽는다. 소수 의견(가이드 자리): `reloadTasks`와 같은 시점에 사본을 두면 노치 펼침 지연이 없고 해시 재현이 한곳에서 맞춰진다. 채택 이유: `AppState.lifecycleCheckpoint`는 체크포인트를 쓰고 `reloadTasks`를 부르지 않아 사본이 낡을 수 있다.
+- 분명한 지적 반영(메인 세션, PR "가정"): `SessionInput.scoring: SessionScoring? = nil`(기존 호출 셋 그대로 컴파일), 단위 2에 `SimStorageRunner`·계약 문서·`ValueTypeTests` 리터럴 포함, `SettingsView.swift`·`MokaApp.swift`를 고칠 파일에, 뷰 인자 모양, 앱 시험 도구(`TestClock`·`makeState`)를 공유 파일로 옮김, 마이그레이션 SQL은 한 줄 문자열, `StoreKind` 확장은 단위 3에서 한 번에(단위 1b는 메모리 시험을 `MokaCoreTests`에), 질의 동시 4는 빈자리 채우기, 장부는 보낼 때 적음, 401 뒤 보내지 않은 대상은 장부에 적지 않음, `upsertScore` 실패는 실패로 표시, priority 표시 `1.20`, 키 입력 앞뒤 공백 제거, `save`는 덮어쓰기, `moka-sim` 오류 픽스처는 `SimScenarioTests` 표에 등록, 용어 절 보강.

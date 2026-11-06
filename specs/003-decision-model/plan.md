@@ -16,7 +16,7 @@
 
 **Storage**: SQLite(ADR-0004). 새 마이그레이션 `v3_scores`로 표 `scores` 하나. 키는 macOS Keychain(앱 DB 밖). 질문은 MokaCore 리소스 `questions.json`
 
-**Testing**: Swift Testing(`MokaCoreTests`, `MokaStoreTests`, 리눅스 CI `core-test`), pytest(`tuning/tests`), XCTest 스냅샷 `MokaAppTests`(macOS 로컬). 실제 API·Keychain은 시험에서 쓰지 않는다
+**Testing**: Swift Testing(`MokaCoreTests`, `MokaStoreTests`, 리눅스 CI `core-test`), pytest(`tuning/tests`), XCTest `MokaAppTests`(macOS 로컬과 CI `app-snapshots`, 필수 아님). 실제 API·Keychain은 시험에서 쓰지 않는다
 
 **Target Platform**: macOS 14+ 메뉴 막대 앱(ADR-0005), Package는 리눅스에서도 빌드
 
@@ -26,7 +26,7 @@
 
 **Constraints**: 실제 시간을 기다리는 시험 금지(헌법 II). 실제 판단 API는 시험·CI·`moka-sim`·무인 실행에서 부르지 않는다(헌법 VIII, ADR-0001 빌드 구조). 판단 입력 금지 필드 시험(헌법 VIII). 키는 Keychain에만, 로그·DB·화면에 없음(헌법 보안). 기존 golden 바이트 그대로. `decisions_log`는 INSERT만. `eraseDatabaseOnSchemaChange` 금지
 
-**Scale/Scope**: 표 1개, 질문 파일 1개, 공급자 1개, `moka-sim` 이벤트 2종, 설정 창 화면 상태 약 6개
+**Scale/Scope**: 표 1개, 질문 파일 1개, 공급자 1개, `moka-sim` 이벤트 2종, 설정 창 키 칸 상태 6개
 
 ## Constitution Check
 
@@ -48,7 +48,9 @@
 
 설계 뒤 재확인: 위반 없음. Complexity Tracking 해당 없음.
 
-### 승인 항목 (사용자 2026-11-06)
+### 승인 항목 (사용자 2026-11-06~07)
+
+결정 번호: Q는 요구 다지기 1회차 질문, R2-는 2회차 질문, P는 plan 승인 항목, E는 EGM Stage 5~8 뒤 항목, F는 EGM Stage 9 뒤 항목이다(research의 R번호와 다르다). 표결의 A·B·C는 토론 자리이고 차례로 가이드·실행·위험 자리다.
 
 | # | 결정 | 표결 | 근거 |
 |---|---|---|---|
@@ -67,6 +69,11 @@
 | E3 | 키 없어도 마감일 순, spec 002 storage golden 갱신 | 3:0 | R17 |
 | E4 | 실패한 할 일은 다음 활성화 때 한 번 다시, 401 뒤 멈춤 | 사용자 결정(토론 2:1, 셋째 안) | R17 |
 | E5 | `moka-sim` 확장 유지 | 2:1(B·C / A) | R13·R17 |
+| F1 | 키는 AppState가 읽어 `decide(_:key:)` 별도 인자로 | 3:0(사용자 위임) | R19 |
+| F3 | `AppState.init(decision:)` 선택 주입 | 3:0(사용자 위임) | R19 |
+| F6 | `probs_json` 숫자 Swift 최단 표기, 키 숫자 순 | 3:0(사용자 위임) | R19 |
+| F7 | 커서 할 일이 빠지면 1위(spec 002 동작 변경) | 3:0(사용자 확인) | R19 |
+| F9 | 체크포인트는 사본 없이 그때그때 읽기 | 2:1(B·C / A) | R19 |
 
 ### 가정
 
@@ -101,25 +108,30 @@ Sources/MokaCore/
 ├── Decision/QuestionSet.swift                  # 새: 질문 파일 읽기
 ├── Decision/DecisionProvider.swift             # 새: 프로토콜·요청·응답·오류·가짜
 ├── Decision/TypeSafeCodec.swift                # 새: 요청 본문·응답 해석·상태 코드
-├── Decision/JudgmentState.swift                # 새: 판단 입력 조립·정준 바이트·FNV-1a
+├── Decision/JudgmentState.swift                # 새: 판단 입력 `JudgmentState.build`·정준 바이트·FNV-1a
 ├── Decision/ScoreRules.swift                   # 새: 해석 → TaskScore, 정규화·priority
 ├── Decision/ScoringPlan.swift                  # 새: 질의 대상·답 받기
 ├── Decision/KeyStore.swift                     # 새: 프로토콜·메모리 구현
 ├── PriorityOrder.swift                         # 새: 순서·순환
 ├── Storage.swift                               # ScoreStore·InMemoryScoreStore 덧붙임
 ├── DecisionLog.swift                           # SchedulerChoice 값 덧붙임
-├── NotchSession.swift                          # 고르기·nextMark·logLine이 점수를 씀
+├── NotchSession.swift                          # SessionInput.scoring, 고르기·nextMark·logLine이 판단 결과를 씀
+├── TaskRules.swift                             # RotateByIDRule 삭제(단위 2)
+├── TaskRowText.swift                           # priority 서식
 ├── Defaults.swift                              # 가중치·시간 값
-└── Sim/                                        # judge·key 이벤트(단위 5)
+└── Sim/SimStorageRunner.swift                  # 새 고르기 규칙(단위 2), judge·key 이벤트(단위 5)
 Sources/MokaStore/
 ├── Migrations.swift                            # v3_scores
 └── GRDBScoreStore.swift                        # 새
 App/Sources/
 ├── Decision/TypeSafeProvider.swift             # 새: URLSession
 ├── Decision/KeychainKeyStore.swift             # 새: Security
-├── AppState.swift                              # 트리거·Task·답 받기·화면 값
+├── AppState.swift                              # DecisionSetup 주입·requestScores·보내기 장부·답 받기·화면 값
+├── MokaApp.swift                               # DecisionSetup·GRDBScoreStore 만들기
+├── Settings/SettingsView.swift                 # 뷰에 키 상태·priority·콜백 넘김
 └── Views/BasicTabView.swift, TaskListTabView.swift  # 키 칸, priority 칸
-Tests/MokaCoreTests/, Tests/MokaStoreTests/, App/Tests/MokaAppTests/, tuning/tests/
+Tests/MokaCoreTests/(SessionTestSupport, ValueTypeTests, TaskRulesTests, SimScenarioTests, SimGoldenTests, Fixtures/sim·decision), Tests/MokaStoreTests/, App/Tests/MokaAppTests/(AppTestSupport.swift 새: TestClock·makeState를 AppLifecycleTests에서 옮김), tuning/tests/
+specs/001-notch-timer/contracts/moka-sim-v1.md, specs/002-storage-checkpoint/contracts/moka-sim-v1-additions.md  # 고르기 규칙 서술(단위 2)
 schema/moka-schema.sql                          # 스냅샷 갱신
 ```
 
@@ -143,7 +155,7 @@ schema/moka-schema.sql                          # 스냅샷 갱신
 | 4 | 앱: `TypeSafeProvider`, `KeychainKeyStore`, AppState 질의·보내기 장부·답 받기, 설정 창 키 칸·priority 칸, 스냅샷 | R-207·211(연결)·213·214·215 | 예(설정 창 시안) | 코드는 가능, 화면·실제 호출·Keychain은 사람 | 1b·2·3 |
 | 5 | `moka-sim` `judge`·`key` + golden | R-216 | 아니오 | 예(계약은 "사람이 볼 결정") | 2 |
 
-순서: 1a → 1b와 2 병렬 → 3(1b 뒤) → 4(시안은 1a와 함께 먼저 만들어 확정) → 5. 2026-11-08까지 1~4가 끝나지 않으면 5와 R-215를 다음 spec으로 넘긴다(spec 위험 1).
+순서: 1a → 1b와 2 병렬 → 3(1b 뒤) → 4(시안은 1a와 함께 먼저 만들어 확정) → 5. 2026-11-08까지 단위 1a·1b·2·3·4가 끝나지 않으면 5와 R-215를 다음 spec으로 넘긴다(spec 위험 1).
 
 ## 설계서 대조
 
@@ -161,14 +173,14 @@ schema/moka-schema.sql                          # 스냅샷 갱신
 
 spec "대안과 위험"의 번호와 같다.
 
-- 위험 1(일정): 검증 시작 11/10 고정, 마일스톤 4·5가 남았다. 필수는 R-201~R-214(단위 1~3과 단위 4의 공급자·Keychain·질의 연결·키 칸). 밀리면 R-215(priority 칸) → R-216(단위 5) 순서로 다음 spec에 넘기고 PR에 적는다.
+- 위험 1(일정): 검증 시작 2026-11-10 고정, 마일스톤 4·5가 남았다. 필수는 R-201~R-214(단위 1a·1b·2·3과 단위 4의 공급자·Keychain·질의 연결·키 칸). 밀리면 R-215(priority 칸) → R-216(단위 5) 순서로 다음 spec에 넘기고 PR에 적는다.
 - 위험 2(실제 응답 형식): 공식 문서와 실제가 다르면 `TypeSafeCodec.response`만 고친다. 확인은 사람만 할 수 있다(quickstart 6-3).
 - 위험 3(Keychain): 확인 창 반복·접근성 속성은 리눅스 CI로 확인할 수 없다. 개인 팀 서명 빌드에서 사람이 본다(quickstart 6-2).
-- 위험 4(되돌리기 어려운 계약): `scores` 열, `questions.json` 형식, `priority_rotate_v0`. 열·값을 적게 두었다.
+- 위험 4(되돌리기 어려운 계약): `scores` 열, `questions.json` 형식, `priority_rotate_v0`, `probs_json` 숫자 표기. PRD 9장 열 가운데 blocked·priority·confidence_json을 빼고 새 값은 하나만 두었다.
 - 위험 5(개인정보): 할 일 제목과 일정 이름이 TypeSafe로 간다. 로그·`scores`·`moka-sim` 출력에는 제목이 없다.
 - 위험 6(PRD와 다름): blocked 삭제, impact 옵션, 6시간 캐시 대신 해시 규칙. 사람이 PRD 6·7·9장을 고친다.
-- 위험 7(실패 뒤 순서): 오늘 마감 할 일의 질의가 실패하면 점수 없는 무리로 뒤에 선다. 다음 활성화 때 한 번 다시 묻고, "다시 물어보기"·앱 재시작·다음 날에도 회복된다. 설정 창 priority 칸이 비어 알아챌 수 있다. 사람 확인(quickstart 6-4)에서 자주 보이면 다음 spec에서 정렬 예외를 다시 본다.
-- 위험 8(`Bundle.module` 리눅스): 리눅스 Foundation에서 리소스 번들이 읽히지 않으면 단위 1a 첫 시험에서 드러난다. 그때 대안(시험은 파일 경로로 읽기)을 PR "가정"에 적는다.
+- 위험 7(실패 뒤 순서): 오늘 마감 할 일의 질의가 실패하면 점수 없는 무리로 뒤에 선다. 다음 활성화 때 한 번 다시 묻고, "다시 물어보기"·앱 재시작·다음 날에도 회복된다. 설정 창 priority 칸이 비어 알아챌 수 있다. 사람 확인(quickstart 6-4)이나 검증 첫 주에 한 번이라도 보이면 다음 spec에서 정렬 예외를 다시 본다.
+- 위험 8(`Bundle.module` 리눅스): SwiftPM의 `Bundle.module`은 번들을 못 찾으면 프로세스를 멈춘다. 단위 1a에서 리눅스 CI(`swift test`)와 호스트 없는 `MokaAppTests` 번들에서 각각 `QuestionSet.bundled()`를 부르는 시험으로 확인한다. 실패하면 대안(시험은 파일 경로로 읽기)을 PR "가정"에 적는다.
 
 ## 다음 단계
 

@@ -7,11 +7,11 @@
 ```swift
 public protocol DecisionProvider: Sendable {
     var name: String { get }   // 로그·scores의 provider. TypeSafe는 "typesafe"
-    func decide(_ request: DecisionRequest) async throws(DecisionError) -> DecisionResponse
+    func decide(_ request: DecisionRequest, key: String) async throws(DecisionError) -> DecisionResponse
 }
 ```
 
-- 타입 모양은 data-model §1. `Question`·`Answer`에는 noul과 score만 둔다(TypeSafe의 choice 타입은 쓰지 않으므로 계약에 넣지 않는다). 요청 JSON 조립(`TypeSafeCodec.body(_:)`)과 응답 해석(`TypeSafeCodec.response(_:)`)은 MokaCore 순수 함수다. 앱 `TypeSafeProvider`는 키를 읽고 HTTP를 보내고 상태 코드를 `DecisionError`로 바꾸는 일만 한다.
+- 타입 모양은 data-model §1. `Question`·`Answer`에는 noul과 score만 둔다(TypeSafe의 choice 타입은 쓰지 않으므로 계약에 넣지 않는다). 요청 JSON 조립(`TypeSafeCodec.body(_:)`)과 응답 해석(`TypeSafeCodec.response(_:)`)은 MokaCore 순수 함수다. 앱 `TypeSafeProvider`는 받은 키로 HTTP를 보내고 상태 코드를 `DecisionError`로 바꾸는 일만 한다. 키는 AppState가 `KeyStore`에서 읽어 별도 인자로 넘기며, `DecisionRequest`·본문 외 어디에도 담지 않는다(헤더에만).
 - 시험·CI·`moka-sim`은 `FakeDecisionProvider`만 쓴다. `TypeSafeProvider`는 앱 타깃에만 있어 링크되지 않는다(ADR-0001).
 
 ## 질문 타입 (TypeSafe 용어)
@@ -61,7 +61,7 @@ TypeSafe에는 순서 없는 옵션을 고르는 choice 타입도 있지만 이�
 
 | 응답 | `DecisionError` |
 |---|---|
-| 키가 없어 보내지 않음 | `missingKey` |
+| 키가 없어 보내지 않음(AppState가 판단, 공급자는 빈 키를 받으면 `missingKey`) | `missingKey` |
 | 401, 403 | `unauthorized` (403은 문서에 없지만 같은 취급) |
 | 429 | `rateLimited` |
 | 529 | `overloaded` |
