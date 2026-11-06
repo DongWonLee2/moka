@@ -261,9 +261,9 @@ description: "spec 002 저장과 체크포인트 작업 목록"
 
 ## Phase 11: 전체 고르기 (R-122, 사용자 요청 2026-11-06)
 
-- [ ] T073 [P] `Tests/MokaCoreTests/RowSelectionTests.swift`에 고르기 규칙 시험을 쓰고 실패를 확인한다(`FR-01 R-122`): 보이는 줄 기준 없음·일부·전체 판정, 전체 토글(다 골랐으면 보이는 것만 풀고 숨은 체크는 둠), 완료만 고르기 〔단위 1〕
-- [ ] T074 `Sources/MokaCore/RowSelection.swift`에 `RowSelection`을 둔다. T073 PASS 〔단위 1〕
-- [ ] T075 🔒 할 일 탭·일정 탭 목록 맨 위에 "전체" 체크 칸(일부면 `−`), 할 일 탭에 "완료만 고르기"를 잇는다(스냅샷은 `SettingsSnapshotTests`) 〔단위 4〕
+- [x] T073 [P] `Tests/MokaCoreTests/RowSelectionTests.swift`에 고르기 규칙 시험을 쓰고 실패를 확인한다(`FR-01 R-122`): 보이는 줄 기준 없음·일부·전체 판정, 전체 토글(다 골랐으면 보이는 것만 풀고 숨은 체크는 둠), 완료만 고르기 〔단위 1〕
+- [x] T074 `Sources/MokaCore/RowSelection.swift`에 `RowSelection`을 둔다. T073 PASS 〔단위 1〕
+- [x] T075 🔒 할 일 탭·일정 탭 목록 맨 위에 "전체" 체크 칸(일부면 `−`), 할 일 탭에 "완료만 고르기"를 잇는다(스냅샷은 `SettingsSnapshotTests`) 〔단위 4〕
 
 ---
 
