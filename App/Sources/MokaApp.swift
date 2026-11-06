@@ -158,7 +158,6 @@ final class OnboardingWindow {
 
     func show() {
         let calendar = GregorianCalendar.make(timeZone: .autoupdatingCurrent)
-        // 2단계는 지금 저장된 값으로 채워, 그대로 시작해도 쓰던 설정이 바뀌지 않게 한다.
         let view = OnboardingView(
             today: appState.logicalToday, calendar: calendar,
             initialQuantum: QuantumSettings.readDefault(from: settings),

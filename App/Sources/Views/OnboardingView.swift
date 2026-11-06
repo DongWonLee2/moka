@@ -1,7 +1,6 @@
 import MokaCore
 import SwiftUI
 
-/// 온보딩을 끝낼 때 한꺼번에 저장할 값(data-model §6). 일정을 건너뛰면 `context`는 nil.
 struct OnboardingValues: Equatable {
     var context: NewContext?
     var quantumMin: Int
@@ -186,7 +185,6 @@ struct OnboardingView: View {
     }
 }
 
-/// 단계 막대(시안 `.steps`): 칸 둘과 "1/2".
 private struct StepBar: View {
     let step: Int
 
