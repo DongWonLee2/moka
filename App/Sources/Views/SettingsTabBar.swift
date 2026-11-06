@@ -1,12 +1,13 @@
 import SwiftUI
 
 enum SettingsTab: CaseIterable {
-    case basic, tasks
+    case basic, tasks, contexts
 
     var title: String {
         switch self {
         case .basic: "기본"
         case .tasks: "할 일"
+        case .contexts: "일정"
         }
     }
 }
@@ -76,6 +77,11 @@ private struct TabIcon: View {
                     Self.checks, with: .foreground,
                     style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
                 context.stroke(Self.listLines, with: .foreground, style: line)
+            case .contexts:
+                context.stroke(
+                    Path(roundedRect: CGRect(x: 3.5, y: 5, width: 17, height: 15), cornerRadius: 2.5),
+                    with: .foreground, style: line)
+                context.stroke(Self.calendarLines, with: .foreground, style: line)
             }
         }
     }
@@ -96,6 +102,13 @@ private struct TabIcon: View {
             path.move(to: CGPoint(x: 4, y: y))
             path.addLine(to: CGPoint(x: 5.5, y: y + 1.5))
             path.addLine(to: CGPoint(x: 8, y: y - 1))
+        }
+    }
+
+    private static let calendarLines = Path { path in
+        for (from, to) in [((3.5, 10.0), (20.5, 10.0)), ((8.0, 3.0), (8.0, 7.0)), ((16.0, 3.0), (16.0, 7.0))] {
+            path.move(to: CGPoint(x: from.0, y: from.1))
+            path.addLine(to: CGPoint(x: to.0, y: to.1))
         }
     }
 

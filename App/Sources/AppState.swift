@@ -75,6 +75,8 @@ final class AppState {
     var timer: NotchTimer { session.timer }
     /// 저장소 `tasks()`의 지금 목록. 쓰기 뒤 다시 읽는다.
     private(set) var tasks: [MokaTask] = []
+    /// 일정(R-115), 날짜순. 쓰기 뒤 다시 읽는다.
+    private(set) var contexts: [MokaContext] = []
     /// 노치가 지금 할 일을 고른 시각(이어서 할 일 접힘 표시 3초, data-model §5.5).
     private(set) var pickedAt: Date? {
         didSet { scheduleFirstActionRedraw() }
@@ -141,6 +143,7 @@ final class AppState {
     @ObservationIgnored private let calendar: Calendar
     @ObservationIgnored private let settings: any SettingsStore
     @ObservationIgnored private let repository: (any TaskRepository)?
+    @ObservationIgnored private let contextStore: (any ContextStore)?
     /// 기본 작업 시간. 처음에 한 번 읽고 설정에서 바꿨을 때만 다시 읽는다(#35).
     @ObservationIgnored private var defaultQuantumMin: Int
     @ObservationIgnored private var refreshTimer: Timer?
@@ -160,6 +163,7 @@ final class AppState {
         self.calendar = calendar
         settings = storage.settings
         repository = storage.repository
+        contextStore = storage.contexts
         storageUnavailable = storage.isUnavailable
         defaultQuantumMin = QuantumSettings.readDefault(from: storage.settings)
         observations = [
@@ -178,6 +182,7 @@ final class AppState {
 
     /// 앱 시작: 재시작 복구(R-111) → 하루 판정 → 고르기. 저장할 수 없으면 아무것도 하지 않는다.
     func launch() {
+        reloadContexts()
         guard let repository else { return }
         reloadTasks()
         let reverted = LaunchRecovery.revert(tasks)
@@ -245,6 +250,37 @@ final class AppState {
             updateRefreshTimer()
         }
         pickIfEmpty(at: now)
+        return true
+    }
+
+    /// 저장할 수 없으면(R-119) 일정을 더하거나 지울 수 없다.
+    var canEditContexts: Bool { contextStore != nil }
+
+    /// 일정 더하기(R-115). 이름은 앞뒤 공백을 빼고, 비면 넣지 않는다. 넣기에 실패하면 false.
+    @discardableResult
+    func addContext(_ new: NewContext) -> Bool {
+        guard let contextStore, let name = MokaContext.normalizedName(new.name) else { return false }
+        do {
+            _ = try contextStore.insertContext(NewContext(name: name, date: new.date, impact: new.impact))
+        } catch {
+            Self.logStorageFailure(error)
+            return false
+        }
+        reloadContexts()
+        return true
+    }
+
+    /// 일정 지우기(R-115). 행을 실제로 지운다(research R4).
+    @discardableResult
+    func deleteContext(_ id: ContextID) -> Bool {
+        guard let contextStore else { return false }
+        do {
+            try contextStore.deleteContext(id: id)
+        } catch {
+            Self.logStorageFailure(error)
+            return false
+        }
+        reloadContexts()
         return true
     }
 
@@ -581,6 +617,15 @@ final class AppState {
         session = next
         pickedAt = now
         remainingSeconds = timer.remainingSeconds(at: now)
+    }
+
+    private func reloadContexts() {
+        guard let contextStore else { return }
+        do {
+            contexts = try contextStore.contexts()
+        } catch {
+            Self.logStorageFailure(error)
+        }
     }
 
     private func reloadTasks() {

@@ -177,7 +177,7 @@ struct TaskFormView: View {
     }
 }
 
-private struct FormLabel: View {
+struct FormLabel: View {
     let text: String
 
     init(_ text: String) { self.text = text }
@@ -203,7 +203,7 @@ private struct Hint: View {
     }
 }
 
-private struct SheetButton: View {
+struct SheetButton: View {
     enum Kind { case normal, primary, danger, dangerText }
 
     let title: String
@@ -279,7 +279,7 @@ struct DeleteConfirmView: View {
     }
 }
 
-private struct PillButton: View {
+struct PillButton: View {
     let title: String
     let isMuted: Bool
     let action: () -> Void
@@ -314,6 +314,8 @@ struct MokaCalendar: View {
     let selected: LocalDay?
     let today: LocalDay
     let calendar: Calendar
+    /// 날짜를 비울 수 있는지. 일정 날짜는 필수라 끈다(R-115).
+    var allowsClear = true
     let onPick: (LocalDay?) -> Void
 
     @State private var monthOffset = 0
@@ -351,7 +353,7 @@ struct MokaCalendar: View {
                     }
                 }
             }
-            if selected != nil {
+            if allowsClear, selected != nil {
                 Button("마감 지우기") { onPick(nil) }
                     .buttonStyle(.plain)
                     .font(.system(size: 11.5))

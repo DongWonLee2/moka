@@ -34,3 +34,22 @@ public struct NewContext: Equatable, Sendable {
         self.impact = impact
     }
 }
+
+/// 설정 창 일정 탭·시트의 글자(R-115, 시안 10번). 값을 끼우거나 분기하는 글자라 MokaCore가 정한다(#42).
+public enum ContextText {
+    public static func rowDate(_ day: LocalDay) -> String {
+        "\(day.month)월 \(day.day)일"
+    }
+
+    public static func formDate(_ day: LocalDay) -> String {
+        "\(day.year)년 \(day.month)월 \(day.day)일"
+    }
+
+    public static func impact(_ impact: ContextImpact) -> String {
+        switch impact {
+        case .normal: "조금"
+        case .high: "꽤"
+        case .critical: "아주"
+        }
+    }
+}
