@@ -1,33 +1,40 @@
 import MokaCore
 import SwiftUI
 
-/// 새 일정 시트(시안 10번, R-115). 이름·날짜·중요도 셋 다 필수, 고치기는 없다. 값과 콜백만 받는다(ADR-0009).
+/// 일정 시트(시안 10번, R-115). 이름·날짜·중요도 셋 다 필수. `editing`이 있으면 고치기다(R-121). 값과 콜백만 받는다(ADR-0009).
 struct ContextFormView: View {
     let today: LocalDay
     let calendar: Calendar
+    let editing: MokaContext?
     let onSave: (NewContext) -> Void
     let onCancel: () -> Void
 
-    @State private var name = ""
+    @State private var name: String
     @State private var date: LocalDay
-    @State private var impact: ContextImpact = .normal
+    @State private var impact: ContextImpact
     @State private var isPickingDate = false
     @FocusState private var isNameFocused: Bool
     @Environment(\.colorScheme) private var colorScheme
 
-    init(today: LocalDay, calendar: Calendar, onSave: @escaping (NewContext) -> Void, onCancel: @escaping () -> Void) {
+    init(
+        today: LocalDay, calendar: Calendar, editing: MokaContext? = nil, onSave: @escaping (NewContext) -> Void,
+        onCancel: @escaping () -> Void
+    ) {
         self.today = today
         self.calendar = calendar
+        self.editing = editing
         self.onSave = onSave
         self.onCancel = onCancel
-        _date = State(initialValue: today)
+        _name = State(initialValue: editing?.name ?? "")
+        _date = State(initialValue: editing?.date ?? today)
+        _impact = State(initialValue: editing?.impact ?? .normal)
     }
 
     private var canSave: Bool { MokaContext.normalizedName(name) != nil }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("새 일정")
+            Text(editing == nil ? "새 일정" : "일정 고치기")
                 .font(.system(size: 13, weight: .semibold))
             Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 6) {
                 GridRow {

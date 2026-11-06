@@ -23,6 +23,7 @@ struct SettingsView: View {
     @State private var deletingTasks: TaskDeletion?
     @State private var checkedContextIDs: Set<ContextID> = []
     @State private var deletingContexts: ContextDeletion?
+    @State private var editingContext: ContextEditRequest?
     @State private var isAddingContext = false
     @State private var selectedContextID: ContextID?
     private let calendar = GregorianCalendar.make(timeZone: .autoupdatingCurrent)
@@ -70,6 +71,9 @@ struct SettingsView: View {
                     rows: appState.contexts, selectedID: $selectedContextID, checkedIDs: $checkedContextIDs,
                     canEdit: appState.canEditContexts,
                     onAdd: { isAddingContext = true },
+                    onEdit: { id in
+                        editingContext = appState.contexts.first { $0.id == id }.map(ContextEditRequest.init)
+                    },
                     onDelete: { deletingContexts = contextDeletion() })
             }
         }
@@ -79,6 +83,12 @@ struct SettingsView: View {
                 today: appState.logicalToday, calendar: calendar,
                 onSave: { if appState.addContext($0) { isAddingContext = false } },
                 onCancel: { isAddingContext = false })
+        }
+        .sheet(item: $editingContext) { request in
+            ContextFormView(
+                today: appState.logicalToday, calendar: calendar, editing: request.context,
+                onSave: { if appState.editContext(request.id, $0) { editingContext = nil } },
+                onCancel: { editingContext = nil })
         }
         .sheet(isPresented: $isAddingTask) {
             TaskFormView(
@@ -230,4 +240,10 @@ private struct ContextDeletion: Identifiable {
     let id = UUID()
     let ids: Set<ContextID>
     let heading: String
+}
+
+/// 고칠 일정(R-121). 두 번 누른 순간의 값을 시트에 넘긴다.
+private struct ContextEditRequest: Identifiable {
+    let context: MokaContext
+    var id: ContextID { context.id }
 }

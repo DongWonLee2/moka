@@ -60,7 +60,8 @@ final class SettingsSnapshotTests: XCTestCase {
         let content = VStack(spacing: 0) {
             SettingsTabBar(selection: .constant(.contexts))
             ContextTabView(
-                rows: rows, selectedID: .constant(2), checkedIDs: .constant([]), canEdit: true, onAdd: {}, onDelete: {})
+                rows: rows, selectedID: .constant(2), checkedIDs: .constant([]), canEdit: true, onAdd: {},
+                onEdit: { _ in }, onDelete: {})
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .background(MokaColors.settingsWindow)
@@ -152,7 +153,7 @@ final class SettingsSnapshotTests: XCTestCase {
             SettingsTabBar(selection: .constant(.contexts))
             ContextTabView(
                 rows: rows, selectedID: .constant(nil), checkedIDs: .constant([1, 2]), canEdit: true, onAdd: {},
-                onDelete: {})
+                onEdit: { _ in }, onDelete: {})
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .background(MokaColors.settingsWindow)
