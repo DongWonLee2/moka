@@ -20,3 +20,13 @@ import Testing
         #expect(ContextText.impact(impact) == expected)
     }
 }
+
+@Suite struct ContextDeleteTextTests {
+    @Test("FR-02 R-120: 일정 지우기 확인은 이름이나 개수를 묻고, 되돌릴 수 없다고 알린다")
+    func deleteTexts() {
+        #expect(ContextText.deleteTitle("가짜 시험") == "\"가짜 시험\"을 지울까요?")
+        #expect(ContextText.deleteTitle("가짜 중간고사") == "\"가짜 중간고사\"를 지울까요?")
+        #expect(ContextText.deleteManyTitle(count: 2) == "일정 2개를 지울까요?")
+        #expect(ContextText.deleteMessage == "지운 일정은 되돌릴 수 없어요.")
+    }
+}
