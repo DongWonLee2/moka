@@ -187,6 +187,7 @@ public protocol ContextStore: AnyObject {
     func contexts() throws -> [MokaContext]           // date 오름차순, 같으면 id
     func insertContext(_ context: NewContext) throws -> MokaContext
     func deleteContext(id: ContextID) throws          // 실제 DELETE(research R4)
+    func updateContext(_ context: MokaContext) throws  // 이름·날짜·중요도를 덮어씀, 없는 id는 contextNotFound(R-121)
 }
 ```
 

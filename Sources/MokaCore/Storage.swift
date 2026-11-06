@@ -44,6 +44,8 @@ public protocol ContextStore: AnyObject {
     func insertContext(_ context: NewContext) throws -> MokaContext
     /// 실제로 지운다(research R4).
     func deleteContext(id: ContextID) throws
+    /// 이름·날짜·중요도를 덮어쓴다. 없는 id는 `contextNotFound`(R-121).
+    func updateContext(_ context: MokaContext) throws
 }
 
 // MARK: - 메모리 구현(시험·`moka-sim`). GRDB 구현과 같은 규칙(data-model §3, §7 CHECK)을 지킨다.
@@ -145,5 +147,12 @@ public final class InMemoryContextStore: ContextStore {
     public func deleteContext(id: ContextID) throws {
         guard let index = stored.firstIndex(where: { $0.id == id }) else { throw StoreError.contextNotFound(id) }
         stored.remove(at: index)
+    }
+
+    public func updateContext(_ context: MokaContext) throws {
+        guard let index = stored.firstIndex(where: { $0.id == context.id }) else {
+            throw StoreError.contextNotFound(context.id)
+        }
+        stored[index] = context
     }
 }

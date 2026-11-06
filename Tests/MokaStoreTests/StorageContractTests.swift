@@ -323,3 +323,18 @@ func contextDelete(kind: StoreKind) throws {
     #expect(throws: StoreError.contextNotFound(99)) { try store.deleteContext(id: 99) }
     #expect(try store.contexts() == [b])
 }
+
+@Test("FR-02 R-121: 고친 컨텍스트는 모든 칸이 바뀌어 돌아오고 날짜순 자리가 바뀐다, 없는 id는 contextNotFound", arguments: StoreKind.allCases)
+func updateContext(kind: StoreKind) throws {
+    let store = try kind.makeStores().contexts
+    let a = try store.insertContext(NewContext(name: "가짜 일정 A", date: day("2026-11-20"), impact: .normal))
+    let b = try store.insertContext(NewContext(name: "가짜 일정 B", date: day("2026-11-10"), impact: .normal))
+
+    let edited = MokaContext(id: a.id, name: "가짜 일정 A2", date: day("2026-11-05"), impact: .critical)
+    try store.updateContext(edited)
+
+    #expect(try store.contexts() == [edited, b])
+    #expect(throws: StoreError.contextNotFound(99)) {
+        try store.updateContext(MokaContext(id: 99, name: "가짜", date: day("2026-11-05"), impact: .normal))
+    }
+}
