@@ -72,6 +72,25 @@ final class SettingsSnapshotTests: XCTestCase {
         try write("s10-new-context", content: content, size: CGSize(width: 360, height: 170))
     }
 
+    func test_R116_onboardingStep1() throws {
+        try writeOnboarding("o11-onboarding-1", step: 1)
+    }
+
+    func test_R116_onboardingStep2() throws {
+        try writeOnboarding("o12-onboarding-2", step: 2)
+    }
+
+    private func writeOnboarding(_ name: String, step: Int) throws {
+        let calendar = GregorianCalendar.make(timeZone: try XCTUnwrap(TimeZone(identifier: "Asia/Seoul")))
+        let content = OnboardingView(
+            today: try XCTUnwrap(LocalDay(text: "2026-11-06")), calendar: calendar, initialQuantum: 25,
+            initialExtend: 10, initialDayStart: Defaults.dayStart, initialStep: step, onFinish: { _ in }
+        )
+        .environment(\.timeZone, calendar.timeZone)
+        .background(MokaColors.settingsWindow)
+        try write(name, content: content, size: CGSize(width: 400, height: 250))
+    }
+
     func test_R101_newTaskSheet() throws {
         let calendar = GregorianCalendar.make(timeZone: try XCTUnwrap(TimeZone(identifier: "Asia/Seoul")))
         let today = try XCTUnwrap(LocalDay(text: "2026-11-06"))

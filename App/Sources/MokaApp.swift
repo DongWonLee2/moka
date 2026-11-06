@@ -110,6 +110,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         storage: AppSettings.storage)
     private var panelHost: NotchPanelHost?
     private var screenWatcher: ScreenWatcher?
+    private var onboardingWindow: OnboardingWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // 재시작 복구 → 하루 판정 → 고르기(R-111, R-113, R-104). 패널을 띄우기 전에 끝낸다.
@@ -121,6 +122,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             host?.move(to: placement)
         }
         panelHost = host
+        if appState.showsOnboarding {
+            let onboarding = OnboardingWindow(appState: appState, settings: AppSettings.store)
+            onboarding.show()
+            onboardingWindow = onboarding
+        }
     }
 
     /// 메뉴 "종료"·⌘Q(정상 종료). 도는 중이면 종료 체크포인트를 동기로 남긴다(R-110). 종료를 미루지 않는다.
@@ -134,5 +140,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func activate() {
         appState.activate()
+    }
+}
+
+/// 첫 실행 온보딩 창(R-116, plan "앱 연결"). `LSUIElement` 앱이라 SwiftUI `Window` 대신 AppKit 창으로 띄운다.
+/// 빨간 버튼으로 닫으면 아무것도 쓰지 않아 다음 실행에 다시 보인다. 온보딩 중에도 노치 패널은 그대로 뜬다.
+@MainActor
+final class OnboardingWindow {
+    private let appState: AppState
+    private let settings: any SettingsStore
+    private var window: NSWindow?
+
+    init(appState: AppState, settings: any SettingsStore) {
+        self.appState = appState
+        self.settings = settings
+    }
+
+    func show() {
+        let calendar = GregorianCalendar.make(timeZone: .autoupdatingCurrent)
+        let view = OnboardingView(
+            today: appState.logicalToday, calendar: calendar,
+            initialQuantum: QuantumSettings.readDefault(from: settings),
+            initialExtend: CoreSettings.readExtendMin(from: settings),
+            initialDayStart: CoreSettings.readDayStart(from: settings),
+            onFinish: { [weak self] values in
+                guard let self, appState.finishOnboarding(values) else { return }
+                self.window?.close()
+                self.window = nil
+            })
+        let onboarding = NSWindow(contentViewController: NSHostingController(rootView: view))
+        onboarding.title = "Moka 시작하기"
+        onboarding.styleMask = [.titled, .closable]
+        onboarding.titlebarAppearsTransparent = true
+        onboarding.backgroundColor = MokaColors.settingsWindowNS
+        onboarding.isReleasedWhenClosed = false
+        onboarding.center()
+        NSApp.activate()
+        onboarding.makeKeyAndOrderFront(nil)
+        // macOS 14의 `activate()`는 요청이라 다른 앱 뒤에 열릴 수 있다. 설정 창(#45)처럼 다음 틱에 한 번 더 올린다.
+        DispatchQueue.main.async { onboarding.orderFrontRegardless() }
+        window = onboarding
     }
 }

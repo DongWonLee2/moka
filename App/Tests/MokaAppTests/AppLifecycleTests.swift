@@ -1039,6 +1039,64 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertEqual(state.contexts, [])
     }
 
+    // MARK: - R-116 온보딩
+
+    private static func onboarding(_ context: NewContext?) -> OnboardingValues {
+        OnboardingValues(
+            context: context, quantumMin: 45, extendMin: 15, dayStart: DayStart(text: "05:30")!)
+    }
+
+    func test_FR21_R116_firstLaunchShowsOnboarding() throws {
+        let state = makeState(try Self.seeded(1))
+        state.launch()
+
+        XCTAssertTrue(state.showsOnboarding)
+    }
+
+    func test_FR21_R116_finishSavesContextSettingsAndHidesOnboarding() throws {
+        let settings = InMemorySettingsStore()
+        let state = makeState(try Self.seeded(1), settings: settings)
+        state.launch()
+
+        let context = NewContext(name: " 가짜 중간고사 ", date: Self.day("2027-01-20"), impact: .high)
+        XCTAssertTrue(state.finishOnboarding(Self.onboarding(context)))
+
+        XCTAssertFalse(state.showsOnboarding)
+        XCTAssertEqual(state.contexts.map(\.name), ["가짜 중간고사"], "일정 탭에 바로 보인다(US5 시나리오 2)")
+        XCTAssertEqual(QuantumSettings.readDefault(from: settings), 45)
+        XCTAssertEqual(CoreSettings.readExtendMin(from: settings), 15)
+        XCTAssertEqual(CoreSettings.readDayStart(from: settings), DayStart(text: "05:30"))
+        state.enterTitle("가짜 새 할 일")
+        XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 새 할 일", chipMin: 45)), "새 기본 작업 시간을 쓴다")
+    }
+
+    func test_FR21_R116_finishWithoutContext() throws {
+        let state = makeState(try Self.seeded(1))
+        state.launch()
+
+        XCTAssertTrue(state.finishOnboarding(Self.onboarding(nil)))
+
+        XCTAssertFalse(state.showsOnboarding)
+        XCTAssertEqual(state.contexts, [])
+    }
+
+    func test_FR21_R116_failedFinishKeepsOnboarding() throws {
+        let state = makeState(try Self.seeded(1), contexts: FailingContextStore())
+        state.launch()
+
+        let context = NewContext(name: "가짜 중간고사", date: Self.day("2027-01-20"), impact: .high)
+        XCTAssertFalse(state.finishOnboarding(Self.onboarding(context)))
+
+        XCTAssertTrue(state.showsOnboarding, "끝내지 못하면 다음 실행에 다시 보인다")
+    }
+
+    func test_FR11_R119_noOnboardingWithoutStorage() {
+        let state = makeState(nil, contexts: nil)
+        state.launch()
+
+        XCTAssertFalse(state.showsOnboarding, "끝냄 표시를 저장할 수 없어 매번 뜨게 되므로 띄우지 않는다")
+    }
+
     // MARK: - #37 알림 처리기 해제
 
     func test_issue37_observationStopsWhenReleased() {
