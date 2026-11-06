@@ -90,6 +90,7 @@ private struct ImpactBadge: View {
             .padding(.vertical, 1)
             .foregroundStyle(impact == .critical ? MokaColors.danger : Color.primary)
             .background(background, in: Capsule())
+            .accessibilityLabel("중요도 \(ContextText.impact(impact))")
     }
 
     private var background: Color {
