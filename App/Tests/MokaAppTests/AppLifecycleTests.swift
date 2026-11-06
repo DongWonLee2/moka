@@ -1267,6 +1267,7 @@ private final class FailingContextStore: ContextStore {
     func contexts() throws -> [MokaContext] { [] }
     func insertContext(_ context: NewContext) throws -> MokaContext { throw Failure() }
     func deleteContext(id: ContextID) throws { throw Failure() }
+    func updateContext(_ context: MokaContext) throws { throw Failure() }
 }
 
 private final class InsertFailingRepository: TaskRepository {

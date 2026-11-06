@@ -35,4 +35,13 @@ public final class GRDBContextStore: ContextStore {
             guard db.changesCount > 0 else { throw StoreError.contextNotFound(id) }
         }
     }
+
+    public func updateContext(_ context: MokaContext) throws {
+        try db.write { db in
+            try db.execute(
+                sql: "UPDATE contexts SET name = ?, date = ?, impact = ? WHERE id = ?",
+                arguments: [context.name, context.date.text, context.impact.rawValue, context.id])
+            guard db.changesCount > 0 else { throw StoreError.contextNotFound(context.id) }
+        }
+    }
 }
