@@ -18,11 +18,12 @@ final class AppLifecycleTests: XCTestCase {
 
     private func makeState(
         _ repository: (any TaskRepository)?, settings: any SettingsStore = InMemorySettingsStore(),
-        clock: TestClock = TestClock(noon), workspaceCenter: NotificationCenter = NotificationCenter()
+        clock: TestClock = TestClock(noon), workspaceCenter: NotificationCenter = NotificationCenter(),
+        contexts: (any ContextStore)? = InMemoryContextStore()
     ) -> AppState {
         AppState(
             clock: clock.mokaClock, calendar: Self.seoul,
-            storage: AppStorage(settings: settings, repository: repository, contexts: InMemoryContextStore()),
+            storage: AppStorage(settings: settings, repository: repository, contexts: contexts),
             workspaceCenter: workspaceCenter)
     }
 
@@ -971,6 +972,73 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertEqual(try repository.tasks().first?.skipCount, 0)
     }
 
+    // MARK: - R-115 일정
+
+    private static func day(_ text: String) -> LocalDay { LocalDay(text: text)! }
+
+    func test_FR02_R115_addContextsListsByDate() throws {
+        let state = makeState(try Self.seeded(1))
+        state.launch()
+
+        XCTAssertTrue(state.addContext(NewContext(name: "가짜 중간고사", date: Self.day("2027-01-20"), impact: .critical)))
+        XCTAssertTrue(state.addContext(NewContext(name: "가짜 과제 제출", date: Self.day("2027-01-15"), impact: .high)))
+        XCTAssertTrue(state.addContext(NewContext(name: "가짜 회의", date: Self.day("2027-01-14"), impact: .normal)))
+
+        XCTAssertEqual(state.contexts.map(\.name), ["가짜 회의", "가짜 과제 제출", "가짜 중간고사"], "날짜순")
+        XCTAssertEqual(state.contexts.map(\.impact), [.normal, .high, .critical])
+        XCTAssertTrue(state.canEditContexts)
+    }
+
+    func test_FR02_R115_addContextTrimsNameAndRejectsBlank() throws {
+        let state = makeState(try Self.seeded(1))
+        state.launch()
+
+        XCTAssertFalse(state.addContext(NewContext(name: "  ", date: Self.day("2027-01-20"), impact: .normal)))
+        XCTAssertTrue(state.addContext(NewContext(name: " 가짜 발표 ", date: Self.day("2027-01-20"), impact: .normal)))
+
+        XCTAssertEqual(state.contexts.map(\.name), ["가짜 발표"])
+    }
+
+    func test_FR02_R115_deleteContextRemovesIt() throws {
+        let store = InMemoryContextStore()
+        let state = makeState(try Self.seeded(1), contexts: store)
+        state.launch()
+        _ = state.addContext(NewContext(name: "가짜 회의", date: Self.day("2027-01-14"), impact: .normal))
+        let id = try XCTUnwrap(state.contexts.first?.id)
+
+        XCTAssertTrue(state.deleteContext(id))
+
+        XCTAssertEqual(state.contexts, [])
+        XCTAssertEqual(try store.contexts(), [], "확인 없이 바로 지운다(행도 지움)")
+    }
+
+    func test_FR02_R115_launchLoadsSavedContexts() throws {
+        let store = InMemoryContextStore()
+        _ = try store.insertContext(NewContext(name: "가짜 중간고사", date: Self.day("2027-01-20"), impact: .critical))
+        let state = makeState(try Self.seeded(1), contexts: store)
+
+        state.launch()
+
+        XCTAssertEqual(state.contexts.map(\.name), ["가짜 중간고사"])
+    }
+
+    func test_FR11_R119_contextsUnavailableWithoutStorage() {
+        let state = makeState(nil, contexts: nil)
+        state.launch()
+
+        XCTAssertFalse(state.canEditContexts)
+        XCTAssertFalse(state.addContext(NewContext(name: "가짜 회의", date: Self.day("2027-01-14"), impact: .normal)))
+        XCTAssertEqual(state.contexts, [])
+    }
+
+    func test_FR11_R119_failedContextInsertReturnsFalse() throws {
+        let state = makeState(try Self.seeded(1), contexts: FailingContextStore())
+        state.launch()
+
+        XCTAssertFalse(state.addContext(NewContext(name: "가짜 회의", date: Self.day("2027-01-14"), impact: .normal)))
+        XCTAssertEqual(state.contexts, [])
+    }
+
     // MARK: - #37 알림 처리기 해제
 
     func test_issue37_observationStopsWhenReleased() {
@@ -1062,6 +1130,14 @@ private final class CountingSettingsStore: SettingsStore {
     func setValue(_ value: String, for key: String) throws {
         try inner.setValue(value, for: key)
     }
+}
+
+private final class FailingContextStore: ContextStore {
+    struct Failure: Error {}
+
+    func contexts() throws -> [MokaContext] { [] }
+    func insertContext(_ context: NewContext) throws -> MokaContext { throw Failure() }
+    func deleteContext(id: ContextID) throws { throw Failure() }
 }
 
 private final class InsertFailingRepository: TaskRepository {

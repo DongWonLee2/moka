@@ -49,6 +49,30 @@ final class SettingsSnapshotTests: XCTestCase {
         try write("s07-task-list", content: content, size: size)
     }
 
+    /// 시안 10번(가짜 예시): 날짜순, 중요도 조금·꽤·아주.
+    func test_R115_contextTab() throws {
+        let rows = [
+            MokaContext(id: 3, name: "동아리 회의", date: try XCTUnwrap(LocalDay(text: "2026-11-04")), impact: .normal),
+            MokaContext(id: 2, name: "가짜 과제 제출", date: try XCTUnwrap(LocalDay(text: "2026-11-07")), impact: .high),
+            MokaContext(
+                id: 1, name: "가짜 중간고사", date: try XCTUnwrap(LocalDay(text: "2026-11-12")), impact: .critical),
+        ]
+        let content = VStack(spacing: 0) {
+            SettingsTabBar(selection: .constant(.contexts))
+            ContextTabView(rows: rows, selectedID: .constant(2), canEdit: true, onAdd: {}, onDelete: {})
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(MokaColors.settingsWindow)
+        try write("s10-context-tab", content: content, size: CGSize(width: 460, height: 450))
+    }
+
+    func test_R115_newContextSheet() throws {
+        let calendar = GregorianCalendar.make(timeZone: try XCTUnwrap(TimeZone(identifier: "Asia/Seoul")))
+        let content = ContextFormView(
+            today: try XCTUnwrap(LocalDay(text: "2026-11-06")), calendar: calendar, onSave: { _ in }, onCancel: {})
+        try write("s10-new-context", content: content, size: CGSize(width: 360, height: 170))
+    }
+
     func test_R101_newTaskSheet() throws {
         let calendar = GregorianCalendar.make(timeZone: try XCTUnwrap(TimeZone(identifier: "Asia/Seoul")))
         let today = try XCTUnwrap(LocalDay(text: "2026-11-06"))
