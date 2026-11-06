@@ -222,7 +222,7 @@ description: "spec 002 저장과 체크포인트 작업 목록"
 
 - [ ] T059 [US5] `Sources/MokaCore/Onboarding.swift`에 `Onboarding.finish`를 둔다. T058 PASS 〔단위 1〕
 - [x] T060 🔒 [US5] `App/Sources/Views/ContextTabView.swift`·`ContextFormView.swift`에 일정 탭을 만든다(시안 10번, R-115, 값·콜백만): 목록은 날짜순, 줄마다 이름·"11월 12일"·중요도 배지(아주=빨강 굵게, 꽤, 조금), 아래 `+`·`−`(−는 확인 없이 바로 지움), 안내 "시험·제출처럼 할 일 순서에 영향을 주는 일정이에요.". 새 일정 시트: 이름·날짜(날짜 고르기)·중요도 세그먼트 조금/꽤/아주(내용 폭), 셋 다 필수, 고치기 없음 〔단위 4〕
-- [ ] T061 🔒 [US5] `App/Sources/Views/OnboardingView.swift`와 `App/Sources/MokaApp.swift`에 온보딩 창을 만든다(시안 11·12번, R-116, 폭 400pt, 창 제목 "Moka 시작하기", 단계 막대 1/2·2/2, 창 방식은 plan "앱 연결"):
+- [x] T061 🔒 [US5] `App/Sources/Views/OnboardingView.swift`와 `App/Sources/MokaApp.swift`에 온보딩 창을 만든다(시안 11·12번, R-116, 폭 400pt, 창 제목 "Moka 시작하기", 단계 막대 1/2·2/2, 창 방식은 plan "앱 연결"):
   - 1단계: "다가오는 시험이나 제출이 있나요?", "하나만 넣어 두면 돼요. 나머지는 설정의 일정 탭에서 더할 수 있어요.", 이름(자리표시 "예: 중간고사")·날짜(그 순간이 속한 하루)·중요도(기본 조금), 건너뛰기·다음(이름이 비면 꺼짐). 저장은 2단계에서 한꺼번에
   - 2단계: "이대로 시작할까요?", "언제든 설정에서 바꿀 수 있어요.", 기본 작업 시간·추가 시간·하루 시작 시각, 이전·시작하기 → `Onboarding.finish` → 창 닫힘 → 노치 빈 상태
   - 빨간 버튼으로 닫으면 끝내지 않은 것(다음 실행에 다시)
