@@ -42,7 +42,8 @@ final class SettingsSnapshotTests: XCTestCase {
             SettingsTabBar(selection: .constant(.tasks))
             TaskListTabView(
                 rows: rows, nextMarkID: 2, scope: .constant(.all), order: .constant(.created),
-                selectedID: .constant(2), canEdit: true, onAdd: {}, onEdit: { _ in }, onDelete: {})
+                selectedID: .constant(2), checkedIDs: .constant([]), canEdit: true, onAdd: {}, onEdit: { _ in },
+                onDelete: {})
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .background(MokaColors.settingsWindow)
@@ -58,7 +59,8 @@ final class SettingsSnapshotTests: XCTestCase {
         ]
         let content = VStack(spacing: 0) {
             SettingsTabBar(selection: .constant(.contexts))
-            ContextTabView(rows: rows, selectedID: .constant(2), canEdit: true, onAdd: {}, onDelete: {})
+            ContextTabView(
+                rows: rows, selectedID: .constant(2), checkedIDs: .constant([]), canEdit: true, onAdd: {}, onDelete: {})
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .background(MokaColors.settingsWindow)
@@ -109,6 +111,47 @@ final class SettingsSnapshotTests: XCTestCase {
             today: try XCTUnwrap(LocalDay(text: "2026-11-06")), calendar: calendar, editing: task, onSave: { _ in },
             onCancel: {})
         try write("s09-edit-task", content: content, size: CGSize(width: 360, height: 240))
+    }
+
+    func test_R120_taskListChecked() throws {
+        let created = Date(timeIntervalSince1970: 1_800_000_000)
+        let rows = (1...4).map { id in
+            MokaTask(
+                id: TaskID(id), title: ["보고서 1절 쓰기", "장보기 목록 만들기", "치과 예약 전화", "책 반납하기"][id - 1],
+                deadline: nil, estMin: nil, recurrence: .none, weekday: nil, cycleDay: nil, firstAction: nil,
+                status: id == 1 ? .active : .todo, skipCount: 0, streak: 0, createdAt: created)
+        }
+        let content = VStack(spacing: 0) {
+            SettingsTabBar(selection: .constant(.tasks))
+            TaskListTabView(
+                rows: rows, nextMarkID: 2, scope: .constant(.all), order: .constant(.created),
+                selectedID: .constant(nil), checkedIDs: .constant([1, 3, 4]), canEdit: true, onAdd: {},
+                onEdit: { _ in }, onDelete: {})
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(MokaColors.settingsWindow)
+        try write("s20-task-list-checked", content: content, size: CGSize(width: 460, height: 450))
+    }
+
+    func test_R120_contextTabChecked() throws {
+        let rows = [
+            MokaContext(id: 1, name: "동아리 회의", date: try XCTUnwrap(LocalDay(text: "2026-11-04")), impact: .normal),
+            MokaContext(id: 2, name: "가짜 과제 제출", date: try XCTUnwrap(LocalDay(text: "2026-11-07")), impact: .high),
+        ]
+        let content = VStack(spacing: 0) {
+            SettingsTabBar(selection: .constant(.contexts))
+            ContextTabView(
+                rows: rows, selectedID: .constant(nil), checkedIDs: .constant([1, 2]), canEdit: true, onAdd: {},
+                onDelete: {})
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(MokaColors.settingsWindow)
+        try write("s20-context-tab-checked", content: content, size: CGSize(width: 460, height: 450))
+    }
+
+    func test_R120_deleteManyConfirm() throws {
+        let content = DeleteConfirmView(count: 3, stopsTimer: true, onDelete: {}, onCancel: {})
+        try write("s20-delete-many-confirm", content: content, size: CGSize(width: 300, height: 130))
     }
 
     func test_R102_deleteConfirmActive() throws {
