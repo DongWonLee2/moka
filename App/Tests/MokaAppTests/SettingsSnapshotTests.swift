@@ -172,6 +172,39 @@ final class SettingsSnapshotTests: XCTestCase {
         try write("s20-context-delete-confirm", content: content, size: CGSize(width: 300, height: 110))
     }
 
+    func test_R122_taskListSomeChecked() throws {
+        let created = Date(timeIntervalSince1970: 1_800_000_000)
+        let rows = (1...4).map { id in
+            MokaTask(
+                id: TaskID(id), title: ["보고서 1절 쓰기", "장보기 목록 만들기", "치과 예약 전화", "책 반납하기"][id - 1],
+                deadline: nil, estMin: nil, recurrence: .none, weekday: nil, cycleDay: nil, firstAction: nil,
+                status: id >= 3 ? .done : .todo, skipCount: 0, streak: 0, createdAt: created)
+        }
+        let content = VStack(spacing: 0) {
+            SettingsTabBar(selection: .constant(.tasks))
+            TaskListTabView(
+                rows: rows, nextMarkID: 1, scope: .constant(.all), order: .constant(.created),
+                selectedID: .constant(nil), checkedIDs: .constant([3]), canEdit: true, onAdd: {},
+                onEdit: { _ in }, onDelete: {})
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(MokaColors.settingsWindow)
+        try write("s22-task-list-some", content: content, size: CGSize(width: 460, height: 450))
+    }
+
+    func test_R122_selectAllHeaderStates() throws {
+        let content = VStack(spacing: 0) {
+            SelectAllHeader(state: .none, onToggle: {})
+            SelectAllHeader(state: .some, onToggle: {}) {
+                Button("완료만 고르기") {}
+            }
+            SelectAllHeader(state: .all, onToggle: {})
+        }
+        .frame(width: 432)
+        .background(Color.white)
+        try write("s22-select-all-header", content: content, size: CGSize(width: 432, height: 100))
+    }
+
     func test_R102_deleteConfirmActive() throws {
         let content = DeleteConfirmView(title: "보고서 1절 쓰기", stopsTimer: true, onDelete: {}, onCancel: {})
         try write("s09-delete-confirm", content: content, size: CGSize(width: 300, height: 130))
