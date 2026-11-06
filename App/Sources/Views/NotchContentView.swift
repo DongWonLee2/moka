@@ -17,6 +17,8 @@ struct NotchContentView: View {
     var isPanelKey = false
     let metrics: NotchMetrics
     var style: PanelStyle = .notch
+    /// 앱 DB를 열지 못해 타이머만 되는 상태(R-119). 빈 상태에 이유를 보인다.
+    var storageUnavailable = false
     /// 노치의 할 일의 첫 행동(R-109). 펼친 화면은 있으면 보이고, 접힌 화면은 `showsFirstActionCollapsed`일 때만.
     var firstAction: String?
     var showsFirstActionCollapsed = false
@@ -53,7 +55,8 @@ struct NotchContentView: View {
             }
             if isExpanded {
                 ExpandedView(
-                    timer: timer, remainingSeconds: remainingSeconds, metrics: metrics, firstAction: firstAction,
+                    timer: timer, remainingSeconds: remainingSeconds, metrics: metrics,
+                    storageUnavailable: storageUnavailable, firstAction: firstAction,
                     titleFocusRequest: titleFocusRequest, chip: chip,
                     onEnterTitle: onEnterTitle, draftInput: draftInput, notes: notes, onStart: onStart,
                     onComplete: onComplete

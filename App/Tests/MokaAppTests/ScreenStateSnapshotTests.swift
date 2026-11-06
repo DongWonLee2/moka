@@ -26,6 +26,12 @@ final class ScreenStateSnapshotTests: XCTestCase {
         try snapshot("01-empty", timer: .empty(draft: nil), remaining: nil, expanded: false)
     }
 
+    func test_R119_storageUnavailableEmpty() throws {
+        try snapshot(
+            "17-storage-unavailable", timer: .empty(draft: nil), remaining: nil, expanded: true, hovering: true,
+            storageUnavailable: true)
+    }
+
     func test_R001_R002_titleEntry() throws {
         try snapshot("02-input", timer: .empty(draft: nil), remaining: nil, expanded: true, hovering: true)
     }
@@ -171,13 +177,15 @@ final class ScreenStateSnapshotTests: XCTestCase {
     private func snapshot(
         _ name: String, timer: NotchTimer, remaining: Int?, expanded: Bool, hovering: Bool = false,
         style: PanelStyle = .notch, draftInput: DraftInput = DraftInput(), firstAction: String? = nil,
-        showsFirstActionCollapsed: Bool = false, notes: NotesInput = NotesInput(), customText: String? = nil
+        showsFirstActionCollapsed: Bool = false, notes: NotesInput = NotesInput(), customText: String? = nil,
+        storageUnavailable: Bool = false
     ) throws {
         let metrics = style == .notch ? Self.notchMetrics : Self.floatingMetrics
         let size = NotchLayout.panelSize(metrics: metrics)
         let content = NotchContentView(
             timer: timer, remainingSeconds: remaining, isExpanded: expanded, isHovering: hovering, metrics: metrics,
-            style: style, firstAction: firstAction, showsFirstActionCollapsed: showsFirstActionCollapsed,
+            style: style, storageUnavailable: storageUnavailable, firstAction: firstAction,
+            showsFirstActionCollapsed: showsFirstActionCollapsed,
             titleFocusRequest: 0,
             chip: QuantumChipInput(
                 customText: customText, canStart: QuantumChip.startAllowed(customText: customText), onChoose: { _ in },
