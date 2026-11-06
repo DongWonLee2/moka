@@ -62,7 +62,7 @@ struct OnboardingView: View {
 
     private var contextStep: some View {
         VStack(alignment: .leading, spacing: 0) {
-            heading("다가오는 시험이나 제출이 있나요?", "하나만 넣어 두면 돼요. 나머지는 설정의 일정 탭에서 더할 수 있어요.")
+            heading("다가오는 시험이나 제출이 있나요?", "하나만 넣어 두면 돼요. 나머지는 설정의 일정 탭에서 추가할 수 있어요.")
             Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 6) {
                 GridRow {
                     label("이름", width: 52)
