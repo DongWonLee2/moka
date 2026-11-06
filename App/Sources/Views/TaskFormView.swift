@@ -100,18 +100,19 @@ struct TaskFormView: View {
                     }
                 }
                 GridRow {
-                    FormLabel("예상 소요")
+                    FormLabel("다 하는 데")
                     HStack(spacing: 4) {
                         TextField("—", text: $estText)
                             .textFieldStyle(.roundedBorder)
                             .multilineTextAlignment(.trailing)
                             .frame(width: 52)
-                            .accessibilityLabel("예상 소요 분")
-                        Text("분")
-                        if estText.isEmpty {
-                            Hint("비워 둬도 돼요")
-                        }
+                            .accessibilityLabel("다 하는 데 걸릴 시간, 분")
+                        Text("분쯤 걸려요")
                     }
+                }
+                GridRow {
+                    Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])
+                    Hint("끝까지 하는 데 걸릴 시간이에요. 비워 둬도 되고, 나눠서 해도 돼요.")
                 }
                 if let firstAction = editing?.firstAction {
                     GridRow {
