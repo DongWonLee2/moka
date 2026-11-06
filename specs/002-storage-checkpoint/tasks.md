@@ -259,6 +259,14 @@ description: "spec 002 저장과 체크포인트 작업 목록"
 
 ---
 
+## Phase 11: 전체 고르기 (R-122, 사용자 요청 2026-11-06)
+
+- [x] T073 [P] `Tests/MokaCoreTests/RowSelectionTests.swift`에 고르기 규칙 시험을 쓰고 실패를 확인한다(`FR-01 R-122`): 보이는 줄 기준 없음·일부·전체 판정, 전체 토글(다 골랐으면 보이는 것만 풀고 숨은 체크는 둠), 완료만 고르기 〔단위 1〕
+- [x] T074 `Sources/MokaCore/RowSelection.swift`에 `RowSelection`을 둔다. T073 PASS 〔단위 1〕
+- [x] T075 🔒 할 일 탭·일정 탭 목록 맨 위에 "전체" 체크 칸(일부면 `−`), 할 일 탭에 "완료만 고르기"를 잇는다(스냅샷은 `SettingsSnapshotTests`) 〔단위 4〕
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase 순서
@@ -345,6 +353,7 @@ implementer B: "단위 3 — T021·T022·T026·T027·T036·T039·T046·T048·T05
 | R-119 저장 실패 | T035 | T037 | T049, T051 |
 | R-120 여러 개 골라 지우기 | T067 | T068 | T069 |
 | R-121 일정 고치기 | T070 | T071 | T072 |
+| R-122 전체 고르기 | T073 | T074 | T075 |
 | SC-101 다시 켜도 남음 | T007, T008 | T015 | T049, T066 |
 | SC-102 버튼 수 = 로그 수 | T032, T036 | T037, T039 | T044 |
 | SC-103 이어서 할 일 재진입 | T022, T036, T046 | T039, T048 | T043, T066 |
