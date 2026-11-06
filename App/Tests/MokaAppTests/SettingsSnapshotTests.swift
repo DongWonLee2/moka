@@ -98,7 +98,7 @@ final class SettingsSnapshotTests: XCTestCase {
         let today = try XCTUnwrap(LocalDay(text: "2026-11-06"))
         let content = TaskFormView(today: today, calendar: calendar, onSave: { _ in }, onCancel: {})
             .environment(\.timeZone, calendar.timeZone)
-        try write("s08-new-task", content: content, size: CGSize(width: 360, height: 190))
+        try write("s08-new-task", content: content, size: CGSize(width: 360, height: 220))
     }
 
     func test_R102_editTaskSheet() throws {
@@ -110,7 +110,7 @@ final class SettingsSnapshotTests: XCTestCase {
         let content = TaskFormView(
             today: try XCTUnwrap(LocalDay(text: "2026-11-06")), calendar: calendar, editing: task, onSave: { _ in },
             onCancel: {})
-        try write("s09-edit-task", content: content, size: CGSize(width: 360, height: 240))
+        try write("s09-edit-task", content: content, size: CGSize(width: 360, height: 270))
     }
 
     func test_R120_taskListChecked() throws {

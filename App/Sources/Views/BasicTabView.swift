@@ -12,7 +12,7 @@ struct BasicTabView: View {
     var body: some View {
         Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 4) {
             MinutesFieldRow(
-                label: "기본 작업 시간", hint: "새 할 일에 먼저 골라 둘 시간이에요.", input: quantum)
+                label: "기본 작업 시간", hint: "한 번에 집중할 시간이에요. 새 할 일에 먼저 골라 둬요.", input: quantum)
             MinutesFieldRow(
                 label: "추가 시간", hint: "시간이 끝났을 때 더 이어 갈 시간이에요.", input: extend)
             GridRow {

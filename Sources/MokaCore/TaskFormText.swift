@@ -4,7 +4,7 @@ public enum TaskFormText {
         MokaTask.normalizedTitle(title) == nil ? "제목을 넣어 주세요." : nil
     }
 
-    /// 예상 소요 칸. 비우면 없음, 1 이상 정수면 그 값, 그 밖은 nil.
+    /// 다 하는 데 걸릴 시간(`est_min`) 칸. 비우면 없음, 1 이상 정수면 그 값, 그 밖은 nil.
     public static func estMin(_ text: String) -> Int? {
         guard let minutes = Int(text), MokaTask.isValidEstMin(minutes) else { return nil }
         return minutes
