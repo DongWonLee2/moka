@@ -154,6 +154,13 @@ final class SettingsSnapshotTests: XCTestCase {
         try write("s20-delete-many-confirm", content: content, size: CGSize(width: 300, height: 130))
     }
 
+    func test_R120_contextDeleteConfirm() throws {
+        let content = DeleteConfirmView(
+            heading: ContextText.deleteManyTitle(count: 2), message: ContextText.deleteMessage, onDelete: {},
+            onCancel: {})
+        try write("s20-context-delete-confirm", content: content, size: CGSize(width: 300, height: 110))
+    }
+
     func test_R102_deleteConfirmActive() throws {
         let content = DeleteConfirmView(title: "보고서 1절 쓰기", stopsTimer: true, onDelete: {}, onCancel: {})
         try write("s09-delete-confirm", content: content, size: CGSize(width: 300, height: 130))
