@@ -253,9 +253,9 @@ description: "spec 002 저장과 체크포인트 작업 목록"
 
 ## Phase 10: 일정 고치기 (R-121, 사용자 요청 2026-11-06)
 
-- [ ] T070 [P] `Tests/MokaStoreTests/StorageContractTests.swift`에 `updateContext` 계약 시험을 메모리·GRDB 둘 다 쓰고 실패를 확인한다(`FR-02 R-121`): 모든 칸이 바뀌어 돌아오고 날짜순 자리가 바뀜, 없는 id는 `contextNotFound` 〔단위 2〕
-- [ ] T071 `Sources/MokaCore/Storage.swift`(`ContextStore`, `InMemoryContextStore`)와 `Sources/MokaStore/GRDBContextStore.swift`에 `updateContext`를 둔다. T070 PASS 〔단위 2〕
-- [ ] T072 🔒 `App/Sources/AppState.swift`에 `editContext(_:_:)`를 두고, 일정 탭 줄 두 번 클릭으로 `ContextFormView`(고치기 모드, 제목 "일정 고치기")를 잇는다. 체크 칸은 두 번 클릭 영역 밖(시험은 `AppLifecycleTests`, 스냅샷은 `SettingsSnapshotTests`) 〔단위 4〕
+- [x] T070 [P] `Tests/MokaStoreTests/StorageContractTests.swift`에 `updateContext` 계약 시험을 메모리·GRDB 둘 다 쓰고 실패를 확인한다(`FR-02 R-121`): 모든 칸이 바뀌어 돌아오고 날짜순 자리가 바뀜, 없는 id는 `contextNotFound` 〔단위 2〕
+- [x] T071 `Sources/MokaCore/Storage.swift`(`ContextStore`, `InMemoryContextStore`)와 `Sources/MokaStore/GRDBContextStore.swift`에 `updateContext`를 둔다. T070 PASS 〔단위 2〕
+- [x] T072 🔒 `App/Sources/AppState.swift`에 `editContext(_:_:)`를 두고, 일정 탭 줄 두 번 클릭으로 `ContextFormView`(고치기 모드, 제목 "일정 고치기")를 잇는다. 체크 칸은 두 번 클릭 영역 밖(시험은 `AppLifecycleTests`, 스냅샷은 `SettingsSnapshotTests`) 〔단위 4〕
 
 ---
 
