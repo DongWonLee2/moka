@@ -6,6 +6,7 @@
 - `adr/ADR-*.md` 기술 결정, `specs/<feature>/` Spec Kit 명세(spec·plan·tasks), `GLOSSARY.md` 용어집(코드·스키마 이름은 여기 이름을 쓴다)
 - `Package.swift`: `MokaCore`(순수 로직), `MokaStore`(GRDB), `moka-sim`(검증 CLI). 앱은 `App/`, 프로젝트 파일은 `project.yml`(XcodeGen, `.pbxproj`는 커밋하지 않음)
 - `schema/moka-schema.sql` 스키마 스냅샷(Swift·pytest 공유 계약), `tuning/` Python 튜닝 스크립트와 pytest
+- `Sources/MokaCore/Resources/questions.json` 판단 질문 파일(Swift·pytest 공유 계약)
 - PRD는 저장소 밖 `~/Dev/ai-platform/projects/moka/prd.md`. `docs/`는 로컬 전용이며 커밋하지 않는다(docs-guard)
 
 ## 작업 시작
