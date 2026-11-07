@@ -38,6 +38,14 @@ public enum TaskRowText {
         }
     }
 
+    /// priority 칸(spec 003 R-215). 소수 둘째 자리에서 반올림해 둘째 자리까지, 점수가 없으면 빈칸.
+    public static func priority(_ value: Double?) -> String {
+        guard let value else { return "" }
+        let hundredths = Int((value * 100).rounded())
+        let fraction = hundredths % 100
+        return "\(hundredths / 100)." + (fraction < 10 ? "0" : "") + "\(fraction)"
+    }
+
     /// 상태 배지. 버린 할 일은 목록에 나오지 않는다(`TaskListView.rows`).
     public static func status(_ status: TaskStatus) -> String {
         switch status {

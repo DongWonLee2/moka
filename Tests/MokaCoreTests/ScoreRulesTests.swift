@@ -80,17 +80,21 @@ private func near(_ a: Double, _ b: Double) -> Bool { abs(a - b) < 1e-9 }
         var answers = validAnswers
         switch caseName {
         case "avoiding 빠짐": answers["avoiding"] = nil
-        case "concrete가 score": answers["concrete"] = .score(score: 1, confidence: 0.5, probabilities: [0: 0.5, 1: 0.5])
+        case "concrete가 score":
+            answers["concrete"] = .score(score: 1, confidence: 0.5, probabilities: [0: 0.5, 1: 0.5])
         case "urgency가 noul": answers["urgency"] = .noul(0.5)
         case "noul 1 초과": answers["concrete"] = .noul(1.2)
         case "noul 음수": answers["avoiding"] = .noul(-0.1)
         case "score 상한 초과":
             answers["urgency"] = .score(score: 3.5, confidence: 0.7, probabilities: [0: 0.1, 1: 0.1, 2: 0.4, 3: 0.4])
-        case "score 음수": answers["impact"] = .score(score: -0.1, confidence: 0.6, probabilities: [0: 0.2, 1: 0.4, 2: 0.4])
-        case "confidence 없음": answers["impact"] = .score(score: 1, confidence: nil, probabilities: [0: 0.2, 1: 0.4, 2: 0.4])
+        case "score 음수":
+            answers["impact"] = .score(score: -0.1, confidence: 0.6, probabilities: [0: 0.2, 1: 0.4, 2: 0.4])
+        case "confidence 없음":
+            answers["impact"] = .score(score: 1, confidence: nil, probabilities: [0: 0.2, 1: 0.4, 2: 0.4])
         case "confidence 범위 밖":
             answers["impact"] = .score(score: 1, confidence: 1.1, probabilities: [0: 0.2, 1: 0.4, 2: 0.4])
-        case "확률 키 모자람": answers["urgency"] = .score(score: 2, confidence: 0.7, probabilities: [0: 0.1, 1: 0.5, 2: 0.4])
+        case "확률 키 모자람":
+            answers["urgency"] = .score(score: 2, confidence: 0.7, probabilities: [0: 0.1, 1: 0.5, 2: 0.4])
         case "확률 키 남음":
             answers["impact"] = .score(score: 1, confidence: 0.6, probabilities: [0: 0.2, 1: 0.4, 2: 0.3, 3: 0.1])
         case "확률 값 범위 밖":
@@ -167,7 +171,9 @@ private func near(_ a: Double, _ b: Double) -> Bool { abs(a - b) < 1e-9 }
 
     @Test("FR-03 R-206: 질문 버전이 다른 판단 결과는 쓰지 않고, 판단 입력 해시가 달라도 다시 묻기 전까지 쓴다")
     func versionAndHash() {
-        let scores = [1: stored(1, version: "v0"), 2: stored(2, hash: "ffffffffffffffff"), 3: stored(3)]
+        let scores: [TaskID: TaskScore] = [
+            1: stored(1, version: "v0"), 2: stored(2, hash: "ffffffffffffffff"), 3: stored(3),
+        ]
         #expect(Set(ScoreRules.usable(scores: scores, hasKey: true, questionVersion: "v1").keys) == [2, 3])
     }
 }

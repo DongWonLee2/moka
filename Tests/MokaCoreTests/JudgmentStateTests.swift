@@ -86,7 +86,8 @@ private func text(_ state: JudgmentState) -> String {
 
     @Test("FR-03 R-201: 체크포인트는 그 할 일 것 가운데 두 줄 중 하나라도 적힌 id 최대의 것")
     func picksLatestWrittenCheckpoint() {
-        let onlyEmpty = build(fullTask, checkpoints: [checkpoint(7, task: 1, "", ""), checkpoint(9, task: 2, "a", "b")])
+        let onlyEmpty = build(
+            fullTask, checkpoints: [checkpoint(7, task: 1, "", ""), checkpoint(9, task: 2, "a", "b")])
         #expect(!text(onlyEmpty).contains("checkpoint"))
         let doneOnly = build(Fake.task(2), checkpoints: [checkpoint(3, task: 2, "가짜 한 일", "")])
         #expect(text(doneOnly).hasSuffix(#","checkpoint":{"done":"가짜 한 일","next":""}}"#))

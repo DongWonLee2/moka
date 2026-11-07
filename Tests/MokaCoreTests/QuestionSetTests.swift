@@ -71,9 +71,13 @@ private func editQuestions(_ root: inout [String: Any], _ edit: (inout [String: 
             case "질문 빠짐": editQuestions(&root) { $0["avoiding"] = nil }
             case "blocked 더함":
                 editQuestions(&root) { $0["blocked"] = ["type": "noul", "instructions": "가짜 지시"] }
-            case "타입 다름": editQuestions(&root) { $0["concrete"] = ["type": "score", "instructions": "가짜", "criteria": ["a", "b"]] }
+            case "타입 다름":
+                editQuestions(&root) {
+                    $0["concrete"] = ["type": "score", "instructions": "가짜", "criteria": ["a", "b"]]
+                }
             case "모르는 타입": editQuestions(&root) { $0["concrete"] = ["type": "choice", "instructions": "가짜"] }
-            case "옵션 하나": editQuestions(&root) { $0["impact"] = ["type": "score", "instructions": "가짜", "criteria": ["a"]] }
+            case "옵션 하나":
+                editQuestions(&root) { $0["impact"] = ["type": "score", "instructions": "가짜", "criteria": ["a"]] }
             case "옵션 열하나":
                 editQuestions(&root) {
                     $0["impact"] = ["type": "score", "instructions": "가짜", "criteria": (0..<11).map { "\($0)" }]
