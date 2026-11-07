@@ -60,11 +60,12 @@ private func near(_ a: Double, _ b: Double) -> Bool { abs(a - b) < 1e-9 }
 
     @Test("FR-04 R-204: 정규화 분모는 질문 파일의 옵션 수에서 온다")
     func denominatorFromOptions() throws {
-        var root = try JSONSerialization.jsonObject(with: questionsData()) as! [String: Any]
-        var qs = root["questions"] as! [String: Any]
-        qs["urgency"] = ["type": "score", "instructions": "가짜", "criteria": ["a", "b", "c", "d", "e"]]
-        root["questions"] = qs
-        let five = try QuestionSet(json: JSONSerialization.data(withJSONObject: root))
+        let five = try QuestionSet(
+            json: questionsJSON { root in
+                editQuestions(&root) {
+                    $0["urgency"] = ["type": "score", "instructions": "가짜", "criteria": ["a", "b", "c", "d", "e"]]
+                }
+            })
         var answers = validAnswers
         answers["urgency"] = .score(score: 2, confidence: 0.5, probabilities: [0: 0, 1: 0, 2: 1, 3: 0, 4: 0])
         #expect(near(try #require(score(answers, set: five)).urgency, 0.5))
@@ -190,11 +191,4 @@ private func near(_ a: Double, _ b: Double) -> Bool { abs(a - b) < 1e-9 }
     func empty() {
         #expect(TaskRowText.priority(nil) == "")
     }
-}
-
-/// 저장소의 질문 파일(시험 번들에는 리소스가 없다).
-private func questionsData() throws -> Data {
-    try Data(
-        contentsOf: URL(fileURLWithPath: #filePath).deletingLastPathComponent()
-            .appendingPathComponent("../../Sources/MokaCore/Resources/questions.json"))
 }

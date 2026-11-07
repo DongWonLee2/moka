@@ -1,6 +1,5 @@
 import Foundation
 
-/// 판단 질문 하나(contracts/decision-provider.md "질문 타입").
 public enum Question: Equatable, Sendable {
     /// 문장이 참일 확률 하나를 받는 질문.
     case noul(instructions: String)

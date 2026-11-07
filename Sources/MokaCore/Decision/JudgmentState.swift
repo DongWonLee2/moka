@@ -73,7 +73,6 @@ public struct JudgmentState: Equatable, Sendable {
         return Array(Self.object(root).utf8)
     }
 
-    /// 판단 입력 해시(data-model §5). 보안용이 아니다.
     public var hash: String {
         Self.fnv1a64(bytes)
     }

@@ -2,8 +2,7 @@ import Foundation
 import MokaCore
 import Testing
 
-/// contracts/questions-json.md "v1 내용"과 같은 모양. 한 칸씩 바꿔 읽기 실패를 본다.
-private func questionsJSON(_ edit: (inout [String: Any]) -> Void = { _ in }) throws -> Data {
+func questionsJSON(_ edit: (inout [String: Any]) -> Void = { _ in }) throws -> Data {
     var root: [String: Any] = [
         "version": "v1", "language": "ko", "model": "jev-1.13.0",
         "questions": [
@@ -18,7 +17,7 @@ private func questionsJSON(_ edit: (inout [String: Any]) -> Void = { _ in }) thr
     return try JSONSerialization.data(withJSONObject: root)
 }
 
-private func editQuestions(_ root: inout [String: Any], _ edit: (inout [String: Any]) -> Void) {
+func editQuestions(_ root: inout [String: Any], _ edit: (inout [String: Any]) -> Void) {
     var questions = root["questions"] as! [String: Any]
     edit(&questions)
     root["questions"] = questions
