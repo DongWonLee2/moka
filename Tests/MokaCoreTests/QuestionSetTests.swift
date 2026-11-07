@@ -62,7 +62,7 @@ func editQuestions(_ root: inout [String: Any], _ edit: (inout [String: Any]) ->
         "FR-03 R-202: 질문 넷이 아니거나 타입·옵션·임계값이 계약과 다르면 읽지 않는다",
         arguments: [
             "질문 빠짐", "blocked 더함", "타입 다름", "모르는 타입", "옵션 하나", "옵션 열하나",
-            "모델 임계값 없음", "avoiding 임계값 없음", "임계값 범위 밖", "버전 없음",
+            "모델 임계값 없음", "avoiding 임계값 없음", "concrete 임계값 없음", "임계값 범위 밖", "임계값 음수", "버전 없음",
         ])
     func rejects(caseName: String) throws {
         let data = try questionsJSON { root in
@@ -83,6 +83,8 @@ func editQuestions(_ root: inout [String: Any], _ edit: (inout [String: Any]) ->
                 }
             case "모델 임계값 없음": root["thresholds"] = ["jev-other": ["concrete": 0.5, "avoiding": 0.7]]
             case "avoiding 임계값 없음": root["thresholds"] = ["jev-1.13.0": ["concrete": 0.5]]
+            case "concrete 임계값 없음": root["thresholds"] = ["jev-1.13.0": ["avoiding": 0.7]]
+            case "임계값 음수": root["thresholds"] = ["jev-1.13.0": ["concrete": -0.1, "avoiding": 0.7]]
             case "임계값 범위 밖": root["thresholds"] = ["jev-1.13.0": ["concrete": 0.5, "avoiding": 1.5]]
             case "버전 없음": root["version"] = nil
             default: Issue.record("모르는 경우 \(caseName)")
