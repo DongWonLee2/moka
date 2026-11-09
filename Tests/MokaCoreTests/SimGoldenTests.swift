@@ -20,7 +20,7 @@ func everyGoldenScenarioHasExpectedOutput() throws {
         Set([
             "contract-example", "default-after-expiry", "us1-basic", "us2-choose-45", "us3-sleep", "us4-default-change",
             "us4-picked-chip", "storage-contract-example", "storage-us1-pick", "storage-us2-buttons",
-            "storage-us3-lifecycle", "storage-us4-recurrence", "storage-us4-newyork",
+            "storage-us3-lifecycle", "storage-us4-recurrence", "storage-us4-newyork", "storage-judge-order",
         ])
         .isSubset(of: Set(names)))
     for name in names {
