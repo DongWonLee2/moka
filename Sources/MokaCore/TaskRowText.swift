@@ -38,6 +38,17 @@ public enum TaskRowText {
         }
     }
 
+    /// 순위 칸(spec 003 R-215). 노치 순서 앞 세 개는 "N순위", 노치에 뜰 할 일은 한 배지로 "다음"을 붙인다.
+    public static func rankBadge(rank: Int?, isNext: Bool) -> String? {
+        let rankText = rank.flatMap { (1...3).contains($0) ? "\($0)순위" : nil }
+        switch (rankText, isNext) {
+        case (let rankText?, true): return rankText + " · 다음"
+        case (let rankText?, false): return rankText
+        case (nil, true): return "다음"
+        case (nil, false): return nil
+        }
+    }
+
     /// 상태 배지. 버린 할 일은 목록에 나오지 않는다(`TaskListView.rows`).
     public static func status(_ status: TaskStatus) -> String {
         switch status {

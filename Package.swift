@@ -13,7 +13,7 @@ let package = Package(
         .package(url: "https://github.com/groue/GRDB.swift.git", exact: "7.11.1"),
     ],
     targets: [
-        .target(name: "MokaCore"),
+        .target(name: "MokaCore", resources: [.copy("Resources/questions.json")]),
         .target(
             name: "MokaStore",
             dependencies: ["MokaCore", .product(name: "GRDB", package: "GRDB.swift")]
