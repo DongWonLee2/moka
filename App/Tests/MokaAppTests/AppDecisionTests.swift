@@ -647,6 +647,142 @@ final class AppDecisionTests: XCTestCase {
         XCTAssertTrue(h.state.keyActionFailed)
         XCTAssertTrue(h.state.hasKey)
     }
+
+    // MARK: - T036 키 칸 상태와 키 값 보관(FR-16 R-213·R-214, SC-208, SC-210)
+
+    func test_FR16_R213_keyFieldStateFollowsKeyAndTasks() async throws {
+        let none = try harness(count: 1, key: nil)
+        none.state.launch()
+        XCTAssertEqual(none.state.keyFieldState, .noKey)
+        XCTAssertEqual(
+            none.state.keyFieldState.notice,
+            KeyFieldNotice(text: "키를 넣으면 판단 모델이 할 일 순서를 정해요. 키가 없으면 마감이 가까운 순으로 떠요.", isWarning: false))
+
+        let saved = await launched(try harness(count: 1))
+        XCTAssertEqual(saved.state.keyFieldState, .saved)
+        XCTAssertNil(saved.state.keyFieldState.notice)
+
+        let empty = try harness(count: 0)
+        empty.state.launch()
+        XCTAssertEqual(empty.state.keyFieldState, .savedNoTasks)
+        XCTAssertEqual(
+            empty.state.keyFieldState.notice, KeyFieldNotice(text: "할 일을 저장하면 키가 맞는지 확인돼요.", isWarning: false))
+        XCTAssertFalse(empty.state.canRetryScores)
+
+        let rejected = await launched(
+            try harness(count: 1, provider: FakeDecisionProvider(answer: .failure(.unauthorized))))
+        XCTAssertEqual(rejected.state.keyFieldState, .needsCheck)
+        XCTAssertEqual(
+            rejected.state.keyFieldState.notice,
+            KeyFieldNotice(text: "키가 맞지 않아요. 키를 지우고 다시 저장해 주세요.", isWarning: true))
+        XCTAssertFalse(rejected.state.canRetryScores)
+        XCTAssertTrue(rejected.state.saveKey("fake-key-2"))
+        XCTAssertEqual(rejected.state.keyFieldState, .saved, "다시 저장하면 401 문구가 사라진다")
+    }
+
+    func test_FR16_R213_keyFieldStorageUnavailable() throws {
+        let state = makeState(
+            nil, decision: DecisionSetup(
+                keyStore: InMemoryKeyStore(key: "fake-key"), provider: Self.ok(), questions: Self.questions))
+        state.launch()
+
+        XCTAssertEqual(state.keyFieldState, .storageUnavailable)
+        XCTAssertEqual(
+            state.keyFieldState.notice,
+            KeyFieldNotice(text: "할 일을 저장할 수 없는 동안에는 다시 물을 수 없어요.", isWarning: false))
+        XCTAssertTrue(state.keyFieldState.showsSavedRow)
+        XCTAssertFalse(state.canRetryScores)
+    }
+
+    func test_FR16_R213_keyActionFailureNotices() throws {
+        let h = try harness(count: 1, key: nil)
+        h.state.launch()
+
+        h.keys.failing = [.save]
+        XCTAssertFalse(h.state.saveKey("fake-key"))
+        XCTAssertEqual(h.state.keyFieldState, .actionFailed(.save, hasKey: false))
+        XCTAssertFalse(h.state.keyFieldState.showsSavedRow, "저장에 실패하면 붙여 넣는 칸이 남는다")
+        XCTAssertEqual(
+            h.state.keyFieldState.notice, KeyFieldNotice(text: "키를 저장하지 못했어요. 다시 해 주세요.", isWarning: true))
+
+        h.keys.failing = []
+        XCTAssertTrue(h.state.saveKey("fake-key"))
+        XCTAssertEqual(h.state.keyFieldState, .saved, "다음 성공에 실패 문구가 사라진다")
+
+        h.keys.failing = [.delete]
+        XCTAssertFalse(h.state.deleteKey())
+        XCTAssertEqual(h.state.keyFieldState, .actionFailed(.delete, hasKey: true))
+        XCTAssertTrue(h.state.keyFieldState.showsSavedRow)
+        XCTAssertEqual(
+            h.state.keyFieldState.notice, KeyFieldNotice(text: "키를 지우지 못했어요. 다시 해 주세요.", isWarning: true))
+
+        h.keys.failing = []
+        XCTAssertTrue(h.state.deleteKey())
+        XCTAssertEqual(h.state.keyFieldState, .noKey)
+    }
+
+    func test_FR16_R213_saveTrimsKeyAndEmptyInputCannotSave() throws {
+        let h = try harness(count: 1, key: nil)
+        h.state.launch()
+
+        XCTAssertFalse(KeyFieldState.canSave(""))
+        XCTAssertFalse(KeyFieldState.canSave("  \n\t "))
+        XCTAssertTrue(KeyFieldState.canSave(" fake-key "))
+        XCTAssertFalse(h.state.saveKey(" \n "))
+        XCTAssertEqual(h.state.keyFieldState, .noKey, "빈 입력은 실패 문구 없이 그대로")
+
+        XCTAssertTrue(h.state.saveKey("  fake-key-trim\n"))
+        XCTAssertEqual(try h.keys.read(), "fake-key-trim")
+        XCTAssertEqual(h.state.keyFieldState, .saved)
+    }
+
+    func test_FR16_R214_SC208_keyValueIsNotStoredOutsideKeyStore() async throws {
+        let secret = "fake-secret-key-7f3a"
+        let settings = RecordingSettingsStore()
+        let repository = InMemoryTaskRepository()
+        _ = try repository.insertTask(Self.newTask("가짜 할 일 1"), cycleDay: nil, at: AppTestFixture.noon)
+        let scoreStore = InMemoryScoreStore(tasks: repository)
+        let keys = InMemoryKeyStore()
+        let clock = TestClock(AppTestFixture.noon)
+        let state = makeState(
+            repository, settings: settings, clock: clock, scores: scoreStore,
+            decision: DecisionSetup(keyStore: keys, provider: Self.ok(), questions: Self.questions))
+        state.launch()
+        XCTAssertTrue(
+            state.finishOnboarding(
+                OnboardingValues(context: nil, quantumMin: 25, extendMin: 10, dayStart: Defaults.dayStart)))
+
+        XCTAssertTrue(state.saveKey("  \(secret)  "))
+        await state.requestScores()?.value
+        state.start()
+        clock.advance(minutes: 5)
+        state.tick()
+        state.complete()
+        XCTAssertTrue(state.deleteKey())
+
+        XCTAssertFalse(try scoreStore.scores().isEmpty, "판단 결과가 저장됐다")
+        XCTAssertFalse(try repository.decisions().isEmpty, "행동 로그가 남았다")
+        XCTAssertFalse(settings.written.isEmpty, "설정 값이 저장됐다")
+        for (name, value) in settings.written {
+            XCTAssertFalse(name.contains(secret) || value.contains(secret), "설정 \(name)")
+        }
+        XCTAssertFalse(String(describing: try scoreStore.scores()).contains(secret), "판단 결과")
+        XCTAssertFalse(String(describing: try repository.decisions()).contains(secret), "행동 로그")
+        XCTAssertFalse(String(describing: try repository.tasks()).contains(secret), "할 일")
+    }
+}
+
+/// 쓴 값을 모두 남기는 설정 저장소. 키 값이 설정에 들어가지 않는지 본다(SC-208).
+private final class RecordingSettingsStore: SettingsStore {
+    private let inner = InMemorySettingsStore()
+    private(set) var written: [(String, String)] = []
+
+    func value(for key: String) throws -> String? { try inner.value(for: key) }
+
+    func setValue(_ value: String, for key: String) throws {
+        written.append((key, value))
+        try inner.setValue(value, for: key)
+    }
 }
 
 /// `upsertScore`가 늘 던지는 판단 결과 저장소.

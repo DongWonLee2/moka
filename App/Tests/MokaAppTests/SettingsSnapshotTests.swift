@@ -50,6 +50,76 @@ final class SettingsSnapshotTests: XCTestCase {
         try write("s07-task-list", content: content, size: size)
     }
 
+    /// 시안 v2 8번(가짜 예시): 노치 순서 앞 셋에 순위, 노치에 뜰 할 일은 "1순위 · 다음" 한 배지. 끝낸 뒤 나머지가 올라간다.
+    func test_R215_rankColumn() throws {
+        let created = Date(timeIntervalSince1970: 1_800_000_000)
+        func rows(firstDone: Bool) -> [MokaTask] {
+            func task(
+                _ id: TaskID, _ title: String, deadline: String? = nil, estMin: Int? = nil,
+                recurrence: Recurrence = .none, weekday: Int? = nil, status: TaskStatus = .todo, skipCount: Int = 0
+            ) -> MokaTask {
+                MokaTask(
+                    id: id, title: title, deadline: deadline.flatMap(LocalDay.init(text:)), estMin: estMin,
+                    recurrence: recurrence, weekday: weekday.flatMap(Weekday.init(rawValue:)),
+                    cycleDay: recurrence == .none ? nil : LocalDay(text: "2026-11-04"), firstAction: nil,
+                    status: status, skipCount: skipCount, streak: 0, createdAt: created)
+            }
+            return [
+                task(1, "가짜 영단어 30개 외우기", recurrence: .daily, status: firstDone ? .done : .todo),
+                task(2, "가짜 보고서 1절 쓰기", deadline: "2026-11-09", estMin: 50),
+                task(3, "가짜 발표 자료 정리", recurrence: .weekly, weekday: 4, skipCount: 2),
+                task(4, "가짜 장보기 목록 만들기"),
+                task(5, "가짜 세탁기 돌리기", status: .done),
+            ]
+        }
+        for (name, firstDone, nextMarkID, ranks) in [
+            ("s23-rank-column", false, TaskID(1), [TaskID(1): 1, 2: 2, 3: 3]),
+            ("s23-rank-column-after", true, TaskID(2), [TaskID(2): 1, 3: 2, 4: 3]),
+        ] {
+            let content = VStack(spacing: 0) {
+                SettingsTabBar(selection: .constant(.tasks))
+                TaskListTabView(
+                    rows: rows(firstDone: firstDone), nextMarkID: nextMarkID, ranks: ranks, scope: .constant(.all),
+                    order: .constant(.created), selectedID: .constant(nil), checkedIDs: .constant([]), canEdit: true,
+                    onAdd: {}, onEdit: { _ in }, onDelete: {})
+            }
+            .frame(maxHeight: .infinity, alignment: .top)
+            .background(MokaColors.settingsWindow)
+            try write(name, content: content, size: CGSize(width: 460, height: 450))
+        }
+    }
+
+    // MARK: - 기본 탭 키 칸 상태 여섯(spec 003 R-213, SC-210, 시안 v2 1·3~7번)
+
+    func test_R213_keyFieldNoKey() throws {
+        try snapshot("s24-key-none", quantumText: "25", extendText: "10", keyState: .noKey, canRetry: false)
+    }
+
+    func test_R213_keyFieldSaved() throws {
+        try snapshot("s24-key-saved", quantumText: "25", extendText: "10", keyState: .saved, canRetry: true)
+    }
+
+    func test_R213_keyFieldSavedNoTasks() throws {
+        try snapshot(
+            "s24-key-saved-no-tasks", quantumText: "25", extendText: "10", keyState: .savedNoTasks, canRetry: false)
+    }
+
+    func test_R213_keyFieldNeedsCheck() throws {
+        try snapshot("s24-key-needs-check", quantumText: "25", extendText: "10", keyState: .needsCheck, canRetry: false)
+    }
+
+    /// 시안 6번: 저장됨 줄 아래 저장 실패 문구.
+    func test_R213_keyFieldActionFailed() throws {
+        try snapshot(
+            "s24-key-action-failed", quantumText: "25", extendText: "10",
+            keyState: .actionFailed(.save, hasKey: true), canRetry: true)
+    }
+
+    func test_R213_keyFieldStorageUnavailable() throws {
+        try snapshot(
+            "s24-key-unavailable", quantumText: "25", extendText: "10", keyState: .storageUnavailable, canRetry: false)
+    }
+
     func test_R115_contextTab() throws {
         let rows = [
             MokaContext(id: 3, name: "동아리 회의", date: try XCTUnwrap(LocalDay(text: "2026-11-04")), impact: .normal),
@@ -231,12 +301,15 @@ final class SettingsSnapshotTests: XCTestCase {
         XCTAssertNotEqual(light, dark, "\(name): 라이트와 다크 PNG가 같다")
     }
 
-    private func snapshot(_ name: String, quantumText: String, extendText: String) throws {
+    private func snapshot(
+        _ name: String, quantumText: String, extendText: String, keyState: KeyFieldState = .noKey,
+        canRetry: Bool = false
+    ) throws {
         let calendar = GregorianCalendar.make(timeZone: try XCTUnwrap(TimeZone(identifier: "Asia/Seoul")))
         let tab = BasicTabView(
             quantum: Self.input(quantumText, range: Defaults.quantumMinRange),
             extend: Self.input(extendText, range: Defaults.extendMinRange),
-            dayStart: .constant(Defaults.dayStart.date(calendar: calendar))
+            dayStart: .constant(Defaults.dayStart.date(calendar: calendar)), keyState: keyState, canRetry: canRetry
         )
         .environment(\.timeZone, calendar.timeZone)
         let content = VStack(spacing: 0) {
