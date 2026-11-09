@@ -122,7 +122,7 @@ description: "spec 004 판단 결과 화면 연결 작업 목록"
 ### Implementation (Green)
 
 - [ ] T019 [US3] [화면 뒤] `App/Sources/Views/OnboardingView.swift`에 `keyStep: OnboardingKeyInput? = nil`(data-model §5 표, 저장 실패는 `onSave`의 `false`를 `@State`로 들고 있음), 값이 있으면 세 단계이고 첫 단계가 키, 칸이 비면 "다음" 꺼짐, 발급 링크는 `NSWorkspace`로 연다. `nil`이면 지금 두 단계 그대로. T018 PASS, 기존 스냅샷 PASS 〔단위 4〕
-- [ ] T020 [US3] `App/Sources/AppState.swift`에 온보딩 키 입력 값(`hasKey`, `keyActionFailure`)과 저장 콜백(`saveKey` 재사용), `App/Sources/MokaApp.swift`가 온보딩에 `keyStep`과 발급 링크 상수(T002에서 확정한 주소, 앱 상수 한 곳)를 넘긴다. T017 PASS 〔단위 4〕
+- [ ] T020 [US3] `App/Sources/AppState.swift`에 온보딩 키 단계가 쓰는 값(`hasKey`)과 저장 콜백(`saveKey` 재사용, 성공 여부를 Bool로 돌려줌. 실패 문구는 뷰가 그 false로 보이고 `keyActionFailure`는 설정 창 기본 탭 문구용), `App/Sources/MokaApp.swift`가 온보딩에 `keyStep`과 발급 링크 상수(T002에서 확정한 주소, 앱 상수 한 곳)를 넘긴다. T017 PASS 〔단위 4〕
 - [ ] T021 [사람] [US3] quickstart 6-4(macOS 새 사용자 계정) 〔단위 4〕
 
 **확인 지점**: SC-307·SC-308. 키 없이 온보딩을 끝내도 노치에 할 일이 뜬다.
