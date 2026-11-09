@@ -308,7 +308,7 @@ public enum SessionError: Error, Equatable, Sendable { case notAllowed }    // �
 - 화면에 보이는 제목의 원본은 `MokaTask.title`이다. 타이머 안 제목은 표시용 사본이고, 설정 창에서 노치의 할 일을 고치면 `edited`가 사본을 맞춘다.
 - 경과 분: 도는 중 버튼·잠자기·종료는 `run.startedAt`부터 `input.now`까지(§5.5), 시간 끝 버튼은 `run.quantumMin`이다. `expired`의 `chipMin`은 다시 시작용 칩이라 경과 분에 쓰지 않는다. 시험: 칩 45분으로 시작해 기본값 25분인 채 시간 끝 → `elapsed_min` 45.
 - 버튼 뒤 고르기: 호출자는 `batch`를 적용한 뒤 저장소 `tasks()`를 다시 읽어 `picked`를 부른다. 고르기는 빈 상태(초안 없음)일 때만 돈다: 버튼 뒤, 재시작 뒤, 노치의 할 일을 지운 뒤, 빈 상태에서 할 일을 만들었을 때, 빈 상태에서 하루 판정이 돈 뒤.
-- 로그 줄의 `schedulerChoice`는 `RotateByIDRule.choice`, `judgment`·`modelSnapshot`은 nil(R-112).
+- 로그 줄의 `schedulerChoice`는 `RotateByIDRule.choice`, `judgment`·`modelSnapshot`은 nil(R-112). spec 003 data-model §8이 대체한다(`priority_rotate_v0`, 점수 없는 할 일은 공급자 `fallback`).
 
 커서(`previousTaskID`) 수명:
 
@@ -319,14 +319,16 @@ public enum SessionError: Error, Equatable, Sendable { case notAllowed }    // �
 | 미루기·바꾸기(등록·안 적기) | 그 할 일 |
 | 다른 할 일(초안, 목록에서 고름) | 그때의 초안 할 일 |
 | 시작, 다시 시작, 돌아가기, 빠른 입력, 고침, 잠자기 | 그대로 |
-| 노치의 할 일을 지움 | 그대로(지운 할 일 id여도 §5.1 비교는 그대로 됨) |
+| 노치의 할 일을 지움 | 그대로(지운 할 일 id여도 §5.1 비교는 그대로 됨). spec 003 data-model §7부터는 커서가 순서에 없으므로 1위를 고른다 |
 | 활성화(하루 판정) | 그대로 |
 
-할 일 탭 "다음" 표시(R-102, `nextMark`): 타이머가 초안이면 `session.taskID`, 도는 중·시간 끝이면 지금 할 일을 끝냈을 때 뜰 할 일 = `RotateByIDRule.pick(from: tasks, after: nil)`(진행 중인 할 일은 후보가 아니다), 빈 상태면 없음. 보기·정렬(§5.7)과 무관하다.
+할 일 탭 "다음" 표시(R-102, `nextMark`): 타이머가 초안이면 `session.taskID`, 도는 중·시간 끝이면 지금 할 일을 끝냈을 때 뜰 할 일 = `RotateByIDRule.pick(from: tasks, after: nil)`(진행 중인 할 일은 후보가 아니다), 빈 상태면 없음. spec 003 data-model §7이 대체한다(`PriorityRotateRule`). 보기·정렬(§5.7)과 무관하다.
 
 ## 5. 규칙 (MokaCore 순수 함수)
 
 ### 5.1 노치 고르기 `RotateByIDRule` (R-104)
+
+spec 003 R-209·data-model §7의 `PriorityRotateRule`이 대체했다. 아래는 spec 002 당시 규칙이고 코드에서는 지웠다.
 
 ```swift
 public enum RotateByIDRule {
