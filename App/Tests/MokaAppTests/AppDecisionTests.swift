@@ -451,6 +451,23 @@ final class AppDecisionTests: XCTestCase {
         XCTAssertEqual(try h.scoreStore.scores().count, 6)
     }
 
+    func test_FR03_R206_deletingKeyWhileRunningStopsUnsentQueries() async throws {
+        let provider = FakeDecisionProvider(answer: .success(Self.answer(urgency: 1)))
+        await provider.hold()
+        let h = try harness(count: 6, provider: provider)
+
+        h.state.launch()
+        let runner = try XCTUnwrap(h.state.requestScores())
+        await provider.waitForHeld(count: 4)
+        XCTAssertTrue(h.state.deleteKey())
+        await provider.releaseAll()
+        await runner.value
+
+        XCTAssertFalse(h.state.hasKey)
+        let sent = await provider.calls
+        XCTAssertEqual(Set(sent), [1, 2, 3, 4], "키를 지운 뒤에는 아직 보내지 않은 대상을 보내지 않는다")
+    }
+
     func test_FR14_R211_deletingKeyClearsKeyNeedsCheck() async throws {
         let h = await launched(try harness(count: 1, provider: FakeDecisionProvider(answer: .failure(.unauthorized))))
         XCTAssertTrue(h.state.keyNeedsCheck)
