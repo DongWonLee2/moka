@@ -2,6 +2,7 @@ import AppKit
 import MokaCore
 import MokaStore
 import SwiftUI
+import os
 
 @main
 struct MokaApp: App {
@@ -97,7 +98,21 @@ enum AppSettings {
             .appending(path: "moka.sqlite", directoryHint: .notDirectory)
         let db = try MokaDatabase.open(at: url)
         return AppStorage(
-            settings: GRDBSettingsStore(db), repository: GRDBTaskRepository(db), contexts: GRDBContextStore(db))
+            settings: GRDBSettingsStore(db), repository: GRDBTaskRepository(db), contexts: GRDBContextStore(db),
+            scores: GRDBScoreStore(db))
+    }
+
+    /// 판단 기능은 DB 열기와 상관없이 만든다. 질문 파일을 해석하지 못하면 판단 기능을 끄고 로그 한 줄을 남긴다.
+    static func decisionSetup() -> DecisionSetup {
+        let questions: QuestionSet?
+        do {
+            questions = try QuestionSet.bundled()
+        } catch {
+            Logger(subsystem: "dev.dongwon.moka", category: "decision").error(
+                "질문 파일을 읽지 못해 판단 기능을 끔: \(String(describing: error), privacy: .public)")
+            questions = nil
+        }
+        return DecisionSetup(keyStore: KeychainKeyStore(), provider: TypeSafeProvider(), questions: questions)
     }
 }
 
@@ -107,7 +122,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// 달력은 한 번 만들어 둔다. 시스템 시간대가 바뀌면 따라간다(ADR-0010 결정 검증 결과 (a)).
     let appState = AppState(
         clock: MokaClock { Date() }, calendar: GregorianCalendar.make(timeZone: .autoupdatingCurrent),
-        storage: AppSettings.storage)
+        storage: AppSettings.storage, decision: AppSettings.decisionSetup())
     private var panelHost: NotchPanelHost?
     private var screenWatcher: ScreenWatcher?
     private var onboardingWindow: OnboardingWindow?

@@ -93,7 +93,7 @@ description: "spec 003 판단 모델 연동 MVP 작업 목록"
 
 - [x] T020 [P] [US1] `Tests/MokaCoreTests/PriorityOrderTests.swift`: data-model §7(점수 있는 할 일 priority 내림차순 → 같으면 마감·id, 점수 없는 할 일 마감 순 뒤, `usable`이 비면 전부 마감 순, 순환: 처음·완료 뒤 1위, 바꾸기·미루기 뒤 버튼 처리 뒤 순서에서 다음, 끝이면 1위, 후보 하나, 미루기로 순서가 바뀌는 예: spec US1-4)를 쓰고 실패를 확인한다(`FR-05 R-208`, `FR-05 R-209`) 〔단위 2〕
 - [x] T021 [P] [US1] `Tests/MokaCoreTests/NotchSessionPriorityTests.swift`: `NotchSession`이 `usable`을 받아 빈 상태에서 1위를 고르고, 바꾸기·미루기 뒤 다음 순위, 초안·실행 중은 판단 결과가 바뀌어도 그대로, `nextMark`가 같은 순서, `logLine` 판단 칸이 data-model §8 표대로(점수 있음·없음), `scheduler_choice` `priority_rotate_v0`. `ValueTypeTests.swift` 31행의 `SchedulerChoice.allCases` 리터럴을 `["rotate_by_id_v0", "priority_rotate_v0"]`로 바꾼다. 커서의 할 일을 버리면 1위를 고르는 시험(spec 002 `droppedPreviousStillAdvances`를 대신함)을 더한다. 실패를 확인한다(`FR-05 R-209`, `FR-11 R-212`, SC-203) 〔단위 2〕
-- [ ] T022 [US1] 먼저 `AppLifecycleTests.swift`의 `TestClock`·`makeState`·실패 저장소를 `App/Tests/MokaAppTests/AppTestSupport.swift`로 옮긴다(동작 그대로). 그다음 `App/Tests/MokaAppTests/AppDecisionTests.swift`(XCTest, `DecisionSetup`에 `FakeDecisionProvider`·`InMemoryKeyStore`, `AppStorage.scores`에 `InMemoryScoreStore` 주입, `await requestScores()?.value`로 기다림)에 아래를 쓰고 실패를 확인한다(`FR-01 R-207`, `FR-03 R-206`, SC-201, SC-206) 〔단위 4〕
+- [x] T022 [US1] 먼저 `AppLifecycleTests.swift`의 `TestClock`·`makeState`·실패 저장소를 `App/Tests/MokaAppTests/AppTestSupport.swift`로 옮긴다(동작 그대로). 그다음 `App/Tests/MokaAppTests/AppDecisionTests.swift`(XCTest, `DecisionSetup`에 `FakeDecisionProvider`·`InMemoryKeyStore`, `AppStorage.scores`에 `InMemoryScoreStore` 주입, `await requestScores()?.value`로 기다림)에 아래를 쓰고 실패를 확인한다(`FR-01 R-207`, `FR-03 R-206`, SC-201, SC-206) 〔단위 4〕
   - 묻는 때마다(설정 창 저장, 노치 빠른 입력, 버튼, 일정 변경, 활성화, 하루가 바뀐 뒤 활성화, 키 저장) 다시 물을 할 일로만 불림
   - 같은 입력은 다시 보내지 않음
   - 붙잡기로 동시 진행이 4를 넘지 않음(`maxInFlight`)
@@ -107,10 +107,10 @@ description: "spec 003 판단 모델 연동 MVP 작업 목록"
 
 - [x] T023 [US1] `Sources/MokaCore/PriorityOrder.swift`(`PriorityOrder`, `PriorityRotateRule`, 마감 순 비교는 `TaskListView`의 비교를 꺼내 함께 씀), `Sources/MokaCore/DecisionLog.swift`에 `priorityRotateV0`, `NotchSession.swift`에 `SessionScoring`과 `SessionInput.scoring: SessionScoring? = nil`. T020 PASS. 👁(`scheduler_choice` 값) 〔단위 2〕
 - [x] T024 [US1] `Sources/MokaCore/NotchSession.swift`의 `picked`·`nextMark`·`logLine`과 `Sources/MokaCore/Sim/SimStorageRunner.swift`가 `PriorityRotateRule`을 쓴다(data-model §7·§8, `scoring`이 `nil`이면 마감 순). `Sources/MokaCore/TaskRules.swift`의 `RotateByIDRule`과 `Tests/MokaCoreTests/TaskRulesTests.swift`의 그 시험을 지운다(이유는 PR에). 계약 문서 둘의 고르기 규칙 서술을 고치고 spec 002 `spec.md` R-104·R-112에 대체 표기를 넣는다(data-model §11). spec 002 단위 시험은 키 없는 입력에서 순서가 마감 순으로 바뀌는 곳만 기대를 고치고, spec 002 storage 시뮬레이터 golden(`Tests/MokaCoreTests/Fixtures/sim/storage-*.expected.jsonl`)의 기대 출력을 새 규칙으로 갱신한다(data-model §11, 시나리오 입력은 그대로). PR에 "spec 002 R-104 → spec 003 R-209 규칙 교체, 테스트 약화 아님"과 바뀐 시나리오·줄 목록을 적는다. spec 001 타이머 golden은 바이트 그대로. T021 PASS. 👁(golden 갱신) 〔단위 2〕
-- [ ] T025 [US1] `App/Sources/AppState.swift`: `AppStorage.scores` 선택 필드, `AppState.init(..., decision: DecisionSetup? = nil)`(data-model §9), `input(at:)`에 `scoring`, `requestScores()`(data-model §6 묻지 않는 경우·키 읽기·보내기 장부·단일 실행기와 동시 4·답 받기·체크포인트는 그때그때 읽기)와 묻는 곳(`reloadTasks`·`reloadContexts`·`activate`·키 저장), `launch()` 첫머리에 `hasKey`·`scores` 읽기, 화면 값(할 일별 priority). T022 PASS 〔단위 4〕
-- [ ] T026 [P] [US1] `App/Sources/Decision/TypeSafeProvider.swift`(상태 없는 `struct`): contracts/decision-provider.md HTTP 표(URLSession, `timeoutIntervalForResource = Defaults.decisionTimeout`, 받은 키는 헤더에만, 상태 코드 → 오류, 본문은 `TypeSafeCodec`, 로그는 종류·상태 코드만). 어떤 경우에도 `Defaults.decisionTimeout` 안에 성공 또는 오류로 돌아온다(단일 실행기가 멈추지 않게, data-model §6, 리뷰 항목). 시험에서 링크하지 않는다 〔단위 4〕
-- [ ] T027 [P] [US1] `App/Sources/Decision/KeychainKeyStore.swift`: research R10(로그인 키체인 generic password, service `dev.dongwon.moka`, account `typesafe`, `hasKey`는 `kSecReturnAttributes`만, 접근성 속성 없음). 시험에서 쓰지 않는다(`FR-16 R-214`) 〔단위 4〕
-- [ ] T028 [US1] `App/Sources/MokaApp.swift`: DB를 열 때 `GRDBScoreStore`를 `AppStorage.scores`로(못 열면 nil, spec 002 R-119), DB와 상관없이 `DecisionSetup(keyStore: KeychainKeyStore(), provider: TypeSafeProvider(), questions: try? QuestionSet.bundled())`을 `AppState`에 넘긴다(질문 파일 해석 실패면 로그 한 줄). T026·T027 뒤 〔단위 4〕
+- [x] T025 [US1] `App/Sources/AppState.swift`: `AppStorage.scores` 선택 필드, `AppState.init(..., decision: DecisionSetup? = nil)`(data-model §9), `input(at:)`에 `scoring`, `requestScores()`(data-model §6 묻지 않는 경우·키 읽기·보내기 장부·단일 실행기와 동시 4·답 받기·체크포인트는 그때그때 읽기)와 묻는 곳(`reloadTasks`·`reloadContexts`·`activate`·키 저장), `launch()` 첫머리에 `hasKey`·`scores` 읽기, 화면 값(할 일별 priority). T022 PASS 〔단위 4〕
+- [x] T026 [P] [US1] `App/Sources/Decision/TypeSafeProvider.swift`(상태 없는 `struct`): contracts/decision-provider.md HTTP 표(URLSession, `timeoutIntervalForResource = Defaults.decisionTimeout`, 받은 키는 헤더에만, 상태 코드 → 오류, 본문은 `TypeSafeCodec`, 로그는 종류·상태 코드만). 어떤 경우에도 `Defaults.decisionTimeout` 안에 성공 또는 오류로 돌아온다(단일 실행기가 멈추지 않게, data-model §6, 리뷰 항목). 시험에서 링크하지 않는다 〔단위 4〕
+- [x] T027 [P] [US1] `App/Sources/Decision/KeychainKeyStore.swift`: research R10(로그인 키체인 generic password, service `dev.dongwon.moka`, account `typesafe`, `hasKey`는 `kSecReturnAttributes`만, 접근성 속성 없음). 시험에서 쓰지 않는다(`FR-16 R-214`) 〔단위 4〕
+- [x] T028 [US1] `App/Sources/MokaApp.swift`: DB를 열 때 `GRDBScoreStore`를 `AppStorage.scores`로(못 열면 nil, spec 002 R-119), DB와 상관없이 `DecisionSetup(keyStore: KeychainKeyStore(), provider: TypeSafeProvider(), questions: try? QuestionSet.bundled())`을 `AppState`에 넘긴다(질문 파일 해석 실패면 로그 한 줄). T026·T027 뒤 〔단위 4〕
 - [x] T029 🔒 [US1] 설정 창 시안(v2 사용자 확정 2026-11-09) `~/Dev/ai-platform/projects/moka/design/003-mockup.html`: data-model §10 키 칸 상태 여섯과 할 일 탭 순위 칸(1~3순위, "다음"과 합친 배지, 1순위를 끝낸 뒤). 사용자 확정을 받는다. 하루 넘게 밀리면 R-215를 다음 spec으로(plan 위험 1) 〔단위 4〕
 - [ ] T030 [US1] `App/Tests/MokaAppTests/SettingsSnapshotTests.swift`에 스냅샷 `test_R215_rankColumn`을 확정 시안대로 쓰고 실패를 확인한다(`FR-04 R-215`) 〔단위 4〕
 - [ ] T031 [US1] `App/Sources/Views/TaskListTabView.swift`에 `ranks: [TaskID: Int] = [:]` 인자와 줄의 순위 배지(`TaskRowText.rankBadge`, 기존 테두리 "다음" 배지를 대신함), `App/Sources/Settings/SettingsView.swift`가 AppState의 노치 순서 앞 셋을 넘긴다(data-model §10 뷰 인자). 기존 스냅샷 참조 이미지가 "다음" 배지 때문에 바뀌면 PR에 이유를 적는다. T030 PASS 〔단위 4〕
@@ -128,7 +128,7 @@ description: "spec 003 판단 모델 연동 MVP 작업 목록"
 
 ### Tests (Red)
 
-- [ ] T033 [US2] `App/Tests/MokaAppTests/AppDecisionTests.swift`에 아래를 덧붙이고 실패를 확인한다(`FR-14 R-211`, `FR-01 R-207`, SC-204, SC-205) 〔단위 4〕
+- [x] T033 [US2] `App/Tests/MokaAppTests/AppDecisionTests.swift`에 아래를 덧붙이고 실패를 확인한다(`FR-14 R-211`, `FR-01 R-207`, SC-204, SC-205) 〔단위 4〕
   - 실패 일곱 종류(`missingKey`, `unauthorized`, `timeout`, `rateLimited`·`overloaded`, `server`, `network`, `malformed`)에서 저장 없음·노치 상태 그대로
   - 실패한 할 일은 다음 활성화 때 한 번만 다시 보냄, `upsertScore`가 던져도 실패로 표시
   - `unauthorized` 뒤 `keyNeedsCheck` 켜짐, 보내지 않은 대상은 보내지 않음, 키를 다시 저장하기 전까지 아무것도 보내지 않음, "다시 물어보기" 꺼짐, 키 저장·지움 때 꺼짐
@@ -141,7 +141,7 @@ description: "spec 003 판단 모델 연동 MVP 작업 목록"
 
 ### Implementation (Green)
 
-- [ ] T034 [US2] `App/Sources/AppState.swift`: `keyNeedsCheck`, 실패 표시와 다음 활성화 때 지우기, "다시 물어보기", 키 지움 뒤 순서만 다시. T033 PASS 〔단위 4〕
+- [x] T034 [US2] `App/Sources/AppState.swift`: `keyNeedsCheck`, 실패 표시와 다음 활성화 때 지우기, "다시 물어보기", 키 지움 뒤 순서만 다시. T033 PASS 〔단위 4〕
 - [ ] T035 🔒 [US2] 사람 확인 quickstart 6-5·6-6 〔단위 4〕
 
 **확인 지점**: SC-204·SC-205.

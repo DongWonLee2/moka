@@ -10,6 +10,8 @@ struct AppStorage {
     let settings: any SettingsStore
     let repository: (any TaskRepository)?
     let contexts: (any ContextStore)?
+    /// 판단 결과 저장소(spec 003 data-model §9). 멤버와이즈 생성자의 인자로 남도록 `var`로 둔다. DB를 열지 못하면 nil이다.
+    var scores: (any ScoreStore)? = nil
 
     var isUnavailable: Bool { repository == nil }
 
@@ -26,6 +28,14 @@ struct AppStorage {
             return AppStorage(settings: InMemorySettingsStore(), repository: nil, contexts: nil)
         }
     }
+}
+
+/// 판단 기능 주입(spec 003 data-model §9). 앱은 Keychain 보관함과 TypeSafe 공급자를, 시험은 가짜를 넘긴다.
+/// `questions`가 nil(질문 파일 해석 실패)이면 판단 기능을 끈다.
+struct DecisionSetup {
+    let keyStore: any KeyStore
+    let provider: any DecisionProvider
+    let questions: QuestionSet?
 }
 
 /// 알림 처리기 하나. 없어질 때 등록을 해제한다(#37). 처리기는 주 스레드에서 돈다.
@@ -135,6 +145,29 @@ final class AppState {
     /// 할 일 탭 "다음" 표시(R-102). 보기·정렬과 무관하다.
     var nextMarkID: TaskID? { session.nextMark(input(at: clock.now())) }
 
+    // MARK: 판단 모델(spec 003 data-model §6·§9)
+
+    /// 키가 있는지. 켤 때·키 저장·키 지움 때 `KeyStore.hasKey()`로 읽고, 보내기 직전 키를 읽지 못하면 false로 고친다.
+    private(set) var hasKey = false
+    /// 401·403을 받아 키를 다시 저장하기 전까지 묻지 않는 중이다.
+    private(set) var keyNeedsCheck = false
+    /// 키 저장·지우기가 실패했다. 다음 성공에 꺼진다.
+    private(set) var keyActionFailed = false
+    /// 저장소의 판단 결과. 켤 때와 답을 저장한 뒤 다시 읽는다.
+    private(set) var scores: [TaskID: TaskScore] = [:]
+
+    /// 노치 후보 순서의 앞 세 대기 할 일과 순위(1~3, data-model §10 할 일 탭).
+    var ranks: [TaskID: Int] {
+        let order = PriorityOrder.order(input(at: clock.now())).prefix(3)
+        return Dictionary(uniqueKeysWithValues: order.enumerated().map { ($0.element.id, $0.offset + 1) })
+    }
+
+    /// "다시 물어보기"를 누를 수 있는지: 물을 수 있고 다시 물을 할 일이 있다.
+    var canRetryScores: Bool {
+        guard let questions = queryableQuestions else { return false }
+        return !pendingQueries(questions, skippingAttempted: false).isEmpty
+    }
+
     /// "직접…"을 누른 뒤 칸이 처음 나타날 때 한 번만 포커스를 준다. 마우스로 다시 펼쳐 칸이 다시 만들어질 때는
     /// 주지 않는다(R-002, SC-003).
     @ObservationIgnored private var customFocus = OneShotRequest()
@@ -149,21 +182,31 @@ final class AppState {
     @ObservationIgnored private var refreshTimer: Timer?
     @ObservationIgnored private var firstActionRedrawTask: Task<Void, Never>?
     @ObservationIgnored private var observations: [NotificationObservation] = []
+    @ObservationIgnored private let decision: DecisionSetup?
+    @ObservationIgnored private let scoreStore: (any ScoreStore)?
+    /// 보내기 장부(data-model §6). 메모리에만 둔다.
+    @ObservationIgnored private var attempted: [TaskID: Attempt] = [:]
+    /// 질의 실행기. 최대 하나다.
+    @ObservationIgnored private var queryRunner: Task<Void, Never>?
 
     private static let logger = Logger(subsystem: "dev.dongwon.moka", category: "timer")
     private static let storageLogger = Logger(subsystem: "dev.dongwon.moka", category: "storage")
+    private static let decisionLogger = Logger(subsystem: "dev.dongwon.moka", category: "decision")
 
     /// `calendar`는 `GregorianCalendar.make(timeZone: .autoupdatingCurrent)`로 한 번 만든 것을 받는다(ADR-0010).
     /// `workspaceCenter`는 깨어남·잠자기 알림을 받는 곳이다. 시험은 전용 센터를 넘긴다.
+    /// `decision`이 nil이면 판단 모델에 묻지 않는다.
     init(
         clock: MokaClock, calendar: Calendar, storage: AppStorage,
-        workspaceCenter: NotificationCenter = NSWorkspace.shared.notificationCenter
+        workspaceCenter: NotificationCenter = NSWorkspace.shared.notificationCenter, decision: DecisionSetup? = nil
     ) {
         self.clock = clock
         self.calendar = calendar
         settings = storage.settings
         repository = storage.repository
         contextStore = storage.contexts
+        scoreStore = storage.scores
+        self.decision = decision
         storageUnavailable = storage.isUnavailable
         defaultQuantumMin = QuantumSettings.readDefault(from: storage.settings)
         observations = [
@@ -180,8 +223,10 @@ final class AppState {
 
     // MARK: - 앱 수명
 
-    /// 앱 시작: 재시작 복구(R-111) → 하루 판정 → 고르기. 저장할 수 없으면 아무것도 하지 않는다.
+    /// 앱 시작: 키·판단 결과 읽기 → 재시작 복구(R-111) → 하루 판정 → 고르기. 저장할 수 없으면 할 일은 건드리지 않는다.
     func launch() {
+        refreshHasKey()
+        reloadScores()
         reloadContexts()
         guard let repository else { return }
         reloadTasks()
@@ -354,6 +399,8 @@ final class AppState {
     /// 반복 리셋(R-113)을 적용하고 빈 상태면 고른다(R-104). 같은 하루에 여러 번 돌아도 결과가 같다.
     func activate() {
         guard let repository else { return }
+        attempted = attempted.filter { !$0.value.failed }
+        defer { requestScores() }
         let now = clock.now()
         let changed = RecurrenceReset.reset(
             tasks, now: now, dayStart: CoreSettings.readDayStart(from: settings), calendar: calendar)
@@ -564,10 +611,275 @@ final class AppState {
         }
     }
 
+    // MARK: - 판단 모델 질의(spec 003 data-model §6)
+
+    /// 다시 물을 할 일을 묻는다. 실행기가 돌고 있으면 그 `Task`를, 보낼 것이 없으면 nil을 돌려준다.
+    /// 실행기는 자리가 빌 때마다 다시 물을 할 일을 새로 계산하므로 트리거가 겹쳐도 동시 질의는 4개를 넘지 않는다.
+    @discardableResult
+    func requestScores() -> Task<Void, Never>? {
+        if let queryRunner { return queryRunner }
+        guard let questions = queryableQuestions, !pendingQueries(questions, skippingAttempted: true).isEmpty else {
+            return nil
+        }
+        let runner = Task { @MainActor in await self.runQueries() }
+        queryRunner = runner
+        return runner
+    }
+
+    /// 키 저장(data-model §9). 앞뒤 공백·줄바꿈을 지우고 비면 저장하지 않는다. 저장하면 장부를 비우고 다시 묻는다.
+    @discardableResult
+    func saveKey(_ text: String) -> Bool {
+        let key = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let keyStore = decision?.keyStore, !key.isEmpty else { return false }
+        do {
+            try keyStore.save(key)
+        } catch {
+            keyActionFailed = true
+            Self.logKeyFailure("저장", error)
+            return false
+        }
+        keyActionFailed = false
+        keyNeedsCheck = false
+        attempted = [:]
+        refreshHasKey()
+        requestScores()
+        return true
+    }
+
+    /// 키 지우기. 판단 결과는 지우지 않고 키가 없는 순서(마감 순)로만 바뀐다.
+    @discardableResult
+    func deleteKey() -> Bool {
+        guard let keyStore = decision?.keyStore else { return false }
+        do {
+            try keyStore.delete()
+        } catch {
+            keyActionFailed = true
+            Self.logKeyFailure("지우기", error)
+            return false
+        }
+        keyActionFailed = false
+        keyNeedsCheck = false
+        refreshHasKey()
+        return true
+    }
+
+    /// "다시 물어보기". 장부를 비우고 다시 물을 할 일을 묻는다. 키 확인이 필요한 동안은 꺼져 있다.
+    @discardableResult
+    func retryScores() -> Task<Void, Never>? {
+        guard canRetryScores else { return nil }
+        attempted = [:]
+        return requestScores()
+    }
+
+    private struct Attempt {
+        var hash: String
+        var failed: Bool
+    }
+
+    private struct Query: Sendable {
+        let request: DecisionRequest
+        let hash: String
+        let key: String
+    }
+
+    private struct QueryOutcome: Sendable {
+        let taskID: TaskID
+        let hash: String
+        let result: Result<DecisionResponse, DecisionError>
+    }
+
+    /// 묻지 않는 경우(판단 기능 꺼짐, 키 없음, 키 확인 필요, 판단 결과 저장소 없음)가 아니면 질문 세트.
+    private var queryableQuestions: QuestionSet? {
+        guard let questions = decision?.questions, hasKey, !keyNeedsCheck, scoreStore != nil else { return nil }
+        return questions
+    }
+
+    /// 다시 물을 할 일과 지금 판단 입력, 보낼 순서대로. 체크포인트는 그때그때 읽는다(data-model §4).
+    private func pendingQueries(_ questions: QuestionSet, skippingAttempted: Bool) -> [(TaskID, JudgmentState)] {
+        guard let repository, !tasks.isEmpty else { return [] }
+        let checkpoints: [Checkpoint]
+        do {
+            checkpoints = try repository.checkpoints()
+        } catch {
+            Self.logStorageFailure(error)
+            return []
+        }
+        let states = judgmentStates(checkpoints: checkpoints)
+        return ScoringPlan.needsQuery(tasks: tasks, scores: scores, states: states, questionVersion: questions.version)
+            .compactMap { id in
+                guard let state = states[id] else { return nil }
+                if skippingAttempted, attempted[id]?.hash == state.hash { return nil }
+                return (id, state)
+            }
+    }
+
+    private func judgmentStates(checkpoints: [Checkpoint]) -> [TaskID: JudgmentState] {
+        let today = logicalToday
+        return Dictionary(
+            uniqueKeysWithValues: tasks.map { task in
+                (
+                    task.id,
+                    JudgmentState.build(
+                        task: task, contexts: contexts, checkpoints: checkpoints, today: today, calendar: calendar)
+                )
+            })
+    }
+
+    /// 단일 실행기. 꺼내기·답 받기·끝내기 판정은 MainActor에서 하고, 끝내기 판정과 `queryRunner = nil`은
+    /// 같은 동기 구간에서 한다(끝나는 순간 들어온 트리거를 잃지 않게).
+    private func runQueries() async {
+        guard let provider = decision?.provider else {
+            queryRunner = nil
+            return
+        }
+        await withTaskGroup(of: QueryOutcome.self) { group in
+            var inFlight = 0
+            while true {
+                while inFlight < Defaults.maxConcurrentDecisions, let query = takeNextQuery() {
+                    group.addTask {
+                        do throws(DecisionError) {
+                            let response = try await provider.decide(query.request, key: query.key)
+                            return QueryOutcome(
+                                taskID: query.request.taskID, hash: query.hash, result: .success(response))
+                        } catch {
+                            return QueryOutcome(taskID: query.request.taskID, hash: query.hash, result: .failure(error))
+                        }
+                    }
+                    inFlight += 1
+                }
+                guard inFlight > 0, let outcome = await group.next() else {
+                    queryRunner = nil
+                    return
+                }
+                inFlight -= 1
+                receive(outcome, provider: provider.name)
+            }
+        }
+    }
+
+    /// 다음에 보낼 질의 하나. 꺼낼 때마다 묻지 않는 경우를 다시 보고, 키를 읽은 뒤에만 장부에 적는다.
+    private func takeNextQuery() -> Query? {
+        guard let questions = queryableQuestions, let keyStore = decision?.keyStore,
+            let next = pendingQueries(questions, skippingAttempted: true).first
+        else { return nil }
+        let (id, state) = next
+        let key: String?
+        do {
+            key = try keyStore.read()
+        } catch {
+            Self.logKeyFailure("읽기", error)
+            key = nil
+        }
+        guard let key else {
+            hasKey = false
+            return nil
+        }
+        let hash = state.hash
+        attempted[id] = Attempt(hash: hash, failed: false)
+        return Query(
+            request: DecisionRequest(taskID: id, model: questions.model, state: state.bytes, questions: questions),
+            hash: hash, key: key)
+    }
+
+    /// 답 받기: 지금 판단 입력이 요청 때와 같고 할 일이 대기·진행 중일 때만 저장한다. 실패는 종류만 남긴다.
+    private func receive(_ outcome: QueryOutcome, provider: String) {
+        let response: DecisionResponse
+        switch outcome.result {
+        case .success(let value):
+            response = value
+        case .failure(.unauthorized):
+            keyNeedsCheck = true
+            Self.decisionLogger.error("판단 실패: unauthorized")
+            return
+        case .failure(let error):
+            markFailed(outcome, kind: String(describing: error))
+            return
+        }
+        guard let questions = decision?.questions, let scoreStore, let repository,
+            let task = tasks.first(where: { $0.id == outcome.taskID })
+        else { return }
+        let checkpoints: [Checkpoint]
+        do {
+            checkpoints = try repository.checkpoints()
+        } catch {
+            Self.logStorageFailure(error)
+            markFailed(outcome, kind: "checkpoints")
+            return
+        }
+        let current = JudgmentState.build(
+            task: task, contexts: contexts, checkpoints: checkpoints, today: logicalToday, calendar: calendar)
+        guard ScoringPlan.accepts(requestHash: outcome.hash, currentHash: current.hash, taskStatus: task.status)
+        else { return }
+        guard
+            let score = ScoreRules.score(
+                taskID: task.id, response: response, questions: questions, provider: provider,
+                stateHash: outcome.hash, now: clock.now())
+        else {
+            markFailed(outcome, kind: "malformed")
+            return
+        }
+        do {
+            try scoreStore.upsertScore(score)
+        } catch {
+            Self.logStorageFailure(error)
+            markFailed(outcome, kind: "store")
+            return
+        }
+        reloadScores()
+    }
+
+    /// 실패한 할 일은 다음 활성화 때 한 번 다시 보낸다(장부의 `failed`).
+    private func markFailed(_ outcome: QueryOutcome, kind: String) {
+        if attempted[outcome.taskID]?.hash == outcome.hash {
+            attempted[outcome.taskID]?.failed = true
+        }
+        Self.decisionLogger.error("판단 실패: \(kind, privacy: .public)")
+    }
+
+    private func refreshHasKey() {
+        guard let keyStore = decision?.keyStore else {
+            hasKey = false
+            return
+        }
+        do {
+            hasKey = try keyStore.hasKey()
+        } catch {
+            Self.logKeyFailure("확인", error)
+            hasKey = false
+        }
+    }
+
+    private func reloadScores() {
+        guard let scoreStore else {
+            scores = [:]
+            return
+        }
+        do {
+            scores = try scoreStore.scores()
+        } catch {
+            Self.logStorageFailure(error)
+            scores = [:]
+        }
+    }
+
+    /// 키 값은 남기지 않는다. 동작과 오류 종류만.
+    private static func logKeyFailure(_ action: String, _ error: any Error) {
+        decisionLogger.error(
+            "키 \(action, privacy: .public) 실패: \(String(reflecting: type(of: error)), privacy: .public)")
+    }
+
     // MARK: - 내부
 
     private func input(at now: Date) -> SessionInput {
-        SessionInput(tasks: tasks, now: now, defaultQuantumMin: defaultQuantumMin, calendar: calendar)
+        let scoring = decision?.questions.map { questions in
+            SessionScoring(
+                usable: ScoreRules.usable(scores: scores, hasKey: hasKey, questionVersion: questions.version),
+                questions: questions,
+                today: DayBoundary.day(
+                    containing: now, dayStart: CoreSettings.readDayStart(from: settings), calendar: calendar))
+        }
+        return SessionInput(
+            tasks: tasks, now: now, defaultQuantumMin: defaultQuantumMin, calendar: calendar, scoring: scoring)
     }
 
     /// 타이머만 바뀌는 이벤트(칩, tick). 저장할 수 없을 때는 빠른 입력·시작·완료도 여기로 온다.
@@ -692,6 +1004,7 @@ final class AppState {
         } catch {
             Self.logStorageFailure(error)
         }
+        requestScores()
     }
 
     private func reloadTasks() {
@@ -701,6 +1014,7 @@ final class AppState {
         } catch {
             Self.logStorageFailure(error)
         }
+        requestScores()
     }
 
     /// 동기로 적용한다. 실패하면 오류 종류만 로그에 남기고 false.

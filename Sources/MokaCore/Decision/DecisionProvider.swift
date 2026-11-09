@@ -79,17 +79,20 @@ public actor FakeDecisionProvider: DecisionProvider {
         held.remove(at: index).resume.resume()
     }
 
-    /// 붙잡은 요청을 모두 풀고 붙잡기를 끝낸다.
+    /// 붙잡은 요청을 모두 풀고 붙잡기를 끝낸다. 더 붙잡을 일이 없으므로 `waitForHeld` 기다림도 모두 깨운다.
     public func releaseAll() {
         holding = false
         let all = held
         held = []
         for entry in all { entry.resume.resume() }
+        let waiters = heldWaiters
+        heldWaiters = []
+        for waiter in waiters { waiter.resume.resume() }
     }
 
-    /// 붙잡은 요청이 `count`개 이상이 될 때까지 기다린다.
+    /// 붙잡은 요청이 `count`개 이상이 될 때까지 기다린다. 붙잡지 않는 중이면 바로 돌아온다.
     public func waitForHeld(count: Int) async {
-        guard held.count < count else { return }
+        guard holding, held.count < count else { return }
         await withCheckedContinuation { heldWaiters.append((count, $0)) }
     }
 
