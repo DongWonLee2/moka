@@ -61,7 +61,7 @@ description: "spec 003 판단 모델 연동 MVP 작업 목록"
   - aging과 avoiding 임계값, priority 식
   - `usable`: 키 없음·버전 다름이면 빠짐, 해시가 달라도 남음
   - `probs_json`: 질문 이름 순, `probabilities` 키 숫자 순, 숫자는 Swift 최단 표기(golden)
-  - priority 서식(`TaskRowText`): 둘째 자리까지(`1.20`)
+  - 순위 배지 글자(`TaskRowText.rankBadge`): data-model §10 네 경우와 4 이상 순위
 - [ ] T007 [P] `Tests/MokaCoreTests/TypeSafeCodecTests.swift`와 픽스처 `Tests/MokaCoreTests/Fixtures/decision/`(가짜 값 응답: 정상, 질문 빠짐, 타입 다름, 범위 밖, `model` 없음, 모르는 칸, 기존 `SimGoldenTests`처럼 `#filePath` 기준 URL로 읽음): contracts/decision-provider.md 요청 본문(디코드 비교, `state`는 정준 바이트 그대로), 응답 해석, 상태 코드 → 오류 표 전부를 쓴다. 가짜 공급자 붙잡기·풀기·`maxInFlight`·`calls` 시험도 `Tests/MokaCoreTests/FakeDecisionProviderTests.swift`에 쓴다. 실패를 확인한다(`FR-14 R-210`, `FR-14 R-211`) 〔단위 1b〕
 - [ ] T008 [P] `Tests/MokaCoreTests/ScoringPlanTests.swift`: data-model §6 "다시 물을 할 일"(판단 결과 없음·버전 다름·해시 다름, 완료·버림 제외, 하루가 바뀌면 전부, 같은 입력이면 빈 목록, 판단 결과 없는 할 일이 먼저이고 그 안에서 id 오름차순)과 "답 받기"(해시가 같고 대기·진행 중일 때만, 질의 중 고침·일정 변경·버림·완료면 버림, 겹친 질의는 지금 입력과 맞는 답만)를 쓰고 실패를 확인한다(`FR-03 R-206`, spec 엣지) 〔단위 1b〕
 - [ ] T009 [P] `ScoreStore` 시험(왕복, 같은 할 일 덮어쓰기, 초 아래 시각, `model_snapshot` 없음, 없는 할 일이면 `taskNotFound`)을 쓰고 실패를 확인한다(`FR-04 R-205`). 단위 1b에서는 `Tests/MokaCoreTests/ScoreStoreTests.swift`에 메모리 구현만 두고(필수 CI가 Red로 남지 않게), 단위 3에서 `Tests/MokaStoreTests/StorageContractTests.swift`의 `StoreKind.makeStores()`에 판단 결과 저장소를 더해 같은 시험을 두 구현에 돌린다 〔단위 1b·3〕
@@ -72,7 +72,7 @@ description: "spec 003 판단 모델 연동 MVP 작업 목록"
 
 - [ ] T012 `Sources/MokaCore/Decision/QuestionSet.swift`: data-model §1 `QuestionSet`·`Question`(noul·score), `QuestionSet.bundled() throws`. T004 PASS. 리눅스 CI나 앱 시험 번들에서 번들을 찾지 못하면 PR "가정"에 대안을 적고 멈춘다(plan 위험 8) 〔단위 1a〕
 - [ ] T013 `Sources/MokaCore/Decision/JudgmentState.swift`: data-model §4 `JudgmentState.build`·정준 바이트(일정 중요도는 `ContextText.impact`, 요일은 `LocalDay.weekday`), §5 FNV-1a. T005 PASS 〔단위 1a〕
-- [ ] T014 `Sources/MokaCore/Decision/ScoreRules.swift`, `TaskScore`, `Answer`(noul·score), `DecisionResponse`: data-model §3, `TaskRowText`에 priority 서식. T006 PASS 〔단위 1a〕
+- [ ] T014 `Sources/MokaCore/Decision/ScoreRules.swift`, `TaskScore`, `Answer`(noul·score), `DecisionResponse`: data-model §3, `TaskRowText.rankBadge`. T006 PASS 〔단위 1a〕
 - [ ] T015 `Sources/MokaCore/Decision/DecisionProvider.swift`(프로토콜 `decide(_:key:)`, `DecisionRequest`(`taskID` 포함), `DecisionError`, `actor FakeDecisionProvider`: 정한 답·오류, `hold`·`release(taskID:)`·`releaseAll`, `maxInFlight`, `calls`)와 `Sources/MokaCore/Decision/TypeSafeCodec.swift`. T007 PASS. 👁(DecisionProvider 경계) 〔단위 1b〕
 - [ ] T016 `Sources/MokaCore/Decision/ScoringPlan.swift`(`needsQuery`, `accepts`). T008 PASS 〔단위 1b〕
 - [ ] T017 `Sources/MokaCore/Decision/KeyStore.swift`(프로토콜, `InMemoryKeyStore`: 정한 오류를 던질 수 있음, `save`는 덮어쓰기) 〔단위 1b〕
@@ -85,7 +85,7 @@ description: "spec 003 판단 모델 연동 MVP 작업 목록"
 
 ## Phase 3: User Story 1 - 키를 넣으면 노치가 priority 순으로 할 일을 띄운다 (Priority: P1) 🎯 MVP
 
-**Goal**: 쓰기·활성화 뒤 질의 → 판단 결과 저장 → 노치가 priority 순으로 고른다. 설정 창에 priority 칸.
+**Goal**: 쓰기·활성화 뒤 질의 → 판단 결과 저장 → 노치가 priority 순으로 고른다. 설정 창에 순위 칸.
 
 **Independent Test**: spec US1 Independent Test.
 
@@ -111,9 +111,9 @@ description: "spec 003 판단 모델 연동 MVP 작업 목록"
 - [ ] T026 [P] [US1] `App/Sources/Decision/TypeSafeProvider.swift`(상태 없는 `struct`): contracts/decision-provider.md HTTP 표(URLSession, `timeoutIntervalForResource = Defaults.decisionTimeout`, 받은 키는 헤더에만, 상태 코드 → 오류, 본문은 `TypeSafeCodec`, 로그는 종류·상태 코드만). 어떤 경우에도 `Defaults.decisionTimeout` 안에 성공 또는 오류로 돌아온다(단일 실행기가 멈추지 않게, data-model §6, 리뷰 항목). 시험에서 링크하지 않는다 〔단위 4〕
 - [ ] T027 [P] [US1] `App/Sources/Decision/KeychainKeyStore.swift`: research R10(로그인 키체인 generic password, service `dev.dongwon.moka`, account `typesafe`, `hasKey`는 `kSecReturnAttributes`만, 접근성 속성 없음). 시험에서 쓰지 않는다(`FR-16 R-214`) 〔단위 4〕
 - [ ] T028 [US1] `App/Sources/MokaApp.swift`: DB를 열 때 `GRDBScoreStore`를 `AppStorage.scores`로(못 열면 nil, spec 002 R-119), DB와 상관없이 `DecisionSetup(keyStore: KeychainKeyStore(), provider: TypeSafeProvider(), questions: try? QuestionSet.bundled())`을 `AppState`에 넘긴다(질문 파일 해석 실패면 로그 한 줄). T026·T027 뒤 〔단위 4〕
-- [ ] T029 🔒 [US1] 설정 창 시안 `~/Dev/ai-platform/projects/moka/design/003-mockup.html`: data-model §10 키 칸 상태 여섯과 할 일 탭 priority 칸(점수 있음·없음 섞임). 사용자 확정을 받는다. 하루 넘게 밀리면 R-215를 다음 spec으로(plan 위험 1) 〔단위 4〕
-- [ ] T030 [US1] `App/Tests/MokaAppTests/SettingsSnapshotTests.swift`에 스냅샷 `test_R215_priorityColumn`을 확정 시안대로 쓰고 실패를 확인한다(`FR-04 R-215`) 〔단위 4〕
-- [ ] T031 [US1] `App/Sources/Views/TaskListTabView.swift`에 `priorities: [TaskID: Double] = [:]` 인자와 줄의 priority 칸(`TaskRowText` 서식, 점수 없으면 빈칸), `App/Sources/Settings/SettingsView.swift`가 AppState 값을 넘긴다(data-model §10 뷰 인자). 기존 스냅샷 참조 이미지가 바뀌면 PR에 이유를 적는다. T030 PASS 〔단위 4〕
+- [ ] T029 🔒 [US1] 설정 창 시안 `~/Dev/ai-platform/projects/moka/design/003-mockup.html`: data-model §10 키 칸 상태 여섯과 할 일 탭 순위 칸(1~3순위, "다음"과 합친 배지, 1순위를 끝낸 뒤). 사용자 확정을 받는다. 하루 넘게 밀리면 R-215를 다음 spec으로(plan 위험 1) 〔단위 4〕
+- [ ] T030 [US1] `App/Tests/MokaAppTests/SettingsSnapshotTests.swift`에 스냅샷 `test_R215_rankColumn`을 확정 시안대로 쓰고 실패를 확인한다(`FR-04 R-215`) 〔단위 4〕
+- [ ] T031 [US1] `App/Sources/Views/TaskListTabView.swift`에 `ranks: [TaskID: Int] = [:]` 인자와 줄의 순위 배지(`TaskRowText.rankBadge`, 기존 테두리 "다음" 배지를 대신함), `App/Sources/Settings/SettingsView.swift`가 AppState의 노치 순서 앞 셋을 넘긴다(data-model §10 뷰 인자). 기존 스냅샷 참조 이미지가 "다음" 배지 때문에 바뀌면 PR에 이유를 적는다. T030 PASS 〔단위 4〕
 - [ ] T032 🔒 [US1] 사람 확인 quickstart 6-3·6-4(확인용 빌드, 개인 팀 서명, `codesign -dv` TeamIdentifier 먼저). 결과는 PASS/FAIL과 응답 필드 이름만 〔단위 4〕
 
 **확인 지점**: SC-201·SC-203·SC-206. 노치가 priority 순으로 고른다.
@@ -226,7 +226,7 @@ implementer B: 단위 2 (T020, T021 → T023, T024)
 
 ### MVP First
 
-단위 1a → 1b·2 → 3 → 4의 US1(T022·T025~T028·T032)까지 가면 완료 조건("모델 점수로 정렬된 할 일이 노치에 뜬다")이 선다. US2·US3은 같은 단위 4 안에서 이어 간다. R-215(priority 칸, T029~T031)와 단위 5는 밀리면 넘긴다.
+단위 1a → 1b·2 → 3 → 4의 US1(T022·T025~T028·T032)까지 가면 완료 조건("모델 점수로 정렬된 할 일이 노치에 뜬다")이 선다. US2·US3은 같은 단위 4 안에서 이어 간다. R-215(순위 칸, T029~T031)와 단위 5는 밀리면 넘긴다.
 
 ### 무인 실행 경계
 
@@ -250,7 +250,7 @@ moka는 2026-11-02부터 무인 실행을 하지 않는다(사용자 결정). �
 | R-212 로그 판단 칸 | T021 | T024 | — |
 | R-213 키 칸 | T036 | T037 | T038 |
 | R-214 Keychain | T036 | T017, T027 | T038 |
-| R-215 priority 칸 | T030 | T031 | T029, T032 |
+| R-215 순위 칸 | T030 | T031 | T029, T032 |
 | R-216 시뮬레이터 | T039 | T040 | — |
 | SC-201 10초 | T022 | T025 | T032 |
 | SC-202 금지 필드 | T005 | T013 | — |
