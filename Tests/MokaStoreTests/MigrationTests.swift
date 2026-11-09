@@ -5,7 +5,21 @@ import Testing
 
 @Test("ADR-0004 FR-16: 등록된 마이그레이션 이름은 고정 목록과 같다(덧붙이기만 허용)")
 func migrationNamesAreFixed() {
-    #expect(MokaMigrations.migrator.migrations == ["v1_settings", "v2_tasks_contexts_checkpoints_log"])
+    #expect(
+        MokaMigrations.migrator.migrations == ["v1_settings", "v2_tasks_contexts_checkpoints_log", "v3_scores"])
+}
+
+@Test("ADR-0004 FR-04 R-205: v3_scores 뒤 scores 표의 열은 data-model §2 순서와 같다")
+func scoresTableColumns() throws {
+    let db = try TestDatabase.migratedInMemory()
+    let columns = try db.read { db in
+        try Row.fetchAll(db, sql: "PRAGMA table_info(scores)").map { $0["name"] as String }
+    }
+    #expect(
+        columns == [
+            "task_id", "question_version", "provider", "model_snapshot", "urgency", "impact", "concrete", "avoiding",
+            "probs_json", "state_hash", "scored_at",
+        ])
 }
 
 @Test("ADR-0004 FR-16: 마이그레이션 뒤 스키마가 schema/moka-schema.sql 스냅샷과 같다")

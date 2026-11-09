@@ -73,3 +73,24 @@ def test_judgment_column_without_provider_is_rejected(db, column):
     with pytest.raises(sqlite3.IntegrityError, match="CHECK constraint failed"):
         insert_decision(db, **{column: "fake"})
     assert db.execute("SELECT COUNT(*) FROM decisions_log").fetchone() == (0,)
+
+
+# spec 003 data-model §2: 할 일마다 최신 판단 결과 한 줄. priority 열은 없다.
+SCORES_COLUMNS = {
+    "task_id",
+    "question_version",
+    "provider",
+    "model_snapshot",
+    "urgency",
+    "impact",
+    "concrete",
+    "avoiding",
+    "probs_json",
+    "state_hash",
+    "scored_at",
+}
+
+
+def test_scores_columns(db):
+    columns = {row[1] for row in db.execute("PRAGMA table_info(scores)")}
+    assert columns == SCORES_COLUMNS
