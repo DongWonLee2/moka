@@ -112,8 +112,8 @@ description: "spec 003 판단 모델 연동 MVP 작업 목록"
 - [x] T027 [P] [US1] `App/Sources/Decision/KeychainKeyStore.swift`: research R10(로그인 키체인 generic password, service `dev.dongwon.moka`, account `typesafe`, `hasKey`는 `kSecReturnAttributes`만, 접근성 속성 없음). 시험에서 쓰지 않는다(`FR-16 R-214`) 〔단위 4〕
 - [x] T028 [US1] `App/Sources/MokaApp.swift`: DB를 열 때 `GRDBScoreStore`를 `AppStorage.scores`로(못 열면 nil, spec 002 R-119), DB와 상관없이 `DecisionSetup(keyStore: KeychainKeyStore(), provider: TypeSafeProvider(), questions: try? QuestionSet.bundled())`을 `AppState`에 넘긴다(질문 파일 해석 실패면 로그 한 줄). T026·T027 뒤 〔단위 4〕
 - [x] T029 🔒 [US1] 설정 창 시안(v2 사용자 확정 2026-11-09) `~/Dev/ai-platform/projects/moka/design/003-mockup.html`: data-model §10 키 칸 상태 여섯과 할 일 탭 순위 칸(1~3순위, "다음"과 합친 배지, 1순위를 끝낸 뒤). 사용자 확정을 받는다. 하루 넘게 밀리면 R-215를 다음 spec으로(plan 위험 1) 〔단위 4〕
-- [ ] T030 [US1] `App/Tests/MokaAppTests/SettingsSnapshotTests.swift`에 스냅샷 `test_R215_rankColumn`을 확정 시안대로 쓰고 실패를 확인한다(`FR-04 R-215`) 〔단위 4〕
-- [ ] T031 [US1] `App/Sources/Views/TaskListTabView.swift`에 `ranks: [TaskID: Int] = [:]` 인자와 줄의 순위 배지(`TaskRowText.rankBadge`, 기존 테두리 "다음" 배지를 대신함), `App/Sources/Settings/SettingsView.swift`가 AppState의 노치 순서 앞 셋을 넘긴다(data-model §10 뷰 인자). 기존 스냅샷 참조 이미지가 "다음" 배지 때문에 바뀌면 PR에 이유를 적는다. T030 PASS 〔단위 4〕
+- [x] T030 [US1] `App/Tests/MokaAppTests/SettingsSnapshotTests.swift`에 스냅샷 `test_R215_rankColumn`을 확정 시안대로 쓰고 실패를 확인한다(`FR-04 R-215`) 〔단위 4〕
+- [x] T031 [US1] `App/Sources/Views/TaskListTabView.swift`에 `ranks: [TaskID: Int] = [:]` 인자와 줄의 순위 배지(`TaskRowText.rankBadge`, 기존 테두리 "다음" 배지를 대신함), `App/Sources/Settings/SettingsView.swift`가 AppState의 노치 순서 앞 셋을 넘긴다(data-model §10 뷰 인자). 기존 스냅샷 참조 이미지가 "다음" 배지 때문에 바뀌면 PR에 이유를 적는다. T030 PASS 〔단위 4〕
 - [ ] T032 🔒 [US1] 사람 확인 quickstart 6-3·6-4(확인용 빌드, 개인 팀 서명, `codesign -dv` TeamIdentifier 먼저). 결과는 PASS/FAIL과 응답 필드 이름만 〔단위 4〕
 
 **확인 지점**: SC-201·SC-203·SC-206. 노치가 priority 순으로 고른다.
@@ -156,11 +156,11 @@ description: "spec 003 판단 모델 연동 MVP 작업 목록"
 
 ### Tests (Red)
 
-- [ ] T036 [P] [US3] `App/Tests/MokaAppTests/SettingsSnapshotTests.swift`에 기본 탭 키 칸 상태 여섯 스냅샷(data-model §10, 확정 시안), `AppDecisionTests`에 키 저장·지우기(성공·실패 문구, 앞뒤 공백 제거, 빈 입력이면 저장 꺼짐)와 키 값이 설정 저장소(`InMemorySettingsStore`의 모든 값)·판단 결과 저장소·행동 로그 어디에도 없음을 쓰고 실패를 확인한다(`FR-16 R-213`, `FR-16 R-214`, SC-208, SC-210) 〔단위 4〕
+- [x] T036 [P] [US3] `App/Tests/MokaAppTests/SettingsSnapshotTests.swift`에 기본 탭 키 칸 상태 여섯 스냅샷(data-model §10, 확정 시안), `AppDecisionTests`에 키 저장·지우기(성공·실패 문구, 앞뒤 공백 제거, 빈 입력이면 저장 꺼짐)와 키 값이 설정 저장소(`InMemorySettingsStore`의 모든 값)·판단 결과 저장소·행동 로그 어디에도 없음을 쓰고 실패를 확인한다(`FR-16 R-213`, `FR-16 R-214`, SC-208, SC-210) 〔단위 4〕
 
 ### Implementation (Green)
 
-- [ ] T037 [US3] `App/Sources/Views/BasicTabView.swift` 키 칸(data-model §10 뷰 인자, 가림 입력, 저장·지우기·다시 물어보기, 안내·401·실패 문구, 확정 시안 글자, 새 인자는 기본값을 두어 기존 스냅샷 호출이 그대로 컴파일), `SettingsView.swift` 연결, `AppState` 키 저장·지우기·`hasKey` 갱신. T036 PASS 〔단위 4〕
+- [x] T037 [US3] `App/Sources/Views/BasicTabView.swift` 키 칸(data-model §10 뷰 인자, 가림 입력, 저장·지우기·다시 물어보기, 안내·401·실패 문구, 확정 시안 글자, 새 인자는 기본값을 두어 기존 스냅샷 호출이 그대로 컴파일), `SettingsView.swift` 연결, `AppState` 키 저장·지우기·`hasKey` 갱신. T036 PASS 〔단위 4〕
 - [ ] T038 🔒 [US3] 사람 확인 quickstart 6-1·6-2(다시 빌드해도 확인 창이 반복되지 않는지). 접근성 속성이 로그인 키체인에서 지켜지는지는 공식 문서로 확인해 PR "사람이 볼 결정"에 적는다(미확인이면 미확인) 〔단위 4〕
 
 **확인 지점**: SC-208·SC-210.
@@ -181,7 +181,7 @@ description: "spec 003 판단 모델 연동 MVP 작업 목록"
 
 - [ ] T042 [P] `GLOSSARY.md`: 판단 질문 넷(blocked 없앰, 2026-11-06 사용자 결정), noul·score, impact 옵션 "조금/꽤/아주", 판단 결과(`scores`, priority 저장 안 함), `priority_rotate_v0`(`scheduler_choice` 항목의 "만든 순서 순환·`RotateByIDRule`" 서술 갱신), 키 보관함("마일스톤 3에서 만든다" → 만들었음), 온보딩 절(169행 "판단 공급자 키 단계는 마일스톤 3에서 더한다" → 다음 spec) 〔단위 1a〕
 - [ ] T043 🔒 quickstart 1~6 전체를 돌려 결과 표를 마지막 PR에 붙인다 〔단위 4〕
-- [ ] T044 PRD 고칠 문장(6장 blocked 줄·impact 옵션, 7장 w_b·정책 1·7번 6시간 캐시, 9장 `scores` 열)을 마지막 PR "사람이 볼 결정"에 적는다. PRD는 저장소 밖이라 고치지 않는다 〔단위 4〕
+- [x] T044 PRD 고칠 문장(6장 blocked 줄·impact 옵션, 7장 w_b·정책 1·7번 6시간 캐시, 9장 `scores` 열)을 마지막 PR "사람이 볼 결정"에 적는다. PRD는 저장소 밖이라 고치지 않는다 〔단위 4〕
 
 ---
 
