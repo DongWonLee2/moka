@@ -1,0 +1,7 @@
+{"model":"jev-1.13.0","id":"fake-request-1","extra":{"nested":[1,2,3]},"answers":{
+  "urgency":{"type":"score","score":2.1,"confidence":0.7,"rationale":"가짜 설명","legend":{"0":"여유","1":"이번주","2":"급함","3":"오늘안에"},"probabilities":{"0":0.05,"1":0.15,"2":0.4,"3":0.4}},
+  "impact":{"type":"score","score":1.2,"confidence":0.6,"probabilities":{"0":0.2,"1":0.4,"2":0.4}},
+  "concrete":{"type":"noul","noul":0.9,"note":"가짜"},
+  "avoiding":{"type":"noul","noul":0.3},
+  "fake_extra":{"type":"choice","choice":"가짜 옵션"}},
+ "usage":{"input_tokens":300,"output_tokens":4,"cached":true}}

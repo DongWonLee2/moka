@@ -1,0 +1,6 @@
+{"model":"jev-1.13.0","answers":{
+  "urgency":{"type":"score","score":2.1,"confidence":0.7,"legend":{"0":"여유","1":"이번주","2":"급함","3":"오늘안에"},"probabilities":{"0":0.05,"1":0.15,"2":0.4,"3":0.4}},
+  "impact":{"type":"score","score":1.2,"confidence":0.6,"legend":{"0":"조금","1":"꽤","2":"아주"},"probabilities":{"0":0.2,"1":0.4,"2":0.4}},
+  "concrete":{"type":"noul","noul":0.9},
+  "avoiding":{"type":"noul","noul":0.3}},
+ "usage":{"input_tokens":300,"output_tokens":4}}
