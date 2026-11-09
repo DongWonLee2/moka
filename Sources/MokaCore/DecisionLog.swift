@@ -1,9 +1,13 @@
 import Foundation
 
 public enum UserAction: String, CaseIterable, Sendable { case done, skip, `switch` }
-public enum SchedulerChoice: String, CaseIterable, Sendable { case rotateByIDV0 = "rotate_by_id_v0" }
+/// `rotateByIDV0`은 spec 002 로그 줄을 읽으려고 남긴다. 새 로그 줄은 `priorityRotateV0`(spec 003 R-212).
+public enum SchedulerChoice: String, CaseIterable, Sendable {
+    case rotateByIDV0 = "rotate_by_id_v0"
+    case priorityRotateV0 = "priority_rotate_v0"
+}
 
-/// 판단 칸. 이번 단계에서는 늘 nil(R-112). 공급자가 있을 때만 존재하고, 나머지는 폴백 줄에서 비어도 된다(F5).
+/// 판단 칸(spec 003 R-212). 공급자가 있을 때만 존재하고, 나머지는 폴백 줄에서 비어도 된다(F5).
 public struct Judgment: Equatable, Sendable {
     public var provider: String
     public var questionVersion: String?

@@ -25,10 +25,10 @@ func checkpointTriggerRawValues() {
     #expect(CheckpointTrigger(rawValue: "dayEnd") == nil)
 }
 
-@Test("FR-11 R-112: 행동 로그의 사용자 행동과 고른 규칙 이름")
+@Test("FR-11 R-112 R-212: 행동 로그의 사용자 행동과 고른 규칙 이름")
 func decisionLogRawValues() {
     #expect(UserAction.allCases.map(\.rawValue) == ["done", "skip", "switch"])
-    #expect(SchedulerChoice.allCases.map(\.rawValue) == ["rotate_by_id_v0"])
+    #expect(SchedulerChoice.allCases.map(\.rawValue) == ["rotate_by_id_v0", "priority_rotate_v0"])
     #expect(SchedulerChoice.rotateByIDV0.rawValue == "rotate_by_id_v0")
     #expect(UserAction(rawValue: "undo") == nil)
 }

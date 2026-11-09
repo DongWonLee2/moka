@@ -3,7 +3,7 @@ import Foundation
 public enum TaskListScope: Sendable { case all, today, thisWeek }
 public enum TaskListOrder: Sendable { case created, deadline }
 
-/// 할 일 목록 보기(R-118, data-model §5.7). 노치 고르기(§5.1)와 무관하다.
+/// 할 일 목록 보기(R-118, data-model §5.7).
 public enum TaskListView {
     /// 버린(`dropped`) 할 일은 늘 빼고, 완료한 할 일은 정렬 순서를 지킨 채 아래로 모은다(R-118).
     /// `today`는 호출자가 `DayBoundary`(§5.4)로 구해 넘긴다.
@@ -30,15 +30,18 @@ public enum TaskListView {
         case .created:
             sorted = shown.sorted { $0.id < $1.id }
         case .deadline:
-            sorted = shown.sorted { lhs, rhs in
-                switch (lhs.deadline, rhs.deadline) {
-                case (let left?, let right?) where left != right: return left < right
-                case (.some, .none): return true
-                case (.none, .some): return false
-                default: return lhs.id < rhs.id
-                }
-            }
+            sorted = shown.sorted(by: deadlineFirst)
         }
         return sorted.filter { $0.status != .done } + sorted.filter { $0.status == .done }
+    }
+
+    /// 마감 순 비교: 마감이 이른 순, 마감 없음은 뒤, 같으면 id 순. 노치 순서(spec 003 R-208)도 쓴다.
+    public static func deadlineFirst(_ lhs: MokaTask, _ rhs: MokaTask) -> Bool {
+        switch (lhs.deadline, rhs.deadline) {
+        case (let left?, let right?) where left != right: return left < right
+        case (.some, .none): return true
+        case (.none, .some): return false
+        default: return lhs.id < rhs.id
+        }
     }
 }

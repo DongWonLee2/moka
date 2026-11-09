@@ -9,7 +9,7 @@
 - **기존 golden 불변 조건**: `Tests/MokaCoreTests/Fixtures/sim/`의 기존 시나리오(`storage` 없음)는 기대 출력 파일을 고치지 않고 통과해야 한다. 그대로 못 지키면 원본 계약의 2026-10-29 단서(moka-sim-v1.md:110)대로 바뀐 기대 출력과 이유를 그 PR "사람이 볼 결정"에 올리고 같은 PR에서 기대 출력을 고친다.
 - DB, 네트워크, Keychain, 환경 변수, 시스템 시계, 시스템 시간대를 쓰지 않는다. 저장은 MokaCore 메모리 저장소(`InMemoryTaskRepository`)다. DB 경로 인자는 없다.
 - 출력에 할 일 제목, 체크포인트 두 줄 본문을 넣지 않는다. 두 줄과 이어서 할 일은 "비어 있지 않은지"만 낸다. 입력의 텍스트도 가짜만 쓴다.
-- 버튼 규칙, 고르기, 하루 판정, 재시작 복구는 [data-model.md](../data-model.md) §4·§5가 원본이다. 시뮬레이터는 앱과 같은 MokaCore 함수(`NotchSession`, `RotateByIDRule`, `RecurrenceReset`, `LaunchRecovery`, `TaskWriteRules`)를 부른다.
+- 버튼 규칙, 고르기, 하루 판정, 재시작 복구는 [data-model.md](../data-model.md) §4·§5가 원본이다. 시뮬레이터는 앱과 같은 MokaCore 함수(`NotchSession`, `PriorityRotateRule`, `RecurrenceReset`, `LaunchRecovery`, `TaskWriteRules`)를 부른다. 고르기는 spec 003 R-209가 spec 002 R-104를 대체한다(spec 003 data-model §7). storage 시나리오에는 판단 결과가 없으므로 노치 순서는 마감 순이다.
 
 ## 입력 덧붙임
 
@@ -94,7 +94,7 @@ storage 모드에서는 모든 줄(기존 이벤트 포함)에 원본 여섯 키
 | `decision` | 이 이벤트가 남긴 행동 로그 줄, 없으면 `null`. `{"task_id":N,"user_action":"…","scheduler_choice":"…"}` |
 
 - 꺼짐 단계의 줄(`quit`)은 `timer_state` `"empty"`, `chip_min`·`remaining_s`·`notch_task`·`has_first_action` `null`이다. `tasks`는 저장소 그대로다(도는 중이던 할 일은 `active`로 남는다).
-- 이벤트 하나는 체크포인트를 최대 하나, 로그를 최대 하나 남긴다. 행동 로그의 판단 칸은 늘 비어 있으므로 내지 않는다.
+- 이벤트 하나는 체크포인트를 최대 하나, 로그를 최대 하나 남긴다. 행동 로그의 판단 칸은 내지 않는다(판단 결과가 없는 storage 시나리오에서는 spec 003 R-212대로 공급자 `fallback`만 남는다).
 - 바이트 형식은 원본과 같다(키 순서 고정, 공백 없음, 직접 조립, 줄 끝 `\n`). 불리언은 `true`/`false` 리터럴, 배열은 `[`·`,`·`]`이고 할 일이 없으면 `[]`.
 
 위 입력의 출력 전체:
@@ -103,15 +103,15 @@ storage 모드에서는 모든 줄(기존 이벤트 포함)에 원본 여섯 키
 {"seq":1,"at":"2026-11-02T00:00:00Z","event":"add_task","timer_state":"empty","chip_min":25,"remaining_s":null,"notch_task":1,"has_first_action":false,"tasks":[{"id":1,"status":"todo","skip_count":0,"streak":0}],"checkpoint":null,"decision":null}
 {"seq":2,"at":"2026-11-02T00:00:10Z","event":"add_task","timer_state":"empty","chip_min":25,"remaining_s":null,"notch_task":1,"has_first_action":false,"tasks":[{"id":1,"status":"todo","skip_count":0,"streak":0},{"id":2,"status":"todo","skip_count":0,"streak":0}],"checkpoint":null,"decision":null}
 {"seq":3,"at":"2026-11-02T00:01:00Z","event":"start","timer_state":"running","chip_min":25,"remaining_s":1500,"notch_task":1,"has_first_action":false,"tasks":[{"id":1,"status":"active","skip_count":0,"streak":0},{"id":2,"status":"todo","skip_count":0,"streak":0}],"checkpoint":null,"decision":null}
-{"seq":4,"at":"2026-11-02T00:13:30Z","event":"switch","timer_state":"empty","chip_min":25,"remaining_s":null,"notch_task":2,"has_first_action":false,"tasks":[{"id":1,"status":"todo","skip_count":0,"streak":0},{"id":2,"status":"todo","skip_count":0,"streak":0}],"checkpoint":{"task_id":1,"trigger":"switch","elapsed_min":12,"has_done_note":true,"has_next_note":true},"decision":{"task_id":1,"user_action":"switch","scheduler_choice":"rotate_by_id_v0"}}
+{"seq":4,"at":"2026-11-02T00:13:30Z","event":"switch","timer_state":"empty","chip_min":25,"remaining_s":null,"notch_task":2,"has_first_action":false,"tasks":[{"id":1,"status":"todo","skip_count":0,"streak":0},{"id":2,"status":"todo","skip_count":0,"streak":0}],"checkpoint":{"task_id":1,"trigger":"switch","elapsed_min":12,"has_done_note":true,"has_next_note":true},"decision":{"task_id":1,"user_action":"switch","scheduler_choice":"priority_rotate_v0"}}
 {"seq":5,"at":"2026-11-02T00:14:00Z","event":"start","timer_state":"running","chip_min":25,"remaining_s":1500,"notch_task":2,"has_first_action":false,"tasks":[{"id":1,"status":"todo","skip_count":0,"streak":0},{"id":2,"status":"active","skip_count":0,"streak":0}],"checkpoint":null,"decision":null}
-{"seq":6,"at":"2026-11-02T00:20:00Z","event":"complete","timer_state":"empty","chip_min":25,"remaining_s":null,"notch_task":1,"has_first_action":true,"tasks":[{"id":1,"status":"todo","skip_count":0,"streak":0},{"id":2,"status":"done","skip_count":0,"streak":1}],"checkpoint":null,"decision":{"task_id":2,"user_action":"done","scheduler_choice":"rotate_by_id_v0"}}
+{"seq":6,"at":"2026-11-02T00:20:00Z","event":"complete","timer_state":"empty","chip_min":25,"remaining_s":null,"notch_task":1,"has_first_action":true,"tasks":[{"id":1,"status":"todo","skip_count":0,"streak":0},{"id":2,"status":"done","skip_count":0,"streak":1}],"checkpoint":null,"decision":{"task_id":2,"user_action":"done","scheduler_choice":"priority_rotate_v0"}}
 {"seq":7,"at":"2026-11-02T00:21:00Z","event":"start","timer_state":"running","chip_min":25,"remaining_s":1500,"notch_task":1,"has_first_action":true,"tasks":[{"id":1,"status":"active","skip_count":0,"streak":0},{"id":2,"status":"done","skip_count":0,"streak":1}],"checkpoint":null,"decision":null}
 {"seq":8,"at":"2026-11-02T00:30:00Z","event":"quit","timer_state":"empty","chip_min":null,"remaining_s":null,"notch_task":null,"has_first_action":null,"tasks":[{"id":1,"status":"active","skip_count":0,"streak":0},{"id":2,"status":"done","skip_count":0,"streak":1}],"checkpoint":{"task_id":1,"trigger":"quit","elapsed_min":9,"has_done_note":false,"has_next_note":false},"decision":null}
 {"seq":9,"at":"2026-11-02T22:00:00Z","event":"relaunch","timer_state":"empty","chip_min":25,"remaining_s":null,"notch_task":1,"has_first_action":true,"tasks":[{"id":1,"status":"todo","skip_count":0,"streak":0},{"id":2,"status":"todo","skip_count":0,"streak":1}],"checkpoint":null,"decision":null}
 ```
 
-읽는 법: 4에서 바꾸기로 커서가 할 일 1이 되어 그다음 id 2를 골랐다(R-104). 6에서 완료 뒤 커서가 비어 가장 작은 대기 할 일 1이 뽑히고 이어서 할 일이 보인다(R-109). 8에서 종료 체크포인트는 경과 분만 남는다(R-110). 9는 다음 날 07:00(서울)이라 R-111이 1을 `todo`로 되돌리고, 하루 판정이 매일 반복 2를 `todo`로 되돌리며 연속 기록 1을 잇는다(R-113).
+읽는 법: 두 할 일 모두 마감이 없어 노치 순서(마감 순)는 1, 2다. 4에서 바꾸기로 커서가 할 일 1이 되어 순서의 다음인 2를 골랐다(spec 003 R-209). 6에서 완료 뒤 커서가 비어 1위인 대기 할 일 1이 뽑히고 이어서 할 일이 보인다(R-109). 8에서 종료 체크포인트는 경과 분만 남는다(R-110). 9는 다음 날 07:00(서울)이라 R-111이 1을 `todo`로 되돌리고, 하루 판정이 매일 반복 2를 `todo`로 되돌리며 연속 기록 1을 잇는다(R-113).
 
 ## 오류 덧붙임
 

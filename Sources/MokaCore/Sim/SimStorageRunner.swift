@@ -1,6 +1,6 @@
 import Foundation
 
-/// storage 모드(contracts/moka-sim-v1-additions.md). 앱과 같은 MokaCore 함수(`NotchSession`, `RotateByIDRule`,
+/// storage 모드(contracts/moka-sim-v1-additions.md). 앱과 같은 MokaCore 함수(`NotchSession`, `PriorityRotateRule`,
 /// `RecurrenceReset`, `LaunchRecovery`, `TaskWriteRules`, `SessionCommit`)만 부르고 저장은 메모리 저장소다.
 extension SimRunner {
     static func executeStorage(_ scenario: SimScenario, settings: InMemorySettingsStore) throws(SimError) -> String {
