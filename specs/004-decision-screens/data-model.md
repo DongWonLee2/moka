@@ -68,12 +68,12 @@
 ## 4. 앱 상태 (AppState에 더함)
 
 - `gateRecords: [TaskID: GateRecord]`와 `gateWaitingTaskID: TaskID?`(메모리, `@ObservationIgnored` 아님. 화면이 읽는다).
-- `gatePhase: GatePhase`(계산 속성), `gateDraftText: String`, `gateSaveFailed: Bool`.
+- `gatePhase: GatePhase`(저장 값), `gateDraftText: String`, `gateSaveFailed: Bool`. `gatePhase`는 그릴 때마다 계산하지 않는다. `refreshGate()`가 판정 시점(§3)에만 해시를 계산하고 결과를 저장한다.
 - `submitFirstAction(_ text: String) -> Bool`, `skipGate()`. 시작(`start`)과 노치 할 일 변경은 §3 표대로 게이트를 닫는다.
-- 지금 판단 입력 해시는 기존 `judgmentStates(checkpoints:)`로 그 할 일만 다시 만든다. 체크포인트는 spec 003 data-model §4처럼 그때그때 읽는다.
+- 지금 판단 입력 해시는 `refreshGate()` 안에서 기존 `judgmentStates(checkpoints:)`로 만든다. 이 함수는 모든 할 일의 판단 입력을 만들므로 판정 시점에만 부르고, 그 가운데 노치 할 일의 해시만 쓴다. 체크포인트는 spec 003 data-model §4처럼 그때그때 읽는다.
 - 실패 해시는 보내기 장부 `attempted[id]`에서 `failed == true`인 항목의 `hash`다. 장부를 비우는 동작(키 저장, 다시 물어보기, 활성화의 실패 항목 지우기)은 spec 003 그대로다. 활성화가 실패 항목을 지우기 전에 판정이 먼저 돌아 통과를 정하도록, 실패를 장부에 적는 자리에서 판정을 부른다.
 - `reasonLine: String?`(계산 속성): 노치 할 일이 시작 전이나 도는 중이면 `ReasonText.line(ReasonLine.make(...))`, 아니면 `nil`.
-- `showsKeyNotice: Bool`: `keyNeedsCheck`와 같다(R-318).
+- `showsKeyNotice: Bool`: `keyFieldState == .needsCheck`와 같다(R-318). `KeyFieldState.make`는 저장·지우기 실패를 401보다 먼저 보이므로(`App/Sources/Views/KeyFieldState.swift:20-28`), 401 뒤 키 저장이 실패한 동안은 기본 탭과 같이 꺼진다.
 - `settingsTabRequest: SettingsTab?`(research R8).
 
 ## 5. 화면 상태 (시안으로 확정)
@@ -83,16 +83,18 @@
 | 인자 | 기본값 | 쓰는 곳 |
 |---|---|---|
 | `reasonLine: String?` | `nil` | 시작 전, 도는 중 |
-| `gate: GateInput?` | `nil` | 시작 전. `phase`, `text` 바인딩, `saveFailed`, `onSubmit`, `onSkip` |
+| `gate: GateInput?` | `nil` | 시작 전. `phase`, `text` 바인딩, `saveFailed`, `onSubmit`, `onSkip`. 게이트가 `asking`·`checking`이면 제목 아래 이어서 할 일 줄(`firstAction`)을 숨긴다 |
 | `keyNotice: Bool` | `false` | 빈 상태, 시작 전, 도는 중 |
 | `onOpenKeySettings: () -> Void` | 빈 동작 | 키 확인 한 줄의 동작 |
 
 - 시작 버튼 단축키: `draftInput.isEnteringTitle || gate?.phase == .asking`이면 떼고, 아니면 `.defaultAction`.
+- "직접…" 분 칸(`CustomMinutesField`)의 Enter: 지금은 `chip.canStart`면 시작한다(`App/Sources/Views/ExpandedView.swift:125-130`). 게이트가 `asking`이면 시작하지 않는다.
+- 게이트를 통과해도 접힌 화면 3초 표시(`FirstActionDisplay`)는 다시 켜지 않는다. 그 표시는 노치가 할 일을 고를 때만이다.
 - 게이트 `checking`일 때 입력 칸은 읽기만이고 확인하는 중 문구를 보인다. 시작 버튼 Enter는 켜진다.
 
 설정 창 할 일 탭(`TaskListTabView` 새 인자): `keyNotice: Bool = false`, `onOpenKeySettings: () -> Void`. 목록 위 한 줄.
 
-온보딩(`OnboardingView` 새 인자): `keyStep: OnboardingKeyInput?`(`hasKey`, `saveFailed`, `onSave: (String) -> Bool`, `issueURL`). `nil`이면 지금처럼 두 단계다(기존 시험 호출 유지). 값이 있으면 세 단계이고 첫 단계가 키다.
+온보딩(`OnboardingView` 새 인자): `keyStep: OnboardingKeyInput?`(`hasKey`, `onSave: (String) -> Bool`, `issueURL`). `hasKey`는 창을 열 때의 첫 값이다. 저장 실패 문구는 `onSave`가 돌려준 `false`를 뷰의 `@State`로 들고 보인다. `OnboardingWindow`는 뷰를 한 번 만들고 AppState를 관찰하지 않기 때문이다(`App/Sources/MokaApp.swift:174-186`). 다음 저장 시도에서 `true`면 지우고 다음 단계로 간다. `nil`이면 지금처럼 두 단계다(기존 시험 호출 유지). 값이 있으면 세 단계이고 첫 단계가 키다.
 
 | 키 단계 상태 | 보이는 것 |
 |---|---|
