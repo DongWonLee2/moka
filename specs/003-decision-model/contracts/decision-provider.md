@@ -11,7 +11,7 @@ public protocol DecisionProvider: Sendable {
 }
 ```
 
-- 타입 모양은 data-model §1. `Question`·`Answer`에는 noul과 score만 둔다(TypeSafe의 choice 타입은 쓰지 않으므로 계약에 넣지 않는다). 요청 JSON 조립(`TypeSafeCodec.body(_:)`)과 응답 해석(`TypeSafeCodec.response(_:)`)은 MokaCore 순수 함수다. 앱 `TypeSafeProvider`는 받은 키로 HTTP를 보내고 상태 코드를 `DecisionError`로 바꾸는 일만 한다. 키는 AppState가 `KeyStore`에서 읽어 별도 인자로 넘기며, `DecisionRequest`·본문 외 어디에도 담지 않는다(헤더에만).
+- 타입 모양은 data-model §1. `Question`·`Answer`에는 noul과 score만 둔다(TypeSafe의 choice 타입은 쓰지 않으므로 계약에 넣지 않는다). 요청 JSON 조립(`TypeSafeCodec.body(_:)`)과 응답 해석(`TypeSafeCodec.response(_:)`)은 MokaCore 순수 함수다. 상태 코드를 `DecisionError`로 바꾸는 표(아래 "상태 코드 → 오류")도 MokaCore 순수 함수 `TypeSafeCodec.decode(status:body:)`에 둔다. 앱 `TypeSafeProvider`는 받은 키로 HTTP를 보내고 받은 상태 코드와 본문을 `decode`에 넘기며, 시간 초과·연결 실패(URLSession 오류)만 직접 `timeout`·`network`로 바꾼다. 키는 AppState가 `KeyStore`에서 읽어 별도 인자로 넘기며, `DecisionRequest`·본문 외 어디에도 담지 않는다(헤더에만).
 - 시험·CI·`moka-sim`은 `FakeDecisionProvider`만 쓴다. `TypeSafeProvider`는 앱 타깃에만 있어 링크되지 않는다(ADR-0001).
 
 ## 질문 타입 (TypeSafe 용어)
