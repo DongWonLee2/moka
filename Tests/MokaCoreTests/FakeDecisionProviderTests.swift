@@ -84,6 +84,29 @@ private func request(_ taskID: TaskID) -> DecisionRequest {
         #expect(try await second.value == answerB)
     }
 
+    /// 깨우지 못하는 구현에서도 시험이 멈추지 않게 끝난 기다림의 수만 본다.
+    @Test("FR-14 R-210: releaseAll은 도달하지 못한 waitForHeld 기다림을 깨우고, 그 뒤 기다림은 바로 돌아온다")
+    func releaseAllWakesWaiters() async throws {
+        let fake = FakeDecisionProvider(answer: .success(answerA))
+        await fake.hold()
+        let request = Task { try await fake.decide(request(1), key: "fake-key") }
+        await fake.waitForHeld(count: 1)
+        let finished = FinishCounter()
+        _ = Task {
+            await fake.waitForHeld(count: 2)
+            await finished.add()
+        }
+        await fake.releaseAll()
+        _ = Task {
+            await fake.waitForHeld(count: 1)
+            await finished.add()
+        }
+        #expect(try await request.value == answerA)
+        for _ in 0..<1000 where await finished.count < 2 { await Task.yield() }
+
+        #expect(await finished.count == 2)
+    }
+
     @Test("FR-14 R-210: releaseAll 뒤에는 붙잡지 않는다")
     func releaseAllEndsHold() async throws {
         let fake = FakeDecisionProvider(answer: .success(answerA))
@@ -91,4 +114,9 @@ private func request(_ taskID: TaskID) -> DecisionRequest {
         await fake.releaseAll()
         #expect(try await fake.decide(request(1), key: "fake-key") == answerA)
     }
+}
+
+private actor FinishCounter {
+    private(set) var count = 0
+    func add() { count += 1 }
 }

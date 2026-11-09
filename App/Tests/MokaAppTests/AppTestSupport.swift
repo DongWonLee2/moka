@@ -19,12 +19,13 @@ enum AppTestFixture {
 func makeState(
     _ repository: (any TaskRepository)?, settings: any SettingsStore = InMemorySettingsStore(),
     clock: TestClock = TestClock(AppTestFixture.noon), workspaceCenter: NotificationCenter = NotificationCenter(),
-    contexts: (any ContextStore)? = InMemoryContextStore()
+    contexts: (any ContextStore)? = InMemoryContextStore(), scores: (any ScoreStore)? = nil,
+    decision: DecisionSetup? = nil
 ) -> AppState {
     AppState(
         clock: clock.mokaClock, calendar: AppTestFixture.seoul,
-        storage: AppStorage(settings: settings, repository: repository, contexts: contexts),
-        workspaceCenter: workspaceCenter)
+        storage: AppStorage(settings: settings, repository: repository, contexts: contexts, scores: scores),
+        workspaceCenter: workspaceCenter, decision: decision)
 }
 
 /// 시험이 시각을 앞으로 돌리는 시계. 실제 시간을 기다리지 않는다.
