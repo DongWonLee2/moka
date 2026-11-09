@@ -178,17 +178,3 @@ private func near(_ a: Double, _ b: Double) -> Bool { abs(a - b) < 1e-9 }
         #expect(Set(ScoreRules.usable(scores: scores, hasKey: true, questionVersion: "v1").keys) == [2, 3])
     }
 }
-
-@Suite struct PriorityTextTests {
-    @Test(
-        "FR-04 R-215: priority 칸은 소수 둘째 자리까지, 점수가 없으면 빈칸",
-        arguments: [(1.2, "1.20"), (0.0, "0.00"), (2.456, "2.46"), (12.3, "12.30"), (0.994, "0.99"), (0.996, "1.00")])
-    func formats(value: Double, expected: String) {
-        #expect(TaskRowText.priority(value) == expected)
-    }
-
-    @Test("FR-04 R-215: 점수가 없으면 빈칸")
-    func empty() {
-        #expect(TaskRowText.priority(nil) == "")
-    }
-}

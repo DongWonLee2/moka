@@ -55,3 +55,23 @@ func statusLabel() {
     #expect(TaskRowText.status(.active) == "진행 중")
     #expect(TaskRowText.status(.done) == "완료")
 }
+
+@Suite struct RankBadgeTests {
+    @Test(
+        "FR-04 R-215: 앞 세 순위는 N순위, 노치에 뜰 할 일이면 한 배지로 N순위 · 다음",
+        arguments: [
+            (1, false, "1순위"), (2, false, "2순위"), (3, false, "3순위"),
+            (1, true, "1순위 · 다음"), (2, true, "2순위 · 다음"), (3, true, "3순위 · 다음"),
+        ])
+    func ranked(rank: Int, isNext: Bool, expected: String) {
+        #expect(TaskRowText.rankBadge(rank: rank, isNext: isNext) == expected)
+    }
+
+    @Test("FR-04 R-215: 순위 밖이면 노치에 뜰 할 일만 다음, 아니면 배지 없음")
+    func unranked() {
+        #expect(TaskRowText.rankBadge(rank: nil, isNext: true) == "다음")
+        #expect(TaskRowText.rankBadge(rank: nil, isNext: false) == nil)
+        #expect(TaskRowText.rankBadge(rank: 4, isNext: true) == "다음")
+        #expect(TaskRowText.rankBadge(rank: 4, isNext: false) == nil)
+    }
+}
