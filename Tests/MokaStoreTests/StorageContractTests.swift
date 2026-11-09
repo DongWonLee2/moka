@@ -7,13 +7,14 @@ import Testing
 enum StoreKind: CaseIterable, Sendable {
     case memory, grdb
 
-    func makeStores() throws -> (tasks: any TaskRepository, contexts: any ContextStore) {
+    func makeStores() throws -> (tasks: any TaskRepository, contexts: any ContextStore, scores: any ScoreStore) {
         switch self {
         case .memory:
-            return (InMemoryTaskRepository(), InMemoryContextStore())
+            let tasks = InMemoryTaskRepository()
+            return (tasks, InMemoryContextStore(), InMemoryScoreStore(tasks: tasks))
         case .grdb:
             let db = try TestDatabase.migratedInMemory()
-            return (GRDBTaskRepository(db), GRDBContextStore(db))
+            return (GRDBTaskRepository(db), GRDBContextStore(db), GRDBScoreStore(db))
         }
     }
 }
@@ -337,4 +338,65 @@ func updateContext(kind: StoreKind) throws {
     #expect(throws: StoreError.contextNotFound(99)) {
         try store.updateContext(MokaContext(id: 99, name: "가짜", date: day("2026-11-05"), impact: .normal))
     }
+}
+
+// MARK: - 판단 결과
+
+private func score(
+    _ taskID: TaskID, urgency: Double = 0.5, modelSnapshot: String? = "jev-1.13.0", at: Date = base
+) -> TaskScore {
+    TaskScore(
+        taskID: taskID, questionVersion: "v1", provider: "fake", modelSnapshot: modelSnapshot, urgency: urgency,
+        impact: 0.25, concrete: 0.9, avoiding: 1e-05, probsJSON: #"{"concrete":{"noul":0.9}}"#,
+        stateHash: "0123456789abcdef", scoredAt: at)
+}
+
+private func storesWithThreeTasks(_ kind: StoreKind) throws -> any ScoreStore {
+    let stores = try kind.makeStores()
+    for title in ["가짜 할 일 A", "가짜 할 일 B", "가짜 할 일 C"] {
+        _ = try stores.tasks.insertTask(newTask(title), cycleDay: nil, at: base)
+    }
+    return stores.scores
+}
+
+@Test("FR-04 R-205: 저장한 판단 결과를 모든 칸 그대로 다시 읽는다", arguments: StoreKind.allCases)
+func scoreRoundTrip(kind: StoreKind) throws {
+    let store = try storesWithThreeTasks(kind)
+    #expect(try store.scores().isEmpty)
+    try store.upsertScore(score(1))
+    try store.upsertScore(score(3))
+    #expect(try store.scores() == [1: score(1), 3: score(3)])
+}
+
+@Test("FR-04 R-205: 같은 할 일을 다시 저장하면 덮어쓰고 이전 값은 남기지 않는다", arguments: StoreKind.allCases)
+func scoreOverwrite(kind: StoreKind) throws {
+    let store = try storesWithThreeTasks(kind)
+    try store.upsertScore(score(2, urgency: 0.1))
+    let second = TaskScore(
+        taskID: 2, questionVersion: "v2", provider: "fake-2", modelSnapshot: "jev-1.14.0", urgency: 0.9, impact: 0.75,
+        concrete: 0.1, avoiding: 0.8, probsJSON: #"{"concrete":{"noul":0.1}}"#, stateHash: "fedcba9876543210",
+        scoredAt: base.addingTimeInterval(60))
+    try store.upsertScore(second)
+    #expect(try store.scores() == [2: second])
+}
+
+@Test("FR-04 R-205: 매긴 시각은 초 아래를 버리고 저장한다", arguments: StoreKind.allCases)
+func scoreSubSecond(kind: StoreKind) throws {
+    let store = try storesWithThreeTasks(kind)
+    try store.upsertScore(score(1, at: base.addingTimeInterval(0.75)))
+    #expect(try store.scores()[1]?.scoredAt == base)
+}
+
+@Test("FR-04 R-205: 응답 모델 이름이 없는 판단 결과도 저장한다", arguments: StoreKind.allCases)
+func scoreWithoutModelSnapshot(kind: StoreKind) throws {
+    let store = try storesWithThreeTasks(kind)
+    try store.upsertScore(score(1, modelSnapshot: nil))
+    #expect(try store.scores() == [1: score(1, modelSnapshot: nil)])
+}
+
+@Test("FR-04 R-205: 없는 할 일의 판단 결과는 taskNotFound로 막고 남기지 않는다", arguments: StoreKind.allCases)
+func scoreForUnknownTask(kind: StoreKind) throws {
+    let store = try storesWithThreeTasks(kind)
+    #expect(throws: StoreError.taskNotFound(9)) { try store.upsertScore(score(9)) }
+    #expect(try store.scores().isEmpty)
 }

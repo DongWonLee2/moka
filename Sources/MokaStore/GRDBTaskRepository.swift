@@ -95,7 +95,7 @@ public final class GRDBTaskRepository: TaskRepository {
         ]
     }
 
-    private static func taskExists(_ id: TaskID, _ db: Database) throws -> Bool {
+    static func taskExists(_ id: TaskID, _ db: Database) throws -> Bool {
         try Bool.fetchOne(db, sql: "SELECT EXISTS(SELECT 1 FROM tasks WHERE id = ?)", arguments: [id]) ?? false
     }
 

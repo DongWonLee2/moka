@@ -26,6 +26,12 @@ public enum MokaMigrations {
                     "CREATE TABLE decisions_log(id INTEGER PRIMARY KEY NOT NULL, task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE RESTRICT, question_version TEXT, provider TEXT, probs_json TEXT, state_hash TEXT, model_snapshot TEXT, scheduler_choice TEXT NOT NULL, user_action TEXT NOT NULL, created_at TEXT NOT NULL, CHECK(provider IS NOT NULL OR (question_version IS NULL AND probs_json IS NULL AND state_hash IS NULL)), CHECK(model_snapshot IS NULL OR provider IS NOT NULL))"
             )
         }
+        migrator.registerMigration("v3_scores") { db in
+            try db.execute(
+                sql:
+                    "CREATE TABLE scores(task_id INTEGER PRIMARY KEY NOT NULL REFERENCES tasks(id) ON DELETE RESTRICT, question_version TEXT NOT NULL, provider TEXT NOT NULL, model_snapshot TEXT, urgency REAL NOT NULL, impact REAL NOT NULL, concrete REAL NOT NULL, avoiding REAL NOT NULL, probs_json TEXT NOT NULL, state_hash TEXT NOT NULL, scored_at TEXT NOT NULL)"
+            )
+        }
         return migrator
     }()
 }
