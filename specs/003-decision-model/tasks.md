@@ -114,7 +114,7 @@ description: "spec 003 판단 모델 연동 MVP 작업 목록"
 - [x] T029 🔒 [US1] 설정 창 시안(v2 사용자 확정 2026-11-09) `~/Dev/ai-platform/projects/moka/design/003-mockup.html`: data-model §10 키 칸 상태 여섯과 할 일 탭 순위 칸(1~3순위, "다음"과 합친 배지, 1순위를 끝낸 뒤). 사용자 확정을 받는다. 하루 넘게 밀리면 R-215를 다음 spec으로(plan 위험 1) 〔단위 4〕
 - [x] T030 [US1] `App/Tests/MokaAppTests/SettingsSnapshotTests.swift`에 스냅샷 `test_R215_rankColumn`을 확정 시안대로 쓰고 실패를 확인한다(`FR-04 R-215`) 〔단위 4〕
 - [x] T031 [US1] `App/Sources/Views/TaskListTabView.swift`에 `ranks: [TaskID: Int] = [:]` 인자와 줄의 순위 배지(`TaskRowText.rankBadge`, 기존 테두리 "다음" 배지를 대신함), `App/Sources/Settings/SettingsView.swift`가 AppState의 노치 순서 앞 셋을 넘긴다(data-model §10 뷰 인자). 기존 스냅샷 참조 이미지가 "다음" 배지 때문에 바뀌면 PR에 이유를 적는다. T030 PASS 〔단위 4〕
-- [ ] T032 🔒 [US1] 사람 확인 quickstart 6-3·6-4(확인용 빌드, 개인 팀 서명, `codesign -dv` TeamIdentifier 먼저). 결과는 PASS/FAIL과 응답 필드 이름만 〔단위 4〕
+- [x] T032 🔒 [US1] 사람 확인 quickstart 6-3·6-4(확인용 빌드, 개인 팀 서명, `codesign -dv` TeamIdentifier 먼저). 결과는 PASS/FAIL과 응답 필드 이름만 〔단위 4〕
 
 **확인 지점**: SC-201·SC-203·SC-206. 노치가 priority 순으로 고른다.
 
@@ -142,7 +142,7 @@ description: "spec 003 판단 모델 연동 MVP 작업 목록"
 ### Implementation (Green)
 
 - [x] T034 [US2] `App/Sources/AppState.swift`: `keyNeedsCheck`, 실패 표시와 다음 활성화 때 지우기, "다시 물어보기", 키 지움 뒤 순서만 다시. T033 PASS 〔단위 4〕
-- [ ] T035 🔒 [US2] 사람 확인 quickstart 6-5·6-6 〔단위 4〕
+- [x] T035 🔒 [US2] 사람 확인 quickstart 6-5·6-6 〔단위 4〕
 
 **확인 지점**: SC-204·SC-205.
 
@@ -161,7 +161,7 @@ description: "spec 003 판단 모델 연동 MVP 작업 목록"
 ### Implementation (Green)
 
 - [x] T037 [US3] `App/Sources/Views/BasicTabView.swift` 키 칸(data-model §10 뷰 인자, 가림 입력, 저장·지우기·다시 물어보기, 안내·401·실패 문구, 확정 시안 글자, 새 인자는 기본값을 두어 기존 스냅샷 호출이 그대로 컴파일), `SettingsView.swift` 연결, `AppState` 키 저장·지우기·`hasKey` 갱신. T036 PASS 〔단위 4〕
-- [ ] T038 🔒 [US3] 사람 확인 quickstart 6-1·6-2(다시 빌드해도 확인 창이 반복되지 않는지). 접근성 속성이 로그인 키체인에서 지켜지는지는 공식 문서로 확인해 PR "사람이 볼 결정"에 적는다(미확인이면 미확인) 〔단위 4〕
+- [x] T038 🔒 [US3] 사람 확인 quickstart 6-1·6-2(다시 빌드해도 확인 창이 반복되지 않는지). 접근성 속성이 로그인 키체인에서 지켜지는지는 공식 문서로 확인해 PR "사람이 볼 결정"에 적는다(미확인이면 미확인) (공식 문서 확인은 미확인) 〔단위 4〕
 
 **확인 지점**: SC-208·SC-210.
 
@@ -171,16 +171,16 @@ description: "spec 003 판단 모델 연동 MVP 작업 목록"
 
 **순서**: 2026-11-08까지 단위 1~4가 끝나지 않으면 이 Phase를 다음 spec으로 넘기고 PR에 적는다(research R13).
 
-- [ ] T039 [P] `Tests/MokaCoreTests/Fixtures/sim/storage-judge-order.json`·`.expected.jsonl`(contracts/moka-sim-v1-additions-003.md 예를 기반으로 바꾸기 뒤 다음 순위까지, `relaunch` 뒤에도 키와 판단 결과가 남음)과 `errors/storage-judge-*.json` 오류 픽스처를 쓰고, `SimScenarioTests.swift`의 `errorFixtures` 표에 기존 `SimErrorKind` 가운데 맞는 것으로 등록하고(새 kind가 필요하면 PR "가정"), 실패를 확인한다(`ADR-0003 R-216`). 타이머 golden 바이트 동일은 기존 `goldenOutputMatchesBytes`가 이미 확인한다 〔단위 5〕
-- [ ] T040 `Sources/MokaCore/Sim/`에 `judge`·`key` 이벤트(contracts의 변환 규칙)와 조건부 출력 칸(`order`, `has_key`, `decision.provider`). T039 PASS. 👁(`moka-sim` 계약) 〔단위 5〕
-- [ ] T041 [P] spec 001 `contracts/moka-sim-v1.md`의 storage 절 끝에 spec 003 덧붙임 링크 한 줄 〔단위 5〕
+- [x] T039 [P] `Tests/MokaCoreTests/Fixtures/sim/storage-judge-order.json`·`.expected.jsonl`(contracts/moka-sim-v1-additions-003.md 예를 기반으로 바꾸기 뒤 다음 순위까지, `relaunch` 뒤에도 키와 판단 결과가 남음)과 `errors/storage-judge-*.json` 오류 픽스처를 쓰고, `SimScenarioTests.swift`의 `errorFixtures` 표에 기존 `SimErrorKind` 가운데 맞는 것으로 등록하고(새 kind가 필요하면 PR "가정"), 실패를 확인한다(`ADR-0003 R-216`). 타이머 golden 바이트 동일은 기존 `goldenOutputMatchesBytes`가 이미 확인한다 〔단위 5〕
+- [x] T040 `Sources/MokaCore/Sim/`에 `judge`·`key` 이벤트(contracts의 변환 규칙)와 조건부 출력 칸(`order`, `has_key`, `decision.provider`). T039 PASS. 👁(`moka-sim` 계약) 〔단위 5〕
+- [x] T041 [P] spec 001 `contracts/moka-sim-v1.md`의 storage 절 끝에 spec 003 덧붙임 링크 한 줄 〔단위 5〕
 
 ---
 
 ## Phase 7: Polish & Cross-Cutting
 
 - [ ] T042 [P] `GLOSSARY.md`: 판단 질문 넷(blocked 없앰, 2026-11-06 사용자 결정), noul·score, impact 옵션 "조금/꽤/아주", 판단 결과(`scores`, priority 저장 안 함), `priority_rotate_v0`(`scheduler_choice` 항목의 "만든 순서 순환·`RotateByIDRule`" 서술 갱신), 키 보관함("마일스톤 3에서 만든다" → 만들었음), 온보딩 절(169행 "판단 공급자 키 단계는 마일스톤 3에서 더한다" → 다음 spec) 〔단위 1a〕
-- [ ] T043 🔒 quickstart 1~6 전체를 돌려 결과 표를 마지막 PR에 붙인다 〔단위 4〕
+- [x] T043 🔒 quickstart 1~6 전체를 돌려 결과 표를 마지막 PR에 붙인다 〔단위 4〕
 - [x] T044 PRD 고칠 문장(6장 blocked 줄·impact 옵션, 7장 w_b·정책 1·7번 6시간 캐시, 9장 `scores` 열)을 마지막 PR "사람이 볼 결정"에 적는다. PRD는 저장소 밖이라 고치지 않는다 〔단위 4〕
 
 ---

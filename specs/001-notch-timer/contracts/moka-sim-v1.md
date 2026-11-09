@@ -233,6 +233,8 @@ storage 모드에서는 모든 줄(기존 이벤트 포함)에 위 "출력" 절�
 - 오류: `Tests/MokaCoreTests/Fixtures/sim/errors/storage-<이름>.json`.
 - GRDB 저장소로 storage golden을 다시 돌리지 않는다. 두 저장소의 같음은 MokaStore 공용 계약 시험이 맡는다(spec 002 data-model §3, research R7). CLI와 시험 모두 메모리 저장소만 쓰므로 `SimRunner`에 저장소 주입 진입점을 두지 않는다.
 
+spec 003은 storage 모드에 `judge`·`key` 이벤트와 조건부 출력 칸(`order`, `has_key`, `decision.provider`)을 덧붙인다: [contracts/moka-sim-v1-additions-003.md](../../003-decision-model/contracts/moka-sim-v1-additions-003.md).
+
 ## 버전 규칙
 
 - 선택 필드와 이벤트 종류를 덧붙이는 것은 `version: 1`을 유지한다. 그래도 공개 계약 변경이므로 PR "사람이 볼 결정"에 올린다.
