@@ -89,7 +89,7 @@ private func request(_ taskID: TaskID) -> DecisionRequest {
     func releaseAllWakesWaiters() async throws {
         let fake = FakeDecisionProvider(answer: .success(answerA))
         await fake.hold()
-        let request = Task { try await fake.decide(request(1), key: "fake-key") }
+        let heldRequest = Task { try await fake.decide(request(1), key: "fake-key") }
         await fake.waitForHeld(count: 1)
         let finished = FinishCounter()
         _ = Task {
@@ -101,7 +101,7 @@ private func request(_ taskID: TaskID) -> DecisionRequest {
             await fake.waitForHeld(count: 1)
             await finished.add()
         }
-        #expect(try await request.value == answerA)
+        #expect(try await heldRequest.value == answerA)
         for _ in 0..<1000 where await finished.count < 2 { await Task.yield() }
 
         #expect(await finished.count == 2)
