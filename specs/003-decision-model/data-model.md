@@ -140,14 +140,14 @@ spec 002 F5 CHECK(공급자가 없으면 나머지도 비어야 함)에 걸리�
 - 메모리 값: `hasKey`(`launch()` 첫머리·키 저장·키 지움 때 `KeyStore.hasKey()`로 갱신, 던지면 `false`. 첫 `requestScores()`보다 먼저 읽는다), `keyNeedsCheck`, `keyActionFailed`(저장·지우기가 던지면 `true`, 다음 성공에 `false`), `attempted`·`queryRunner`(§6), `scores` 사전(`launch()`와 답을 저장한 뒤 저장소에서 다시 읽음, 읽기가 던지면 빈 사전과 로그).
 - 질의 흐름은 §6. 키는 AppState가 보내기 직전 `KeyStore.read()`로 읽어 `decide(_:key:)`에 넘긴다.
 - 키 입력: 붙여 넣은 값의 앞뒤 공백·줄바꿈을 지우고, 비면 "저장"을 끈다.
-- 답을 저장한 뒤 `scores`를 다시 읽고 "다음" 표시와 설정 창 priority 칸을 다시 계산한다. 질의 중에도 노치·타이머·버튼은 막히지 않는다.
+- 답을 저장한 뒤 `scores`를 다시 읽고 "다음" 표시와 설정 창 순위 칸을 다시 계산한다. 질의 중에도 노치·타이머·버튼은 막히지 않는다.
 
 ## 10. 설정 창 화면 상태 (시안으로 확정)
 
 | 상태 | 기본 탭 키 칸 |
 |---|---|
 | 키 없음 | 안내 한 줄 + 붙여 넣기 칸(가림 입력) + "저장"(칸이 비면 꺼짐) |
-| 키 있음, 할 일 있음 | "저장돼 있어요" + "지우기" + "다시 물어보기"(다시 물을 할 일이 없으면 꺼짐) |
+| 키 있음, 할 일 있음 | "저장되어 있어요" + "지우기" + "다시 물어보기"(다시 물을 할 일이 없으면 꺼짐) |
 | 키 있음, 할 일 없음 | 위 + "할 일을 저장하면 키가 맞는지 확인돼요" |
 | 키 확인 필요(401) | 위 + 키를 다시 확인해 달라는 문구(경고색). "다시 물어보기"는 꺼짐 |
 | 저장·지우기 실패 | 그 상태 + 다시 해 달라는 문구 |
@@ -155,9 +155,9 @@ spec 002 F5 CHECK(공급자가 없으면 나머지도 비어야 함)에 걸리�
 
 상태 여섯의 이름: 키 없음, 저장됨, 저장됨·할 일 없음, 키 확인 필요, 저장·지우기 실패, 저장 불가.
 
-할 일 탭: 줄마다 priority 칸(소수 둘째 자리 반올림해 둘째 자리까지 표시, 예 `1.20`, 점수 없으면 빈칸). 서식은 MokaCore `TaskRowText`에 함수로 둔다. 문구는 시안에서 정하고 해요체다.
+할 일 탭(사용자 결정 2026-11-09, 시안 v2 8번): 노치 후보 순서(§7 `PriorityOrder.order`)의 앞 세 대기 할 일에 순위 배지를 붙인다. 글자는 MokaCore `TaskRowText.rankBadge(rank: Int?, isNext: Bool) -> String?`가 정한다: 순위가 1~3이고 "다음"이면 `"N순위 · 다음"`, 순위만이면 `"N순위"`, "다음"만이면 `"다음"`, 둘 다 아니면 `nil`. "다음"은 spec 002 `nextMark`(노치에 뜰 할 일) 그대로다. 보통은 1순위와 같은 할 일이지만 바꾸기·미루기 뒤에는 방금 할 일의 다음 순위라 갈라질 수 있다(§7). 진행 중·완료 할 일은 순위가 없다. "다음"이 든 배지는 모카색으로 채우고, 순위만이면 모카색 글자다. spec 002의 테두리 "다음" 배지는 이 배지로 바뀐다.
 
-뷰 인자(ADR-0009 경계, 값과 콜백만): `TaskListTabView`에 `priorities: [TaskID: Double]`, `BasicTabView`에 `keyState: KeyFieldState`(위 여섯)와 `onSaveKey: (String) -> Void`, `onDeleteKey`, `onRetry`, `canRetry: Bool`. 값은 `App/Sources/Settings/SettingsView.swift`가 AppState에서 꺼내 넘긴다. 기존 스냅샷 호출(`SettingsSnapshotTests`)은 새 인자의 기본값으로 그대로 두고, 참조 이미지가 바뀌면 PR에 이유를 적는다.
+뷰 인자(ADR-0009 경계, 값과 콜백만): `TaskListTabView`에 `ranks: [TaskID: Int]`(앞 세 대기 할 일, 기존 `nextMarkID`와 함께), `BasicTabView`에 `keyState: KeyFieldState`(위 여섯)와 `onSaveKey: (String) -> Void`, `onDeleteKey`, `onRetry`, `canRetry: Bool`. 값은 `App/Sources/Settings/SettingsView.swift`가 AppState에서 꺼내 넘긴다. 기존 스냅샷 호출(`SettingsSnapshotTests`)은 새 인자의 기본값으로 그대로 두고, 참조 이미지가 바뀌면 PR에 이유를 적는다.
 
 ## 11. 기존 기대 출력 갱신 (사용자 결정 2026-11-07)
 
