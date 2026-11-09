@@ -26,7 +26,6 @@ public enum MokaMigrations {
                     "CREATE TABLE decisions_log(id INTEGER PRIMARY KEY NOT NULL, task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE RESTRICT, question_version TEXT, provider TEXT, probs_json TEXT, state_hash TEXT, model_snapshot TEXT, scheduler_choice TEXT NOT NULL, user_action TEXT NOT NULL, created_at TEXT NOT NULL, CHECK(provider IS NOT NULL OR (question_version IS NULL AND probs_json IS NULL AND state_hash IS NULL)), CHECK(model_snapshot IS NULL OR provider IS NOT NULL))"
             )
         }
-        // spec 003 data-model §2. CHECK 없음(사용자 승인 조건).
         migrator.registerMigration("v3_scores") { db in
             try db.execute(
                 sql:

@@ -75,7 +75,6 @@ def test_judgment_column_without_provider_is_rejected(db, column):
     assert db.execute("SELECT COUNT(*) FROM decisions_log").fetchone() == (0,)
 
 
-# spec 003 data-model §2: 할 일마다 최신 판단 결과 한 줄. priority 열은 없다.
 SCORES_COLUMNS = {
     "task_id",
     "question_version",

@@ -340,7 +340,7 @@ func updateContext(kind: StoreKind) throws {
     }
 }
 
-// MARK: - 판단 결과(spec 003 data-model §2, T009를 두 구현으로)
+// MARK: - 판단 결과
 
 private func score(
     _ taskID: TaskID, urgency: Double = 0.5, modelSnapshot: String? = "jev-1.13.0", at: Date = base

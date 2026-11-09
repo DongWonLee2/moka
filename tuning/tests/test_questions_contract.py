@@ -1,8 +1,3 @@
-"""튜닝 스크립트와 앱이 함께 쓰는 판단 질문 파일 계약 시험(spec 003 contracts/questions-json.md).
-
-앱과 같은 경로의 questions.json을 읽고, scores·decisions_log의 probs_json 예시를 읽을 수 있는지 본다.
-"""
-
 import json
 from pathlib import Path
 
