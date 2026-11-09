@@ -151,8 +151,10 @@ final class AppState {
     private(set) var hasKey = false
     /// 401·403을 받아 키를 다시 저장하기 전까지 묻지 않는 중이다.
     private(set) var keyNeedsCheck = false
+    /// 키 저장·지우기 가운데 실패한 동작. 다음 성공에 지운다.
+    private(set) var keyActionFailure: KeyAction?
     /// 키 저장·지우기가 실패했다. 다음 성공에 꺼진다.
-    private(set) var keyActionFailed = false
+    var keyActionFailed: Bool { keyActionFailure != nil }
     /// 저장소의 판단 결과. 켤 때와 답을 저장한 뒤 다시 읽는다.
     private(set) var scores: [TaskID: TaskScore] = [:]
 
@@ -160,6 +162,13 @@ final class AppState {
     var ranks: [TaskID: Int] {
         let order = PriorityOrder.order(input(at: clock.now())).prefix(3)
         return Dictionary(uniqueKeysWithValues: order.enumerated().map { ($0.element.id, $0.offset + 1) })
+    }
+
+    /// 기본 탭 키 칸 상태(data-model §10). 할 일 없음은 저장된 할 일이 하나도 없을 때다.
+    var keyFieldState: KeyFieldState {
+        .make(
+            hasKey: hasKey, hasTasks: !tasks.isEmpty, needsCheck: keyNeedsCheck, failedAction: keyActionFailure,
+            storageUnavailable: storageUnavailable)
     }
 
     /// "다시 물어보기"를 누를 수 있는지: 물을 수 있고 다시 물을 할 일이 있다.
@@ -634,11 +643,11 @@ final class AppState {
         do {
             try keyStore.save(key)
         } catch {
-            keyActionFailed = true
+            keyActionFailure = .save
             Self.logKeyFailure("저장", error)
             return false
         }
-        keyActionFailed = false
+        keyActionFailure = nil
         keyNeedsCheck = false
         attempted = [:]
         refreshHasKey()
@@ -653,11 +662,11 @@ final class AppState {
         do {
             try keyStore.delete()
         } catch {
-            keyActionFailed = true
+            keyActionFailure = .delete
             Self.logKeyFailure("지우기", error)
             return false
         }
-        keyActionFailed = false
+        keyActionFailure = nil
         keyNeedsCheck = false
         refreshHasKey()
         return true

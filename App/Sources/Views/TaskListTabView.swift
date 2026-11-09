@@ -5,6 +5,8 @@ import SwiftUI
 struct TaskListTabView: View {
     let rows: [MokaTask]
     let nextMarkID: TaskID?
+    /// 노치 후보 순서의 앞 세 대기 할 일과 순위(spec 003 R-215, data-model §10).
+    var ranks: [TaskID: Int] = [:]
     @Binding var scope: TaskListScope
     @Binding var order: TaskListOrder
     @Binding var selectedID: TaskID?
@@ -55,7 +57,7 @@ struct TaskListTabView: View {
                                     label: task.title
                                 )
                                 .padding(.leading, 10)
-                                TaskRow(task: task, isNext: task.id == nextMarkID)
+                                TaskRow(task: task, rank: ranks[task.id], isNext: task.id == nextMarkID)
                                     .contentShape(Rectangle())
                                     // 두 번 클릭을 동시에 들어야 한 번 클릭이 더블 클릭 간격을 기다리지 않는다.
                                     .onTapGesture { selectedID = task.id }
@@ -142,8 +144,8 @@ private struct SortPill: View {
 
 private struct TaskRow: View {
     let task: MokaTask
+    let rank: Int?
     let isNext: Bool
-    @Environment(\.colorScheme) private var colorScheme
 
     private var isDone: Bool { task.status == .done }
 
@@ -166,21 +168,40 @@ private struct TaskRow: View {
                 }
             }
             Spacer(minLength: 0)
-            if isNext {
-                Text("다음")
-                    .font(.system(size: 10, weight: .semibold))
-                    .padding(.horizontal, 6)
-                    .foregroundStyle(nextColor)
-                    .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(nextColor, lineWidth: 1))
-            }
+            RankBadge(text: TaskRowText.rankBadge(rank: rank, isNext: isNext), isNext: isNext)
             StatusBadge(status: task.status)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .frame(minHeight: 40)
     }
+}
 
-    private var nextColor: Color { colorScheme == .dark ? MokaColors.crema : MokaColors.mocha }
+/// 순위 칸(시안 v2 8번). "다음"이 든 배지는 모카색으로 채우고, 순위만이면 모카색 글자다. 없으면 같은 폭을 비운다.
+private struct RankBadge: View {
+    let text: String?
+    let isNext: Bool
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        if let text, isNext {
+            Text(text)
+                .font(.system(size: 10.5, weight: .semibold))
+                .lineLimit(1)
+                .fixedSize()
+                .padding(.horizontal, 7)
+                .padding(.vertical, 1)
+                .foregroundStyle(MokaColors.textOnPrimary)
+                .background(MokaColors.mocha, in: RoundedRectangle(cornerRadius: 4))
+        } else {
+            Text(text ?? "")
+                .font(.system(size: 11.5, weight: .semibold))
+                .lineLimit(1)
+                .fixedSize()
+                .foregroundStyle(colorScheme == .dark ? MokaColors.crema : MokaColors.mocha)
+                .frame(width: 40, alignment: .trailing)
+        }
+    }
 }
 
 private struct StreakBadge: View {

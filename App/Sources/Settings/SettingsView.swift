@@ -47,11 +47,15 @@ struct SettingsView: View {
                         range: Defaults.extendMinRange,
                         onCommit: { applyExtend(CoreSettings.commitExtendField(extendText, to: store)) },
                         onStep: { applyExtend(CoreSettings.saveExtendField($0, to: store)) }),
-                    dayStart: Binding(get: { dayStart }, set: { saveDayStart($0) })
+                    dayStart: Binding(get: { dayStart }, set: { saveDayStart($0) }),
+                    keyState: appState.keyFieldState, canRetry: appState.canRetryScores,
+                    onSaveKey: { appState.saveKey($0) }, onDeleteKey: { appState.deleteKey() },
+                    onRetry: { appState.retryScores() }
                 )
             case .tasks:
                 TaskListTabView(
-                    rows: appState.taskListRows, nextMarkID: appState.nextMarkID, scope: $appState.taskListScope,
+                    rows: appState.taskListRows, nextMarkID: appState.nextMarkID, ranks: appState.ranks,
+                    scope: $appState.taskListScope,
                     order: $appState.taskListOrder, selectedID: $selectedTaskID, checkedIDs: $checkedTaskIDs,
                     canEdit: !appState.storageUnavailable,
                     onAdd: { isAddingTask = true }, onEdit: { editing = request(for: $0) },
