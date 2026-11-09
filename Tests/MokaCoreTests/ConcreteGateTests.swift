@@ -171,7 +171,7 @@ private func afterSubmit(
         let stale = afterSubmit(score: judged(concrete: 0.9, hash: newHash), currentHash: newerHash)
         #expect(ConcreteGate.phase(stale) == .checking)
         #expect(ConcreteGate.afterAnswer(stale) == stale.record)
-        let staleFailure = afterSubmit(failedHash: newHash, currentHash: newerHash)
+        let staleFailure = afterSubmit(currentHash: newerHash, failedHash: newHash)
         #expect(ConcreteGate.phase(staleFailure) == .checking)
         let fresh = afterSubmit(score: judged(concrete: 0.9, hash: newerHash), currentHash: newerHash)
         #expect(ConcreteGate.phase(fresh) == .closed)

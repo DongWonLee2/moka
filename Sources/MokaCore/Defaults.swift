@@ -18,4 +18,6 @@ public enum Defaults {
     public static let decisionTimeout: TimeInterval = 3
     /// 동시에 보내는 판단 질의 수(R-207, research R17 E2).
     public static let maxConcurrentDecisions = 4
+    /// 구체화 게이트가 할 일 하나에 받는 제출 수. 이 횟수의 재판정 뒤에는 미만이어도 통과다(spec 004 R-309).
+    public static let concreteGateMaxSubmissions = 3
 }
