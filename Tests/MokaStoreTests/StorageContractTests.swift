@@ -372,8 +372,12 @@ func scoreRoundTrip(kind: StoreKind) throws {
 func scoreOverwrite(kind: StoreKind) throws {
     let store = try storesWithThreeTasks(kind)
     try store.upsertScore(score(2, urgency: 0.1))
-    try store.upsertScore(score(2, urgency: 0.9, modelSnapshot: "jev-1.14.0"))
-    #expect(try store.scores() == [2: score(2, urgency: 0.9, modelSnapshot: "jev-1.14.0")])
+    let second = TaskScore(
+        taskID: 2, questionVersion: "v2", provider: "fake-2", modelSnapshot: "jev-1.14.0", urgency: 0.9, impact: 0.75,
+        concrete: 0.1, avoiding: 0.8, probsJSON: #"{"concrete":{"noul":0.1}}"#, stateHash: "fedcba9876543210",
+        scoredAt: base.addingTimeInterval(60))
+    try store.upsertScore(second)
+    #expect(try store.scores() == [2: second])
 }
 
 @Test("FR-04 R-205: 매긴 시각은 초 아래를 버리고 저장한다", arguments: StoreKind.allCases)
