@@ -66,7 +66,7 @@ spec 003이 저장한 판단 결과를 노치와 설정 창, 온보딩에 보인
 - 이름: `ReasonLine`, `ReasonText`, `DeadlineDistance`, `ConcreteGate`, `GateRecord`, `GatePhase`, `GateInput`, `OnboardingKeyInput`, `settingsTabRequest`.
 - `Defaults.concreteGateMaxSubmissions = 3`을 `Defaults.swift`에 둔다(PRD FR-13 값, 새 값 아님).
 - 발급 링크 주소는 앱 상수 한 곳에 둔다. 사람이 시안 확정 때 TypeSafe 공식 문서에서 정한다.
-- 온보딩 키 단계 실패 문구는 spec 003 `keyActionFailure`를 함께 쓴다. 그래서 온보딩에서 실패하면 설정 창 기본 탭에도 같은 실패 문구가 보인다. 다음 성공에 둘 다 사라진다.
+- 온보딩 키 단계는 spec 003 `saveKey`를 부르고, 실패 문구는 돌려받은 `false`를 뷰의 `@State`로 보인다. `saveKey`가 `keyActionFailure`도 켜므로 설정 창 기본 탭에도 실패 문구가 보인다. 다음 성공에 둘 다 사라진다.
 
 ## Project Structure
 
@@ -150,7 +150,7 @@ spec "대안과 위험"의 번호와 같다.
 - 위험 5(개인정보): 게이트 줄은 첫 행동 칸으로 판단 모델에 간다. spec 003부터 보내던 칸이다.
 - 위험 6(사람 확인): 온보딩 키 단계는 새 사용자 계정에서만 볼 수 있다. 앱 시험과 스냅샷이 대부분을 맡는다.
 - 위험 7(PRD와 다름): 위 대조 표의 PRD 줄. 사람이 PRD를 고친다.
-- 위험 8(키 실패 문구 공유): 온보딩 키 저장 실패가 설정 창 기본 탭에도 보인다. 다음 성공에 둘 다 사라져 받아들인다.
+- 위험 8(키 실패 문구 공유): 온보딩 키 저장 실패가 설정 창 기본 탭에도 보이고, 그동안 노치·할 일 탭 키 확인 표시는 꺼진다(R-318). 다음 성공에 사라져 받아들인다.
 
 ## 다음 단계
 

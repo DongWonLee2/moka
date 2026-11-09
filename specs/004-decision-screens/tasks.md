@@ -57,7 +57,7 @@ description: "spec 004 판단 결과 화면 연결 작업 목록"
 
 ### Tests (Red)
 
-- [ ] T003 [P] [US1] `Tests/MokaCoreTests/ReasonLineTests.swift`: data-model §2 전체(남은 날 넷, 하루 시작 시각 전후의 오늘, 손해 반올림 경계 0.24·0.25·0.74·0.75, 손해 없음 셋(키 없음으로 `usable` 빔, 판단 결과 없음, 질문 버전 다름), 미룬 횟수 0, 손해 없을 때 구분자 빠짐)를 쓰고 실패를 확인한다(`FR-04 R-302`, `FR-04 R-303`, `FR-04 R-304`, SC-301, SC-302) 〔단위 1〕
+- [ ] T003 [P] [US1] `Tests/MokaCoreTests/ReasonLineTests.swift`: data-model §2 전체(남은 날 넷, 하루 시작 시각 전후의 오늘, `America/New_York` 일광절약시간 전환일을 사이에 둔 마감에서도 남은 날이 `LocalDay` 날짜 차와 같음(시각 차를 86400으로 나누지 않음), 손해 반올림 경계 0.24·0.25·0.74·0.75, 손해 없음 셋(키 없음으로 `usable` 빔, 판단 결과 없음, 질문 버전 다름), 미룬 횟수 0, 손해 없을 때 구분자 빠짐)를 쓰고 실패를 확인한다(`FR-04 R-302`, `FR-04 R-303`, `FR-04 R-304`, SC-301, SC-302) 〔단위 1〕
 - [ ] T005 [US1] `App/Tests/MokaAppTests/AppDecisionTests.swift`: `reasonLine`이 시작 전·도는 중에만 값이 있고, 빈 상태와 시간 끝에는 `nil`, 답이 저장되면 손해가 바뀌고 노치 할 일(`session.taskID`)은 그대로(spec US1-5), 키를 지우면 손해가 빠짐. 실패를 확인한다(`FR-04 R-305`) 〔단위 2〕
 - [ ] T007 [US1] [화면 뒤] `App/Tests/MokaAppTests/ScreenStateSnapshotTests.swift`에 `test_R301_draftReason`, `test_R301_draftReasonNoLoss`, `test_R301_runningReason`(라이트·다크, 이어서 할 일 줄이 있는 경우 하나 포함)을 확정 시안대로 쓰고 실패를 확인한다(`FR-04 R-301`) 〔단위 3〕
 
@@ -82,6 +82,7 @@ description: "spec 004 판단 결과 화면 연결 작업 목록"
 
 - [ ] T010 [P] [US2] `Tests/MokaCoreTests/ConcreteGateTests.swift`: data-model §3 판정 1~3 전체(열림 조건, 열리지 않는 넷(시작 전 아님, 통과함, 점수 없음, 임계값 이상), 물을 수 없으면 안 열림, 기다림 중: 물을 수 없게 되면 통과, 실패 해시면 통과, 해시 같은 새 결과 이상이면 통과, 미만이면 다시 묻기, 세 번째 제출 뒤 미만이면 통과, 해시 다른 결과로는 판정하지 않음, 해시가 다시 바뀌면 새 해시를 기다림)를 쓰고 실패를 확인한다(`FR-13 R-306`, `FR-13 R-308`, `FR-13 R-309`, SC-304, SC-305) 〔단위 1〕
 - [ ] T012 [US2] `App/Tests/MokaAppTests/AppGateTests.swift`(새 파일, `AppTestSupport.swift`의 `makeState`와 `FakeDecisionProvider` 붙잡기를 씀): 아래를 쓰고 실패를 확인한다(`FR-13 R-307`, `FR-13 R-308`, `FR-13 R-309`, `FR-13 R-310`, `FR-13 R-312`, SC-303~SC-306) 〔단위 2〕
+  - 게이트가 `.asking`·`.checking`인 동안 노치의 이어서 할 일 표시 값이 숨김이고, 통과 뒤 다시 보임. 통과 때 접힌 3초 표시(`showsFirstActionCollapsed`)가 켜지지 않음
   - concrete 0.3 판단 결과로 시작 전이 되면 `gatePhase == .asking`, 0.7이면 `.closed`, 키 없음·`keyNeedsCheck`·판단 결과 없음이면 `.closed`
   - 시작 전으로 뜬 뒤 판단 결과가 저장되면 그때 열림, 도는 중에는 열리지 않음
   - 제출하면 첫 행동이 저장되고 질의 1건이 새 해시로 나감, 붙잡은 동안 `.checking`이고 버튼(시작, 다른 할 일)이 동작함
@@ -94,13 +95,13 @@ description: "spec 004 판단 결과 화면 연결 작업 목록"
   - 게이트 제출 뒤 체크포인트 다음 할 일 줄을 저장하면 그 줄이 남고, 반대 순서면 게이트 줄이 남음(spec 위험 3)
   - 행동 로그 줄 수가 제출과 넘기기 전후로 같음
   - 앱을 다시 만든 `AppState`(같은 저장소)에서는 기록이 없어 다시 열림(R-309)
-- [ ] T014 [US2] [화면 뒤] `App/Tests/MokaAppTests/ScreenStateSnapshotTests.swift`에 `test_R307_gateAsking`, `test_R307_gateChecking`, `test_R307_gateSaveFailed`(라이트·다크)를 확정 시안대로 쓰고 실패를 확인한다(`FR-13 R-307`) 〔단위 3〕
+- [ ] T014 [US2] [화면 뒤] `App/Tests/MokaAppTests/ScreenStateSnapshotTests.swift`에 `test_R307_gateAsking`, `test_R307_gateChecking`, `test_R307_gateSaveFailed`(라이트·다크, 할 일에 첫 행동이 있는 상태로 찍어 제목 아래 이어서 할 일 줄이 숨는 것을 함께 확인, R-311)를 확정 시안대로 쓰고 실패를 확인한다(`FR-13 R-307`) 〔단위 3〕
 
 ### Implementation (Green)
 
 - [ ] T011 [US2] `Sources/MokaCore/Decision/ConcreteGate.swift`(`GateRecord`, `GatePhase`, 판정 함수, data-model §1·§3)와 `Sources/MokaCore/Defaults.swift`의 `concreteGateMaxSubmissions = 3`. 임계값은 `questions.thresholds[questions.model]?["concrete"]`. T010 PASS 〔단위 1〕
 - [ ] T013 [US2] `App/Sources/AppState.swift`: `gateRecords`, `gateWaitingTaskID`, `gatePhase`, `gateDraftText`, `gateSaveFailed`, `submitFirstAction(_:)`, `skipGate()`, `refreshGate()`와 부르는 곳(data-model §3 "판정 시점", §4), 시작과 노치 할 일 변경 때 닫기. 첫 행동 쓰기는 `write(StoreBatch(updatedTasks:))` 뒤 `reloadTasks()`이고 질의를 따로 부르지 않는다. 실패를 장부에 적는 자리에서 `refreshGate()`를 부른다. T012 PASS 〔단위 2〕
-- [ ] T015 [US2] [화면 뒤] `App/Sources/Views/ExpandedView.swift`에 `gate: GateInput? = nil` 인자와 게이트 화면(묻는 중, 확인하는 중, 저장 실패, "지금은 넘기기"), 시작 버튼 단축키 조건 `draftInput.isEnteringTitle || gate?.phase == .asking`이면 뗌(data-model §5). `NotchContentView`·`NotchPanelHost`가 값과 콜백을 넘긴다. 입력 칸 Enter는 제출이다. T014 PASS, 기존 스냅샷 PASS 〔단위 3〕
+- [ ] T015 [US2] [화면 뒤] `App/Sources/Views/ExpandedView.swift`에 `gate: GateInput? = nil` 인자와 게이트 화면(묻는 중, 확인하는 중, 저장 실패, "지금은 넘기기"), 시작 버튼 단축키 조건 `draftInput.isEnteringTitle || gate?.phase == .asking`이면 뗌, 게이트가 `asking`이면 "직접…" 분 칸 Enter도 시작하지 않음, `asking`·`checking`이면 이어서 할 일 줄 숨김(data-model §5). `NotchContentView`·`NotchPanelHost`가 값과 콜백을 넘긴다. 입력 칸 Enter는 제출이다. T014 PASS, 기존 스냅샷 PASS 〔단위 3〕
 - [ ] T016 [사람] [US2] quickstart 6-2·6-3. 게이트가 열리지 않으면 6-2·6-3은 SKIP으로 적고 T012에 맡긴다. 입력 칸이 열린 동안 Enter가 시작하지 않는지도 이때 본다 〔단위 3〕
 
 **확인 지점**: SC-303~SC-306. 통과한 첫 행동이 제목 아래 보인다.
@@ -115,13 +116,13 @@ description: "spec 004 판단 결과 화면 연결 작업 목록"
 
 ### Tests (Red)
 
-- [ ] T017 [US3] `App/Tests/MokaAppTests/AppDecisionTests.swift`: 온보딩이 안 끝난 상태에서 키 단계 입력 값(`hasKey`, `saveFailed`), 키 단계 저장이 spec 003 `saveKey`와 같은 결과(앞뒤 공백 제거, 장부 비움, 실패면 `keyActionFailure == .save`), 이미 있음, 키 없이 `finishOnboarding` 뒤 할 일을 넣으면 노치에 뜸, 키 저장 뒤 끝내기 전 다시 만든 `AppState`에서 온보딩이 다시 보이고 키는 있음, 키 값이 설정 저장소·판단 결과·행동 로그에 없음. 실패를 확인한다(`FR-21 R-314`, `FR-21 R-315`, SC-307, SC-308) 〔단위 4〕
-- [ ] T018 [US3] [화면 뒤] `App/Tests/MokaAppTests/SettingsSnapshotTests.swift`에 `test_R313_onboardingKeyEmpty`, `test_R313_onboardingKeyFailed`, `test_R313_onboardingKeySaved`(라이트·다크)를 확정 시안대로 쓰고 실패를 확인한다. 기존 온보딩 두 단계 스냅샷은 그대로 둔다(`FR-21 R-313`) 〔단위 4〕
+- [ ] T017 [US3] `App/Tests/MokaAppTests/AppDecisionTests.swift`: 온보딩이 안 끝난 상태에서 키 단계 첫 값(`hasKey`), 키 단계 저장 콜백이 실패면 `false`·성공이면 `true`를 돌려줌, 키 단계 저장이 spec 003 `saveKey`와 같은 결과(앞뒤 공백 제거, 장부 비움, 실패면 `keyActionFailure == .save`), 이미 있음, 키 없이 `finishOnboarding` 뒤 할 일을 넣으면 노치에 뜸, 키 저장 뒤 끝내기 전 다시 만든 `AppState`에서 온보딩이 다시 보이고 키는 있음, 키 값이 설정 저장소·판단 결과·행동 로그에 없음. 실패를 확인한다(`FR-21 R-314`, `FR-21 R-315`, SC-307, SC-308) 〔단위 4〕
+- [ ] T018 [US3] [화면 뒤] `App/Tests/MokaAppTests/SettingsSnapshotTests.swift`에 `test_R313_onboardingKeyEmpty`, `test_R313_onboardingKeyFailed`, `test_R313_onboardingKeySaved`(라이트·다크)를 확정 시안대로 쓰고 실패를 확인한다. `onboardingKeyFailed`는 `false`를 돌려주는 `onSave`로 뷰를 만들고 저장을 눌러, 뷰가 스스로 실패 문구로 바뀌는지 찍는다(뷰를 다시 만들지 않음, data-model §5). 기존 온보딩 두 단계 스냅샷은 그대로 둔다(`FR-21 R-313`) 〔단위 4〕
 
 ### Implementation (Green)
 
-- [ ] T019 [US3] [화면 뒤] `App/Sources/Views/OnboardingView.swift`에 `keyStep: OnboardingKeyInput? = nil`(data-model §5 표), 값이 있으면 세 단계이고 첫 단계가 키, 칸이 비면 "다음" 꺼짐, 발급 링크는 `NSWorkspace`로 연다. `nil`이면 지금 두 단계 그대로. T018 PASS, 기존 스냅샷 PASS 〔단위 4〕
-- [ ] T020 [US3] `App/Sources/AppState.swift`에 온보딩 키 입력 값(`hasKey`, `keyActionFailure`)과 저장 콜백(`saveKey` 재사용), `App/Sources/MokaApp.swift`가 온보딩에 `keyStep`과 발급 링크 상수(T002에서 확정한 주소, 앱 상수 한 곳)를 넘긴다. T017 PASS 〔단위 4〕
+- [ ] T019 [US3] [화면 뒤] `App/Sources/Views/OnboardingView.swift`에 `keyStep: OnboardingKeyInput? = nil`(data-model §5 표, 저장 실패는 `onSave`의 `false`를 `@State`로 들고 있음), 값이 있으면 세 단계이고 첫 단계가 키, 칸이 비면 "다음" 꺼짐, 발급 링크는 `NSWorkspace`로 연다. `nil`이면 지금 두 단계 그대로. T018 PASS, 기존 스냅샷 PASS 〔단위 4〕
+- [ ] T020 [US3] `App/Sources/AppState.swift`에 온보딩 키 단계가 쓰는 값(`hasKey`)과 저장 콜백(`saveKey` 재사용, 성공 여부를 Bool로 돌려줌. 실패 문구는 뷰가 그 false로 보이고 `keyActionFailure`는 설정 창 기본 탭 문구용), `App/Sources/MokaApp.swift`가 온보딩에 `keyStep`과 발급 링크 상수(T002에서 확정한 주소, 앱 상수 한 곳)를 넘긴다. T017 PASS 〔단위 4〕
 - [ ] T021 [사람] [US3] quickstart 6-4(macOS 새 사용자 계정) 〔단위 4〕
 
 **확인 지점**: SC-307·SC-308. 키 없이 온보딩을 끝내도 노치에 할 일이 뜬다.
@@ -136,7 +137,7 @@ description: "spec 004 판단 결과 화면 연결 작업 목록"
 
 ### Tests (Red)
 
-- [ ] T022 [US4] `App/Tests/MokaAppTests/AppDecisionTests.swift`: 가짜 공급자 401 뒤 `showsKeyNotice == true`, 키 저장·지움 뒤 `false`, 키 없음이면 `false`, 키 확인 동작이 `settingsTabRequest == .basic`을 남김. 실패를 확인한다(`FR-14 R-318`, SC-309) 〔단위 2〕
+- [ ] T022 [US4] `App/Tests/MokaAppTests/AppDecisionTests.swift`: 가짜 공급자 401 뒤 `showsKeyNotice == true`, 키 저장·지움 뒤 `false`, 401 뒤 키 저장이 실패하면 `showsKeyNotice`가 기본 탭 `keyFieldState == .needsCheck`와 같은 값(`false`), 키 없음이면 `false`, 키 확인 동작이 `settingsTabRequest == .basic`을 남김. 실패를 확인한다(`FR-14 R-318`, SC-309) 〔단위 2〕
 - [ ] T024 [US4] [화면 뒤] `App/Tests/MokaAppTests/ScreenStateSnapshotTests.swift`에 `test_R316_keyNoticeEmpty`, `test_R316_keyNoticeDraft`, `test_R316_keyNoticeRunning`(라이트·다크)과 접힌 노치에 표시가 없는 것(기존 접힌 스냅샷과 같은 그림)을 쓰고 실패를 확인한다(`FR-14 R-316`) 〔단위 3〕
 - [ ] T026 [US4] [화면 뒤] `App/Tests/MokaAppTests/SettingsSnapshotTests.swift`에 `test_R317_taskTabKeyNotice`(라이트·다크)를 쓰고 실패를 확인한다(`FR-14 R-317`) 〔단위 4〕
 
