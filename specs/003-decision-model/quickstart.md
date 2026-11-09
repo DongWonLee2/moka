@@ -27,7 +27,7 @@ cd tuning && python3 -m pytest
 ## 3. 시뮬레이터 (자동, 단위 맨 끝, R-216)
 
 ```
-swift run moka-sim < Tests/MokaCoreTests/Fixtures/sim/storage-judge-order.json
+swift run moka-sim run Tests/MokaCoreTests/Fixtures/sim/storage-judge-order.json
 ```
 
 기대: golden `.expected.jsonl`과 바이트 같음. spec 001 타이머 golden은 바이트 그대로, spec 002 storage golden은 단위 2에서 R-209로 갱신한 기대 출력과 같음(SimGoldenTests). 단위가 다음 spec으로 넘어가면 SKIP과 이유를 적는다.
