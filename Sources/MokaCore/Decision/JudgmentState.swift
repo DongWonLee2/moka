@@ -93,7 +93,7 @@ public struct JudgmentState: Equatable, Sendable {
     }
 
     /// RFC 8259 문자열. `"`, `\`, U+0000~U+001F만 이스케이프한다.
-    private static func quoted(_ text: String) -> String {
+    static func quoted(_ text: String) -> String {
         var out = "\""
         for scalar in text.unicodeScalars {
             switch scalar {

@@ -48,6 +48,13 @@ public protocol ContextStore: AnyObject {
     func updateContext(_ context: MokaContext) throws
 }
 
+/// 할 일마다 최신 판단 결과 한 벌(spec R-205). 다시 저장하면 덮어쓴다. 지우기는 없다.
+public protocol ScoreStore: AnyObject {
+    func scores() throws -> [TaskID: TaskScore]
+    /// 없는 할 일이면 `taskNotFound`.
+    func upsertScore(_ score: TaskScore) throws
+}
+
 // MARK: - 메모리 구현(시험·`moka-sim`). GRDB 구현과 같은 규칙(data-model §3, §7 CHECK)을 지킨다.
 
 public final class InMemoryTaskRepository: TaskRepository {
@@ -154,5 +161,28 @@ public final class InMemoryContextStore: ContextStore {
             throw StoreError.contextNotFound(context.id)
         }
         stored[index] = context
+    }
+}
+
+public final class InMemoryScoreStore: ScoreStore {
+    private let tasks: InMemoryTaskRepository
+    private var stored: [TaskID: TaskScore] = [:]
+
+    public init(tasks: InMemoryTaskRepository) {
+        self.tasks = tasks
+    }
+
+    public func scores() throws -> [TaskID: TaskScore] {
+        stored
+    }
+
+    /// GRDB 구현처럼 매긴 시각은 초 단위로 남긴다.
+    public func upsertScore(_ score: TaskScore) throws {
+        guard try tasks.tasks().contains(where: { $0.id == score.taskID }) else {
+            throw StoreError.taskNotFound(score.taskID)
+        }
+        var floored = score
+        floored.scoredAt = UTCTimestamp.floorToSecond(score.scoredAt)
+        stored[score.taskID] = floored
     }
 }
