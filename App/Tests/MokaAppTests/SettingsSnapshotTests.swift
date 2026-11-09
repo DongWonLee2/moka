@@ -5,8 +5,8 @@ import XCTest
 /// 설정 창 탭 내용을 라이트·다크 PNG로 만든다(ADR-0009, 시안 6번). sanity만 보고 정합은 사람이 비교 페이지에서 본다.
 @MainActor
 final class SettingsSnapshotTests: XCTestCase {
-    /// 설정 창 폭 460pt. 높이는 기본 탭 내용이 들어가는 만큼.
-    private static let size = CGSize(width: 460, height: 240)
+    /// 설정 창 폭 460pt. 높이는 기본 탭 내용(아래 키 칸 포함, spec 003)이 들어가는 만큼.
+    private static let size = CGSize(width: 460, height: 330)
 
     func test_R012_basicTabDefaults() throws {
         try snapshot("s06-basic", quantumText: "25", extendText: "10")

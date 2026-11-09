@@ -4,12 +4,31 @@ import SwiftUI
 
 /// 설정 창 기본 탭(시안 6번, R-012, data-model §6). 값과 콜백만 받는다(ADR-0009).
 /// 숫자 칸은 제출(Enter)이나 포커스를 잃을 때 `onCommit`을 부른다. 받지 않는 값을 적는 동안은 안내 대신 이유를 보인다.
+/// 아래에 판단 모델 키 칸(spec 003 시안 v2 1~7번, R-213)을 둔다.
 struct BasicTabView: View {
     let quantum: MinutesFieldInput
     let extend: MinutesFieldInput
     @Binding var dayStart: Date
+    var keyState: KeyFieldState = .noKey
+    /// 다시 물을 할 일이 없거나 물을 수 없으면 "다시 물어보기"가 꺼진다.
+    var canRetry: Bool = false
+    var onSaveKey: (String) -> Void = { _ in }
+    var onDeleteKey: () -> Void = {}
+    var onRetry: () -> Void = {}
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            settingsGrid
+            KeyFieldBox(
+                state: keyState, canRetry: canRetry, onSave: onSaveKey, onDelete: onDeleteKey, onRetry: onRetry)
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 10)
+        .padding(.bottom, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var settingsGrid: some View {
         Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 4) {
             MinutesFieldRow(
                 label: "기본 작업 시간", hint: "한 번에 집중할 시간이에요. 새 할 일에 먼저 골라 둬요.", input: quantum)
@@ -26,10 +45,6 @@ struct BasicTabView: View {
                 HintText(text: "이 시각이 지나면 반복 할 일이 다시 대기로 돌아와요.", isIssue: false)
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.top, 10)
-        .padding(.bottom, 14)
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// 시안 6번처럼 `06:00`(24시간)으로 보인다. 언어·지역은 시스템 설정을 따른다.
@@ -87,6 +102,70 @@ private struct MinutesFieldRow: View {
                 HintText(text: hint, isIssue: false)
             }
         }
+    }
+}
+
+/// 판단 모델 키 칸. 키 값은 붙여 넣는 동안 가림 입력에만 있고, 저장을 누르면 넘긴 뒤 바로 비운다(R-214).
+private struct KeyFieldBox: View {
+    let state: KeyFieldState
+    let canRetry: Bool
+    let onSave: (String) -> Void
+    let onDelete: () -> Void
+    let onRetry: () -> Void
+    @State private var keyText = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("판단 모델 키 (TypeSafe)")
+                .font(.system(size: 12.5, weight: .semibold))
+                .padding(.bottom, 6)
+            if state.showsSavedRow {
+                HStack(spacing: 6) {
+                    Text("저장되어 있어요")
+                        .font(.system(size: 12.5))
+                    Spacer(minLength: 0)
+                    SheetButton(title: "지우기", kind: .dangerText, action: onDelete)
+                    SheetButton(title: "다시 물어보기", kind: .normal, action: onRetry)
+                        .disabled(!canRetry)
+                }
+            } else {
+                if let intro = KeyFieldState.noKey.notice {
+                    Text(intro.text)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.bottom, 6)
+                }
+                HStack(spacing: 6) {
+                    SecureField("키를 붙여 넣어 주세요", text: $keyText)
+                        .accessibilityLabel("판단 모델 키")
+                        .onSubmit(save)
+                    SheetButton(title: "저장", kind: .primary, action: save)
+                        .disabled(!KeyFieldState.canSave(keyText))
+                }
+            }
+            if state != .noKey, let notice = state.notice {
+                Text(notice.text)
+                    .font(.system(size: 11))
+                    .foregroundStyle(notice.isWarning ? AnyShapeStyle(MokaColors.danger) : AnyShapeStyle(.secondary))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 5)
+            }
+        }
+        .padding(.top, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(Color(hex: 0x806E5F, opacity: 0.22))
+                .frame(height: 1)
+        }
+        .padding(.top, 12)
+    }
+
+    private func save() {
+        guard KeyFieldState.canSave(keyText) else { return }
+        onSave(keyText)
+        keyText = ""
     }
 }
 

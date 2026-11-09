@@ -682,7 +682,8 @@ final class AppDecisionTests: XCTestCase {
 
     func test_FR16_R213_keyFieldStorageUnavailable() throws {
         let state = makeState(
-            nil, decision: DecisionSetup(
+            nil,
+            decision: DecisionSetup(
                 keyStore: InMemoryKeyStore(key: "fake-key"), provider: Self.ok(), questions: Self.questions))
         state.launch()
 
