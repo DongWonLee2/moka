@@ -2,67 +2,6 @@ import Foundation
 import MokaCore
 import Testing
 
-// MARK: - 노치 고르기 RotateByIDRule(data-model §5.1)
-
-@Suite struct RotateByIDRuleTests {
-    @Test("FR-05 R-104: 고른 규칙 이름은 rotate_by_id_v0")
-    func choiceName() {
-        #expect(RotateByIDRule.choice == .rotateByIDV0)
-        #expect(RotateByIDRule.choice.rawValue == "rotate_by_id_v0")
-    }
-
-    @Test("FR-05 R-104: 이전 할 일이 없으면 대기 할 일 가운데 id가 가장 작은 것")
-    func firstPickIsSmallestID() {
-        let tasks = [Fake.task(3), Fake.task(1), Fake.task(2)]
-        #expect(RotateByIDRule.pick(from: tasks, after: nil)?.id == 1)
-    }
-
-    @Test("FR-05 R-104: 진행 중·완료·버린 할 일은 후보가 아니다")
-    func onlyTodoIsCandidate() {
-        let tasks = [
-            Fake.task(1, status: .active), Fake.task(2, status: .done), Fake.task(3, status: .dropped), Fake.task(4),
-        ]
-        #expect(RotateByIDRule.pick(from: tasks, after: nil)?.id == 4)
-        #expect(RotateByIDRule.pick(from: tasks, after: 4)?.id == 4)
-    }
-
-    @Test("FR-05 R-104: 후보가 없으면 nil(빈 상태)")
-    func noCandidateIsNil() {
-        #expect(RotateByIDRule.pick(from: [], after: nil) == nil)
-        #expect(RotateByIDRule.pick(from: [Fake.task(1, status: .done)], after: 1) == nil)
-    }
-
-    @Test("FR-05 R-104: 후보가 하나면 이전 할 일이 그 할 일이어도 다시 그것")
-    func singleCandidateRepeats() {
-        #expect(RotateByIDRule.pick(from: [Fake.task(5)], after: 5)?.id == 5)
-    }
-
-    @Test("FR-05 R-104: 대기 할 일 넷에서 이어 고르면 1 → 2 → 3 → 4 → 1")
-    func rotatesThroughFour() {
-        let tasks = Fake.todos(1...4)
-        var previous: TaskID?
-        var picked: [TaskID] = []
-        for _ in 0..<5 {
-            previous = RotateByIDRule.pick(from: tasks, after: previous)?.id
-            picked.append(previous!)
-        }
-        #expect(picked == [1, 2, 3, 4, 1])
-    }
-
-    @Test("FR-05 R-104: 이전 할 일이 버린 할 일 id여도 그다음 큰 id")
-    func droppedPreviousStillAdvances() {
-        let tasks = [Fake.task(1), Fake.task(2, status: .dropped), Fake.task(3)]
-        #expect(RotateByIDRule.pick(from: tasks, after: 2)?.id == 3)
-    }
-
-    @Test("FR-05 R-104: 이전 할 일보다 큰 후보가 없으면 처음으로 돌아간다")
-    func wrapsAround() {
-        let tasks = [Fake.task(2), Fake.task(4), Fake.task(7, status: .done)]
-        #expect(RotateByIDRule.pick(from: tasks, after: 4)?.id == 2)
-        #expect(RotateByIDRule.pick(from: tasks, after: 9)?.id == 2)
-    }
-}
-
 // MARK: - 재시작 복구 LaunchRecovery(data-model §5.2)
 
 @Suite struct LaunchRecoveryTests {

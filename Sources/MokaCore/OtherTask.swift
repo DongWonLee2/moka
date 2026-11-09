@@ -1,6 +1,6 @@
 import Foundation
 
-/// 시작 전 화면 "다른 할 일" 목록(R-104, 2026-11-04 사용자 결정). 노치가 처음 고르는 규칙(`RotateByIDRule`)과 무관하다.
+/// 시작 전 화면 "다른 할 일" 목록(R-104, 2026-11-04 사용자 결정). 노치가 처음 고르는 규칙(`PriorityRotateRule`)과 무관하다.
 public enum OtherTaskList {
     /// 지금 할 일을 뺀 대기 할 일. 할 일 탭 마감 순(§5.7)과 같은 순서다.
     public static func rows(_ tasks: [MokaTask], current: TaskID?, today: LocalDay, calendar: Calendar) -> [MokaTask] {

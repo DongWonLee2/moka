@@ -1,17 +1,5 @@
 import Foundation
 
-/// 노치 고르기(R-104, data-model §5.1). 스케줄러(마일스톤 4) 전 임시 규칙이다.
-public enum RotateByIDRule {
-    public static let choice = SchedulerChoice.rotateByIDV0
-
-    /// 대기 할 일 가운데 `previous`보다 큰 id 중 가장 작은 것. 없으면 처음(가장 작은 id)으로 돌아간다.
-    public static func pick(from tasks: [MokaTask], after previous: TaskID?) -> MokaTask? {
-        let candidates = tasks.filter { $0.status == .todo }.sorted { $0.id < $1.id }
-        guard let previous else { return candidates.first }
-        return candidates.first { $0.id > previous } ?? candidates.first
-    }
-}
-
 /// 재시작 복구(R-111, data-model §5.2). 앱 시작마다 한 번, 하루 판정보다 먼저 돈다.
 public enum LaunchRecovery {
     /// 진행 중인 할 일을 모두 대기로 바꾼 목록(바뀐 것만).

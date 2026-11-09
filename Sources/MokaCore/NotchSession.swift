@@ -38,12 +38,30 @@ public struct SessionInput: Sendable {
     public var defaultQuantumMin: Int
     /// `GregorianCalendar.make(timeZone:)`.
     public var calendar: Calendar
+    /// 노치 순서에 쓸 판단 결과(spec 003 data-model §1). nil이면 모든 할 일이 점수 없음(마감 순).
+    public var scoring: SessionScoring?
 
-    public init(tasks: [MokaTask], now: Date, defaultQuantumMin: Int, calendar: Calendar) {
+    public init(
+        tasks: [MokaTask], now: Date, defaultQuantumMin: Int, calendar: Calendar, scoring: SessionScoring? = nil
+    ) {
         self.tasks = tasks
         self.now = now
         self.defaultQuantumMin = defaultQuantumMin
         self.calendar = calendar
+        self.scoring = scoring
+    }
+}
+
+/// 노치 순서가 기대는 판단 결과. `usable`은 `ScoreRules.usable`로 거른 사전, `today`는 고르는 날(spec 002 R-114).
+public struct SessionScoring: Sendable {
+    public var usable: [TaskID: TaskScore]
+    public var questions: QuestionSet
+    public var today: LocalDay
+
+    public init(usable: [TaskID: TaskScore], questions: QuestionSet, today: LocalDay) {
+        self.usable = usable
+        self.questions = questions
+        self.today = today
     }
 }
 
@@ -65,9 +83,10 @@ extension NotchSession {
     /// empty(nil), 나머지 nil.
     public static let initial = NotchSession(timer: .empty(draft: nil), taskID: nil, previousTaskID: nil, run: nil)
 
-    /// 고르기. empty(nil)일 때만 바뀐다. 초안의 칩은 그 순간의 기본값이다.
+    /// 고르기(spec 003 R-209). empty(nil)일 때만 바뀐다. 초안의 칩은 그 순간의 기본값이다.
     public func picked(_ input: SessionInput) -> NotchSession {
-        guard timer == .empty(draft: nil), let task = RotateByIDRule.pick(from: input.tasks, after: previousTaskID)
+        guard timer == .empty(draft: nil),
+            let task = PriorityRotateRule.pick(order: PriorityOrder.order(input), after: previousTaskID)
         else { return self }
         return drafting(task, input)
     }
@@ -211,7 +230,7 @@ extension NotchSession {
         case .empty(.some):
             return taskID
         case .running, .expired:
-            return RotateByIDRule.pick(from: input.tasks, after: nil)?.id
+            return PriorityRotateRule.pick(order: PriorityOrder.order(input), after: nil)?.id
         }
     }
 
@@ -283,11 +302,18 @@ extension NotchSession {
         return NotchSession(timer: timer, taskID: nil, previousTaskID: cursor, run: nil)
     }
 
-    /// 로그 한 줄(R-112). 판단 칸과 `model_snapshot`은 nil.
+    /// 로그 한 줄(spec 003 R-212, data-model §8). 쓸 판단 결과가 없으면 공급자 `fallback`만 남긴다.
     private static func logLine(_ taskID: TaskID, _ action: UserAction, _ input: SessionInput) -> NewDecisionLogEntry {
-        NewDecisionLogEntry(
-            taskID: taskID, judgment: nil, modelSnapshot: nil, schedulerChoice: RotateByIDRule.choice,
-            userAction: action, createdAt: input.now)
+        let score = input.scoring?.usable[taskID]
+        let judgment =
+            score.map {
+                Judgment(
+                    provider: $0.provider, questionVersion: $0.questionVersion, probsJSON: $0.probsJSON,
+                    stateHash: $0.stateHash)
+            } ?? Judgment(provider: "fallback", questionVersion: nil, probsJSON: nil, stateHash: nil)
+        return NewDecisionLogEntry(
+            taskID: taskID, judgment: judgment, modelSnapshot: score?.modelSnapshot,
+            schedulerChoice: PriorityRotateRule.choice, userAction: action, createdAt: input.now)
     }
 }
 
