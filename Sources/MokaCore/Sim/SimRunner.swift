@@ -43,7 +43,7 @@ public enum SimRunner {
             case .start: timerEvent = .start
             case .tick: timerEvent = .tick
             case .complete: timerEvent = .complete
-            case .addTask, .skip, .switchTask, .quit, .relaunch, .activate:
+            case .addTask, .skip, .switchTask, .quit, .relaunch, .activate, .judge, .key:
                 // 디코딩이 storage 없이는 막는다.
                 throw SimError(kind: .storageOnly, seq: event.seq, message: "\(event.kind.name)는 storage 모드에서만 받는다")
             }

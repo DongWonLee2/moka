@@ -16,6 +16,9 @@ enum SimEventKind: Equatable {
     case quit
     case relaunch
     case activate
+    // spec 003 storage 모드에서만
+    case judge(SimJudge)
+    case key(present: Bool)
 
     var name: String {
         switch self {
@@ -31,8 +34,23 @@ enum SimEventKind: Equatable {
         case .quit: "quit"
         case .relaunch: "relaunch"
         case .activate: "activate"
+        case .judge: "judge"
+        case .key: "key"
         }
     }
+}
+
+/// `judge` 이벤트의 값(contracts/moka-sim-v1-additions-003.md). 범위는 디코딩에서 확인했다.
+struct SimJudge: Equatable {
+    var taskID: TaskID
+    /// 0~3, score 답.
+    var urgency: Double
+    /// 0~2, score 답.
+    var impact: Double
+    /// 0~1, noul 답.
+    var concrete: Double
+    /// 0~1, noul 답.
+    var avoiding: Double
 }
 
 struct SimEvent: Equatable {
@@ -70,6 +88,7 @@ extension SimScenario {
     private static let storageEventKeys: [String: [String]] = [
         "add_task": ["title", "deadline", "recurrence", "weekday", "est_min"], "skip": noteKeys, "switch": noteKeys,
         "quit": [], "relaunch": [], "activate": [],
+        "judge": ["task", "urgency", "impact", "concrete", "avoiding"], "key": ["present"],
     ]
 
     static func decode(_ data: Data) throws(SimError) -> SimScenario {
@@ -174,6 +193,12 @@ extension SimScenario {
         case "switch": kind = .switchTask(try notes(event, seq: seq))
         case "quit": kind = .quit
         case "relaunch": kind = .relaunch
+        case "judge": kind = .judge(try judge(event, seq: seq))
+        case "key":
+            guard case .bool(let present) = try require(event, "present", path: "present", seq: seq) else {
+                throw SimError(kind: .wrongType, seq: seq, message: "present는 JSON 불리언이어야 한다")
+            }
+            kind = .key(present: present)
         default: kind = .activate
         }
         return SimEvent(seq: seq, epochSeconds: epochSeconds, kind: kind)
@@ -255,6 +280,17 @@ extension SimScenario {
         return NewTask(title: title, deadline: deadline, estMin: estMin, recurrence: recurrence, weekday: weekday)
     }
 
+    /// `judge`. 할 일이 있는지, 대기·진행 중인지는 실행 때 본다.
+    private static func judge(_ event: Object, seq: Int) throws(SimError) -> SimJudge {
+        func answer(_ key: String, upTo top: Double) throws(SimError) -> Double {
+            try number(require(event, key, path: key, seq: seq), path: key, range: 0...top, seq: seq)
+        }
+        let task = try integer(require(event, "task", path: "task", seq: seq), path: "task", seq: seq)
+        return SimJudge(
+            taskID: TaskID(task), urgency: try answer("urgency", upTo: 3), impact: try answer("impact", upTo: 2),
+            concrete: try answer("concrete", upTo: 1), avoiding: try answer("avoiding", upTo: 1))
+    }
+
     private static func field(_ object: Object, _ key: String) -> SimJSON? {
         object.first { $0.key == key }?.value
     }
@@ -293,6 +329,19 @@ extension SimScenario {
         }
         guard let number = Int(raw) else {
             throw SimError(kind: .outOfRange, seq: seq, message: "\(path) \(raw)이 정수 범위 밖이다")
+        }
+        return number
+    }
+
+    /// 정수 또는 실수.
+    private static func number(_ value: SimJSON, path: String, range: ClosedRange<Double>, seq: Int?)
+        throws(SimError) -> Double
+    {
+        guard case .number(let raw) = value, let number = Double(raw) else {
+            throw SimError(kind: .wrongType, seq: seq, message: "\(path)는 JSON 수여야 한다")
+        }
+        guard range.contains(number) else {
+            throw SimError(kind: .outOfRange, seq: seq, message: "\(path) \(raw)이 \(range) 밖이다")
         }
         return number
     }
