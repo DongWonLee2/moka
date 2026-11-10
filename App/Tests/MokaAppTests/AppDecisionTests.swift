@@ -771,6 +771,97 @@ final class AppDecisionTests: XCTestCase {
         XCTAssertFalse(String(describing: try repository.decisions()).contains(secret), "행동 로그")
         XCTAssertFalse(String(describing: try repository.tasks()).contains(secret), "할 일")
     }
+
+    // MARK: - spec 004 T005 이유 줄(FR-04 R-305)
+
+    func test_FR04_R305_reasonLineOnlyForDraftAndRunning() async throws {
+        let provider = Self.ok()
+        await provider.hold()
+        let h = try harness(count: 1, deadlines: [Self.day("2027-01-16")], provider: provider)
+        XCTAssertNil(h.state.reasonLine, "빈 상태")
+
+        h.state.launch()
+        let runner = try XCTUnwrap(h.state.requestScores())
+        await provider.waitForHeld(count: 1)
+        XCTAssertEqual(h.state.reasonLine, "D-3 · 미룬 0번", "판단 결과가 없으면 손해 칸이 없다")
+        await provider.releaseAll()
+        await runner.value
+        XCTAssertEqual(h.state.reasonLine, "D-3 · 손해 꽤 · 미룬 0번")
+
+        h.state.start()
+        XCTAssertEqual(h.state.reasonLine, "D-3 · 손해 꽤 · 미룬 0번", "도는 중")
+        h.clock.advance(minutes: 60 * 3)
+        h.state.tick()
+        guard case .expired = h.state.timer else { return XCTFail("시간 끝: \(h.state.timer)") }
+        XCTAssertNil(h.state.reasonLine, "시간 끝")
+    }
+
+    func test_FR04_R305_reasonLineFollowsAnswerWithoutChangingNotchTask() async throws {
+        let provider = FakeDecisionProvider(answer: .success(Self.answer(urgency: 0)))
+        await provider.setAnswer(.success(Self.answer(urgency: 3)), for: 2)
+        await provider.hold()
+        let h = try harness(count: 2, provider: provider)
+        h.state.launch()
+        let runner = try XCTUnwrap(h.state.requestScores())
+        await provider.waitForHeld(count: 2)
+        XCTAssertEqual(h.state.session.taskID, 1)
+        XCTAssertEqual(h.state.reasonLine, "마감 없음 · 미룬 0번")
+
+        await provider.releaseAll()
+        await runner.value
+
+        XCTAssertEqual(h.state.reasonLine, "마감 없음 · 손해 꽤 · 미룬 0번", "답이 저장되면 손해가 보인다")
+        XCTAssertEqual(h.state.session.taskID, 1, "노치 할 일은 그대로(spec US1-5)")
+        XCTAssertEqual(h.state.ranks[2], 1, "순서는 바뀐다")
+    }
+
+    func test_FR04_R305_deletingKeyDropsLoss() async throws {
+        let h = await launched(try harness(count: 1))
+        XCTAssertEqual(h.state.reasonLine, "마감 없음 · 손해 꽤 · 미룬 0번")
+
+        XCTAssertTrue(h.state.deleteKey())
+
+        XCTAssertEqual(h.state.reasonLine, "마감 없음 · 미룬 0번")
+    }
+
+    // MARK: - spec 004 T022 키 확인 표시(FR-14 R-318, SC-309)
+
+    func test_FR14_R318_keyNoticeFollowsKeyFieldNeedsCheck() async throws {
+        let none = try harness(count: 1, key: nil)
+        none.state.launch()
+        XCTAssertFalse(none.state.showsKeyNotice, "키 없음")
+
+        let ok = await launched(try harness(count: 1))
+        XCTAssertFalse(ok.state.showsKeyNotice)
+
+        let h = await launched(try harness(count: 1, provider: FakeDecisionProvider(answer: .failure(.unauthorized))))
+        XCTAssertTrue(h.state.showsKeyNotice, "401 뒤")
+        XCTAssertEqual(h.state.keyFieldState, .needsCheck)
+
+        h.keys.failing = [.save]
+        XCTAssertFalse(h.state.saveKey("fake-key-2"))
+        XCTAssertFalse(h.state.showsKeyNotice, "저장 실패 문구가 먼저 보이는 동안 꺼진다")
+        XCTAssertEqual(h.state.showsKeyNotice, h.state.keyFieldState == .needsCheck)
+
+        h.keys.failing = []
+        XCTAssertTrue(h.state.saveKey("fake-key-2"))
+        XCTAssertFalse(h.state.showsKeyNotice, "다시 저장하면 꺼진다")
+
+        let deleted = await launched(
+            try harness(count: 1, provider: FakeDecisionProvider(answer: .failure(.unauthorized))))
+        XCTAssertTrue(deleted.state.showsKeyNotice)
+        XCTAssertTrue(deleted.state.deleteKey())
+        XCTAssertFalse(deleted.state.showsKeyNotice, "지우면 꺼진다")
+    }
+
+    func test_FR14_R318_keySettingsRequestAsksBasicTab() {
+        let state = makeState(InMemoryTaskRepository())
+        XCTAssertNil(state.settingsTabRequest)
+
+        state.requestKeySettings()
+
+        XCTAssertEqual(state.settingsTabRequest, .basic)
+    }
 }
 
 /// 쓴 값을 모두 남기는 설정 저장소. 키 값이 설정에 들어가지 않는지 본다(SC-208).

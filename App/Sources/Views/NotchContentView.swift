@@ -22,6 +22,8 @@ struct NotchContentView: View {
     /// 노치의 할 일의 첫 행동(R-109). 펼친 화면은 있으면 보이고, 접힌 화면은 `showsFirstActionCollapsed`일 때만.
     var firstAction: String?
     var showsFirstActionCollapsed = false
+    /// 접힌 화면의 첫 행동 글자. nil이면 `firstAction`을 쓴다. 게이트가 펼친 화면 줄만 숨기므로 앱은 따로 넘긴다(spec 004 R-311).
+    var collapsedFirstAction: String?
     let titleFocusRequest: Int
     let chip: QuantumChipInput
     let onEnterTitle: (String) -> Void
@@ -35,14 +37,14 @@ struct NotchContentView: View {
 
     var body: some View {
         let palette = PanelPalette.resolve(style: style, colorScheme: colorScheme)
-        let collapsedFirstAction = showsFirstActionCollapsed ? firstAction : nil
+        let collapsedLine = showsFirstActionCollapsed ? (collapsedFirstAction ?? firstAction) : nil
         let sides = NotchLayout.collapsedSideWidths(
             timer: timer, remainingSeconds: remainingSeconds, style: style,
-            showsFirstAction: collapsedFirstAction != nil)
+            showsFirstAction: collapsedLine != nil)
         ZStack(alignment: .top) {
             HStack(spacing: 0) {
                 if !isExpanded {
-                    CollapsedLeadingView(timer: timer, firstAction: collapsedFirstAction)
+                    CollapsedLeadingView(timer: timer, firstAction: collapsedLine)
                         .frame(width: sides.leading, height: metrics.height)
                         .transition(sideTransition(towardHole: .trailing))
                 }
