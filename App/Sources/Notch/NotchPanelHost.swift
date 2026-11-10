@@ -217,6 +217,7 @@ struct NotchPanelRoot: View {
             storageUnavailable: appState.storageUnavailable,
             firstAction: appState.firstAction,
             showsFirstActionCollapsed: appState.showsFirstActionCollapsed,
+            collapsedFirstAction: appState.collapsedFirstAction,
             titleFocusRequest: appState.titleFocusRequest,
             chip: QuantumChipInput(
                 customText: appState.customText,

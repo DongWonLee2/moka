@@ -131,13 +131,14 @@ final class AppState {
         TaskListView.rows(tasks, scope: taskListScope, order: taskListOrder, today: logicalToday, calendar: calendar)
     }
 
-    /// 노치의 할 일의 첫 행동(화면 이름 "이어서 할 일", R-109). 시작 전·도는 중 펼친 화면은 있으면 보인다.
+    /// 펼친 화면 제목 아래 이어서 할 일(R-109). 시작 전·도는 중 펼친 화면은 있으면 보인다.
     /// 게이트가 묻는 중이거나 확인하는 중이면 게이트 칸이 같은 줄을 보이므로 숨긴다(spec 004 R-311).
     var firstAction: String? {
-        gatePhase == .closed ? storedFirstAction : nil
+        gatePhase == .closed ? collapsedFirstAction : nil
     }
 
-    private var storedFirstAction: String? {
+    /// 접힌 3초 표시에 쓰는 노치 할 일의 첫 행동(R-109). 게이트와 관계없이 저장된 값이다(spec 004 R-311).
+    var collapsedFirstAction: String? {
         guard let id = session.taskID else { return nil }
         return tasks.first { $0.id == id }?.firstAction
     }
@@ -146,7 +147,7 @@ final class AppState {
     /// 게이트를 통과해도 다시 켜지 않는다(spec 004 R-311).
     var showsFirstActionCollapsed: Bool {
         _ = collapsedRedrawTick
-        guard Self.isDraft(timer), storedFirstAction != nil, let pickedAt else { return false }
+        guard Self.isDraft(timer), collapsedFirstAction != nil, let pickedAt else { return false }
         return FirstActionDisplay.showsInCollapsed(pickedAt: pickedAt, now: clock.now())
     }
 
