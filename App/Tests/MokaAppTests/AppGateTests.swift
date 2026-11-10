@@ -219,6 +219,32 @@ final class AppGateTests: XCTestCase {
         XCTAssertEqual(h.state.gateDraftText, "가짜 첫 행동", "다시 묻기 칸에는 마지막에 적은 줄")
     }
 
+    /// 다른 할 일도 묻는 중이면 게이트 단계가 바뀌지 않는다. 그래도 돌아온 할 일의 칸은 그 할 일의 마지막 줄이다.
+    func test_FR13_R309_returningFromAnotherAskingTaskRefillsLastSubmittedLine() async throws {
+        let provider = Self.provider(concrete: 0.3)
+        let h = await launched(try harness(count: 2, provider: provider))
+        XCTAssertEqual(h.state.gatePhase, .asking)
+        await provider.hold()
+        XCTAssertTrue(h.state.submitFirstAction("가짜 첫 행동"))
+        let runner = try XCTUnwrap(h.state.requestScores())
+        await provider.waitForHeld(count: 1)
+        XCTAssertEqual(h.state.gatePhase, .checking)
+
+        h.state.chooseOtherTask(2)
+        XCTAssertEqual(h.state.session.taskID, 2)
+        XCTAssertEqual(h.state.gatePhase, .asking, "할 일 2도 0.3이라 묻는다")
+        XCTAssertEqual(h.state.gateDraftText, "", "할 일 2는 적은 적이 없어 칸이 비어 있다")
+        await provider.releaseAll()
+        await runner.value
+
+        h.state.beginOtherTask()
+        h.state.chooseOtherTask(1)
+        XCTAssertEqual(h.state.session.taskID, 1)
+        XCTAssertEqual(h.state.gatePhase, .asking)
+        XCTAssertEqual(h.state.gateRecords[1]?.submissions, 1)
+        XCTAssertEqual(h.state.gateDraftText, "가짜 첫 행동", "다시 묻기 칸에는 그 할 일의 마지막 줄")
+    }
+
     func test_FR13_R308_R309_lowAnswerAsksAgainAndThirdSubmissionPasses() async throws {
         let h = await launched(try harness(count: 1))
 
