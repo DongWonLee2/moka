@@ -139,6 +139,10 @@ final class AppGateTests: XCTestCase {
         XCTAssertEqual(Array(calls.dropFirst(before.count)), [1], "질의 1건")
         XCTAssertEqual(h.state.gatePhase, .checking)
         XCTAssertEqual(h.state.gateDraftText, "가짜 첫 행동")
+        XCTAssertFalse(h.state.submitFirstAction("가짜 다른 줄"), "확인하는 중에는 제출을 받지 않는다")
+        let whileChecking = await h.provider.calls
+        XCTAssertEqual(whileChecking, calls)
+        XCTAssertEqual(h.state.gateRecords[1]?.submissions, 1)
 
         await h.provider.releaseAll()
         await runner.value
@@ -338,6 +342,61 @@ final class AppGateTests: XCTestCase {
         await h.state.requestScores()?.value
     }
 
+    func test_FR13_R307_skipClearsSaveFailure() async throws {
+        let failing = FailingAfterStartRepository()
+        let h = await launched(try harness(count: 1, repository: failing.inner, taskRepository: failing))
+        failing.failsApply = true
+        XCTAssertFalse(h.state.submitFirstAction("가짜 첫 행동"))
+        XCTAssertTrue(h.state.gateSaveFailed)
+
+        h.state.skipGate()
+
+        XCTAssertFalse(h.state.gateSaveFailed)
+        XCTAssertEqual(h.state.gatePhase, .closed)
+    }
+
+    // MARK: - 기다리는 동안 해시가 바뀜(FR-13 R-308, data-model §3)
+
+    /// 낡은 해시의 답(0.8)은 버리고, 새 해시로 다시 물은 답(0.3)으로만 판정한다.
+    private func assertWaitsForNewHash(_ change: (Harness) -> Void) async throws {
+        let h = await launched(try harness(count: 1))
+        XCTAssertEqual(h.state.gatePhase, .asking)
+        await h.provider.setAnswer(.success(Self.answer(concrete: 0.8)), for: 1)
+        await h.provider.hold()
+        XCTAssertTrue(h.state.submitFirstAction("가짜 첫 행동"))
+        let runner = try XCTUnwrap(h.state.requestScores())
+        await h.provider.waitForHeld(count: 1)
+        await h.provider.setAnswer(.success(Self.answer(concrete: 0.3)), for: 1)
+
+        change(h)
+        XCTAssertEqual(h.state.gatePhase, .checking)
+        await h.provider.release(taskID: 1)
+        await h.provider.waitForHeld(count: 1)
+
+        XCTAssertEqual(h.state.gatePhase, .checking, "낡은 해시의 답으로는 판정하지 않는다")
+        XCTAssertEqual(try h.scoreStore.scores()[1]?.concrete, 0.3, "낡은 해시의 답은 버린다")
+        let calls = await h.provider.calls
+        XCTAssertEqual(calls, [1, 1, 1], "새 해시로 다시 묻는다")
+        await h.provider.releaseAll()
+        await runner.value
+
+        XCTAssertEqual(h.state.gatePhase, .asking, "새 해시의 답 0.3으로 판정")
+        XCTAssertEqual(h.state.gateRecords[1], GateRecord(submissions: 1, passed: false))
+    }
+
+    func test_FR13_R308_editWhileCheckingWaitsForNewHash() async throws {
+        try await assertWaitsForNewHash { h in
+            XCTAssertTrue(h.state.editTask(1, TaskEdit(title: "가짜 할 일 1 고침")))
+        }
+    }
+
+    func test_FR13_R308_dayChangeWhileCheckingWaitsForNewHash() async throws {
+        try await assertWaitsForNewHash { h in
+            h.clock.advance(minutes: 24 * 60)
+            h.state.activate()
+        }
+    }
+
     // MARK: - 표시(FR-13 R-311)
 
     func test_FR13_R311_firstActionHiddenWhileGateOpenAndCollapsedNotReshown() async throws {
@@ -351,9 +410,10 @@ final class AppGateTests: XCTestCase {
         let h = await launched(try harness(count: 0, repository: repository))
         await h.provider.setAnswer(.success(Self.answer(concrete: 0.8)), for: 1)
         XCTAssertEqual(h.state.gatePhase, .asking)
-        XCTAssertNil(h.state.firstAction, "묻는 중에는 이어서 할 일을 숨긴다")
+        XCTAssertNil(h.state.firstAction, "묻는 중에는 펼친 화면의 이어서 할 일을 숨긴다")
+        XCTAssertTrue(h.state.showsFirstActionCollapsed, "노치가 고른 직후 3초 창 안")
+        XCTAssertEqual(h.state.collapsedFirstAction, "가짜 지난 첫 행동", "접힌 3초 표시는 게이트가 열려도 보인다")
         h.clock.advance(seconds: 10)
-        XCTAssertFalse(h.state.showsFirstActionCollapsed)
 
         await h.provider.hold()
         XCTAssertTrue(h.state.submitFirstAction("가짜 첫 행동"))
