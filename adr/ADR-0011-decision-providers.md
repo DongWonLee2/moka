@@ -106,7 +106,7 @@
 - 고른 공급자 ID가 `models`에 없으면 판단 기능을 끈다. 키가 없을 때처럼 노치는 마감 순으로 고르고, 질의를 보내지 않으며, 로그 한 줄을 남긴다. 임계값을 읽는 곳은 강제 언래핑하지 않는다. 예를 들어 Microsoft 기준 모델 ID를 정하기 전에는 Microsoft를 고를 수 없게 하고, settings에 남은 값이 있어도 이 규칙으로 꺼진다.
 - `ConcreteGate`와 `ScoreRules.priority`의 avoiding 판정은 `thresholds[기준 모델 ID]`를 읽는다. 기준 모델 ID는 앱이 settings의 고른 공급자 ID로 `models`에서 찾아 `DecisionSetup`에 넣는다. 시험과 `moka-sim`의 가짜 공급자 설정은 기준 모델 ID를 직접 받는다(영향 절).
 - 위 예시 값 가운데 Microsoft 기준 모델 ID는 비워 두었다. 사람이 정한다.
-- 튜닝 스크립트는 행동 로그 줄의 질문 버전으로 그때의 질문 파일을 읽어야 기준 모델과 임계값을 안다(결정 6 다수안). 지난 버전 파일을 어디서 읽을지는 열린 질문이다. 두 안이 있다.
+- 튜닝 스크립트는 행동 로그 줄의 질문 버전으로 그때의 질문 파일을 읽어야 기준 모델과 임계값을 안다(결정 6). 지난 버전 파일을 어디서 읽을지는 열린 질문이다. 두 안이 있다.
   - git 기록의 커밋이나 태그. 태그는 사람이 만든다(AGENTS.md).
   - 저장소에 버전별 사본을 둔다. 이 사본은 읽기 규칙 3의 golden으로도 쓸 수 있다.
 
@@ -117,7 +117,7 @@
 ### 5. 키와 선택 저장
 
 - Keychain은 공급자마다 항목 하나다. service는 `dev.dongwon.moka` 그대로이고 account는 공급자 ID다. Jev는 기존 account `typesafe`를 유지해 이미 저장된 키를 다시 넣지 않게 한다.
-- 고른 공급자 ID, Microsoft 배포 이름, Microsoft 주소는 settings 표에 둔다. `settings(key, value)`(`schema/moka-schema.sql:5`)라 스키마 변경이 없다. 키 이름은 구현 PR에서 `CoreSettings` 무늬로 정한다.
+- 고른 공급자 ID, Microsoft 배포 이름, Microsoft 주소는 settings 표에 둔다. 앞선 토론의 "고른 공급자·모델 ID·주소"에서 모델 ID는 Microsoft 배포 이름(보낼 모델 이름)에만 해당한다. 기준 모델은 사용자가 고르지 않는다(결정 6, 사용자 결정 2026-11-11). `settings(key, value)`(`schema/moka-schema.sql:5`)라 스키마 변경이 없다. 키 이름은 구현 PR에서 `CoreSettings` 무늬로 정한다.
 - 동시에 쓰는 공급자는 하나다. 실패하면 다른 공급자로 넘어가는 구조는 두지 않는다.
 - 공급자를 바꾸면 보내기 장부(`attempted`)를 비우고 `keyNeedsCheck`를 `false`로 돌린다. `hasKey`는 새 공급자의 account로 다시 읽는다.
 
@@ -127,13 +127,14 @@
   - `ScoreRules.usable`: 질문 버전이 같고 `provider`가 주입된 공급자 `name`과 같은 판단 결과만 쓴다.
   - `ScoringPlan.needsQuery`: 판단 결과의 `provider`가 주입된 공급자 `name`과 다르면 다시 묻는다.
 - 기준 모델 ID는 따로 비교하지 않는다. 결정 3의 읽기 규칙(한 버전 안에서 공급자 하나에 기준 모델 하나)이 있어 질문 버전과 공급자 ID가 같으면 기준 모델도 같다.
-- 이 결정은 한 전제에 기댄다. 사용자는 공급자 안에서 기준 모델을 고르지 않는다. 기준 모델은 질문 파일 `models` 표가 정하고, settings에는 기준 모델을 두지 않는다. 앞선 토론의 "모델 ID는 settings"는 Microsoft 배포 이름으로 읽는다.
-- 전제가 사람 결정이라 이 결정은 토론에서 2:1로 갈렸다(아래 "승인 항목" 3). 전제를 버리면 대안 A(새 열)로 간다.
-- 요청한 기준 모델 ID를 남기는 방법(다수안): 새 열을 두지 않는다. `provider` 칸에는 공급자 ID만 적고, `model_snapshot`은 지금처럼 응답 `model`을 적는다. 기준 모델 ID는 줄의 `(question_version, provider)`를 그 버전 `questions.json`의 `models` 표에 대 보면 하나로 정해진다.
+- 사용자는 공급자(회사)만 고르고 키를 넣는다. 공급자 안의 모델은 고르지 않고, 기준 모델은 앱이 질문 파일 `models` 표로 정한다(사용자 결정 2026-11-11, 이유는 API 키가 회사에 붙는다는 점). settings에는 기준 모델을 두지 않는다.
+- 이 사용자 결정으로 토론의 2:1(아래 "근거")을 다수안 D로 정리했다. 스키마 변경은 없다.
+- 틀리는 조건: 나중에 사용자가 공급자 안에서 모델을 고르게 되면 다시 본다. 그때는 대안 A(새 열)가 맞다.
+- 요청한 기준 모델 ID를 남기는 방법: 새 열을 두지 않는다. `provider` 칸에는 공급자 ID만 적고, `model_snapshot`은 지금처럼 응답 `model`을 적는다. 기준 모델 ID는 줄의 `(question_version, provider)`를 그 버전 `questions.json`의 `models` 표에 대 보면 하나로 정해진다.
   - 이미 쌓인 `provider = typesafe`, `question_version = v1` 줄은 v1 `"model": "jev-1.13.0"`으로 풀린다.
   - 질문 파일을 v1에서 v2로 올리면 질문 버전 비교 때문에 기존 판단 결과는 Jev를 계속 써도 모두 쓰지 않고 다시 묻는다. 이후에도 공급자 하나의 임계값이나 기준 모델만 바꿔도 `version`이 올라, 어느 공급자를 쓰든 모든 대기·진행 중 할 일을 다시 묻는다.
   - 이 비용은 받아들인다. 입력 가격은 100만 토큰에 0.01~0.10달러이고 출력은 무료다(조사 요약). 할 일은 수십 건 규모다(data-model §4). 다시 묻는 동안에도 노치는 마감 순으로 돈다(spec 003 R-211).
-- 그래서 다수안은 스키마 변경을 부르지 않는다.
+- 그래서 이 결정은 스키마 변경을 부르지 않는다.
 - 가정(토론하지 않음, 토론 A 자리 2라운드 제안): Microsoft 배포 이름이나 주소를 바꾸면 공급자를 바꿀 때처럼 보내기 장부를 비우고 `keyNeedsCheck`를 돌린다.
 - 남는 빈틈: Microsoft에서 같은 배포 이름 안의 가중치가 바뀌거나 배포 이름이 가리키는 모델이 바뀌면 위 비교로 잡지 못한다. 배포 이름을 바꿀 때 저장된 판단 결과까지 다시 물을지는 Microsoft를 켜는 구현 PR에서 정한다. Perplexity는 응답 `model`이 보낸 이름 그대로라 `model_snapshot`이 실제 버전을 가리지 못한다. 이것은 받아들인다.
 
@@ -141,7 +142,7 @@
 
 - 결정 1·2·3·4·5는 추천안 토론에서 1라운드 3:0으로 채택했다(`.audit/debate/20261110-1400-provider-adr.md`, 커밋 안 함). 결정마다 "가정(토론하지 않음)"으로 표시한 줄은 그 토론에서 표결하지 않았다.
 - 결정 6의 공급자 비교는 같은 토론에서 표결한 질문이 아니다. 세 자리 가운데 둘 이상이 더한 조건으로 판정에 담겼다.
-- 결정 6은 따로 토론했다(`.audit/debate/20261110-1500-provider-model-id.md`, 커밋 안 함). 2라운드 최종 표결은 두 질문 모두 2:1이고 판정은 사람에게다.
+- 결정 6은 따로 토론했다(`.audit/debate/20261110-1500-provider-model-id.md`, 커밋 안 함). 2라운드 최종 표결은 두 질문 모두 2:1이고 판정은 사람에게였다. 갈린 조건(사용자가 공급자 안에서 기준 모델을 고르는가)에 사용자가 고르지 않는다고 답해(2026-11-11) 다수안 D를 채택했다.
   - Q1 기록 방법: 가이드·실행 자리는 D, 위험 자리는 A다.
   - Q2 비교 대상: 가이드·실행 자리는 공급자 ID만, 위험 자리는 공급자 ID와 기준 모델 ID다. Q1이 A가 되면 Q2도 기준 모델 비교를 더한다.
   - 소수 의견(위험 자리): 앞선 토론 Q5는 settings에 모델 ID를 두기로 했다. 조사에서 Jev(`jev-1.14.0`·`jev-1.13.0`)와 Perplexity(`pplx-decider-v1.2`·flash)는 공급자 하나에 고정 ID가 둘이다. 사용자가 그 가운데 고를 수 있으면 D로 쌓인 `decisions_log` 줄은 기준 모델을 되찾지 못한다. 이 손실은 되돌릴 수 없으니 NULL을 허용하는 새 열(v4)을 같은 PR에서 승인받자는 의견이다.
@@ -198,10 +199,10 @@
 
 | 대안 | 장점 | 단점·위험 |
 |---|---|---|
-| A. 새 열 `scores.base_model`·`decisions_log.base_model`(마이그레이션 v4) | DB만 보고 기준 모델을 앎 | 스키마 변경 승인, pytest 계약·스냅샷 변경, 같은 사실을 두 칸에 적음 |
+| A. 새 열 `scores.base_model`·`decisions_log.base_model`(NULL 허용, 마이그레이션 v4, 토론 소수안) | DB만 보고 기준 모델을 앎, 사용자가 공급자 안에서 모델을 골라도 맞음 | 스키마 변경 승인, `schema/moka-schema.sql`·`tuning/tests/test_schema_contract.py`·마이그레이션 이름 시험(ADR-0007) 변경, 사용자가 모델을 고르지 않으면 같은 사실을 두 칸에 적음. 사용자가 공급자 안에서 모델을 고르게 되면 다시 본다 |
 | B. `provider` 값을 `<공급자 ID>/<기준 모델 ID>`로 | 스키마 그대로, 바꿀 곳 하나 | 옛 `typesafe` 줄과 영구히 섞임, 값 규칙은 pytest가 시험하지 않아 계약이 몰래 바뀜 |
 | C. `model_snapshot`에 응답 model 대신 기준 모델 ID | 스키마 그대로 | R-212 "응답 모델 이름" 뜻이 바뀜, Jev 응답의 실제 버전을 버림, 옛 줄과 뜻이 갈림 |
-| D. 공급자 ID와 질문 버전으로 기준 모델을 정하는 읽기 규칙(채택) | 스키마·칸 뜻 그대로, 옛 줄도 풀림 | 공급자 안에서 사용자가 기준 모델을 고르게 되면 틀림(그때 A로 감) |
+| D. 공급자 ID와 질문 버전으로 기준 모델을 정하는 읽기 규칙(채택, 사용자 결정 2026-11-11) | 스키마·칸 뜻 그대로, 옛 줄도 풀림 | 공급자 안에서 사용자가 기준 모델을 고르게 되면 틀림(그때 A로 감) |
 
 ## 영향
 
@@ -216,7 +217,7 @@
   - 공급자 ID에서 기준 모델 ID를 찾는 일은 앱이 `DecisionSetup`을 만들 때 한 번 한다. 가짜 공급자 설정은 기준 모델 ID를 직접 받는다. 그래서 `fake`가 `models`에 없어도 시험과 `moka-sim`은 지금처럼 판단을 돌린다.
   - 요청 `model`은 Microsoft면 settings의 배포 이름, 나머지면 기준 모델 ID다(지금 `AppState.swift:916`의 `questions.model`).
 - 튜닝 계약: `tuning/tests/test_questions_contract.py:22-26`이 `data["thresholds"][data["model"]]`을 읽는다. v2에서는 `models`의 모든 값으로 바꾼다. contracts/questions-json.md:13-18의 형식 표도 바뀐다. 둘 다 승인 항목 2에 든다.
-- 스키마: 다수안이면 변경 없음. 소수안이면 마이그레이션 v4(승인 항목 3).
+- 스키마: 변경 없음(결정 6, 사용자 결정 2026-11-11).
 - `moka-sim`: 가짜 공급자 이름(`fake`)은 그대로이고 비교 기준이 주입된 공급자 `name`이라 기대 출력이 바뀌지 않는다.
 - 문장이 어긋나는 문서(이 PR에서는 고치지 않고, 구현 PR에서 대체 표기를 붙인다):
   1. spec 003 `spec.md:132` R-210 "공급자는 TypeSafe Jev 하나", `spec.md:183` 하지 않음의 "두 번째 공급자", `spec.md:200` 대안 표 "공급자 TypeSafe 직접 하나".
@@ -240,14 +241,11 @@
 
 1. DecisionProvider 경계(헌법 I 공개 계약): 프로토콜 모양은 그대로이고, `name`을 공급자 ID로, `DecisionRequest.model`을 보낼 모델 이름으로 뜻을 바꾼다. `TypeSafeCodec`을 `SystemOneCodec`으로 바꾸고 OpenAI 변환 코덱을 더한다. contracts/decision-provider.md를 바꾼다.
 2. questions.json 형식 변경(헌법 I 공개 계약): 최상위 `model`을 `models`(공급자 ID에서 기준 모델 ID로) 표로 바꾸고 `provisional` 목록을 더한다. `version` v2. 읽기 규칙 셋과 버전별 golden 시험. 함께 바뀌는 계약은 contracts/questions-json.md:13-18과 pytest `tuning/tests/test_questions_contract.py:22-26`이다. 튜닝 스크립트가 지난 버전 질문 파일을 어디서 읽을지(결정 3의 열린 질문)도 함께 정한다. 파일 변경은 구현 PR에서 제안하고 라벨셋 비교는 사람이 한다.
-3. 결정 6의 전제와 스키마 변경(토론 2:1, 사람에게): 사용자가 공급자 안에서 기준 모델을 고르게 할지 정한다.
-   - 고르지 않음(다수안 D): 스키마 변경 없음. 결정 3의 읽기 규칙을 시험으로 지킨다.
-   - 고르게 함(소수안 A): `scores.base_model`·`decisions_log.base_model`(NULL 허용)을 마이그레이션 v4로 더한다. 스키마 승인 항목이고 `schema/moka-schema.sql`, `tuning/tests/test_schema_contract.py`, 마이그레이션 이름 시험(ADR-0007)이 바뀐다. 이때 결정 6의 비교에 기준 모델 ID도 더한다.
+3. 스키마 변경: 없음(사용자 결정 2026-11-11). 사용자는 공급자 안의 모델을 고르지 않으므로 결정 6은 새 열 없이 결정 3의 읽기 규칙으로 기준 모델을 정한다.
 4. 헌법 VIII 예시 문구 PATCH 개정 제안(위 "영향").
 
 ## 사람이 확인할 것
 
-- 승인 항목 3: 사용자가 공급자 안에서 기준 모델을 고르게 할지.
 - 공급자마다 첫 실제 호출: PASS/FAIL과 응답 최상위·답 안쪽 필드 이름만 적는다. 특히 OpenAI score 답에 score 값·신뢰도 칸이 있는지, Microsoft 응답 `model` 칸에 무엇이 오는지.
 - Microsoft 기준 모델 ID(공개 모델 이름과 버전)와 `api-key` 헤더로 부를 수 있는지.
 - Liquid d1-ultra의 고정 버전 ID가 있는지. 없으면 `d1-ultra`가 별칭인지.
