@@ -780,7 +780,14 @@ final class AppState {
         if updated != record {
             gateRecords[id] = updated
         }
-        setGate(ConcreteGate.phase(facts))
+        let phase = ConcreteGate.phase(facts)
+        // 다시 묻는 중으로 돌아올 때 칸이 비었으면 마지막에 적은 줄(저장된 첫 행동)을 채운다(data-model §3 마지막 줄).
+        if phase == .asking, gatePhase != .asking, updated.submissions > 0, gateDraftText.isEmpty,
+            let line = tasks.first(where: { $0.id == id })?.firstAction
+        {
+            gateDraftText = line
+        }
+        setGate(phase)
     }
 
     /// 기다림은 `checking`일 때만 이어진다.
