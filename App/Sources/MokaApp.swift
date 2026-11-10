@@ -38,10 +38,7 @@ struct OpenSettingsButton: View {
 
     var body: some View {
         Button("설정…") {
-            SettingsWindowRaiser.request()
-            NSApp.activate()
-            openSettings()
-            DispatchQueue.main.async { SettingsWindowRaiser.raise() }
+            SettingsWindowRaiser.open(with: openSettings)
         }
     }
 }
@@ -55,6 +52,14 @@ enum SettingsWindowRaiser {
 
     static func request() {
         pending.request()
+    }
+
+    /// "설정…"과 노치 키 확인 한 줄이 같은 순서로 설정 창을 연다(spec 004 plan "앱 연결").
+    static func open(with openSettings: OpenSettingsAction) {
+        request()
+        NSApp.activate()
+        openSettings()
+        DispatchQueue.main.async { raise() }
     }
 
     static func raise() {

@@ -75,6 +75,7 @@ final class AppState {
             if session.taskID != oldValue.taskID {
                 gateWaitingTaskID = nil
                 gateDraftText = ""
+                gateDraftTaskID = nil
             }
             if session.taskID != oldValue.taskID || Self.isDraft(session.timer) != Self.isDraft(oldValue.timer) {
                 refreshGate()
@@ -221,6 +222,8 @@ final class AppState {
     private(set) var gatePhase: GatePhase = .closed
     /// 게이트 입력 칸의 글자. 제출하면 그 줄이 남아 다시 묻는 중으로 돌아올 때 보인다.
     var gateDraftText = ""
+    /// `gateDraftText`가 어느 할 일의 칸인지. 다시 묻는 중으로 판정한 할 일과 다르면 그 할 일의 마지막 줄로 채운다.
+    @ObservationIgnored private var gateDraftTaskID: TaskID?
     /// 첫 행동 저장에 실패했다. 다음 제출 성공이나 게이트가 묻는 중이 아니게 되면 꺼진다.
     private(set) var gateSaveFailed = false
 
@@ -747,6 +750,7 @@ final class AppState {
         }
         gateSaveFailed = false
         gateDraftText = line
+        gateDraftTaskID = id
         gateRecords[id, default: GateRecord()].submissions += 1
         gateWaitingTaskID = id
         reloadTasks()
@@ -780,7 +784,16 @@ final class AppState {
         if updated != record {
             gateRecords[id] = updated
         }
-        setGate(ConcreteGate.phase(facts))
+        let phase = ConcreteGate.phase(facts)
+        // 다시 묻는 중인데 칸이 이 할 일의 것이 아니면 마지막에 적은 줄(저장된 첫 행동)로 채운다(data-model §3 마지막 줄).
+        // 칸이 이 할 일의 것인 동안 사람이 고치거나 비운 글자는 그대로 둔다.
+        if phase == .asking, updated.submissions > 0, gateDraftTaskID != id,
+            let line = tasks.first(where: { $0.id == id })?.firstAction
+        {
+            gateDraftText = line
+            gateDraftTaskID = id
+        }
+        setGate(phase)
     }
 
     /// 기다림은 `checking`일 때만 이어진다.

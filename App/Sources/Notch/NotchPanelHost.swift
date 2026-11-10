@@ -201,6 +201,8 @@ struct NotchPanelRoot: View {
     var onSetAside: (_ withNotes: Bool) -> Void = { _ in }
     var onLayoutChange: (PanelContentLayout) -> Void = { _ in }
 
+    @Environment(\.openSettings) private var openSettings
+
     var body: some View {
         let offsetX = NotchLayout.horizontalOffset(
             timer: appState.timer, remainingSeconds: appState.remainingSeconds, isExpanded: appState.isExpanded,
@@ -218,6 +220,13 @@ struct NotchPanelRoot: View {
             firstAction: appState.firstAction,
             showsFirstActionCollapsed: appState.showsFirstActionCollapsed,
             collapsedFirstAction: appState.collapsedFirstAction,
+            reasonLine: appState.reasonLine,
+            gate: gateInput,
+            keyNotice: appState.showsKeyNotice,
+            onOpenKeySettings: {
+                appState.requestKeySettings()
+                SettingsWindowRaiser.open(with: openSettings)
+            },
             titleFocusRequest: appState.titleFocusRequest,
             chip: QuantumChipInput(
                 customText: appState.customText,
@@ -255,6 +264,19 @@ struct NotchPanelRoot: View {
             onLayoutChange($0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    /// 게이트가 닫혀 있으면 넘기지 않는다.
+    private var gateInput: GateInput? {
+        guard appState.gatePhase != .closed else { return nil }
+        let id = appState.session.taskID
+        return GateInput(
+            phase: appState.gatePhase,
+            text: Binding(get: { appState.gateDraftText }, set: { appState.gateDraftText = $0 }),
+            submissions: id.flatMap { appState.gateRecords[$0]?.submissions } ?? 0,
+            saveFailed: appState.gateSaveFailed,
+            onSubmit: { appState.submitFirstAction(appState.gateDraftText) },
+            onSkip: { appState.skipGate() })
     }
 }
 
