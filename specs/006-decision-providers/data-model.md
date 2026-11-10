@@ -20,7 +20,7 @@
 | `EndpointRejection` | `enum { unparseable, scheme, emptyHost, userInfo, query, fragment, path }` | 화면 거부 문구의 종류 |
 | `EndpointRule` | `static func check(_ text: String, allowsPath: Bool) -> Result<URL, EndpointRejection>`, `static func host(of: URL) -> String` | §4 |
 | `ModelThresholds` | `concrete: Double`, `avoiding: Double` | |
-| `DecisionSelection` | `static func resolve(providerID: String?, microsoftEndpoint: String?, microsoftDeployment: String?, questions: QuestionSet) -> Resolution` | §6 |
+| `DecisionSelection` | `static func resolve(providerID: String?, microsoftEndpoint: String?, microsoftDeployment: String?, questions: QuestionSet, catalog: [ProviderConfig] = ProviderCatalog.all) -> Resolution` | §6. `catalog`은 시험이 Microsoft를 연 가짜 표를 넣을 때만 바꾼다. `DecisionSetup`도 같은 기본값의 `catalog`를 든다 |
 | `DecisionSelection.Resolution` | `ready(Ready)`, `off(OffReason)` | |
 | `DecisionSelection.Ready` | `config: ProviderConfig`, `url: URL`, `baseModel: String`, `requestModel: String` | |
 | `DecisionSelection.OffReason` | `unknownProvider`, `closedProvider(ProviderID)`, `needsEndpoint`, `needsDeployment` | 꺼진 이유. 화면 안내와 로그 한 줄에 쓴다 |
