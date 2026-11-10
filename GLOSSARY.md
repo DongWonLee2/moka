@@ -69,8 +69,20 @@ _Avoid_: 인터럽트, 우선 처리
 _Avoid_: LLM, AI, 챗봇
 
 **provider** (판단 공급자):
-판단 모델을 부르는 경로 하나. 모든 경로가 실패하면 코드 폴백이 대신한다.
-_Avoid_: 백엔드, API, 서비스
+판단 모델을 부르는 경로 하나. 사용자가 여럿 가운데 하나를 골라 그 키를 넣고, 동시에 하나만 쓴다. 실패하면 코드 폴백이 대신한다. 중계 서비스는 공급자가 아니다(ADR-0011).
+_Avoid_: 백엔드, API, 서비스, 중계
+
+**provider ID** (공급자 ID):
+판단 공급자를 가리키는 고정 이름. `typesafe`, `microsoft`, `liquid`, `perplexity`, `openai`이고, 판단 결과와 행동 로그의 공급자 칸, 키 보관함 항목 이름에 그대로 쓴다. 점수 없는 줄의 `fallback`과 시험의 `fake`는 공급자 ID가 아니다.
+_Avoid_: 공급자 이름(화면 이름과 섞임), vendor
+
+**base model ID** (기준 모델 ID):
+공급자가 공개한 고정 버전 모델 이름. 질문 파일의 임계값 키다. 별칭(`latest` 등)과 사용자가 만든 배포 이름은 기준 모델 ID가 아니다. 요청에 실제로 보내는 모델 이름(보낼 모델 이름)이나 응답에 온 모델 이름(모델 스냅샷)과 다를 수 있다.
+_Avoid_: 모델 스냅샷, 배포 이름, 모델 별칭
+
+**deployment name** (배포 이름):
+Microsoft처럼 사용자가 자기 계정에 만든 모델 배포의 이름. 요청에 보내는 모델 이름으로만 쓴다.
+_Avoid_: 기준 모델 ID
 
 **state** (판단 입력):
 판단 모델에 보내는 입력. 할 일 1건, 컨텍스트, 마지막 체크포인트, 오늘 날짜만 담는다. 코드 이름은 `JudgmentState`이고, 정한 순서의 바이트로 만든 FNV-1a 64 해시(**state hash**, 판단 입력 해시)로 다시 물을지 정한다.
@@ -188,5 +200,5 @@ _Avoid_: priority, 판단 질문 impact와 섞어 쓰기
 _Avoid_: 튜토리얼, 설정 마법사
 
 **key store** (키 보관함):
-판단 공급자 키를 두는 곳. spec 003에서 만든다(R-214). 앱은 macOS Keychain(service `dev.dongwon.moka`, account `typesafe`, MVP는 Jev만)만 쓰고, 시험은 가짜를 쓴다. 앱 DB·설정·로그에는 키를 두지 않는다. 문서에서는 "키 보관함"이라고 쓴다.
+판단 공급자 키를 두는 곳. spec 003에서 만든다(R-214). 앱은 macOS Keychain(service `dev.dongwon.moka`, 공급자마다 account = 공급자 ID, Jev는 `typesafe`)만 쓰고, 시험은 가짜를 쓴다. 앱 DB·설정·로그에는 키를 두지 않는다. 문서에서는 "키 보관함"이라고 쓴다.
 _Avoid_: 비밀번호, 토큰 저장소, settings의 키
