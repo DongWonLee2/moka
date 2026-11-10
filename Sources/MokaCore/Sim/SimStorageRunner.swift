@@ -1,10 +1,26 @@
 import Foundation
 
-/// storage 모드(contracts/moka-sim-v1-additions.md). 앱과 같은 MokaCore 함수(`NotchSession`, `PriorityRotateRule`,
-/// `RecurrenceReset`, `LaunchRecovery`, `TaskWriteRules`, `SessionCommit`)만 부르고 저장은 메모리 저장소다.
+/// storage 모드(contracts/moka-sim-v1-additions.md, spec 003 덧붙임은 moka-sim-v1-additions-003.md). 앱과 같은
+/// MokaCore 함수(`NotchSession`, `PriorityRotateRule`, `RecurrenceReset`, `LaunchRecovery`, `TaskWriteRules`,
+/// `SessionCommit`, `ScoreRules`)만 부르고 저장은 메모리 저장소다.
 extension SimRunner {
     static func executeStorage(_ scenario: SimScenario, settings: InMemorySettingsStore) throws(SimError) -> String {
         let repository = InMemoryTaskRepository()
+        let scores = InMemoryScoreStore(tasks: repository)
+        let questions: QuestionSet
+        do {
+            questions = try QuestionSet.bundled()
+        } catch {
+            throw invariantViolation("번들 질문 파일을 읽지 못했다: \(error)", seq: nil)
+        }
+        let showsJudgment = scenario.events.contains {
+            switch $0.kind {
+            case .judge, .key: true
+            default: false
+            }
+        }
+        // 키 유무와 판단 결과는 Keychain·앱 DB에 있는 값이라 quit·relaunch를 넘어 남는다.
+        var hasKey = false
         let calendar = GregorianCalendar.make(timeZone: scenario.timezone)
         if let dayStart = scenario.dayStart {
             try storing(seq: nil) { try CoreSettings.writeDayStart(dayStart, to: settings) }
@@ -14,8 +30,11 @@ extension SimRunner {
         var previous = SimStorageState(session: .initial, tasks: [], checkpoints: [], decisions: [])
         var output = ""
         for event in scenario.events {
-            let step = StorageEvent(event: event, repository: repository, settings: settings, calendar: calendar)
+            var step = StorageEvent(
+                event: event, repository: repository, scores: scores, questions: questions, hasKey: hasKey,
+                settings: settings, calendar: calendar)
             let session = try step.run(previous.session)
+            hasKey = step.hasKey
             let state = try storing(seq: event.seq) {
                 SimStorageState(
                     session: session, tasks: try repository.tasks(), checkpoints: try repository.checkpoints(),
@@ -24,7 +43,10 @@ extension SimRunner {
             if let violation = checkStorageInvariant(state, previous: previous, at: event.at, seq: event.seq) {
                 throw violation
             }
-            output += SimOutput.storageLine(event, state: state, previous: previous)
+            let judgment =
+                showsJudgment
+                ? SimJudgmentFields(order: PriorityOrder.order(try step.input()).map(\.id), hasKey: hasKey) : nil
+            output += SimOutput.storageLine(event, state: state, previous: previous, judgment: judgment)
             previous = state
         }
         return output
@@ -97,6 +119,10 @@ extension SimRunner {
 private struct StorageEvent {
     let event: SimEvent
     let repository: InMemoryTaskRepository
+    let scores: InMemoryScoreStore
+    let questions: QuestionSet
+    /// `key` 이벤트가 바꾼다.
+    var hasKey: Bool
     let settings: InMemorySettingsStore
     let calendar: Calendar
 
@@ -104,7 +130,7 @@ private struct StorageEvent {
     private var dayStart: DayStart { CoreSettings.readDayStart(from: settings) }
 
     /// 적용 뒤 세션. nil이면 꺼짐.
-    func run(_ current: NotchSession?) throws(SimError) -> NotchSession? {
+    mutating func run(_ current: NotchSession?) throws(SimError) -> NotchSession? {
         guard var session = current else {
             guard case .relaunch = event.kind else { throw SimRunner.notAllowed(event) }
             return try launch()
@@ -172,7 +198,53 @@ private struct StorageEvent {
         case .activate:
             try judgeDay()
             return session.picked(try input())
+
+        case .judge(let judge):
+            try save(judge)
+            return session
+
+        case .key(let present):
+            hasKey = present
+            return session
         }
+    }
+
+    /// 앱이 답을 받을 때와 같은 `ScoreRules.score`로 판단 결과를 저장한다. 가짜 답의 확신도·옵션 확률은 고정 값이다.
+    private func save(_ judge: SimJudge) throws(SimError) {
+        guard let task = try tasks().first(where: { $0.id == judge.taskID }) else {
+            throw SimError(kind: .outOfRange, seq: event.seq, message: "task \(judge.taskID)인 할 일이 없다")
+        }
+        guard task.status == .todo || task.status == .active else { throw SimRunner.notAllowed(event) }
+        let checkpoints = try SimRunner.storing(seq: event.seq) { try repository.checkpoints() }
+        let state = JudgmentState.build(
+            task: task, contexts: [], checkpoints: checkpoints, today: today, calendar: calendar)
+        let response = DecisionResponse(
+            model: Self.fakeModel,
+            answers: [
+                "urgency": Self.fakeScore(judge.urgency, options: 4),
+                "impact": Self.fakeScore(judge.impact, options: 3),
+                "concrete": .noul(judge.concrete), "avoiding": .noul(judge.avoiding),
+            ])
+        guard
+            let score = ScoreRules.score(
+                taskID: task.id, response: response, questions: questions, provider: Self.fakeProvider,
+                stateHash: state.hash, now: event.at)
+        else { throw SimRunner.invariantViolation("검증한 judge 답을 ScoreRules가 거부했다", seq: event.seq) }
+        try SimRunner.storing(seq: event.seq) { try scores.upsertScore(score) }
+    }
+
+    private static let fakeProvider = "fake"
+    private static let fakeModel = "fake-1"
+
+    /// 확신도 1, 옵션 확률은 모두 같은 값.
+    private static func fakeScore(_ score: Double, options: Int) -> Answer {
+        .score(
+            score: score, confidence: 1,
+            probabilities: Dictionary(uniqueKeysWithValues: (0..<options).map { ($0, 1 / Double(options)) }))
+    }
+
+    private var today: LocalDay {
+        DayBoundary.day(containing: event.at, dayStart: dayStart, calendar: calendar)
     }
 
     /// 앱 시작: 메모리 상태를 버리고 R-111 복구 → 하루 판정 → 고르기.
@@ -224,7 +296,13 @@ private struct StorageEvent {
         try SimRunner.storing(seq: event.seq) { try repository.tasks() }
     }
 
-    private func input() throws(SimError) -> SessionInput {
-        SessionInput(tasks: try tasks(), now: event.at, defaultQuantumMin: defaultQuantumMin, calendar: calendar)
+    /// 앱 `AppState.input(at:)`처럼 키 유무로 거른 판단 결과를 넘긴다.
+    func input() throws(SimError) -> SessionInput {
+        let stored = try SimRunner.storing(seq: event.seq) { try scores.scores() }
+        return SessionInput(
+            tasks: try tasks(), now: event.at, defaultQuantumMin: defaultQuantumMin, calendar: calendar,
+            scoring: SessionScoring(
+                usable: ScoreRules.usable(scores: stored, hasKey: hasKey, questionVersion: questions.version),
+                questions: questions, today: today))
     }
 }

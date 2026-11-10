@@ -1,0 +1,1 @@
+{"version": 1, "timezone": "Asia/Seoul", "storage": true, "events": [{"at": "2026-11-07T00:00:00Z", "type": "add_task", "title": "가짜 할 일 A"}, {"at": "2026-11-07T00:00:10Z", "type": "judge", "task": 1, "urgency": "3", "impact": 2, "concrete": 0.5, "avoiding": 0.5}]}
