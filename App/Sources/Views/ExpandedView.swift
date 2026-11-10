@@ -150,16 +150,17 @@ struct ExpandedView: View {
                     .accessibilityLabel("새 할 일")
             }
             Spacer(minLength: 0)
-            // 게이트가 묻는 중이면 Enter는 적기라 시작 버튼에서 ↵ 표시를 뺀다(확정 시안 4번).
-            Button(action: onStart) { ButtonLabel(text: "시작", shortcut: gate?.phase == .asking ? nil : "↵") }
-                .buttonStyle(NotchButtonStyle(kind: .primary))
-                // 제목 칸이나 게이트 칸이 열려 있으면 Enter는 그 칸의 것이다. 시작까지 함께 부르지 않게 단축키를 뗀다.
-                .keyboardShortcut(
-                    GateDisplay.detachesStartShortcut(
-                        isEnteringTitle: draftInput.isEnteringTitle, gatePhase: gate?.phase)
-                        ? nil : .defaultAction
-                )
-                .disabled(!chip.canStart)
+            Button(action: onStart) {
+                ButtonLabel(text: "시작", shortcut: GateDisplay.startShortcutMark(gatePhase: gate?.phase))
+            }
+            .buttonStyle(NotchButtonStyle(kind: .primary))
+            // 제목 칸이나 게이트 칸이 열려 있으면 Enter는 그 칸의 것이다. 시작까지 함께 부르지 않게 단축키를 뗀다.
+            .keyboardShortcut(
+                GateDisplay.detachesStartShortcut(
+                    isEnteringTitle: draftInput.isEnteringTitle, gatePhase: gate?.phase)
+                    ? nil : .defaultAction
+            )
+            .disabled(!chip.canStart)
         }
         if let message = QuantumChip.customIssueMessage(customText: chip.customText) {
             CustomIssueText(message: message)

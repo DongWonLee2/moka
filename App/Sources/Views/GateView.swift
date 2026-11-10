@@ -20,6 +20,9 @@ enum GateDisplay {
     }
 
     static let title = "어디서 시작할지 막연해 보여요"
+    /// 키 확인 한 줄(확정 시안 12~14번).
+    static let keyNoticeText = "키가 맞지 않아 판단 모델에 묻지 못하고 있어요."
+    static let keyNoticeButton = "키 확인"
     private static let firstSubtitle = "2분 안에 바로 할 수 있는 첫 행동을 한 줄 적어 주세요. 판단 모델이 다시 확인하고, 노치를 펼치면 제목 아래 보여요."
     private static let retrySubtitle = "방금 적은 줄이에요. 고쳐 써도 돼요."
 
@@ -32,6 +35,11 @@ enum GateDisplay {
     /// 제목 칸이 열렸거나 게이트가 묻는 중이면 Enter는 그 칸의 것이라 시작 버튼 단축키를 뗀다.
     static func detachesStartShortcut(isEnteringTitle: Bool, gatePhase: GatePhase?) -> Bool {
         isEnteringTitle || gatePhase == .asking
+    }
+
+    /// 묻는 중이면 Enter는 적기라 시작 버튼에서 ↵ 표시를 뺀다(확정 시안 4번).
+    static func startShortcutMark(gatePhase: GatePhase?) -> String? {
+        gatePhase == .asking ? nil : "↵"
     }
 
     /// "직접…" 분 칸의 Enter. 게이트가 묻는 중이면 시작하지 않는다.
@@ -126,6 +134,10 @@ struct GateView: View {
             // 나타나는 순간에는 칸이 아직 붙지 않아 포커스 요청이 버려진다. 다음 차례로 미룬다.
             if input.phase == .asking { Task { @MainActor in focused = true } }
         }
+        .onChange(of: input.phase) { _, phase in
+            // 확인하는 중에서 다시 묻기로 돌아오면 칸이 새로 생기므로 다시 포커스를 준다(확정 시안 6번).
+            if phase == .asking { Task { @MainActor in focused = true } }
+        }
     }
 
     @ViewBuilder
@@ -188,12 +200,12 @@ struct KeyNoticeLine: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Text("키가 맞지 않아 판단 모델에 묻지 못하고 있어요.")
+            Text(GateDisplay.keyNoticeText)
                 .font(.system(size: 11))
                 .foregroundStyle(palette.danger)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
-            Button("키 확인", action: onOpen)
+            Button(GateDisplay.keyNoticeButton, action: onOpen)
                 .buttonStyle(NotchButtonStyle(kind: .ghost))
         }
     }
