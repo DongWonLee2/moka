@@ -812,7 +812,7 @@ final class AppDecisionTests: XCTestCase {
 
         XCTAssertEqual(h.state.reasonLine, "마감 없음 · 손해 꽤 · 미룬 0번", "답이 저장되면 손해가 보인다")
         XCTAssertEqual(h.state.session.taskID, 1, "노치 할 일은 그대로(spec US1-5)")
-        XCTAssertEqual(h.state.nextMarkID, 2)
+        XCTAssertEqual(h.state.ranks[2], 1, "순서는 바뀐다")
     }
 
     func test_FR04_R305_deletingKeyDropsLoss() async throws {

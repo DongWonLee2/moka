@@ -72,6 +72,13 @@ final class AppState {
                 pendingAction = nil
                 notesFocus.cancel()
             }
+            if session.taskID != oldValue.taskID {
+                gateWaitingTaskID = nil
+                gateDraftText = ""
+            }
+            if session.taskID != oldValue.taskID || Self.isDraft(session.timer) != Self.isDraft(oldValue.timer) {
+                refreshGate()
+            }
         }
     }
     /// 시작 전 화면에서 "+ 새 할 일"로 제목 칸을 연 상태(R-103). 노치의 할 일이 바뀌거나 초안이 아니게 되면 닫힌다.
@@ -124,16 +131,22 @@ final class AppState {
         TaskListView.rows(tasks, scope: taskListScope, order: taskListOrder, today: logicalToday, calendar: calendar)
     }
 
-    /// 노치의 할 일의 첫 행동(화면 이름 "이어서 할 일", R-109). 시작 전·도는 중 펼친 화면은 있으면 늘 보인다.
+    /// 노치의 할 일의 첫 행동(화면 이름 "이어서 할 일", R-109). 시작 전·도는 중 펼친 화면은 있으면 보인다.
+    /// 게이트가 묻는 중이거나 확인하는 중이면 게이트 칸이 같은 줄을 보이므로 숨긴다(spec 004 R-311).
     var firstAction: String? {
+        gatePhase == .closed ? storedFirstAction : nil
+    }
+
+    private var storedFirstAction: String? {
         guard let id = session.taskID else { return nil }
         return tasks.first { $0.id == id }?.firstAction
     }
 
     /// 접힌 초안에 "이어서 · <첫 행동>"을 보이는지(R-109). 고른 뒤 3초만이고, 도는 중·시간 끝은 spec 001 그대로다.
+    /// 게이트를 통과해도 다시 켜지 않는다(spec 004 R-311).
     var showsFirstActionCollapsed: Bool {
         _ = collapsedRedrawTick
-        guard Self.isDraft(timer), firstAction != nil, let pickedAt else { return false }
+        guard Self.isDraft(timer), storedFirstAction != nil, let pickedAt else { return false }
         return FirstActionDisplay.showsInCollapsed(pickedAt: pickedAt, now: clock.now())
     }
 
@@ -148,9 +161,13 @@ final class AppState {
     // MARK: 판단 모델(spec 003 data-model §6·§9)
 
     /// 키가 있는지. 켤 때·키 저장·키 지움 때 `KeyStore.hasKey()`로 읽고, 보내기 직전 키를 읽지 못하면 false로 고친다.
-    private(set) var hasKey = false
+    private(set) var hasKey = false {
+        didSet { if hasKey != oldValue { refreshGate() } }
+    }
     /// 401·403을 받아 키를 다시 저장하기 전까지 묻지 않는 중이다.
-    private(set) var keyNeedsCheck = false
+    private(set) var keyNeedsCheck = false {
+        didSet { if keyNeedsCheck != oldValue { refreshGate() } }
+    }
     /// 키 저장·지우기 가운데 실패한 동작. 다음 성공에 지운다.
     private(set) var keyActionFailure: KeyAction?
     /// 키 저장·지우기가 실패했다. 다음 성공에 꺼진다.
@@ -176,6 +193,35 @@ final class AppState {
         guard let questions = queryableQuestions else { return false }
         return !pendingQueries(questions, skippingAttempted: false).isEmpty
     }
+
+    /// 노치·할 일 탭의 키 확인 한 줄(spec 004 R-318). 기본 탭 키 칸이 키 확인 필요를 보일 때와 같다.
+    var showsKeyNotice: Bool { keyFieldState == .needsCheck }
+
+    /// 설정 창이 열 탭(spec 004 research R8). 설정 창이 나타날 때와 바뀔 때 그 탭으로 바꾸고 비운다.
+    var settingsTabRequest: SettingsTab?
+
+    /// 노치 할 일의 이유 줄(spec 004 data-model §2·§4). 시작 전과 도는 중에만 있다.
+    var reasonLine: String? {
+        guard Self.isDraft(timer) || Self.isRunning(timer), let id = session.taskID,
+            let task = tasks.first(where: { $0.id == id }), let questions = decision?.questions
+        else { return nil }
+        let usable = ScoreRules.usable(scores: scores, hasKey: hasKey, questionVersion: questions.version)
+        return ReasonText.line(
+            ReasonLine.make(task: task, usable: usable, questions: questions, today: logicalToday, calendar: calendar))
+    }
+
+    // MARK: 구체화 게이트(spec 004 data-model §3·§4). 메모리에만 두고 로그에 남기지 않는다.
+
+    /// 할 일마다 제출 횟수와 통과 여부. 앱을 다시 켜면 사라진다(R-309).
+    private(set) var gateRecords: [TaskID: GateRecord] = [:]
+    /// 제출 뒤 판정을 기다리는 할 일.
+    private(set) var gateWaitingTaskID: TaskID?
+    /// 노치에 보일 게이트 단계. `refreshGate()`만 판정 시점에 바꾼다.
+    private(set) var gatePhase: GatePhase = .closed
+    /// 게이트 입력 칸의 글자. 제출하면 그 줄이 남아 다시 묻는 중으로 돌아올 때 보인다.
+    var gateDraftText = ""
+    /// 첫 행동 저장에 실패했다. 다음 제출 성공이나 게이트가 묻는 중이 아니게 되면 꺼진다.
+    private(set) var gateSaveFailed = false
 
     /// "직접…"을 누른 뒤 칸이 처음 나타날 때 한 번만 포커스를 준다. 마우스로 다시 펼쳐 칸이 다시 만들어질 때는
     /// 주지 않는다(R-002, SC-003).
@@ -680,6 +726,86 @@ final class AppState {
         return requestScores()
     }
 
+    /// 노치 설정 열기 앞에 기본 탭을 요청한다(spec 004 research R8).
+    func requestKeySettings() {
+        settingsTabRequest = .basic
+    }
+
+    /// 게이트 제출(spec 004 data-model §3). 앞뒤 공백·줄바꿈을 지운 줄을 첫 행동으로 쓰고 할 일을 다시 읽는다.
+    /// 다시 읽기가 `requestScores()`를 불러 바뀐 해시로 다시 묻는다. 비었거나 묻는 중이 아니거나 저장에 실패하면 false.
+    @discardableResult
+    func submitFirstAction(_ text: String) -> Bool {
+        let line = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard gatePhase == .asking, !line.isEmpty, let repository, let id = session.taskID,
+            var task = tasks.first(where: { $0.id == id })
+        else { return false }
+        task.firstAction = line
+        guard write(StoreBatch(updatedTasks: [task]), to: repository) else {
+            gateSaveFailed = true
+            return false
+        }
+        gateSaveFailed = false
+        gateDraftText = line
+        gateRecords[id, default: GateRecord()].submissions += 1
+        gateWaitingTaskID = id
+        reloadTasks()
+        return true
+    }
+
+    /// "지금은 넘기기": 통과로 보고 닫는다. 첫 행동과 질의는 그대로다.
+    func skipGate() {
+        guard gatePhase != .closed, let id = session.taskID else { return }
+        gateRecords[id, default: GateRecord()].passed = true
+        gateWaitingTaskID = nil
+        gateSaveFailed = false
+        gatePhase = .closed
+    }
+
+    /// 게이트 판정(data-model §3 "판정 시점"). 노치 할 일의 지금 판단 입력 해시는 여기서만 계산한다.
+    func refreshGate() {
+        guard let questions = decision?.questions, let id = session.taskID, Self.isDraft(timer),
+            let currentHash = currentJudgmentHash(id)
+        else {
+            setGate(.closed)
+            return
+        }
+        let record = gateRecords[id] ?? GateRecord()
+        let facts = ConcreteGate.Facts(
+            isDraft: true, canQuery: queryableQuestions != nil,
+            score: ScoreRules.usable(scores: scores, hasKey: hasKey, questionVersion: questions.version)[id],
+            currentHash: currentHash, failedHash: attempted[id].flatMap { $0.failed ? $0.hash : nil },
+            threshold: ConcreteGate.threshold(questions), record: record, waiting: gateWaitingTaskID == id)
+        let updated = ConcreteGate.afterAnswer(facts)
+        if updated != record {
+            gateRecords[id] = updated
+        }
+        setGate(ConcreteGate.phase(facts))
+    }
+
+    /// 기다림은 `checking`일 때만 이어진다.
+    private func setGate(_ phase: GatePhase) {
+        if phase != .checking, gateWaitingTaskID != nil {
+            gateWaitingTaskID = nil
+        }
+        if phase != .asking, gateSaveFailed {
+            gateSaveFailed = false
+        }
+        if gatePhase != phase {
+            gatePhase = phase
+        }
+    }
+
+    /// 체크포인트는 그때그때 읽는다(spec 003 data-model §4). 읽지 못하면 nil.
+    private func currentJudgmentHash(_ id: TaskID) -> String? {
+        guard let repository else { return nil }
+        do {
+            return judgmentStates(checkpoints: try repository.checkpoints())[id]?.hash
+        } catch {
+            Self.logStorageFailure(error)
+            return nil
+        }
+    }
+
     private struct Attempt {
         var hash: String
         var failed: Bool
@@ -843,6 +969,7 @@ final class AppState {
             attempted[outcome.taskID]?.failed = true
         }
         Self.decisionLogger.error("판단 실패: \(kind, privacy: .public)")
+        refreshGate()
     }
 
     private func refreshHasKey() {
@@ -869,6 +996,7 @@ final class AppState {
             Self.logStorageFailure(error)
             scores = [:]
         }
+        refreshGate()
     }
 
     /// 키 값은 남기지 않는다. 동작과 오류 종류만.
@@ -1024,6 +1152,7 @@ final class AppState {
             Self.logStorageFailure(error)
         }
         requestScores()
+        refreshGate()
     }
 
     /// 동기로 적용한다. 실패하면 오류 종류만 로그에 남기고 false.
