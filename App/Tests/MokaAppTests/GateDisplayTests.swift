@@ -11,6 +11,20 @@ final class GateDisplayTests: XCTestCase {
         XCTAssertFalse(GateDisplay.detachesStartShortcut(isEnteringTitle: false, gatePhase: nil))
     }
 
+    /// 묻는 중이면 시작 버튼에서 ↵ 표시를 뺀다(확정 시안 4번). 확인하는 중은 ↵가 있다(5번).
+    func test_FR13_R307_startLabelDropsReturnMarkWhileAsking() {
+        XCTAssertNil(GateDisplay.startShortcutMark(gatePhase: .asking))
+        XCTAssertEqual(GateDisplay.startShortcutMark(gatePhase: .checking), "↵")
+        XCTAssertEqual(GateDisplay.startShortcutMark(gatePhase: .closed), "↵")
+        XCTAssertEqual(GateDisplay.startShortcutMark(gatePhase: nil), "↵")
+    }
+
+    /// 확정 시안 12~14번 키 확인 한 줄.
+    func test_FR14_R316_keyNoticeTexts() {
+        XCTAssertEqual(GateDisplay.keyNoticeText, "키가 맞지 않아 판단 모델에 묻지 못하고 있어요.")
+        XCTAssertEqual(GateDisplay.keyNoticeButton, "키 확인")
+    }
+
     func test_FR13_R307_customMinutesEnterDoesNotStartWhileAsking() {
         XCTAssertFalse(GateDisplay.customEnterStarts(canStart: true, gatePhase: .asking))
         XCTAssertTrue(GateDisplay.customEnterStarts(canStart: true, gatePhase: .checking))
