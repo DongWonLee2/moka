@@ -194,6 +194,31 @@ final class AppGateTests: XCTestCase {
         XCTAssertEqual(calls.filter { $0 == 1 }.count, 2, "다시 묻기도 되돌리지 않는다")
     }
 
+    /// 확인하는 중에 다른 할 일로 바꿨다가 돌아와 다시 묻는 중이 되면 칸에 마지막에 적은 줄이 있다(data-model §3 마지막 줄, 시안 6번).
+    func test_FR13_R309_returningToAskingRefillsLastSubmittedLine() async throws {
+        let provider = Self.provider(concrete: 0.3)
+        await provider.setAnswer(.success(Self.answer(concrete: 0.8)), for: 2)
+        let h = await launched(try harness(count: 2, provider: provider))
+        XCTAssertEqual(h.state.gatePhase, .asking)
+        await provider.hold()
+        XCTAssertTrue(h.state.submitFirstAction("가짜 첫 행동"))
+        let runner = try XCTUnwrap(h.state.requestScores())
+        await provider.waitForHeld(count: 1)
+        XCTAssertEqual(h.state.gatePhase, .checking)
+
+        h.state.chooseOtherTask(2)
+        XCTAssertEqual(h.state.gateDraftText, "")
+        await provider.releaseAll()
+        await runner.value
+
+        h.state.beginOtherTask()
+        h.state.chooseOtherTask(1)
+        XCTAssertEqual(h.state.session.taskID, 1)
+        XCTAssertEqual(h.state.gatePhase, .asking, "해시가 같은 0.3이라 다시 묻는다")
+        XCTAssertEqual(h.state.gateRecords[1]?.submissions, 1)
+        XCTAssertEqual(h.state.gateDraftText, "가짜 첫 행동", "다시 묻기 칸에는 마지막에 적은 줄")
+    }
+
     func test_FR13_R308_R309_lowAnswerAsksAgainAndThirdSubmissionPasses() async throws {
         let h = await launched(try harness(count: 1))
 
