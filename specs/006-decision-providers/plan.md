@@ -101,12 +101,14 @@ Sources/MokaCore/
 ├── Decision/OpenAIDecisionsCodec.swift # 새: 요청·응답 변환
 ├── Decision/DecisionWire.swift        # 새: 요청 모양에 따라 두 코덱 가운데 하나를 고름
 ├── Decision/ProviderCatalog.swift     # 새: ProviderID, ProviderConfig, 공급자 표 다섯 줄
-├── Decision/EndpointRule.swift        # 새: 주소 허용 규칙, 호스트 꺼내기
+├── Decision/EndpointRule.swift        # 새: 주소 허용 규칙, 호스트 꺼내기, RedirectRule
 ├── Decision/DecisionSelection.swift   # 새: 설정 값과 질문 파일로 고른 공급자·기준 모델·보낼 모델 이름을 정함
 ├── Decision/QuestionSet.swift         # v2 읽기, models, provisional, thresholds(for:)
 ├── Decision/ScoreRules.swift          # usable에 공급자, priority는 기준 모델 임계값
 ├── Decision/ScoringPlan.swift         # needsQuery에 공급자
-├── Decision/ConcreteGate.swift        # threshold가 Double?, 강제 언래핑 제거
+├── Decision/ConcreteGate.swift        # threshold가 Double?, 강제 언래핑 제거, 기다리는 중 nil이면 통과
+├── PriorityOrder.swift                # priority 호출에 기준 모델 임계값을 넘김
+├── NotchSession.swift                 # SessionScoring에 thresholds
 ├── Resources/questions.json           # v2(사람 승인)
 ├── CoreSettings.swift                 # 설정 키 셋
 └── Sim/SimStorageRunner.swift         # 가짜 공급자 설정에 기준 모델 ID를 직접 넣음(기대 출력 그대로)
@@ -129,10 +131,10 @@ tuning/tests/test_questions_contract.py
 
 ### 앱 연결
 
-- `DecisionSetup`은 공급자 하나 대신 `bind: @MainActor (DecisionSelection.Ready) -> DecisionBinding`을 든다. `DecisionBinding`은 공급자, 키 보관함, 기준 모델 ID, 보낼 모델 이름이다. 기존 3인자 생성(`keyStore:provider:questions:`)은 고정 바인딩을 만드는 편의 생성자로 남겨 기존 앱 시험을 고치지 않는다(research R5).
-- 공급자 바꾸기는 AppState 한 함수(`selectProvider(_:)`)다. 설정 표 쓰기, `providerGeneration` 올림, 바인딩 교체, 장부 비움, `keyNeedsCheck = false`, `hasKey` 다시 읽기, `requestScores()` 순서다(data-model §6).
-- 질의는 떠날 때의 `providerGeneration`을 들고 가고, 답을 받을 때 지금 값과 다르면 버린다. `unauthorized`도 같은 판정을 먼저 거친다(research R6).
-- 리디렉트 거부는 `HTTPDecisionProvider`의 세션 대리자 하나가 맡는다. 3xx는 따라가지 않은 응답 그대로 `DecisionWire.decode`에 가 `server(status)`가 된다(research R7).
+- `DecisionSetup`은 공급자 하나 대신 `bind: @MainActor (DecisionSelection.Ready) -> DecisionBinding`을 든다. `DecisionBinding`은 공급자, 기준 모델 ID, 보낼 모델 이름이다. 키 보관함은 판단 기능이 꺼져 있어도 써야 하므로 `keyStore: @MainActor (ProviderID) -> any KeyStore`로 따로 받는다. 기존 3인자 생성(`keyStore:provider:questions:`)은 고정 바인딩을 만드는 편의 생성자로 남겨 기존 앱 시험을 고치지 않는다(research R5).
+- 공급자 바꾸기는 AppState 한 함수(`selectProvider(_:)`)다. 설정 표 쓰기, `providerGeneration` 올림, 바인딩 교체, 장부 비움, `keyNeedsCheck = false`, `keyStore(for:)`로 `hasKey` 다시 읽기, `requestScores()` 순서다(data-model §6).
+- 질의는 떠날 때의 `providerGeneration`을 들고 가고, 답을 받을 때 지금 값과 다르면 버린다. `unauthorized`와 그 밖의 실패(장부의 실패 표시), 게이트 판정도 같은 판정을 먼저 거친다(research R6).
+- 리디렉트 거부 판단은 MokaCore `RedirectRule`이고, `HTTPDecisionProvider`의 세션 대리자 하나가 그 값을 돌려준다. 3xx는 따라가지 않은 응답 그대로 `DecisionWire.decode`에 가 `server(status)`가 된다(research R7).
 
 ## 작업 단위 (tasks.md의 뼈대, Issue 후보)
 

@@ -13,12 +13,13 @@
 | `AuthStyle` | `enum { bearer, apiKeyHeader }` | `Authorization: Bearer <키>` 또는 `api-key: <키>` |
 | `ProviderEndpoint` | `enum { fixed(URL), userResource(path: String) }` | Microsoft만 `userResource("/providers/microsoft/v1/systemone")` |
 | `ProviderConfig` | `id`, `displayName`, `endpoint: ProviderEndpoint`, `auth`, `shape`, `issueURL: URL?`, `issueURLConfirmed: Bool`, `firstCallConfirmed: Bool` | 줄 하나. `func url(resource: URL?) -> URL?`는 고정이면 그 주소, 사용자 주소면 리소스 주소에 경로를 붙인 값이고, 리소스가 없으면 `nil` |
-| `ProviderCatalog` | `static let all: [ProviderConfig]`(다섯, 표 순서는 research R4), `static func config(_: ProviderID) -> ProviderConfig`, `static func isOpen(_: ProviderID, questions: QuestionSet) -> Bool` | `isOpen` = `firstCallConfirmed && questions.models[id.rawValue] != nil` |
+| `ProviderCatalog` | `static let all: [ProviderConfig]`(다섯, 표 순서는 research R4), `static func config(_: ProviderID, in catalog: [ProviderConfig] = all) -> ProviderConfig?`, `static func isOpen(_: ProviderID, questions: QuestionSet, catalog: [ProviderConfig] = all) -> Bool` | 둘 다 주입한 `catalog`에서 `first(where:)`로 찾는다. 강제 언래핑하지 않는다. 배열에 없으면 `config`는 `nil`, `isOpen`은 거짓이다. `isOpen` = 그 줄의 `firstCallConfirmed && questions.models[id.rawValue] != nil` |
 | `SystemOneCodec` | `body(_:)`, `response(_:)`, `decode(status:body:)` | `TypeSafeCodec`의 새 이름, 내용 그대로 |
 | `OpenAIDecisionsCodec` | 같은 세 함수 | 규칙은 contracts/decision-provider-v2.md |
 | `DecisionWire` | `static func body(_: DecisionRequest, shape:) -> Data`, `static func decode(status:body:shape:) throws(DecisionError) -> DecisionResponse` | 요청 모양에 따라 두 코덱 가운데 하나를 부른다. 앱 공급자는 이것만 부른다 |
 | `EndpointRejection` | `enum { unparseable, scheme, emptyHost, userInfo, query, fragment, path }` | 화면 거부 문구의 종류 |
 | `EndpointRule` | `static func check(_ text: String, allowsPath: Bool) -> Result<URL, EndpointRejection>`, `static func host(of: URL) -> String` | §4 |
+| `RedirectRule` | `static func follow(status: Int, to: URL?) -> URL?` | 늘 `nil`이다. 앱 세션 대리자가 이 함수만 부르고 그 값을 그대로 돌려준다. 그래서 거부 판단을 리눅스 시험으로 지킨다(research R7) |
 | `ModelThresholds` | `concrete: Double`, `avoiding: Double` | |
 | `DecisionSelection` | `static func resolve(providerID: String?, microsoftEndpoint: String?, microsoftDeployment: String?, questions: QuestionSet, catalog: [ProviderConfig] = ProviderCatalog.all) -> Resolution` | §6. `catalog`은 시험이 Microsoft를 연 가짜 표를 넣을 때만 바꾼다. `DecisionSetup`도 같은 기본값의 `catalog`를 든다 |
 | `DecisionSelection.Resolution` | `ready(Ready)`, `off(OffReason)` | |
@@ -34,7 +35,7 @@
 | `ScoreRules.priority` | `(_:task:today:questions:calendar:)` | `(_:task:today:thresholds:calendar:)`. `thresholds`가 `nil`이면 avoiding 배율 1 |
 | `ScoringPlan.needsQuery` | `(tasks:scores:states:questionVersion:)` | `(tasks:scores:states:questionVersion:provider:)`. 판단 결과의 공급자가 다르면 다시 묻는다. 순서 규칙(판단 결과 없는 할 일 먼저, id 오름차순)에서 공급자가 다른 결과는 "있음"으로 센다 |
 | `ConcreteGate.threshold` | `(_ questions:) -> Double`(강제 언래핑) | `(_ questions:, baseModel:) -> Double?` |
-| `ConcreteGate.Facts.threshold` | `Double` | `Double?`. `nil`이면 `phase`가 열지 않는다 |
+| `ConcreteGate.Facts.threshold` | `Double` | `Double?`. `nil`이면 `phase`가 열지 않는다. 게이트가 재판정을 기다리는 중에 `nil`이 되면 `afterAnswer`는 통과로 본다(spec 004 R-309의 "물을 수 없게 되면 통과"와 같은 쪽) |
 | `SessionScoring` | `usable`, `questions`, `today` | `thresholds: ModelThresholds?`를 더한다. 순서 계산이 `priority`에 넘긴다 |
 | `CoreSettings` | 키 셋 | `decisionProviderKey`, `microsoftEndpointKey`, `microsoftDeploymentKey`와 읽기·쓰기 함수를 더한다 |
 
@@ -48,7 +49,7 @@
 
 - System One 넷: `SystemOneCodec` 그대로. 공급자마다 다른 것은 주소, 인증 헤더, 요청 `model`(보낼 모델 이름)뿐이다.
 - OpenAI: `OpenAIDecisionsCodec`. 본문과 응답 변환은 contracts/decision-provider-v2.md "OpenAI 모양".
-- 상태 코드 표는 두 모양이 같다(401·403 `unauthorized`, 429 `rateLimited`, 529 `overloaded`, 2xx 본문 해석, 그 밖 `server(status)`). 3xx도 `server(status)`다(research R7).
+- 상태 코드 표는 두 모양이 같다(401·403 `unauthorized`, 429 `rateLimited`, 529 `overloaded`, 200만 본문 해석, 200이 아닌 2xx를 포함한 그 밖은 `server(status)`). spec 003 계약과 지금 `TypeSafeCodec.decode` 그대로다. 3xx도 `server(status)`다(research R7).
 
 ## 4. 주소 규칙 (`EndpointRule.check`)
 
@@ -98,28 +99,28 @@ v2 `models`는 ADR-0011 결정 3 예시 그대로 넷(`typesafe`, `liquid`, `per
 **정하기**(`DecisionSelection.resolve`, 순수 함수):
 1. `providerID`가 `nil`이면 `typesafe`로 본다.
 2. `ProviderID(rawValue:)`가 `nil`이면 `off(.unknownProvider)`.
-3. `ProviderCatalog.isOpen`이 거짓이면 `off(.closedProvider(id))`.
+3. `ProviderCatalog.isOpen(id, questions:, catalog:)`이 거짓이면 `off(.closedProvider(id))`. 줄은 주입한 `catalog`에서 찾는다.
 4. 기준 모델 ID는 `questions.models[id]`다(3에서 있음이 보장됨).
 5. Microsoft면 저장된 주소를 `EndpointRule.check(allowsPath: false)`로 다시 보고, 없거나 거부면 `off(.needsEndpoint)`. 배포 이름이 비면 `off(.needsDeployment)`. 보낼 모델 이름은 배포 이름이다.
 6. 나머지는 보낼 모델 이름이 기준 모델 ID이고, `url`은 고정 주소다.
 7. `ready(Ready)`.
 
-`off`면 AppState는 판단 기능을 끈 것처럼 동작한다. 질의를 보내지 않고, 쓰는 판단 결과는 비며, 노치는 마감일 순이다. 로그는 `OffReason` 종류만 한 줄 남긴다. 키 칸은 그대로 보이고 키를 넣을 수 있다.
+`off`면 AppState는 판단 기능을 끈 것처럼 동작한다. 질의를 보내지 않는다. `input(at:)`의 `scoring`은 `nil`이라 노치는 마감일 순이다. 이유 줄에는 손해 칸이 없고(spec 004 R-303), 게이트는 열지 않는다. 로그는 `OffReason` 종류만 한 줄 남긴다. 키 칸은 그대로 보이고 키를 넣을 수 있다. 키는 바인딩이 아니라 `keyStore(for: selectedProvider)`로 다룬다(§8). `unknownProvider`면 고른 공급자가 없으므로 키 칸 대신 공급자를 다시 골라 달라는 안내만 보이고 키 동작은 끈다.
 
 **바꾸기**(`AppState.selectProvider(_ id: ProviderID)`, MainActor):
 1. 지금과 같으면 아무것도 하지 않는다.
-2. 열린 공급자가 아니면 아무것도 하지 않는다(화면이 막지만 한 번 더 본다).
-3. 설정 표에 `decision_provider`를 쓴다. 던지면 바꾸지 않고 실패 문구를 켠다.
-4. `providerGeneration += 1`, 바인딩을 다시 만든다(`resolve` 다음 `bind`).
+2. `ProviderCatalog.isOpen(id, questions:, catalog: setup.catalog)`가 거짓이면 아무것도 하지 않는다(화면이 막지만 한 번 더 본다).
+3. 설정 표에 `decision_provider`를 쓴다. 던지면 바꾸지 않고 `providerActionFailure = .select`를 켠다.
+4. `selectedProvider = id`, `providerGeneration += 1`, 바인딩을 다시 만든다(`resolve`가 `ready`면 `bind`, `off`면 `nil`). `providerActionFailure = nil`.
 5. `attempted = [:]`, `keyNeedsCheck = false`, `keyActionFailure = nil`.
-6. `hasKey`를 새 바인딩의 키 보관함으로 다시 읽는다.
+6. `hasKey`를 `keyStore(for: id)`로 다시 읽는다. 바인딩이 `nil`(off)이어도 읽는다.
 7. `requestScores()`.
 
 **Microsoft 칸 저장**(`AppState.saveMicrosoft(endpoint:deployment:)`):
 1. 두 값의 앞뒤 공백·줄바꿈을 지운다. 비면 저장하지 않는다(화면이 저장을 끔).
 2. 주소를 `EndpointRule.check(allowsPath: false)`로 본다. 거부면 저장하지 않고 이유를 돌려준다.
-3. 주소가 저장된 값과 다르면 Microsoft 키 보관함 항목을 먼저 지운다. 지우기가 던지면 주소를 저장하지 않고 실패 문구를 켠다(옛 키가 새 호스트로 가지 않게).
-4. 설정 표에 두 값을 쓴다.
+3. 저장된 주소가 있고 새 값과 다를 때만 `keyStore(for: .microsoft)`의 키를 먼저 지운다. 저장된 주소가 없으면(처음 저장) 지우지 않는다. 지우기가 던지면 주소를 저장하지 않고 `keyActionFailure = .delete`를 켠다(옛 키가 새 호스트로 가지 않게).
+4. 설정 표에 두 값을 쓴다. 던지면 `providerActionFailure = .saveMicrosoft`를 켜고 바인딩은 옛 주소 그대로 둔다. 3에서 키를 이미 지웠으면 `hasKey`를 다시 읽어 키 없음으로 보이고, 키가 없으므로 옛 주소로도 묻지 않는다.
 5. 바꾸기 4~7과 같다. 저장된 판단 결과는 그대로 쓴다(research R3).
 
 ## 7. 판단 결과 규칙에서 바뀌는 곳
@@ -129,17 +130,18 @@ v2 `models`는 ADR-0011 결정 3 예시 그대로 넷(`typesafe`, `liquid`, `per
 - 요청: `DecisionRequest(taskID:model: binding.requestModel, state:questions:)`.
 - 게이트: `ConcreteGate.threshold(questions, baseModel: binding.baseModel)`.
 - 순서: `SessionScoring.thresholds = questions.thresholds(for: binding.baseModel)`.
-- 답 받기: 세대가 다르면 버린다(research R6). 그다음 spec 003 `accepts` 그대로.
+- 답 받기: 세대가 다르면 버린다(research R6). 성공 답만이 아니라 실패 답도 같다. 실패를 장부에 적는 `markFailed`와 게이트 판정도 세대를 먼저 보고, 다르면 아무것도 바꾸지 않는다. 판단 입력 해시는 공급자와 상관없이 같아서 해시 비교만으로는 새 세대 장부를 잘못 실패로 적기 때문이다. 그다음 spec 003 `accepts` 그대로.
 - 저장: `TaskScore.provider`는 `binding.provider.name`, `modelSnapshot`은 응답 `model` 그대로(spec 003 R-205).
 
 ## 8. 앱 상태
 
-- `DecisionSetup`: `bind`, `questions: QuestionSet?`, 기존 3인자 편의 생성자(research R5). `MokaApp`의 `bind`는 `HTTPDecisionProvider(config:url:)`와 `KeychainKeyStore(account: config.id.rawValue)`를 만든다.
-- 메모리 값: `binding: DecisionBinding?`(`off`면 `nil`), `selectionOff: DecisionSelection.OffReason?`, `providerGeneration`, 기존 `hasKey`·`keyNeedsCheck`·`keyActionFailure`·`attempted`·`queryRunner`.
+- `DecisionSetup`: `bind: @MainActor (DecisionSelection.Ready) -> DecisionBinding`, `keyStore: @MainActor (ProviderID) -> any KeyStore`, `catalog: [ProviderConfig] = ProviderCatalog.all`, `questions: QuestionSet?`, 기존 3인자 편의 생성자(research R5). `DecisionBinding`은 `provider`, `baseModel`, `requestModel`이고 키 보관함을 들지 않는다. 키는 판단 기능이 꺼져 있어도 다뤄야 하므로 바인딩과 따로 받는다. `MokaApp`의 `bind`는 `HTTPDecisionProvider(config:url:)`를, `keyStore`는 `KeychainKeyStore(account: id.rawValue)`를 만든다. 편의 생성자의 `keyStore`는 공급자와 상관없이 받은 보관함 하나를 돌려준다.
+- 메모리 값: `selectedProvider: ProviderID?`(설정 없음이면 `.typesafe`, 모르는 ID면 `nil`), `binding: DecisionBinding?`(`off`면 `nil`), `selectionOff: DecisionSelection.OffReason?`, `providerGeneration`, `providerActionFailure: ProviderAction?`(`select`, `saveMicrosoft`. 다음 성공에 `nil`), 기존 `hasKey`·`keyNeedsCheck`·`keyActionFailure`·`attempted`·`queryRunner`.
+- 키 저장·지우기·`hasKey` 읽기·보내기 직전 키 읽기는 모두 `keyStore(for: selectedProvider)`다. `selectedProvider`가 `nil`이면 키 동작을 끄고 `hasKey = false`다.
 - `KeyFieldState`는 여섯 상태 그대로다. 칸 제목은 뷰가 고른 공급자 이름으로 만든다.
 - `showsKeyNotice`는 그대로 `keyFieldState == .needsCheck`이고, 바꾸기와 Microsoft 칸 저장이 `keyNeedsCheck`를 끄므로 함께 꺼진다(spec R-627).
 - 온보딩 `OnboardingKeyInput`: `hasKey`(Jev 항목), `onSave`(Jev 항목에 저장), `issueURL: URL?`(확인된 경우만), `host: String`(Jev 호스트). 저장은 spec 004 data-model §5 무늬 그대로다.
-- Jev 항목 저장은 고른 공급자가 Jev가 아닐 때(온보딩에서는 생기지 않음)도 `typesafe` 항목에 한다. 온보딩 키 단계는 지금 바인딩과 상관없이 Jev 키 보관함을 쓴다.
+- 온보딩 키 단계는 지금 바인딩과 고른 공급자와 상관없이 `keyStore(for: .typesafe)`를 쓴다. 판단 기능이 꺼져 있어도 같다.
 
 ## 9. 화면 상태 (시안으로 확정)
 
@@ -166,6 +168,6 @@ v2 `models`는 ADR-0011 결정 3 예시 그대로 넷(`typesafe`, `liquid`, `per
 ## 10. 시험 경계와 기존 기대 출력
 
 - MokaCore 시험은 리눅스에서 돈다. 공급자 표, 두 코덱, 주소 규칙, 질문 파일 v2, `DecisionSelection`, 바뀐 시그니처.
-- 앱 시험은 가짜 공급자 둘(이름 `fake-a`, `fake-b`)과 공급자별 `InMemoryKeyStore`를 주는 가짜 `bind`로 바꾸기, 세대 판정, Microsoft 칸 저장과 키 지움, 업그레이드(설정 없음, `typesafe` 키 있음)를 본다.
+- 앱 시험은 가짜 공급자 둘(이름 `fake-a`, `fake-b`)과 공급자별 `InMemoryKeyStore`를 돌려주는 가짜 `keyStore`, 가짜 `bind`로 바꾸기, 세대 판정(성공 답과 실패 답 모두), off 상태의 키 저장·확인, Microsoft 칸 저장과 키 지움, 업그레이드(설정 없음, `typesafe` 키 있음)를 본다.
 - `moka-sim` 기대 출력, spec 001~004 golden 바이트는 바뀌지 않는다. 바뀌면 멈춘다.
 - 기존 스냅샷 가운데 기본 탭 키 칸 상태는 칸 제목과 판단 모델 칸 모양이 바뀌어 참조 이미지가 바뀐다. PR에 이유를 적고 새 이미지로 갈아 끼운다. 그 밖의 참조 이미지는 그대로다.
