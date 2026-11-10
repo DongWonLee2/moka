@@ -24,6 +24,11 @@ struct NotchContentView: View {
     var showsFirstActionCollapsed = false
     /// 접힌 화면의 첫 행동 글자. nil이면 `firstAction`을 쓴다. 게이트가 펼친 화면 줄만 숨기므로 앱은 따로 넘긴다(spec 004 R-311).
     var collapsedFirstAction: String?
+    /// 펼친 화면의 이유 줄, 게이트, 키 확인 한 줄(spec 004 data-model §5). 접힌 화면에는 보이지 않는다.
+    var reasonLine: String?
+    var gate: GateInput?
+    var keyNotice = false
+    var onOpenKeySettings: () -> Void = {}
     let titleFocusRequest: Int
     let chip: QuantumChipInput
     let onEnterTitle: (String) -> Void
@@ -60,7 +65,8 @@ struct NotchContentView: View {
                     timer: timer, remainingSeconds: remainingSeconds, metrics: metrics,
                     storageUnavailable: storageUnavailable, firstAction: firstAction,
                     titleFocusRequest: titleFocusRequest, chip: chip,
-                    onEnterTitle: onEnterTitle, draftInput: draftInput, notes: notes, onStart: onStart,
+                    onEnterTitle: onEnterTitle, draftInput: draftInput, notes: notes, reasonLine: reasonLine,
+                    gate: gate, keyNotice: keyNotice, onOpenKeySettings: onOpenKeySettings, onStart: onStart,
                     onComplete: onComplete
                 )
                 .transition(reduceMotion ? .opacity : .notchEntry(scaleY: 0.6, anchor: .top))

@@ -21,6 +21,13 @@ struct ExpandedView: View {
     let onEnterTitle: (String) -> Void
     let draftInput: DraftInput
     var notes = NotesInput()
+    /// 이유 줄(spec 004 R-301). 시작 전·도는 중 제목 아래.
+    var reasonLine: String?
+    /// 구체화 게이트(spec 004 R-307). 시작 전 시간 고르기 위.
+    var gate: GateInput?
+    /// 키 확인 한 줄(spec 004 R-316). 빈 상태·시작 전·도는 중 맨 아래.
+    var keyNotice = false
+    var onOpenKeySettings: () -> Void = {}
     let onStart: () -> Void
     let onComplete: () -> Void
     @Environment(\.colorSchemeContrast) private var contrast
@@ -72,6 +79,7 @@ struct ExpandedView: View {
             if storageUnavailable {
                 StorageUnavailableView()
             }
+            keyNoticeLine
         case .empty(.some(let draft)):
             if draftInput.isPickingOther {
                 OtherTaskPicker(
@@ -79,12 +87,13 @@ struct ExpandedView: View {
                     onCancel: draftInput.onCancelOther)
             } else {
                 draftStage(draft)
+                keyNoticeLine
             }
         case .running(let title, _, _, _):
             if notes.pending != nil {
                 CheckpointNotesView(title: title, input: notes)
             } else {
-                TitleText(title: title)
+                TitleBlock(title: title, reasonLine: reasonLine)
                 if let firstAction {
                     FirstActionLine(text: firstAction)
                 }
@@ -98,6 +107,7 @@ struct ExpandedView: View {
                     Button(action: onComplete) { ButtonLabel(text: "완료") }
                         .buttonStyle(NotchButtonStyle(kind: .secondary))
                 }
+                keyNoticeLine
             }
         case .expired(let title, let chipMin, _):
             ExpiredView(
@@ -112,10 +122,13 @@ struct ExpandedView: View {
                 focusRequest: titleFocusRequest, focusesOnAppear: true, onCancel: draftInput.onCancelNewTitle,
                 onSubmit: onEnterTitle)
         } else {
-            TitleText(title: draft.title)
-            if let firstAction {
+            TitleBlock(title: draft.title, reasonLine: reasonLine)
+            if let firstAction, !GateDisplay.hidesFirstAction(gatePhase: gate?.phase) {
                 FirstActionLine(text: firstAction)
             }
+        }
+        if let gate, GateDisplay.isVisible(gatePhase: gate.phase, isEnteringTitle: draftInput.isEnteringTitle) {
+            GateView(input: gate)
         }
         // 기본값으로 채운 칩이 선택된 채로 Enter나 시작 한 번이면 그 값으로 시작한다(R-003).
         QuantumChipView(
@@ -126,7 +139,7 @@ struct ExpandedView: View {
                 CustomMinutesField(
                     text: customText, takeFocusRequest: chip.takeFocusRequest, onEdit: chip.onEditCustom
                 ) {
-                    if chip.canStart { onStart() }
+                    if GateDisplay.customEnterStarts(canStart: chip.canStart, gatePhase: gate?.phase) { onStart() }
                 }
             } else {
                 Button("다른 할 일", action: draftInput.onBeginOther)
@@ -137,14 +150,27 @@ struct ExpandedView: View {
                     .accessibilityLabel("새 할 일")
             }
             Spacer(minLength: 0)
-            Button(action: onStart) { ButtonLabel(text: "시작", shortcut: "↵") }
-                .buttonStyle(NotchButtonStyle(kind: .primary))
-                // 제목 칸이 열려 있으면 Enter는 그 칸의 저장이다. 시작까지 함께 부르지 않게 단축키를 뗀다.
-                .keyboardShortcut(draftInput.isEnteringTitle ? nil : .defaultAction)
-                .disabled(!chip.canStart)
+            Button(action: onStart) {
+                ButtonLabel(text: "시작", shortcut: GateDisplay.startShortcutMark(gatePhase: gate?.phase))
+            }
+            .buttonStyle(NotchButtonStyle(kind: .primary))
+            // 제목 칸이나 게이트 칸이 열려 있으면 Enter는 그 칸의 것이다. 시작까지 함께 부르지 않게 단축키를 뗀다.
+            .keyboardShortcut(
+                GateDisplay.detachesStartShortcut(
+                    isEnteringTitle: draftInput.isEnteringTitle, gatePhase: gate?.phase)
+                    ? nil : .defaultAction
+            )
+            .disabled(!chip.canStart)
         }
         if let message = QuantumChip.customIssueMessage(customText: chip.customText) {
             CustomIssueText(message: message)
+        }
+    }
+
+    @ViewBuilder
+    private var keyNoticeLine: some View {
+        if keyNotice {
+            KeyNoticeLine(onOpen: onOpenKeySettings)
         }
     }
 
@@ -254,6 +280,21 @@ struct TitleText: View {
             .lineLimit(lineLimit)
             .truncationMode(.tail)
             .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// 제목과 그 바로 아래 이유 줄(시안 `margin-top: 4px`). 이유 줄이 없으면 제목만.
+private struct TitleBlock: View {
+    let title: String
+    let reasonLine: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            TitleText(title: title)
+            if let reasonLine {
+                ReasonLineText(text: reasonLine)
+            }
+        }
     }
 }
 
