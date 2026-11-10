@@ -8,7 +8,7 @@
 |---|---|---|
 | `DeadlineDistance` | `none`, `today`, `left(Int)`, `overdue(Int)` | 마감과 오늘(spec 002 R-114 하루 경계)의 날 수 차이 |
 | `ReasonLine` | `deadline: DeadlineDistance`, `loss: String?`, `skipCount: Int` | `ReasonLine.make(task:usable:questions:today:calendar:)`. `loss`는 질문 파일 impact 옵션 말 하나이고, `usable`에 그 할 일이 없으면 `nil` |
-| `ReasonText` | `static func line(_ reason: ReasonLine) -> String` | 노치에 보일 한 줄. 칸 사이 구분자와 글자는 시안 확정 뒤 고정한다 |
+| `ReasonText` | `static func line(_ reason: ReasonLine) -> String` | 노치에 보일 한 줄. 칸 사이 구분자와 글자는 아래 §2 확정 표기다 |
 | `GateRecord` | `submissions: Int`, `passed: Bool` | 할 일 하나의 게이트 기록. AppState 메모리에만 있다 |
 | `GatePhase` | `asking`, `checking`, `closed` | 노치에 보일 게이트 단계 |
 | `ConcreteGate` | 아래 §3 순수 함수 | 판정은 모두 여기서 한다. AppState는 값을 모아 넘기고 결과를 반영한다 |
@@ -20,8 +20,8 @@
 - **남은 날**: 마감이 없으면 `none`. 마감이 오늘이면 `today`. 마감이 오늘 뒤면 `left(날 수)`, 오늘 앞이면 `overdue(날 수)`. 오늘은 고르기와 같은 `LocalDay`(spec 003 `SessionScoring.today`)다.
 - **손해**: `usable[taskID]`가 있으면 옵션 번호 `round(impact 곱하기 (옵션 수 빼기 1))`의 옵션 말. 반올림은 0.5에서 위로 간다. 지금 옵션 셋이라 0.25 미만은 "조금", 0.25 이상 0.75 미만은 "꽤", 0.75 이상은 "아주"다. 없으면 `nil`이고 칸을 그리지 않는다.
 - **미룬 횟수**: `task.skipCount` 그대로. 0도 그린다.
-- **초안 표기**(시안에서 확정): `D-3 · 손해 꽤 · 미룬 2번`, 오늘 `D-day`, 지남 `D+2`, 마감 없음 `마감 없음`, 손해 없음이면 그 칸과 구분자를 뺀다.
-- **보이는 곳**: 시작 전과 도는 중 펼친 화면의 제목 아래. 이어서 할 일 줄이 있으면 그 아래(순서는 시안에서 확정). 접힌 화면, 시간 끝, 빈 상태에는 없다.
+- **표기**(시안 확정 2026-11-10): `D-3 · 손해 꽤 · 미룬 2번`, 오늘 `D-day`, 지남 `D+2`, 마감 없음 `마감 없음`, 손해 없음이면 그 칸과 구분자를 뺀다.
+- **보이는 곳**: 시작 전과 도는 중 펼친 화면의 제목 아래. 이어서 할 일 줄이 있으면 이유 줄이 위이고 이어서 할 일 줄이 그 아래다(시안 확정 2026-11-10). 접힌 화면, 시간 끝, 빈 상태에는 없다.
 - **다시 그리기**: AppState의 계산 속성이라 할 일, 판단 결과, 오늘이 바뀌면 다시 계산된다. 노치 할 일은 바꾸지 않는다.
 
 ## 3. 게이트 규칙 (spec R-306~R-312)
@@ -83,7 +83,7 @@
 | 인자 | 기본값 | 쓰는 곳 |
 |---|---|---|
 | `reasonLine: String?` | `nil` | 시작 전, 도는 중 |
-| `gate: GateInput?` | `nil` | 시작 전. `phase`, `text` 바인딩, `saveFailed`, `onSubmit`, `onSkip`. 게이트가 `asking`·`checking`이면 제목 아래 이어서 할 일 줄(`firstAction`)을 숨긴다 |
+| `gate: GateInput?` | `nil` | 시작 전. `phase`, `text` 바인딩, `submissions`(다시 묻기 문구의 남은 횟수), `saveFailed`, `onSubmit`, `onSkip`. 게이트가 `asking`·`checking`이면 제목 아래 이어서 할 일 줄(`firstAction`)을 숨긴다 |
 | `keyNotice: Bool` | `false` | 빈 상태, 시작 전, 도는 중 |
 | `onOpenKeySettings: () -> Void` | 빈 동작 | 키 확인 한 줄의 동작 |
 
@@ -91,6 +91,9 @@
 - "직접…" 분 칸(`CustomMinutesField`)의 Enter: 지금은 `chip.canStart`면 시작한다(`App/Sources/Views/ExpandedView.swift:125-130`). 게이트가 `asking`이면 시작하지 않는다.
 - 게이트를 통과해도 접힌 화면 3초 표시(`FirstActionDisplay`)는 다시 켜지 않는다. 그 표시는 노치가 할 일을 고를 때만이다.
 - 게이트 `checking`일 때 입력 칸은 읽기만이고 확인하는 중 문구를 보인다. 시작 버튼 Enter는 켜진다.
+- 게이트 문구(시안 확정 2026-11-10, 사용자 의견 반영): 제목 "어디서 시작할지 막연해 보여요", 설명 "2분 안에 바로 할 수 있는 첫 행동을 한 줄 적어 주세요. 판단 모델이 다시 확인하고, 노치를 펼치면 제목 아래 보여요.", 버튼 "지금은 넘기기"와 "적기". 다시 묻기는 설명 대신 "방금 적은 줄이에요. 고쳐 써도 돼요."와 "조금 더 작게 적어 볼까요? 두 번 더 물어볼게요."(남은 횟수를 말로), 확인하는 중은 "판단 모델에 다시 물어보고 있어요.", 저장 실패는 "첫 행동을 저장하지 못했어요. 다시 해 주세요."다. 묻는 중이면 시작 버튼에서 ↵ 표시를 뺀다.
+- 게이트가 열린 채 새 할 일 제목 칸, 다른 할 일 목록, 두 줄 입력이 열리면 그동안 게이트를 숨기고, 닫히면 다시 보인다(시안 확정할 것 9번). 게이트 단계와 기록은 그대로다.
+- 키 확인 한 줄(시안 12~14번): "키가 맞지 않아 판단 모델에 묻지 못하고 있어요."와 "키 확인". 펼친 화면 맨 아래에 둔다.
 
 설정 창 할 일 탭(`TaskListTabView` 새 인자): `keyNotice: Bool = false`, `onOpenKeySettings: () -> Void`. 목록 위 한 줄.
 

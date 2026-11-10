@@ -39,7 +39,10 @@ description: "spec 004 판단 결과 화면 연결 작업 목록"
 ## Phase 1: Setup
 
 - [ ] T001 기준 상태 확인: `swift test`, `cd tuning && python3 -m pytest`, 앱 빌드, quickstart 4의 앱 시험을 돌려 기존 시험이 PASS인지 기록하고, 기존 스냅샷 참조 이미지 폴더의 파일 해시 목록을 PR "완료 증거"에 적는다(SC-310 비교 기준) 〔단위 1〕
-- [ ] T002 [사람] 시안 `~/Dev/ai-platform/projects/moka/design/004-mockup.html`을 사용자에게 보이고 "확정할 것" 목록(이유 줄 표기, 게이트 문구와 자리, 온보딩 키 단계 문구와 발급 링크 주소, 키 확인 한 줄 문구)을 확정받는다. 확정 전에는 [화면 뒤] 태스크를 시작하지 않는다 〔단위 1〕
+- [x] T002 [사람] 시안 `~/Dev/ai-platform/projects/moka/design/004-mockup.html`을 사용자에게 보이고 "확정할 것" 목록(이유 줄 표기, 게이트 문구와 자리, 온보딩 키 단계 문구와 발급 링크 주소, 키 확인 한 줄 문구)을 확정받는다. 확정 전에는 [화면 뒤] 태스크를 시작하지 않는다 〔단위 1〕
+  - 사용자 확정 2026-11-10. 1~8번과 12~14번은 단위 3, 9~11번과 15번은 단위 4가 쓴다.
+  - 게이트 문구는 사용자 의견으로 바뀌었다. 제목 "어디서 시작할지 막연해 보여요", 설명 "2분 안에 바로 할 수 있는 첫 행동을 한 줄 적어 주세요. 판단 모델이 다시 확인하고, 노치를 펼치면 제목 아래 보여요."(spec R-307, data-model §5)
+  - 확정할 것 9번: 게이트가 열린 채 새 할 일 제목 칸, 다른 할 일 목록, 두 줄 입력이 열리면 그동안 게이트를 숨기고, 닫히면 다시 보인다(data-model §5)
 
 ---
 
@@ -59,13 +62,13 @@ description: "spec 004 판단 결과 화면 연결 작업 목록"
 
 - [ ] T003 [P] [US1] `Tests/MokaCoreTests/ReasonLineTests.swift`: data-model §2 전체(남은 날 넷, 하루 시작 시각 전후의 오늘, `America/New_York` 일광절약시간 전환일을 사이에 둔 마감에서도 남은 날이 `LocalDay` 날짜 차와 같음(시각 차를 86400으로 나누지 않음), 손해 반올림 경계 0.24·0.25·0.74·0.75, 손해 없음 셋(키 없음으로 `usable` 빔, 판단 결과 없음, 질문 버전 다름), 미룬 횟수 0, 손해 없을 때 구분자 빠짐)를 쓰고 실패를 확인한다(`FR-04 R-302`, `FR-04 R-303`, `FR-04 R-304`, SC-301, SC-302) 〔단위 1〕
 - [ ] T005 [US1] `App/Tests/MokaAppTests/AppDecisionTests.swift`: `reasonLine`이 시작 전·도는 중에만 값이 있고, 빈 상태와 시간 끝에는 `nil`, 답이 저장되면 손해가 바뀌고 노치 할 일(`session.taskID`)은 그대로(spec US1-5), 키를 지우면 손해가 빠짐. 실패를 확인한다(`FR-04 R-305`) 〔단위 2〕
-- [ ] T007 [US1] [화면 뒤] `App/Tests/MokaAppTests/ScreenStateSnapshotTests.swift`에 `test_R301_draftReason`, `test_R301_draftReasonNoLoss`, `test_R301_runningReason`(라이트·다크, 이어서 할 일 줄이 있는 경우 하나 포함)을 확정 시안대로 쓰고 실패를 확인한다(`FR-04 R-301`) 〔단위 3〕
+- [x] T007 [US1] [화면 뒤] `App/Tests/MokaAppTests/ScreenStateSnapshotTests.swift`에 `test_R301_draftReason`, `test_R301_draftReasonNoLoss`, `test_R301_runningReason`(라이트·다크, 이어서 할 일 줄이 있는 경우 하나 포함)을 확정 시안대로 쓰고 실패를 확인한다(`FR-04 R-301`) 〔단위 3〕
 
 ### Implementation (Green)
 
 - [ ] T004 [US1] `Sources/MokaCore/Decision/ReasonLine.swift`: `DeadlineDistance`, `ReasonLine.make(task:usable:questions:today:calendar:)`, `ReasonText.line(_:)`(data-model §1·§2). 손해 말은 `questions.questions["impact"]`의 옵션 목록에서 읽는다. T003 PASS 〔단위 1〕
 - [ ] T006 [US1] `App/Sources/AppState.swift`: 계산 속성 `reasonLine: String?`(data-model §4, 오늘은 `logicalToday`, `usable`은 `input(at:)`의 `scoring`과 같은 값). T005 PASS 〔단위 2〕
-- [ ] T008 [US1] [화면 뒤] `App/Sources/Views/ExpandedView.swift`에 `reasonLine: String? = nil` 인자와 제목 아래 한 줄(시작 전, 도는 중), `App/Sources/Views/NotchContentView.swift`와 `App/Sources/Notch/NotchPanelHost.swift`가 AppState 값을 넘긴다(data-model §5). 기존 스냅샷 호출은 고치지 않는다. T007 PASS, 기존 스냅샷 PASS 〔단위 3〕
+- [x] T008 [US1] [화면 뒤] `App/Sources/Views/ExpandedView.swift`에 `reasonLine: String? = nil` 인자와 제목 아래 한 줄(시작 전, 도는 중), `App/Sources/Views/NotchContentView.swift`와 `App/Sources/Notch/NotchPanelHost.swift`가 AppState 값을 넘긴다(data-model §5). 기존 스냅샷 호출은 고치지 않는다. T007 PASS, 기존 스냅샷 PASS 〔단위 3〕
 - [ ] T009 [사람] [US1] quickstart 6-1(확인용 빌드, 자기 키). 결과는 PASS/FAIL만 〔단위 3〕
 
 **확인 지점**: SC-301·SC-302. 노치 펼침에서 이유 줄이 보인다.
@@ -95,13 +98,13 @@ description: "spec 004 판단 결과 화면 연결 작업 목록"
   - 게이트 제출 뒤 체크포인트 다음 할 일 줄을 저장하면 그 줄이 남고, 반대 순서면 게이트 줄이 남음(spec 위험 3)
   - 행동 로그 줄 수가 제출과 넘기기 전후로 같음
   - 앱을 다시 만든 `AppState`(같은 저장소)에서는 기록이 없어 다시 열림(R-309)
-- [ ] T014 [US2] [화면 뒤] `App/Tests/MokaAppTests/ScreenStateSnapshotTests.swift`에 `test_R307_gateAsking`, `test_R307_gateChecking`, `test_R307_gateSaveFailed`(라이트·다크, 할 일에 첫 행동이 있는 상태로 찍어 제목 아래 이어서 할 일 줄이 숨는 것을 함께 확인, R-311)를 확정 시안대로 쓰고 실패를 확인한다(`FR-13 R-307`) 〔단위 3〕
+- [x] T014 [US2] [화면 뒤] `App/Tests/MokaAppTests/ScreenStateSnapshotTests.swift`에 `test_R307_gateAsking`, `test_R307_gateChecking`, `test_R307_gateSaveFailed`(라이트·다크, 할 일에 첫 행동이 있는 상태로 찍어 제목 아래 이어서 할 일 줄이 숨는 것을 함께 확인, R-311)를 확정 시안대로 쓰고 실패를 확인한다(`FR-13 R-307`) 〔단위 3〕
 
 ### Implementation (Green)
 
 - [ ] T011 [US2] `Sources/MokaCore/Decision/ConcreteGate.swift`(`GateRecord`, `GatePhase`, 판정 함수, data-model §1·§3)와 `Sources/MokaCore/Defaults.swift`의 `concreteGateMaxSubmissions = 3`. 임계값은 `questions.thresholds[questions.model]?["concrete"]`. T010 PASS 〔단위 1〕
 - [ ] T013 [US2] `App/Sources/AppState.swift`: `gateRecords`, `gateWaitingTaskID`, `gatePhase`, `gateDraftText`, `gateSaveFailed`, `submitFirstAction(_:)`, `skipGate()`, `refreshGate()`와 부르는 곳(data-model §3 "판정 시점", §4), 시작과 노치 할 일 변경 때 닫기. 첫 행동 쓰기는 `write(StoreBatch(updatedTasks:))` 뒤 `reloadTasks()`이고 질의를 따로 부르지 않는다. 실패를 장부에 적는 자리에서 `refreshGate()`를 부른다. T012 PASS 〔단위 2〕
-- [ ] T015 [US2] [화면 뒤] `App/Sources/Views/ExpandedView.swift`에 `gate: GateInput? = nil` 인자와 게이트 화면(묻는 중, 확인하는 중, 저장 실패, "지금은 넘기기"), 시작 버튼 단축키 조건 `draftInput.isEnteringTitle || gate?.phase == .asking`이면 뗌, 게이트가 `asking`이면 "직접…" 분 칸 Enter도 시작하지 않음, `asking`·`checking`이면 이어서 할 일 줄 숨김(data-model §5). `NotchContentView`·`NotchPanelHost`가 값과 콜백을 넘긴다. 입력 칸 Enter는 제출이다. T014 PASS, 기존 스냅샷 PASS 〔단위 3〕
+- [x] T015 [US2] [화면 뒤] `App/Sources/Views/ExpandedView.swift`에 `gate: GateInput? = nil` 인자와 게이트 화면(묻는 중, 확인하는 중, 저장 실패, "지금은 넘기기"), 시작 버튼 단축키 조건 `draftInput.isEnteringTitle || gate?.phase == .asking`이면 뗌, 게이트가 `asking`이면 "직접…" 분 칸 Enter도 시작하지 않음, `asking`·`checking`이면 이어서 할 일 줄 숨김(data-model §5). `NotchContentView`·`NotchPanelHost`가 값과 콜백을 넘긴다. 입력 칸 Enter는 제출이다. T014 PASS, 기존 스냅샷 PASS 〔단위 3〕
 - [ ] T016 [사람] [US2] quickstart 6-2·6-3. 게이트가 열리지 않으면 6-2·6-3은 SKIP으로 적고 T012에 맡긴다. 입력 칸이 열린 동안 Enter가 시작하지 않는지도 이때 본다 〔단위 3〕
 
 **확인 지점**: SC-303~SC-306. 통과한 첫 행동이 제목 아래 보인다.
@@ -138,13 +141,13 @@ description: "spec 004 판단 결과 화면 연결 작업 목록"
 ### Tests (Red)
 
 - [ ] T022 [US4] `App/Tests/MokaAppTests/AppDecisionTests.swift`: 가짜 공급자 401 뒤 `showsKeyNotice == true`, 키 저장·지움 뒤 `false`, 401 뒤 키 저장이 실패하면 `showsKeyNotice`가 기본 탭 `keyFieldState == .needsCheck`와 같은 값(`false`), 키 없음이면 `false`, 키 확인 동작이 `settingsTabRequest == .basic`을 남김. 실패를 확인한다(`FR-14 R-318`, SC-309) 〔단위 2〕
-- [ ] T024 [US4] [화면 뒤] `App/Tests/MokaAppTests/ScreenStateSnapshotTests.swift`에 `test_R316_keyNoticeEmpty`, `test_R316_keyNoticeDraft`, `test_R316_keyNoticeRunning`(라이트·다크)과 접힌 노치에 표시가 없는 것(기존 접힌 스냅샷과 같은 그림)을 쓰고 실패를 확인한다(`FR-14 R-316`) 〔단위 3〕
+- [x] T024 [US4] [화면 뒤] `App/Tests/MokaAppTests/ScreenStateSnapshotTests.swift`에 `test_R316_keyNoticeEmpty`, `test_R316_keyNoticeDraft`, `test_R316_keyNoticeRunning`(라이트·다크)과 접힌 노치에 표시가 없는 것(기존 접힌 스냅샷과 같은 그림)을 쓰고 실패를 확인한다(`FR-14 R-316`) 〔단위 3〕
 - [ ] T026 [US4] [화면 뒤] `App/Tests/MokaAppTests/SettingsSnapshotTests.swift`에 `test_R317_taskTabKeyNotice`(라이트·다크)를 쓰고 실패를 확인한다(`FR-14 R-317`) 〔단위 4〕
 
 ### Implementation (Green)
 
 - [ ] T023 [US4] `App/Sources/AppState.swift`: `showsKeyNotice`, `settingsTabRequest: SettingsTab?`, 키 확인 동작 `requestKeySettings()`(data-model §4, research R8). T022 PASS 〔단위 2〕
-- [ ] T025 [US4] [화면 뒤] `App/Sources/Views/ExpandedView.swift`에 `keyNotice: Bool = false`, `onOpenKeySettings` 인자와 한 줄(빈 상태, 시작 전, 도는 중, 시간 끝은 없음). `App/Sources/Notch/NotchPanelHost.swift`가 `requestKeySettings()` 뒤 기존 "설정…"과 같은 순서로 창을 연다(plan "앱 연결"). T024 PASS 〔단위 3〕
+- [x] T025 [US4] [화면 뒤] `App/Sources/Views/ExpandedView.swift`에 `keyNotice: Bool = false`, `onOpenKeySettings` 인자와 한 줄(빈 상태, 시작 전, 도는 중, 시간 끝은 없음). `App/Sources/Notch/NotchPanelHost.swift`가 `requestKeySettings()` 뒤 기존 "설정…"과 같은 순서로 창을 연다(plan "앱 연결"). T024 PASS 〔단위 3〕
 - [ ] T027 [US4] [화면 뒤] `App/Sources/Views/TaskListTabView.swift`에 `keyNotice: Bool = false`, `onOpenKeySettings` 인자와 목록 위 한 줄, `App/Sources/Settings/SettingsView.swift`가 나타날 때와 `settingsTabRequest`가 바뀔 때 탭을 바꾸고 값을 비우며, 할 일 탭 한 줄의 동작은 탭을 기본으로 바꾼다. T026 PASS 〔단위 4〕
 - [ ] T028 [사람] [US4] quickstart 6-5 〔단위 4〕
 
