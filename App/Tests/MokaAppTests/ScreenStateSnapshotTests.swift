@@ -172,26 +172,165 @@ final class ScreenStateSnapshotTests: XCTestCase {
             style: .floating)
     }
 
-    /// 같은 상태를 라이트·다크로 그려 저장하고 sanity를 단언한다.
-    /// 시안 2번(입력)·5번(도는 중 펼침)은 마우스를 올린 상태라 `hovering: true`로 모카 테두리를 그린다.
-    private func snapshot(
-        _ name: String, timer: NotchTimer, remaining: Int?, expanded: Bool, hovering: Bool = false,
-        style: PanelStyle = .notch, draftInput: DraftInput = DraftInput(), firstAction: String? = nil,
-        showsFirstActionCollapsed: Bool = false, notes: NotesInput = NotesInput(), customText: String? = nil,
-        storageUnavailable: Bool = false
-    ) throws {
-        let metrics = style == .notch ? Self.notchMetrics : Self.floatingMetrics
+    // MARK: spec 004 노치 펼친 화면(확정 시안 004-mockup 1~8번, 12~14번, 사용자 확정 2026-11-10)
+
+    private static let fakeTitle = "가짜 할 일 A"
+    private static let fakeDraft = NotchTimer.empty(draft: Draft(title: fakeTitle, chipMin: 25))
+    private static let fakeRunning = NotchTimer.running(
+        title: fakeTitle, quantumMin: 25, startedAt: startedAt, endsAt: startedAt.addingTimeInterval(1500))
+    private static let fakeFirstAction = "가짜 첫 행동"
+    private static let fakeGateLine = "가짜 자료 정리하기"
+
+    /// 시안 1번: 제목 아래 이유 줄, 그 아래 이어서 할 일 줄.
+    func test_R301_draftReason() throws {
+        try snapshot(
+            "18-reason-draft", timer: Self.fakeDraft, remaining: nil, expanded: true, hovering: true,
+            firstAction: Self.fakeFirstAction, reasonLine: "D-3 · 손해 꽤 · 미룬 2번")
+    }
+
+    /// 시안 2번: 판단 결과가 없으면 손해 칸 없이 두 칸.
+    func test_R301_draftReasonNoLoss() throws {
+        try snapshot(
+            "18-reason-draft-no-loss", timer: Self.fakeDraft, remaining: nil, expanded: true, hovering: true,
+            reasonLine: "D-day · 미룬 0번")
+    }
+
+    /// 시안 3번: 도는 중에도 같은 줄.
+    func test_R301_runningReason() throws {
+        try snapshot(
+            "18-reason-running", timer: Self.fakeRunning, remaining: Self.runningRemaining, expanded: true,
+            hovering: true, firstAction: Self.fakeFirstAction, reasonLine: "D-3 · 손해 꽤 · 미룬 2번")
+    }
+
+    /// 시안 4번. 할 일에 첫 행동이 있어도 게이트가 묻는 중이면 제목 아래 이어서 할 일 줄을 숨긴다(R-311).
+    func test_R307_gateAsking() throws {
+        try snapshot(
+            "19-gate-asking", timer: Self.fakeDraft, remaining: nil, expanded: true, hovering: true,
+            firstAction: Self.fakeFirstAction, reasonLine: "D-3 · 손해 꽤 · 미룬 0번",
+            gate: Self.gate(.asking, text: Self.fakeGateLine))
+    }
+
+    /// 시안 5번: 칸은 읽기만, 확인하는 중 문구, 시작 버튼 ↵.
+    func test_R307_gateChecking() throws {
+        try snapshot(
+            "19-gate-checking", timer: Self.fakeDraft, remaining: nil, expanded: true, hovering: true,
+            firstAction: Self.fakeFirstAction, reasonLine: "D-3 · 손해 꽤 · 미룬 0번",
+            gate: Self.gate(.checking, text: Self.fakeGateLine, submissions: 1))
+    }
+
+    /// 시안 6번: 다시 묻기. 방금 적은 줄이 칸에 남고 남은 횟수를 말로 보인다.
+    func test_R309_gateRetry() throws {
+        try snapshot(
+            "19-gate-retry", timer: Self.fakeDraft, remaining: nil, expanded: true, hovering: true,
+            firstAction: Self.fakeGateLine, reasonLine: "D-3 · 손해 꽤 · 미룬 0번",
+            gate: Self.gate(.asking, text: Self.fakeGateLine, submissions: 1))
+    }
+
+    /// 시안 7번: 통과하면 게이트가 닫히고 적은 줄이 이어서 할 일로 보인다.
+    func test_R311_gatePassed() throws {
+        try snapshot(
+            "19-gate-passed", timer: Self.fakeDraft, remaining: nil, expanded: true, hovering: true,
+            firstAction: "가짜 자료 폴더 열기", reasonLine: "D-3 · 손해 꽤 · 미룬 0번",
+            gate: Self.gate(.closed, text: "가짜 자료 폴더 열기", submissions: 2))
+    }
+
+    /// 시안 8번: 저장 실패 문구, 횟수는 그대로.
+    func test_R307_gateSaveFailed() throws {
+        try snapshot(
+            "19-gate-save-failed", timer: Self.fakeDraft, remaining: nil, expanded: true, hovering: true,
+            firstAction: Self.fakeFirstAction, reasonLine: "D-3 · 손해 꽤 · 미룬 0번",
+            gate: Self.gate(.asking, text: Self.fakeGateLine, saveFailed: true))
+    }
+
+    /// 게이트가 열린 동안 앱은 펼친 화면 줄(`firstAction`)을 nil로 넘기고 접힌 3초 표시 글자는 따로 넘긴다(R-311, 단위 2 리뷰).
+    func test_R311_gateFirstActionCollapsed() throws {
+        try snapshot(
+            "19-gate-first-action-collapsed", timer: Self.fakeDraft, remaining: nil, expanded: false,
+            showsFirstActionCollapsed: true, collapsedFirstAction: Self.fakeFirstAction,
+            gate: Self.gate(.asking, text: ""))
+    }
+
+    /// 시안 12번: 빈 상태 아래 키 확인 한 줄.
+    func test_R316_keyNoticeEmpty() throws {
+        try snapshot(
+            "20-key-notice-empty", timer: .empty(draft: nil), remaining: nil, expanded: true, hovering: true,
+            keyNotice: true)
+    }
+
+    /// 시안 13번: 시작 전 버튼 줄 아래.
+    func test_R316_keyNoticeDraft() throws {
+        try snapshot(
+            "20-key-notice-draft", timer: Self.fakeDraft, remaining: nil, expanded: true, hovering: true,
+            reasonLine: "D-3 · 손해 꽤 · 미룬 2번", keyNotice: true)
+    }
+
+    /// 시안 14번: 도는 중 버튼 줄 아래.
+    func test_R316_keyNoticeRunning() throws {
+        try snapshot(
+            "20-key-notice-running", timer: Self.fakeRunning, remaining: Self.runningRemaining, expanded: true,
+            hovering: true, reasonLine: "D-3 · 손해 꽤 · 미룬 2번", keyNotice: true)
+    }
+
+    /// 접힌 노치에는 키 확인 표시가 없다(R-316, debate Q3). 키 확인 필요여도 그림이 같다.
+    func test_R316_keyNoticeNotInCollapsed() throws {
+        let metrics = Self.notchMetrics
         let size = NotchLayout.panelSize(metrics: metrics)
-        let content = NotchContentView(
+        for (timer, remaining) in [
+            (NotchTimer.empty(draft: nil), nil), (Self.fakeDraft, nil), (Self.fakeRunning, Self.runningRemaining),
+        ] {
+            let plain = Self.content(timer: timer, remaining: remaining, expanded: false, metrics: metrics)
+            let notice = Self.content(
+                timer: timer, remaining: remaining, expanded: false, metrics: metrics, keyNotice: true)
+            for appearance in [NSAppearance.Name.aqua, .darkAqua] {
+                XCTAssertEqual(
+                    try renderPNG(view: plain, size: size, appearance: appearance),
+                    try renderPNG(view: notice, size: size, appearance: appearance), "\(timer) \(appearance.rawValue)")
+            }
+        }
+    }
+
+    private static func gate(
+        _ phase: GatePhase, text: String, submissions: Int = 0, saveFailed: Bool = false
+    ) -> GateInput {
+        GateInput(phase: phase, text: .constant(text), submissions: submissions, saveFailed: saveFailed)
+    }
+
+    private static func content(
+        timer: NotchTimer, remaining: Int?, expanded: Bool, hovering: Bool = false, metrics: NotchMetrics,
+        style: PanelStyle = .notch, draftInput: DraftInput = DraftInput(), firstAction: String? = nil,
+        showsFirstActionCollapsed: Bool = false, collapsedFirstAction: String? = nil, notes: NotesInput = NotesInput(),
+        customText: String? = nil, storageUnavailable: Bool = false, reasonLine: String? = nil,
+        gate: GateInput? = nil, keyNotice: Bool = false
+    ) -> NotchContentView {
+        NotchContentView(
             timer: timer, remainingSeconds: remaining, isExpanded: expanded, isHovering: hovering, metrics: metrics,
             style: style, storageUnavailable: storageUnavailable, firstAction: firstAction,
-            showsFirstActionCollapsed: showsFirstActionCollapsed,
+            showsFirstActionCollapsed: showsFirstActionCollapsed, collapsedFirstAction: collapsedFirstAction,
+            reasonLine: reasonLine, gate: gate, keyNotice: keyNotice,
             titleFocusRequest: 0,
             chip: QuantumChipInput(
                 customText: customText, canStart: QuantumChip.startAllowed(customText: customText), onChoose: { _ in },
                 onBeginCustom: {}, onEditCustom: { _ in },
                 takeFocusRequest: { false }),
             onEnterTitle: { _ in }, draftInput: draftInput, notes: notes, onStart: {}, onComplete: {})
+    }
+
+    /// 같은 상태를 라이트·다크로 그려 저장하고 sanity를 단언한다.
+    /// 시안 2번(입력)·5번(도는 중 펼침)은 마우스를 올린 상태라 `hovering: true`로 모카 테두리를 그린다.
+    private func snapshot(
+        _ name: String, timer: NotchTimer, remaining: Int?, expanded: Bool, hovering: Bool = false,
+        style: PanelStyle = .notch, draftInput: DraftInput = DraftInput(), firstAction: String? = nil,
+        showsFirstActionCollapsed: Bool = false, collapsedFirstAction: String? = nil, notes: NotesInput = NotesInput(),
+        customText: String? = nil, storageUnavailable: Bool = false, reasonLine: String? = nil,
+        gate: GateInput? = nil, keyNotice: Bool = false
+    ) throws {
+        let metrics = style == .notch ? Self.notchMetrics : Self.floatingMetrics
+        let size = NotchLayout.panelSize(metrics: metrics)
+        let content = Self.content(
+            timer: timer, remaining: remaining, expanded: expanded, hovering: hovering, metrics: metrics, style: style,
+            draftInput: draftInput, firstAction: firstAction, showsFirstActionCollapsed: showsFirstActionCollapsed,
+            collapsedFirstAction: collapsedFirstAction, notes: notes, customText: customText,
+            storageUnavailable: storageUnavailable, reasonLine: reasonLine, gate: gate, keyNotice: keyNotice)
 
         let light = try renderPNG(view: content, size: size, appearance: .aqua)
         let dark = try renderPNG(view: content, size: size, appearance: .darkAqua)
