@@ -67,7 +67,7 @@ PR에서 사람이 내린다.
 
 ### VIII. 판단 모델은 판단만, 경계는 테스트로 지킨다
 
-- 실제 decision API(OpenRouter Decision-1, Jev, relay)는 테스트, CI, 검증(`moka-sim` 포함),
+- 실제 decision API(지원하는 판단 공급자 전부: Microsoft-Decision-1, TypeSafe Jev, Liquid d1-ultra, OpenAI Decisions, Perplexity Decider, 그리고 사용자가 넣은 주소의 모델)는 테스트, CI, 검증(`moka-sim` 포함),
   무인 실행에서 MUST NOT 부른다. 이 경로들은 가짜 공급자를 쓴다. 실제 호출 확인은 사람이
   자기 키로 앱을 켜서 한다.
 - 판단 state에는 할 일 1건, 컨텍스트, 마지막 체크포인트, 오늘 날짜만 넣는다. 금지 필드(다른 할 일,
@@ -106,4 +106,4 @@ PR에서 사람이 내린다.
 - 버전: 원칙 삭제·재정의는 MAJOR, 원칙·섹션 추가나 실질적 확장은 MINOR, 문구 정리는 PATCH.
 - 모든 PR 리뷰는 원칙 I~VIII과 보안 절 준수 여부를 확인한다.
 
-**Version**: 1.0.1 | **Ratified**: 2026-10-27 | **Last Amended**: 2026-10-28
+**Version**: 1.0.2 | **Ratified**: 2026-10-27 | **Last Amended**: 2026-11-11

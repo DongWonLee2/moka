@@ -24,7 +24,7 @@
 
 ## 데이터와 비밀값 (공개 저장소)
 - API 키는 Keychain에만 둔다. Keychain 값을 조회하지 않는다. `.env`는 읽지 않는다.
-- 실제 decision API(OpenRouter Decision-1, Jev, relay)는 테스트·CI·`moka-sim`·무인 실행에서 부르지 않는다. 가짜 공급자를 쓴다.
+- 실제 decision API(지원하는 판단 공급자 전부: Microsoft-Decision-1, TypeSafe Jev, Liquid d1-ultra, OpenAI Decisions, Perplexity Decider, 그리고 사용자가 넣은 주소의 모델)는 테스트·CI·`moka-sim`·무인 실행에서 부르지 않는다. 가짜 공급자를 쓴다.
 - 앱 DB(`~/Library/Application Support/dev.dongwon.moka/`), 라벨셋, 실제 할 일을 읽거나 저장소·PR·커밋·픽스처에 넣지 않는다. 가짜 예시만 쓴다.
 - `eraseDatabaseOnSchemaChange`를 켜지 않는다(ADR-0004).
 
