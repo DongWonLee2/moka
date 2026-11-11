@@ -1,7 +1,12 @@
+import hashlib
 import json
 from pathlib import Path
 
-QUESTIONS = Path(__file__).resolve().parents[2] / "Sources" / "MokaCore" / "Resources" / "questions.json"
+ROOT = Path(__file__).resolve().parents[2]
+QUESTIONS = ROOT / "Sources" / "MokaCore" / "Resources" / "questions.json"
+HISTORY = ROOT / "questions-history"
+# ADR-0011 승인 항목 2a(B안): v1 사본은 v1을 마지막으로 담은 커밋의 파일을 그대로 꺼낸 것
+V1_SHA256 = "e302020530edacf468001b9b35d254582907c8e3b99c8f3bb11ddcfffdbd9538"
 
 
 def load_questions():
@@ -48,3 +53,17 @@ def test_probs_json_example_reads_with_json_loads():
     assert probs["avoiding"]["noul"] == 1e-05
     assert probs["concrete"]["noul"] == 1.0
     assert set(probs["urgency"]["probabilities"]) == {"0", "1", "2", "3"}
+
+
+def test_current_questions_match_history_copy():
+    # ADR-0011 R-612: 지금 파일은 questions-history/<version>.json과 바이트까지 같다
+    current = QUESTIONS.read_bytes()
+    version = json.loads(current)["version"]
+    assert (HISTORY / f"{version}.json").read_bytes() == current
+
+
+def test_v1_history_copy_is_fixed():
+    # ADR-0011 R-612: 지난 사본 v1의 SHA-256 고정
+    data = (HISTORY / "v1.json").read_bytes()
+    assert hashlib.sha256(data).hexdigest() == V1_SHA256
+    assert json.loads(data)["version"] == "v1"

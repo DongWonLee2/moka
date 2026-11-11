@@ -60,6 +60,12 @@ private func twoModelsJSON(_ edit: (inout [String: Any]) -> Void = { _ in }) thr
         #expect(set.thresholds == fixed.thresholds)
     }
 
+    @Test("ADR-0011 R-609: moka-sim 가짜 공급자의 기준 모델은 번들 질문 파일에 임계값이 있다")
+    func simBaseModelHasThresholds() throws {
+        let set = try QuestionSet.bundled()
+        #expect(set.thresholds(for: SimRunner.fakeBaseModel) != nil)
+    }
+
     @Test("ADR-0011 R-607: models·provisional을 읽고 thresholds(for:)가 기준 모델의 두 임계값을 꺼낸다")
     func readsModelsAndThresholds() throws {
         let set = try QuestionSet(json: twoModelsJSON())
