@@ -226,22 +226,15 @@ final class AppState {
     /// 공급자 고르기·Microsoft 칸 저장 가운데 실패한 동작. 다음 성공에 지운다.
     private(set) var providerActionFailure: ProviderAction?
 
-    /// 요청이 갈 곳의 호스트(spec 006 R-606). Microsoft는 저장한 주소에서 꺼내고, 주소가 없으면 nil이다.
+    /// 요청이 갈 곳의 호스트(spec 006 R-606). 판단 기능이 켜져 있으면 지금 바인딩의 주소에서 꺼내 실제 목적지와 늘 같다.
+    /// 꺼져 있으면 고정 주소 공급자만 표의 주소에서 꺼내고, Microsoft는 nil이다.
     var sendingHost: String? {
+        if let boundURL { return EndpointRule.host(of: boundURL) }
         guard let selectedProvider,
-            let config = ProviderCatalog.config(selectedProvider, in: decision?.catalog ?? ProviderCatalog.all)
+            let config = ProviderCatalog.config(selectedProvider, in: decision?.catalog ?? ProviderCatalog.all),
+            case .fixed(let url) = config.endpoint
         else { return nil }
-        let resource: URL?
-        switch config.endpoint {
-        case .fixed:
-            resource = nil
-        case .userResource:
-            guard let text = CoreSettings.readMicrosoftEndpoint(from: settings),
-                case .success(let url) = EndpointRule.check(text, allowsPath: false)
-            else { return nil }
-            resource = url
-        }
-        return config.url(resource: resource).map(EndpointRule.host(of:))
+        return EndpointRule.host(of: url)
     }
 
     /// 노치 후보 순서의 앞 세 대기 할 일과 순위(1~3, data-model §10 할 일 탭).
@@ -311,6 +304,8 @@ final class AppState {
     @ObservationIgnored private let decision: DecisionSetup?
     /// 지금 판단 설정. 꺼져 있으면 nil이다. 공급자를 바꾸거나 Microsoft 칸을 저장할 때 다시 만든다.
     @ObservationIgnored private var binding: DecisionBinding?
+    /// 지금 바인딩이 보내는 주소. `binding`과 함께 바뀐다.
+    @ObservationIgnored private var boundURL: URL?
     /// 바인딩을 다시 만들 때마다 오른다. 다른 세대의 답은 받지 않는다(spec 006 research R6).
     @ObservationIgnored private var providerGeneration = 0
     @ObservationIgnored private let scoreStore: (any ScoreStore)?
@@ -819,7 +814,9 @@ final class AppState {
     func saveMicrosoft(endpoint: String, deployment: String) -> EndpointRejection? {
         let endpointText = endpoint.trimmingCharacters(in: .whitespacesAndNewlines)
         let deploymentText = deployment.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let decision, !endpointText.isEmpty, !deploymentText.isEmpty else { return nil }
+        guard let decision, selectedProvider == .microsoft, !endpointText.isEmpty, !deploymentText.isEmpty else {
+            return nil
+        }
         let url: URL
         switch EndpointRule.check(endpointText, allowsPath: false) {
         case .success(let value): url = value
@@ -838,10 +835,14 @@ final class AppState {
             try CoreSettings.writeMicrosoftEndpoint(url, to: settings)
             try CoreSettings.writeMicrosoftDeployment(deploymentText, to: settings)
         } catch {
-            providerActionFailure = .saveMicrosoft
+            // 주소만 저장됐을 수 있으므로 바인딩을 저장된 값으로 다시 맞춘다. 보이는 곳과 실제 목적지가 갈리지 않게 한다.
             Self.decisionLogger.error(
                 "Microsoft 칸 저장 실패: \(String(reflecting: type(of: error)), privacy: .public)")
+            providerGeneration += 1
+            rebind()
+            providerActionFailure = .saveMicrosoft
             refreshHasKey()
+            refreshGate()
             return nil
         }
         providerChanged()
@@ -861,25 +862,35 @@ final class AppState {
         requestScores()
     }
 
-    /// 설정 값으로 바인딩을 다시 만든다. 꺼지면 이유 종류만 로그에 남긴다.
+    /// 메모리의 `selectedProvider`와 설정의 Microsoft 칸 값으로 바인딩을 다시 만든다. 공급자 ID는 설정을 다시 읽지 않아
+    /// 키 보관함과 바인딩이 늘 같은 공급자에서 나온다. 꺼지면 이유 종류만 로그에 남긴다.
     private func rebind() {
         guard let decision, let questions = decision.questions else {
-            binding = nil
-            selectionOff = nil
+            setBinding(nil, off: nil)
+            return
+        }
+        guard let selectedProvider else {
+            setBinding(nil, off: .unknownProvider)
             return
         }
         let resolution = DecisionSelection.resolve(
-            providerID: CoreSettings.readDecisionProvider(from: settings),
+            providerID: selectedProvider.rawValue,
             microsoftEndpoint: CoreSettings.readMicrosoftEndpoint(from: settings),
             microsoftDeployment: CoreSettings.readMicrosoftDeployment(from: settings), questions: questions,
             catalog: decision.catalog)
         switch resolution {
         case .ready(let ready):
-            binding = decision.bind(ready)
-            selectionOff = nil
+            setBinding((decision.bind(ready), ready.url), off: nil)
         case .off(let reason):
-            binding = nil
-            selectionOff = reason
+            setBinding(nil, off: reason)
+        }
+    }
+
+    private func setBinding(_ value: (binding: DecisionBinding, url: URL)?, off reason: DecisionSelection.OffReason?) {
+        binding = value?.binding
+        boundURL = value?.url
+        selectionOff = reason
+        if let reason {
             Self.decisionLogger.error("판단 기능 꺼짐: \(Self.offKind(reason), privacy: .public)")
         }
     }
