@@ -452,6 +452,49 @@ final class AppProviderTests: XCTestCase {
         XCTAssertEqual(Set(try h.scoreStore.scores().values.map(\.provider)), ["fake-b"])
     }
 
+    func test_ADR0011_R613_R615_settingsReadFailureAfterSelectKeepsBindingAndKeyOnSameProvider() async throws {
+        let providers = Providers(keys: [.typesafe: "fake-key-a", .liquid: "fake-key-b"])
+        let h = await launched(try harness(count: 1, providers: providers))
+        let first = providers.provider(.typesafe)
+        let callsBefore = await first.calls.count
+        h.settings.failingReads = [CoreSettings.decisionProviderKey]
+
+        h.state.selectProvider(.liquid)
+        await h.state.requestScores()?.value
+
+        XCTAssertEqual(h.state.selectedProvider, .liquid)
+        XCTAssertEqual(providers.bound.last?.config.id, .liquid, "바인딩도 고른 공급자로 만든다")
+        let destination = try XCTUnwrap(providers.bound.last?.url)
+        XCTAssertEqual(EndpointRule.host(of: destination), "api.liquid.ai")
+        XCTAssertEqual(h.state.sendingHost, "api.liquid.ai")
+        let callsAfter = await first.calls.count
+        XCTAssertEqual(callsAfter, callsBefore, "Liquid 키가 Jev 공급자로 가지 않는다")
+        XCTAssertEqual(try h.scoreStore.scores()[1]?.provider, "fake-b")
+    }
+
+    func test_ADR0011_R613_R614_settingsReadFailureAtLaunchUsesTypeSafeForBothBindingAndKey() async throws {
+        let providers = Providers(keys: [.typesafe: "fake-key-a", .liquid: "fake-key-b"])
+        let repository = InMemoryTaskRepository()
+        _ = try repository.insertTask(
+            NewTask(title: "가짜 할 일 1", deadline: nil, estMin: nil, recurrence: .none, weekday: nil), cycleDay: nil,
+            at: AppTestFixture.noon)
+        let settings = ControlledSettingsStore()
+        try settings.setValue("liquid", for: CoreSettings.decisionProviderKey)
+        settings.failingReads = [CoreSettings.decisionProviderKey]
+        let scoreStore = InMemoryScoreStore(tasks: repository)
+        let state = makeState(
+            repository, settings: settings, scores: scoreStore,
+            decision: providers.setup(catalog: Self.catalog(opening: [.liquid]), questions: Self.bundled))
+        state.launch()
+        await state.requestScores()?.value
+
+        XCTAssertEqual(state.selectedProvider, .typesafe)
+        XCTAssertEqual(providers.bound.last?.config.id, .typesafe)
+        XCTAssertEqual(try scoreStore.scores()[1]?.provider, "fake-a")
+        let liquidCalls = await providers.provider(.liquid).calls
+        XCTAssertTrue(liquidCalls.isEmpty)
+    }
+
     func test_ADR0011_R615_switchToOffProviderReadsItsKeyStore() async throws {
         let providers = Providers(keys: [.typesafe: "fake-key-a", .microsoft: "fake-key-ms"])
         let h = await launched(
@@ -578,6 +621,40 @@ final class AppProviderTests: XCTestCase {
         XCTAssertNil(h.state.requestScores(), "키가 없어 옛 주소로도 묻지 않는다")
     }
 
+    func test_ADR0011_R616_deploymentWriteFailureKeepsShownHostEqualToDestination() async throws {
+        let providers = Providers(keys: [.microsoft: "fake-key-ms"])
+        let h = await launched(try microsoftHarness(providers: providers))
+        XCTAssertNil(h.state.saveMicrosoft(endpoint: "https://example-resource.invalid", deployment: "fake-deploy"))
+        await h.state.requestScores()?.value
+        h.settings.failingKeys = [CoreSettings.microsoftDeploymentKey]
+
+        XCTAssertNil(h.state.saveMicrosoft(endpoint: "https://other-resource.invalid", deployment: "fake-deploy-2"))
+
+        XCTAssertEqual(h.state.providerActionFailure, .saveMicrosoft)
+        XCTAssertEqual(
+            try h.settings.value(for: CoreSettings.microsoftEndpointKey), "https://other-resource.invalid",
+            "주소만 저장됐다")
+        let destination = try XCTUnwrap(providers.bound.last?.url)
+        XCTAssertEqual(EndpointRule.host(of: destination), "other-resource.invalid", "바인딩을 저장된 값으로 맞춘다")
+        XCTAssertEqual(h.state.sendingHost, EndpointRule.host(of: destination), "보이는 곳과 실제 목적지가 같다")
+        XCTAssertEqual(providers.bound.last?.requestModel, "fake-deploy", "배포 이름은 저장된 옛 값")
+        XCTAssertFalse(h.state.hasKey, "주소가 바뀌어 지운 키는 키 없음으로 보인다")
+    }
+
+    func test_ADR0011_R616_saveMicrosoftDoesNothingWhenAnotherProviderIsSelected() async throws {
+        let providers = Providers(keys: [.typesafe: "fake-key-a", .microsoft: "fake-key-ms"])
+        let h = await launched(
+            try harness(count: 1, providers: providers, catalog: Self.microsoftCatalog, questions: Self.withMicrosoft))
+        let boundBefore = providers.bound.count
+
+        XCTAssertNil(h.state.saveMicrosoft(endpoint: "https://example-resource.invalid", deployment: "fake-deploy"))
+
+        XCTAssertTrue(h.settings.written.isEmpty, "Microsoft를 고르지 않았으면 저장하지 않는다")
+        XCTAssertEqual(providers.bound.count, boundBefore, "바인딩을 다시 만들지 않는다")
+        XCTAssertEqual(try providers.keys[.microsoft]?.read(), "fake-key-ms")
+        XCTAssertEqual(h.state.sendingHost, "api.typesafe.ai")
+    }
+
     func test_ADR0011_R616_saveClearsKeyNoticeAndLedger() async throws {
         let microsoft = FakeDecisionProvider(name: "fake-ms", answer: .failure(.unauthorized))
         let providers = Providers(keys: [.microsoft: "fake-key-ms"], fakes: [.microsoft: microsoft])
@@ -619,9 +696,14 @@ final class ControlledSettingsStore: SettingsStore {
 
     private let inner = InMemorySettingsStore()
     var failingKeys: Set<String> = []
+    /// 읽기가 던지는 키.
+    var failingReads: Set<String> = []
     private(set) var written: [(String, String)] = []
 
-    func value(for key: String) throws -> String? { try inner.value(for: key) }
+    func value(for key: String) throws -> String? {
+        if failingReads.contains(key) { throw Failure() }
+        return try inner.value(for: key)
+    }
 
     func setValue(_ value: String, for key: String) throws {
         if failingKeys.contains(key) { throw Failure() }
