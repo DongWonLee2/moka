@@ -72,7 +72,7 @@
 - **미룬 이유(Q2a)**: 이번 단계에 키를 읽는 곳이 없어, 저장만 해서는 저장·읽기를 한 증거로 확인할 수 없다. Keychain 구현은 앱 타깃 전용이라 리눅스 CI와 무인 실행으로 확인할 수 없고, 개인 팀 서명 빌드의 확인 창 반복 여부·접근성 속성 같은 미확인 셋이 하루 일정에 몰린다. 키를 건너뛴 사용자가 키를 다시 넣을 화면(설정 창 키 칸)은 어차피 마일스톤 3에 필요하다.
 - **마일스톤 3에서 지킬 결정(기록 보존)**:
   - P8 (a): `KeyStore` 프로토콜은 MokaCore(저장·존재 여부·삭제, 값 읽기는 그 단계에서), Keychain 구현은 앱 타깃(ADR-0001, ADR-0005·헌법 보안 절). 시험·`moka-sim`은 가짜 구현.
-  - 키 종류(사용자 결정 2026-10-30): MVP 시험 단계의 판단 공급자는 Jev(TypeSafe 직접)만 쓴다. Keychain은 generic password, service `dev.dongwon.moka`, account `typesafe`. OpenRouter(Decision-1)는 나중에 account `openrouter`로 더한다. 범위 토론 Q6의 "OpenRouter 키 하나"를 대체한다.
+  - 키 종류(사용자 결정 2026-10-30): MVP 시험 단계의 판단 공급자는 Jev(TypeSafe 직접)만 쓴다. Keychain은 generic password, service `dev.dongwon.moka`, account `typesafe`. OpenRouter(Decision-1)는 나중에 account `openrouter`로 더한다(ADR-0011 결정 4로 대체, 중계는 지원하지 않는다). 범위 토론 Q6의 "OpenRouter 키 하나"를 대체한다.
   - 미확인: `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` 같은 접근성 속성과 data protection keychain 사용 조건, 존재 여부 질의가 확인 창을 띄우는지, 다시 빌드할 때 확인 창이 반복되는지(개인 팀 서명 빌드로 사람이 확인, ad-hoc 빌드로는 확인 불가, ADR-0005).
 - **Alternatives**: 온보딩 1단계에 키 칸을 두고 Keychain 저장만(처음 안, P8 (a)·범위 토론 Q6 (a), Q2a로 기각). 키 단계만 남기고 확인 창 반복을 spike Issue로 사람 세션에서 미리 보는 안(토론 A 자리의 틀리는 조건, 필요하면 마일스톤 3 전에 따로).
 

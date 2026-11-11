@@ -117,7 +117,13 @@ enum AppSettings {
                 "질문 파일을 읽지 못해 판단 기능을 끔: \(String(describing: error), privacy: .public)")
             questions = nil
         }
-        return DecisionSetup(keyStore: KeychainKeyStore(), provider: TypeSafeProvider(), questions: questions)
+        return DecisionSetup(
+            bind: { ready in
+                DecisionBinding(
+                    provider: HTTPDecisionProvider(config: ready.config, url: ready.url), baseModel: ready.baseModel,
+                    requestModel: ready.requestModel)
+            },
+            keyStore: { KeychainKeyStore(account: $0.rawValue) }, questions: questions)
     }
 }
 
