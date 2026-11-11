@@ -641,6 +641,27 @@ final class AppProviderTests: XCTestCase {
         XCTAssertFalse(h.state.hasKey, "주소가 바뀌어 지운 키는 키 없음으로 보인다")
     }
 
+    func test_ADR0011_R616_writeFailureWhileQueryInFlightAsksAgain() async throws {
+        let microsoft = FakeDecisionProvider(name: "fake-ms", answer: .success(Self.answer()))
+        let providers = Providers(keys: [.microsoft: "fake-key-ms"], fakes: [.microsoft: microsoft])
+        let h = await launched(try microsoftHarness(providers: providers))
+        await microsoft.hold()
+        XCTAssertNil(h.state.saveMicrosoft(endpoint: "https://example-resource.invalid", deployment: "fake-deploy"))
+        let runner = try XCTUnwrap(h.state.requestScores())
+        await microsoft.waitForHeld(count: 1)
+        h.settings.failingKeys = [CoreSettings.microsoftDeploymentKey]
+
+        XCTAssertNil(h.state.saveMicrosoft(endpoint: "https://example-resource.invalid", deployment: "fake-deploy-2"))
+        XCTAssertEqual(h.state.providerActionFailure, .saveMicrosoft)
+        await microsoft.releaseAll()
+        await runner.value
+        await h.state.requestScores()?.value
+
+        let calls = await microsoft.calls
+        XCTAssertEqual(calls, [1, 1], "세대가 바뀌어 버린 답의 할 일을 다시 묻는다")
+        XCTAssertEqual(try h.scoreStore.scores()[1]?.provider, "fake-ms")
+    }
+
     func test_ADR0011_R616_saveMicrosoftDoesNothingWhenAnotherProviderIsSelected() async throws {
         let providers = Providers(keys: [.typesafe: "fake-key-a", .microsoft: "fake-key-ms"])
         let h = await launched(
