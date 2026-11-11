@@ -86,9 +86,8 @@ import Testing
 
     @Test("ADR-0011 R-606: 공급자 표의 고정 주소에서 보내는 곳을 꺼낸다")
     func catalogHosts() throws {
-        let hosts = try ProviderCatalog.all.compactMap { config in
-            try config.url(resource: #require(URL(string: "https://example-resource.invalid"))).map(EndpointRule.host)
-        }
+        let resource = try #require(URL(string: "https://example-resource.invalid"))
+        let hosts = ProviderCatalog.all.compactMap { $0.url(resource: resource).map(EndpointRule.host) }
         #expect(
             hosts == [
                 "api.typesafe.ai", "example-resource.invalid", "api.liquid.ai", "api.perplexity.ai", "api.openai.com",
