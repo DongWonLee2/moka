@@ -1,0 +1,9 @@
+{"model":"gpt-6-luna","answers":[
+  {"name":"urgency","type":"score","score":3.5,"confidence":0.7,
+   "probabilities":[{"label":"여유","value":0,"probability":0.05},{"label":"이번주","value":1,"probability":0.15},
+                    {"label":"급함","value":2,"probability":0.4},{"label":"오늘안에","value":3,"probability":0.4}]},
+  {"name":"impact","type":"score","score":1.2,"confidence":0.6,
+   "probabilities":[{"label":"조금","value":0,"probability":0.2},{"label":"꽤","value":1,"probability":0.4},
+                    {"label":"아주","value":2,"probability":0.4}]},
+  {"name":"concrete","type":"predicate","probability":0.9},
+  {"name":"avoiding","type":"predicate","probability":0.3}]}

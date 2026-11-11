@@ -1,5 +1,7 @@
 # 계약: 판단 공급자 경계와 TypeSafe 요청·응답
 
+> spec 006 [contracts/decision-provider-v2.md](../../006-decision-providers/contracts/decision-provider-v2.md)가 대체한다. 그 문서가 대체하지 않은 내용(질문 타입 표, System One 요청 본문과 응답 해석, 시간 한도, 재시도 없음, 첫 실제 호출 확인 방식)은 이 문서 그대로다. `TypeSafeCodec`은 `SystemOneCodec`으로 이름이 바뀌었다.
+
 공개 계약이다(헌법 I "DecisionProvider 프로토콜"). 근거: spec R-201·R-210·R-211, research R7, TypeSafe 공식 문서(2026-11-06 확인: `https://docs.typesafe.ai/api/system-one.md`, `errors.md`, `models.md`).
 
 ## Swift 경계 (MokaCore)

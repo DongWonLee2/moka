@@ -1,7 +1,7 @@
 import Foundation
 
-/// TypeSafe 요청 본문 조립과 응답 해석(contracts/decision-provider.md). HTTP는 앱 `TypeSafeProvider`가 보낸다.
-public enum TypeSafeCodec {
+/// System One 모양 요청 본문 조립과 응답 해석(spec 003 contracts/decision-provider.md). 앱 공급자는 `DecisionWire`로 부른다.
+public enum SystemOneCodec {
     /// `{"model","state","questions"}`. `state`는 정준 바이트를 그대로 끼운다. 할 일 id와 키는 넣지 않는다.
     public static func body(_ request: DecisionRequest) -> Data {
         let questions = request.questions.questions.sorted { $0.key < $1.key }.map { name, question in
@@ -25,13 +25,8 @@ public enum TypeSafeCodec {
 
     /// HTTP 상태와 본문을 답 또는 오류로 바꾼다.
     public static func decode(status: Int, body: Data) throws(DecisionError) -> DecisionResponse {
-        switch status {
-        case 200: return try response(body)
-        case 401, 403: throw .unauthorized
-        case 429: throw .rateLimited
-        case 529: throw .overloaded
-        default: throw .server(status: status)
-        }
+        guard status == 200 else { throw DecisionWire.failure(status: status) }
+        return try response(body)
     }
 
     /// 읽는 칸은 `model`, `answers.<이름>`의 `type`·`noul`·`score`·`confidence`·`probabilities`다.
