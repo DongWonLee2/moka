@@ -4,6 +4,9 @@ import Foundation
 /// MokaCore 함수(`NotchSession`, `PriorityRotateRule`, `RecurrenceReset`, `LaunchRecovery`, `TaskWriteRules`,
 /// `SessionCommit`, `ScoreRules`)만 부르고 저장은 메모리 저장소다.
 extension SimRunner {
+    /// 가짜 공급자 `fake`의 기준 모델 ID. 질문 파일 `models`를 거치지 않고 직접 받는다(spec 006 research R14).
+    public static let fakeBaseModel = "jev-1.13.0"
+
     static func executeStorage(_ scenario: SimScenario, settings: InMemorySettingsStore) throws(SimError) -> String {
         let repository = InMemoryTaskRepository()
         let scores = InMemoryScoreStore(tasks: repository)
@@ -233,9 +236,7 @@ private struct StorageEvent {
         try SimRunner.storing(seq: event.seq) { try scores.upsertScore(score) }
     }
 
-    /// 가짜 공급자는 질문 파일 `models`를 거치지 않고 기준 모델 ID를 직접 받는다(spec 006 research R14).
     private static let fakeProvider = "fake"
-    private static let baseModel = "jev-1.13.0"
     private static let fakeModel = "fake-1"
 
     /// 확신도 1, 옵션 확률은 모두 같은 값.
@@ -306,6 +307,6 @@ private struct StorageEvent {
             scoring: SessionScoring(
                 usable: ScoreRules.usable(
                     scores: stored, hasKey: hasKey, questionVersion: questions.version, provider: Self.fakeProvider),
-                questions: questions, thresholds: questions.thresholds(for: Self.baseModel), today: today))
+                questions: questions, thresholds: questions.thresholds(for: SimRunner.fakeBaseModel), today: today))
     }
 }

@@ -56,7 +56,7 @@ ADR-0011 승인 항목과 같은지 표시한다.
 |---|---|---|---|---|
 | 1 | DecisionProvider 경계: 프로토콜 모양 유지, `name`은 공급자 ID, `DecisionRequest.model`은 보낼 모델 이름, `TypeSafeCodec`을 `SystemOneCodec`으로, `OpenAIDecisionsCodec` 추가 | 단위 1 | 같음(승인 항목 1) | [contracts/decision-provider-v2.md](contracts/decision-provider-v2.md)가 spec 003 contracts/decision-provider.md를 대체 |
 | 2 | `questions.json` v2: `models`, `provisional`, 읽기 규칙, 버전별 고정값 시험, pytest 계약 | 단위 2 | 같음(승인 항목 2) | [contracts/questions-json-v2.md](contracts/questions-json-v2.md)가 spec 003 contracts/questions-json.md를 대체 |
-| 2a | 튜닝 스크립트가 지난 버전 질문 파일을 읽을 곳 | 열린 질문(research R11). 단위 2 PR에서 debate로 추천안을 정하고 사람이 고른다 | 같음(승인 항목 2의 열린 질문) | 같은 문서 |
+| 2a | 튜닝 스크립트가 지난 버전 질문 파일을 읽을 곳 | research R11. 단위 2 PR #122에서 debate 3:0으로 B안(루트 `questions-history/` 사본) 채택, 병합이 승인 | 같음(승인 항목 2의 열린 질문) | 같은 문서 |
 | 3 | 스키마 | 변경 없음 | 같음(승인 항목 3) | 없음 |
 | 4 | 헌법 VIII·AGENTS.md 예시 문구 PATCH 개정 제안 | 단위 1 PR "사람이 볼 결정"에 올린다. 고치지 않는다 | 같음(승인 항목 4) | 없음 |
 
