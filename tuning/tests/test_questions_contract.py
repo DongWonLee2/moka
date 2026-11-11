@@ -19,11 +19,22 @@ def test_four_questions_with_types():
     }
 
 
-def test_thresholds_for_fixed_model():
+def test_thresholds_for_every_base_model():
+    # ADR-0011 R-612: models의 모든 값(기준 모델 ID)에 concrete·avoiding 임계값이 0~1로 있다
     data = load_questions()
-    thresholds = data["thresholds"][data["model"]]
-    assert {"concrete", "avoiding"} <= set(thresholds)
-    assert all(0 <= value <= 1 for value in thresholds.values())
+    assert data["models"]
+    for base_model in data["models"].values():
+        thresholds = data["thresholds"][base_model]
+        assert {"concrete", "avoiding"} <= set(thresholds)
+        assert all(0 <= value <= 1 for value in thresholds.values())
+
+
+def test_provisional_is_subset_of_models():
+    # ADR-0011 R-612: provisional은 models 값의 부분집합이고 중복이 없다
+    data = load_questions()
+    provisional = data["provisional"]
+    assert len(provisional) == len(set(provisional))
+    assert set(provisional) <= set(data["models"].values())
 
 
 def test_probs_json_example_reads_with_json_loads():

@@ -4,7 +4,7 @@ import Testing
 
 func questionsJSON(_ edit: (inout [String: Any]) -> Void = { _ in }) throws -> Data {
     var root: [String: Any] = [
-        "version": "v1", "language": "ko", "model": "jev-1.13.0",
+        "version": "v2", "language": "ko", "models": ["typesafe": "jev-1.13.0"], "provisional": [String](),
         "questions": [
             "urgency": ["type": "score", "instructions": "가짜 지시 1", "criteria": ["a", "b", "c", "d"]],
             "impact": ["type": "score", "instructions": "가짜 지시 2", "criteria": ["a", "b", "c"]],
@@ -24,12 +24,11 @@ func editQuestions(_ root: inout [String: Any], _ edit: (inout [String: Any]) ->
 }
 
 @Suite struct QuestionSetTests {
-    @Test("FR-03 R-202: 번들 질문 파일 v1은 질문 넷과 고정 모델의 임계값을 읽는다")
+    @Test("FR-03 R-202: 번들 질문 파일은 질문 넷과 Jev 기준 모델의 임계값을 읽는다")
     func bundled() throws {
         let set = try QuestionSet.bundled()
-        #expect(set.version == "v1")
         #expect(set.language == "ko")
-        #expect(set.model == "jev-1.13.0")
+        #expect(set.models["typesafe"] == "jev-1.13.0")
         #expect(Set(set.questions.keys) == ["urgency", "impact", "concrete", "avoiding"])
         guard case .score(_, let urgency) = set.questions["urgency"],
             case .score(_, let impact) = set.questions["impact"],
@@ -41,13 +40,14 @@ func editQuestions(_ root: inout [String: Any], _ edit: (inout [String: Any]) ->
         #expect(urgency == ["여유", "이번주", "급함", "오늘안에"])
         #expect(impact == ["조금", "꽤", "아주"])
         #expect(set.thresholds["jev-1.13.0"] == ["concrete": 0.5, "avoiding": 0.7])
+        #expect(set.thresholds(for: "jev-1.13.0") == ModelThresholds(concrete: 0.5, avoiding: 0.7))
     }
 
     @Test("FR-03 R-203: 판단 질문에 blocked가 없다")
     func noBlocked() throws {
         let set = try QuestionSet.bundled()
         #expect(set.questions["blocked"] == nil)
-        #expect(set.thresholds[set.model]?["blocked"] == nil)
+        #expect(set.thresholds.values.allSatisfy { $0["blocked"] == nil })
     }
 
     @Test("FR-03 R-202: 계약 모양이면 읽고, 옵션 수를 안다")
