@@ -1,0 +1,11 @@
+{"model":"gpt-6-luna","id":"fake-decision-1","extra":{"nested":[1,2,3]},"answers":[
+  {"name":"avoiding","type":"predicate","probability":0.3},
+  {"name":"impact","type":"score","score":1.2,"confidence":0.6,"rationale":"가짜 설명",
+   "probabilities":[{"label":"아주","value":2,"probability":0.4},{"label":"조금","value":0,"probability":0.2},
+                    {"label":"꽤","value":1,"probability":0.4,"note":"가짜"}]},
+  {"name":"fake_extra","type":"choice","choice":"가짜 옵션"},
+  {"name":"concrete","type":"predicate","probability":0.9,"note":"가짜"},
+  {"name":"urgency","type":"score","score":2.1,"confidence":0.7,
+   "probabilities":[{"label":"여유","value":0,"probability":0.05},{"label":"이번주","value":1,"probability":0.15},
+                    {"label":"급함","value":2,"probability":0.4},{"label":"오늘안에","value":3,"probability":0.4}]}],
+ "usage":{"input_tokens":300,"output_tokens":4}}
