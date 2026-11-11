@@ -1,5 +1,7 @@
 # 계약: `questions.json` v1
 
+> spec 006 [contracts/questions-json-v2.md](../../006-decision-providers/contracts/questions-json-v2.md)가 대체한다. 최상위 `model`은 `models`로 바뀌고 `provisional`이 더해졌다. 위치와 질문 넷의 문구·타입·옵션은 이 문서 그대로다.
+
 - 위치: `Sources/MokaCore/Resources/questions.json`(`Package.swift`의 MokaCore `resources: [.copy("Resources/questions.json")]`, 앱·시험·`moka-sim`은 `Bundle.module`). 튜닝 pytest는 저장소 루트 기준 같은 경로를 읽는다.
 - 공개 계약이다(헌법 I, AGENTS.md). 문구·옵션·임계값·모델 중 하나라도 바꾸면 `version`을 올리고 제안만 한다. 라벨셋 비교는 사람이 실행한다.
 - 근거: spec R-202·R-203, research R2·R9.

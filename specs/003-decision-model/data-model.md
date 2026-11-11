@@ -6,7 +6,7 @@
 
 | 타입 | 모양 | 비고 |
 |---|---|---|
-| `QuestionSet` | `version: String`, `language: String`, `model: String`, `questions: [String: Question]`, `thresholds: [String: [String: Double]]` | `questions.json`을 읽은 값(contracts/questions-json.md). `QuestionSet.bundled() throws`는 `Bundle.module`에서 읽고 내용 해석 실패만 던진다. 번들이 없으면 SwiftPM 생성 코드가 프로세스를 멈추는데, 이는 빌드 결함으로 보고 단위 1a의 리눅스 CI와 앱 시험 번들에서 각각 `bundled()`를 부르는 시험으로 확인한다(research R19 F4). 임계값은 `thresholds[model]` |
+| `QuestionSet` | `version: String`, `language: String`, `model: String`, `questions: [String: Question]`, `thresholds: [String: [String: Double]]` | `questions.json`을 읽은 값(contracts/questions-json.md). `QuestionSet.bundled() throws`는 `Bundle.module`에서 읽고 내용 해석 실패만 던진다. 번들이 없으면 SwiftPM 생성 코드가 프로세스를 멈추는데, 이는 빌드 결함으로 보고 단위 1a의 리눅스 CI와 앱 시험 번들에서 각각 `bundled()`를 부르는 시험으로 확인한다(research R19 F4). 임계값은 `thresholds[model]`. spec 006 data-model §1이 대체(`models`, `provisional`, `thresholds(for:)`) |
 | `Question` | `noul(instructions)`, `score(instructions, criteria: [String])` | noul은 "이 문장이 참일 확률" 하나를 받는 질문, score는 낮음→높음 옵션 중 어디인지를 받는 질문(contracts/decision-provider.md "질문 타입") |
 | `JudgmentState` | `today: LocalDay`, `weekday: Weekday`, `task: StateTask`, `contexts: [StateContext]`, `checkpoint: StateCheckpoint?` | 판단 입력. 저장하지 않는다. `JudgmentState.build(task:contexts:checkpoints:today:calendar:)`로 만들고 `bytes`(정준 바이트)·`hash`를 낸다(§4·§5) |
 | `StateTask` | `title`, `deadline: LocalDay?`, `estMin: Int?`, `firstAction: String?` | 금지 필드 없음(§4) |
@@ -61,7 +61,7 @@ CREATE TABLE scores(
 - **urgency 하한**: 고르는 날의 오늘(spec 002 R-114 하루 경계) 기준으로 마감이 내일까지(지난 마감 포함)이면 urgency를 1로 본다. 날이 바뀌면 달라지므로 priority 계산 때 적용한다.
 - **aging** = `skipCount × (avoiding ≥ thresholds[model].avoiding ? 1.5 : 1)`. 이월 횟수는 마일스톤 4.
 - **priority** = `1.0 × urgency' + 0.7 × impact + 0.8 × aging`(urgency'는 하한 적용 뒤). 고를 때마다 계산한다.
-- **쓰는 판단 결과**(`ScoreRules.usable(scores:hasKey:questionVersion:) -> [TaskID: TaskScore]`): 키가 있고 `questionVersion`이 지금 질문 파일 버전과 같은 판단 결과만 남긴다. 판단 입력이 바뀐 판단 결과(해시가 다름)도 다시 묻기 전까지는 쓴다. 순서·고르기·로그 함수는 이 사전만 받는다.
+- **쓰는 판단 결과**(`ScoreRules.usable(scores:hasKey:questionVersion:) -> [TaskID: TaskScore]`): 키가 있고 `questionVersion`이 지금 질문 파일 버전과 같은 판단 결과만 남긴다. 판단 입력이 바뀐 판단 결과(해시가 다름)도 다시 묻기 전까지는 쓴다. 순서·고르기·로그 함수는 이 사전만 받는다. spec 006 data-model §1이 대체(`provider` 비교를 더함).
 
 ## 4. 판단 입력 조립과 금지 필드
 
