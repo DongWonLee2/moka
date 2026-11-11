@@ -18,19 +18,22 @@ private func edited(_ task: MokaTask) -> MokaTask {
     return copy
 }
 
-private func score(_ task: MokaTask, version: String = "v1", hash: String? = nil) -> TaskScore {
+private func score(
+    _ task: MokaTask, version: String = "v1", hash: String? = nil, provider: String = "fake"
+) -> TaskScore {
     TaskScore(
-        taskID: task.id, questionVersion: version, provider: "fake", modelSnapshot: "jev-1.13.0", urgency: 0.5,
+        taskID: task.id, questionVersion: version, provider: provider, modelSnapshot: "jev-1.13.0", urgency: 0.5,
         impact: 0.5, concrete: 0.5, avoiding: 0.5, probsJSON: "{}", stateHash: hash ?? state(task).hash,
         scoredAt: Fake.noon)
 }
 
 private func needsQuery(
-    _ tasks: [MokaTask], scores: [TaskScore], states: [TaskID: JudgmentState]? = nil, version: String = "v1"
+    _ tasks: [MokaTask], scores: [TaskScore], states: [TaskID: JudgmentState]? = nil, version: String = "v1",
+    provider: String = "fake"
 ) -> [TaskID] {
     ScoringPlan.needsQuery(
         tasks: tasks, scores: Dictionary(uniqueKeysWithValues: scores.map { ($0.taskID, $0) }),
-        states: states ?? allStates(tasks), questionVersion: version)
+        states: states ?? allStates(tasks), questionVersion: version, provider: provider)
 }
 
 @Suite struct ScoringPlanNeedsQueryTests {
@@ -96,6 +99,24 @@ private func needsQuery(
         let new = Fake.task(5)
         let tomorrow = allStates(old + [new], day: Fake.day("2027-01-14"))
         #expect(needsQuery(old + [new], scores: old.map { score($0) }, states: tomorrow) == [5, 1, 2, 3, 4])
+    }
+
+    @Test("ADR-0011 R-611 SC-605: 판단 결과의 공급자가 지금 공급자와 다르면 다시 묻는다")
+    func otherProvider() {
+        let tasks = Fake.todos(1...3)
+        let scores = [
+            score(tasks[0], provider: "fake-a"), score(tasks[1], provider: "fake-b"),
+            score(tasks[2], provider: "fake-a"),
+        ]
+        #expect(needsQuery(tasks, scores: scores, provider: "fake-a") == [2])
+        #expect(needsQuery(tasks, scores: scores, provider: "fake-b") == [1, 3])
+    }
+
+    @Test("ADR-0011 R-611: 공급자가 다른 판단 결과는 순서에서 판단 결과 있음으로 센다")
+    func otherProviderCountsAsScored() {
+        let tasks = Fake.todos(1...4)
+        let scores = [score(tasks[0], provider: "fake-b"), score(tasks[2], provider: "fake-b")]
+        #expect(needsQuery(tasks.reversed(), scores: scores, provider: "fake-a") == [2, 4, 1, 3])
     }
 
     @Test("FR-03 R-206: 판단 입력이 없는 할 일은 입력이 바뀐 것으로 보고 묻는다")

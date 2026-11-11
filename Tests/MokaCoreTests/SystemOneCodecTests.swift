@@ -17,7 +17,7 @@ private let state = JudgmentState.build(
     contexts: [MokaContext(id: 1, name: "가짜 일정 A", date: Fake.day("2027-01-20"), impact: .high)],
     checkpoints: [], today: Fake.day("2027-01-13"), calendar: Fake.seoul)
 
-private let request = DecisionRequest(taskID: 1, model: questions.model, state: state.bytes, questions: questions)
+private let request = DecisionRequest(taskID: 1, model: "jev-1.13.0", state: state.bytes, questions: questions)
 
 private let okAnswers: [String: Answer] = [
     "urgency": .score(score: 2.1, confidence: 0.7, probabilities: [0: 0.05, 1: 0.15, 2: 0.4, 3: 0.4]),
@@ -57,7 +57,7 @@ private func jsonObject(_ data: Data) throws -> [String: Any] {
 
     @Test("FR-14 R-210: 할 일 id는 본문에 넣지 않는다")
     func noTaskID() throws {
-        let other = DecisionRequest(taskID: 987_654, model: questions.model, state: state.bytes, questions: questions)
+        let other = DecisionRequest(taskID: 987_654, model: "jev-1.13.0", state: state.bytes, questions: questions)
         #expect(SystemOneCodec.body(other) == SystemOneCodec.body(request))
         #expect(!String(decoding: SystemOneCodec.body(other), as: UTF8.self).contains("987654"))
     }

@@ -6,6 +6,7 @@ import Testing
 
 private let questions = try! QuestionSet.bundled()
 private let today = Fake.day("2027-01-13")
+private let jev = ModelThresholds(concrete: 0.5, avoiding: 0.7)
 
 /// 마감이 없고 미룬 횟수가 0이면 priority = urgency + 0.7 × impact.
 private func score(_ taskID: TaskID, urgency: Double, impact: Double = 1, avoiding: Double = 0.3) -> TaskScore {
@@ -15,8 +16,10 @@ private func score(_ taskID: TaskID, urgency: Double, impact: Double = 1, avoidi
         scoredAt: Fake.noon)
 }
 
-private func order(_ tasks: [MokaTask], _ usable: [TaskID: TaskScore]) -> [TaskID] {
-    PriorityOrder.order(tasks: tasks, usable: usable, questions: questions, today: today, calendar: Fake.seoul)
+private func order(
+    _ tasks: [MokaTask], _ usable: [TaskID: TaskScore], thresholds: ModelThresholds? = jev
+) -> [TaskID] {
+    PriorityOrder.order(tasks: tasks, usable: usable, thresholds: thresholds, today: today, calendar: Fake.seoul)
         .map(\.id)
 }
 
@@ -101,8 +104,22 @@ private let abc: [TaskID: TaskScore] = [
         let tasks = [Fake.task(1), Fake.task(2, deadline: Fake.day("2027-01-20")), Fake.task(3)]
         #expect(PriorityOrder.order(Fake.input(tasks)).map(\.id) == [2, 1, 3])
         var input = Fake.input(tasks)
-        input.scoring = SessionScoring(usable: abc, questions: questions, today: today)
+        input.scoring = SessionScoring(usable: abc, questions: questions, thresholds: jev, today: today)
         #expect(PriorityOrder.order(input).map(\.id) == [3, 1, 2])
+    }
+
+    @Test("ADR-0011 R-609: 기준 모델 임계값이 nil이면 avoiding 배율 1로 순서를 정한다")
+    func orderWithoutThreshold() {
+        // 1: 미룬 1번 × 0.8 × (1.5 또는 1), 2: urgency 1
+        let tasks = [Fake.task(1, skipCount: 1), Fake.task(2)]
+        let usable: [TaskID: TaskScore] = [
+            1: score(1, urgency: 0, impact: 0, avoiding: 0.9), 2: score(2, urgency: 1, impact: 0),
+        ]
+        #expect(order(tasks, usable) == [1, 2])
+        #expect(order(tasks, usable, thresholds: nil) == [2, 1])
+        var input = Fake.input(tasks)
+        input.scoring = SessionScoring(usable: usable, questions: questions, thresholds: nil, today: today)
+        #expect(PriorityOrder.order(input).map(\.id) == [2, 1])
     }
 }
 
@@ -144,7 +161,7 @@ private let abc: [TaskID: TaskScore] = [
     @Test("FR-05 R-209: spec US1-3 C 뒤 바꾸기면 A, A 뒤 B, B 뒤 처음 C")
     func rotatesThroughABC() {
         let ordered = PriorityOrder.order(
-            tasks: Fake.todos(1...3), usable: abc, questions: questions, today: today, calendar: Fake.seoul)
+            tasks: Fake.todos(1...3), usable: abc, thresholds: jev, today: today, calendar: Fake.seoul)
         var cursor: TaskID?
         var picked: [TaskID] = []
         for _ in 0..<4 {
@@ -159,7 +176,7 @@ private let abc: [TaskID: TaskScore] = [
         // 미루기 뒤 A는 1.2 + 0.8 = 2.0이 되어 A, C, B 순. 미루기 전 순서였다면 B였다.
         let tasks = [Fake.task(1, skipCount: 1), Fake.task(2), Fake.task(3)]
         let ordered = PriorityOrder.order(
-            tasks: tasks, usable: abc, questions: questions, today: today, calendar: Fake.seoul)
+            tasks: tasks, usable: abc, thresholds: jev, today: today, calendar: Fake.seoul)
         #expect(ordered.map(\.id) == [1, 3, 2])
         #expect(PriorityRotateRule.pick(order: ordered, after: 1)?.id == 3)
     }

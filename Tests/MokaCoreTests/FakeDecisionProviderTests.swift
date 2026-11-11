@@ -7,7 +7,7 @@ private let answerA = DecisionResponse(model: "jev-1.13.0", answers: ["concrete"
 private let answerB = DecisionResponse(model: "jev-1.13.0", answers: ["concrete": .noul(0.8)])
 
 private func request(_ taskID: TaskID) -> DecisionRequest {
-    DecisionRequest(taskID: taskID, model: questions.model, state: Array("{}".utf8), questions: questions)
+    DecisionRequest(taskID: taskID, model: "jev-1.13.0", state: Array("{}".utf8), questions: questions)
 }
 
 @Suite struct FakeDecisionProviderTests {

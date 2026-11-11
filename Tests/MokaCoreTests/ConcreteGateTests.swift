@@ -15,7 +15,7 @@ private func judged(concrete: Double, hash: String) -> TaskScore {
 
 private func facts(
     isDraft: Bool = true, canQuery: Bool = true, score: TaskScore? = judged(concrete: 0.3, hash: oldHash),
-    currentHash: String = oldHash, failedHash: String? = nil, threshold: Double = 0.5,
+    currentHash: String = oldHash, failedHash: String? = nil, threshold: Double? = 0.5,
     record: GateRecord = GateRecord(), waiting: Bool = false
 ) -> ConcreteGate.Facts {
     ConcreteGate.Facts(
@@ -26,10 +26,10 @@ private func facts(
 /// 제출한 뒤 판정을 기다리는 중. 첫 행동이 바뀌어 해시가 `newHash`가 되었다.
 private func afterSubmit(
     submissions: Int = 1, canQuery: Bool = true, score: TaskScore? = judged(concrete: 0.3, hash: oldHash),
-    currentHash: String = newHash, failedHash: String? = nil
+    currentHash: String = newHash, failedHash: String? = nil, threshold: Double? = 0.5
 ) -> ConcreteGate.Facts {
     facts(
-        canQuery: canQuery, score: score, currentHash: currentHash, failedHash: failedHash,
+        canQuery: canQuery, score: score, currentHash: currentHash, failedHash: failedHash, threshold: threshold,
         record: GateRecord(submissions: submissions, passed: false), waiting: true)
 }
 
@@ -39,9 +39,9 @@ private func afterSubmit(
         #expect(Defaults.concreteGateMaxSubmissions == 3)
     }
 
-    @Test("FR-13 R-306: 임계값은 질문 파일의 그 모델 concrete 값이다")
+    @Test("ADR-0011 R-609: 임계값은 질문 파일에서 기준 모델 ID로 찾은 concrete 값이다")
     func threshold() throws {
-        #expect(ConcreteGate.threshold(questions) == 0.5)
+        #expect(ConcreteGate.threshold(questions, baseModel: "jev-1.13.0") == 0.5)
         let edited = try QuestionSet(
             json: questionsJSON { root in
                 root["thresholds"] = [
@@ -49,7 +49,13 @@ private func afterSubmit(
                     "other-model": ["concrete": 0.1, "avoiding": 0.2],
                 ]
             })
-        #expect(ConcreteGate.threshold(edited) == 0.65)
+        #expect(ConcreteGate.threshold(edited, baseModel: "jev-1.13.0") == 0.65)
+        #expect(ConcreteGate.threshold(edited, baseModel: "other-model") == 0.1)
+    }
+
+    @Test("ADR-0011 R-609: 질문 파일에 없는 기준 모델이면 임계값은 nil이고 멈추지 않는다")
+    func missingThreshold() {
+        #expect(ConcreteGate.threshold(questions, baseModel: "fake-unknown") == nil)
     }
 
     @Test("FR-13 R-309: 새 기록은 제출 0번이고 통과하지 않았다")
@@ -100,6 +106,24 @@ private func afterSubmit(
         input.isDraft = false
         #expect(ConcreteGate.phase(input) == .closed)
         #expect(ConcreteGate.afterAnswer(input).passed == false)
+    }
+}
+
+@Suite struct ConcreteGateMissingThresholdTests {
+    @Test("ADR-0011 R-609: 임계값이 nil이면 concrete가 낮아도 열지 않고 통과로 적지 않는다")
+    func doesNotOpen() {
+        let input = facts(score: judged(concrete: 0.1, hash: oldHash), threshold: nil)
+        #expect(ConcreteGate.phase(input) == .closed)
+        #expect(ConcreteGate.afterAnswer(input) == GateRecord())
+    }
+
+    @Test("ADR-0011 R-609: 재판정을 기다리는 중 임계값이 nil이 되면 그 제출에서 통과다")
+    func waitingPasses() {
+        for score in [judged(concrete: 0.1, hash: newHash), judged(concrete: 0.1, hash: oldHash), nil] {
+            let input = afterSubmit(score: score, threshold: nil)
+            #expect(ConcreteGate.phase(input) == .closed)
+            #expect(ConcreteGate.afterAnswer(input) == GateRecord(submissions: 1, passed: true))
+        }
     }
 }
 

@@ -3,6 +3,7 @@ import MokaCore
 import Testing
 
 private let questions = try! QuestionSet.bundled()
+private let jev = ModelThresholds(concrete: 0.5, avoiding: 0.7)
 private let now = Fake.noon
 private let today = Fake.day("2027-01-13")
 
@@ -23,16 +24,16 @@ private func score(
 
 private func stored(
     _ taskID: TaskID = 1, urgency: Double = 0.5, impact: Double = 0.5, avoiding: Double = 0.3,
-    version: String = "v1", hash: String = "0123456789abcdef"
+    version: String = "v1", hash: String = "0123456789abcdef", provider: String = "fake"
 ) -> TaskScore {
     TaskScore(
-        taskID: taskID, questionVersion: version, provider: "fake", modelSnapshot: "jev-1.13.0",
+        taskID: taskID, questionVersion: version, provider: provider, modelSnapshot: "jev-1.13.0",
         urgency: urgency, impact: impact, concrete: 0.9, avoiding: avoiding, probsJSON: "{}", stateHash: hash,
         scoredAt: now)
 }
 
-private func priority(_ score: TaskScore, _ task: MokaTask) -> Double {
-    ScoreRules.priority(score, task: task, today: today, questions: questions, calendar: Fake.seoul)
+private func priority(_ score: TaskScore, _ task: MokaTask, thresholds: ModelThresholds? = jev) -> Double {
+    ScoreRules.priority(score, task: task, today: today, thresholds: thresholds, calendar: Fake.seoul)
 }
 
 private func near(_ a: Double, _ b: Double) -> Bool { abs(a - b) < 1e-9 }
@@ -42,7 +43,7 @@ private func near(_ a: Double, _ b: Double) -> Bool { abs(a - b) < 1e-9 }
     func parsesAndNormalizes() throws {
         let result = try #require(score())
         #expect(result.taskID == 1)
-        #expect(result.questionVersion == "v1")
+        #expect(result.questionVersion == "v2")
         #expect(result.provider == "fake")
         #expect(result.modelSnapshot == "jev-1.13.0")
         #expect(near(result.urgency, 2.1 / 3))
@@ -153,6 +154,23 @@ private func near(_ a: Double, _ b: Double) -> Bool { abs(a - b) < 1e-9 }
         #expect(near(value, 0.8 * 2 * factor))
     }
 
+    @Test(
+        "ADR-0011 R-609: 기준 모델 임계값이 nil이면 avoiding이 높아도 aging 배율은 1이다",
+        arguments: [0.0, 0.7, 1.0])
+    func agingWithoutThreshold(avoiding: Double) {
+        let value = priority(
+            stored(urgency: 0, impact: 0, avoiding: avoiding), Fake.task(1, skipCount: 2), thresholds: nil)
+        #expect(near(value, 0.8 * 2))
+    }
+
+    @Test("ADR-0011 R-609: avoiding 판정은 넘긴 기준 모델의 임계값으로 한다")
+    func agingUsesGivenThreshold() {
+        let other = ModelThresholds(concrete: 0.5, avoiding: 0.4)
+        let value = priority(
+            stored(urgency: 0, impact: 0, avoiding: 0.5), Fake.task(1, skipCount: 2), thresholds: other)
+        #expect(near(value, 0.8 * 2 * 1.5))
+    }
+
     @Test("FR-04 R-204: 가중치 초기값은 Defaults 한 곳에 있다")
     func defaults() {
         #expect(Defaults.weightUrgency == 1.0)
@@ -167,7 +185,8 @@ private func near(_ a: Double, _ b: Double) -> Bool { abs(a - b) < 1e-9 }
 @Suite struct ScoreRulesUsableTests {
     @Test("FR-05 R-208: 키가 없으면 쓰는 판단 결과가 없다")
     func noKey() {
-        #expect(ScoreRules.usable(scores: [1: stored()], hasKey: false, questionVersion: "v1").isEmpty)
+        #expect(
+            ScoreRules.usable(scores: [1: stored()], hasKey: false, questionVersion: "v1", provider: "fake").isEmpty)
     }
 
     @Test("FR-03 R-206: 질문 버전이 다른 판단 결과는 쓰지 않고, 판단 입력 해시가 달라도 다시 묻기 전까지 쓴다")
@@ -175,6 +194,27 @@ private func near(_ a: Double, _ b: Double) -> Bool { abs(a - b) < 1e-9 }
         let scores: [TaskID: TaskScore] = [
             1: stored(1, version: "v0"), 2: stored(2, hash: "ffffffffffffffff"), 3: stored(3),
         ]
-        #expect(Set(ScoreRules.usable(scores: scores, hasKey: true, questionVersion: "v1").keys) == [2, 3])
+        #expect(
+            Set(ScoreRules.usable(scores: scores, hasKey: true, questionVersion: "v1", provider: "fake").keys) == [
+                2, 3,
+            ])
+    }
+
+    @Test("ADR-0011 R-611 SC-605: 공급자가 지금 공급자 이름과 다른 판단 결과는 쓰지 않는다")
+    func otherProvider() {
+        let scores: [TaskID: TaskScore] = [
+            1: stored(1, provider: "fake-a"), 2: stored(2, provider: "fake-b"), 3: stored(3, provider: "fake-a"),
+        ]
+        #expect(
+            Set(ScoreRules.usable(scores: scores, hasKey: true, questionVersion: "v1", provider: "fake-a").keys)
+                == [1, 3])
+        #expect(
+            Set(ScoreRules.usable(scores: scores, hasKey: true, questionVersion: "v1", provider: "fake-b").keys) == [2])
+    }
+
+    @Test("ADR-0011 R-611: 공급자가 같아도 질문 버전이 다르면 쓰지 않는다")
+    func sameProviderOtherVersion() {
+        let scores: [TaskID: TaskScore] = [1: stored(1, version: "v0", provider: "fake-a")]
+        #expect(ScoreRules.usable(scores: scores, hasKey: true, questionVersion: "v1", provider: "fake-a").isEmpty)
     }
 }
