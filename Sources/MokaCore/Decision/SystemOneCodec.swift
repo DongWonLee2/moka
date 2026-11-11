@@ -25,13 +25,8 @@ public enum SystemOneCodec {
 
     /// HTTP 상태와 본문을 답 또는 오류로 바꾼다.
     public static func decode(status: Int, body: Data) throws(DecisionError) -> DecisionResponse {
-        switch status {
-        case 200: return try response(body)
-        case 401, 403: throw .unauthorized
-        case 429: throw .rateLimited
-        case 529: throw .overloaded
-        default: throw .server(status: status)
-        }
+        guard status == 200 else { throw DecisionWire.failure(status: status) }
+        return try response(body)
     }
 
     /// 읽는 칸은 `model`, `answers.<이름>`의 `type`·`noul`·`score`·`confidence`·`probabilities`다.
