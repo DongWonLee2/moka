@@ -835,14 +835,12 @@ final class AppState {
             try CoreSettings.writeMicrosoftEndpoint(url, to: settings)
             try CoreSettings.writeMicrosoftDeployment(deploymentText, to: settings)
         } catch {
-            // 주소만 저장됐을 수 있으므로 바인딩을 저장된 값으로 다시 맞춘다. 보이는 곳과 실제 목적지가 갈리지 않게 한다.
+            // 주소만 저장됐을 수 있으므로 저장된 값으로 바꾸기와 같은 정리를 한다. 보이는 곳과 실제 목적지가 갈리지 않고,
+            // 세대가 바뀌어 버려진 답의 할 일도 다시 묻는다.
             Self.decisionLogger.error(
                 "Microsoft 칸 저장 실패: \(String(reflecting: type(of: error)), privacy: .public)")
-            providerGeneration += 1
-            rebind()
+            providerChanged()
             providerActionFailure = .saveMicrosoft
-            refreshHasKey()
-            refreshGate()
             return nil
         }
         providerChanged()
