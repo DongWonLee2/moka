@@ -1,0 +1,634 @@
+import Foundation
+import MokaCore
+import XCTest
+
+/// spec 006 단위 3: 앱 공급자 설정, 공급자별 키, 바꾸기(data-model §6·§7·§8, research R5·R6).
+/// 이름이 다른 가짜 공급자(`fake-a`, `fake-b`, `fake-ms`)와 공급자별 메모리 키 보관함, 가짜 `bind`만 쓴다.
+/// 실제 판단 API, 실제 Keychain, 앱 DB를 열지 않는다. 가짜 할 일, 가짜 키, 가짜 주소만 쓴다.
+/// 기다림은 실행기 `Task`와 붙잡기로 하고 실제 시간을 기다리지 않는다.
+@MainActor
+final class AppProviderTests: XCTestCase {
+    private static let bundled = try! QuestionSet.bundled()
+    /// Microsoft 기준 모델 `fake-ms-base`를 더한 시험용 질문 파일.
+    private static let withMicrosoft = try! testQuestions(models: [
+        "typesafe": "jev-1.13.0", "liquid": "d1-ultra", "microsoft": "fake-ms-base",
+    ])
+    /// `typesafe` 줄이 없는 시험용 질문 파일.
+    private static let withoutTypeSafe = try! testQuestions(models: ["liquid": "d1-ultra"])
+
+    private static func testQuestions(models: [String: String]) throws -> QuestionSet {
+        let thresholds = Dictionary(
+            uniqueKeysWithValues: Set(models.values).map { ($0, ["concrete": 0.5, "avoiding": 0.7]) })
+        let root: [String: Any] = [
+            "version": "v2", "language": "ko", "models": models, "provisional": [String](),
+            "questions": [
+                "urgency": ["type": "score", "instructions": "가짜 지시 1", "criteria": ["a", "b", "c", "d"]],
+                "impact": ["type": "score", "instructions": "가짜 지시 2", "criteria": ["a", "b", "c"]],
+                "concrete": ["type": "noul", "instructions": "가짜 지시 3"],
+                "avoiding": ["type": "noul", "instructions": "가짜 지시 4"],
+            ],
+            "thresholds": thresholds,
+        ]
+        return try QuestionSet(json: JSONSerialization.data(withJSONObject: root))
+    }
+
+    /// 첫 호출을 확인한 것처럼 `ids`를 연 가짜 공급자 표.
+    private static func catalog(opening ids: Set<ProviderID>) -> [ProviderConfig] {
+        ProviderCatalog.all.map { row in
+            guard ids.contains(row.id) else { return row }
+            return ProviderConfig(
+                id: row.id, displayName: row.displayName, endpoint: row.endpoint, auth: row.auth, shape: row.shape,
+                issueURL: row.issueURL, issueURLConfirmed: row.issueURLConfirmed, firstCallConfirmed: true)
+        }
+    }
+
+    /// 질문 넷을 모두 채운 가짜 답. `urgency`는 0~3.
+    nonisolated private static func answer(urgency: Double = 1) -> DecisionResponse {
+        DecisionResponse(
+            model: "fake-model",
+            answers: [
+                "urgency": .score(
+                    score: urgency, confidence: 0.7, probabilities: [0: 0.25, 1: 0.25, 2: 0.25, 3: 0.25]),
+                "impact": .score(score: 1, confidence: 0.6, probabilities: [0: 0.2, 1: 0.4, 2: 0.4]),
+                "concrete": .noul(0.9),
+                "avoiding": .noul(0.3),
+            ])
+    }
+
+    /// 공급자별 가짜 공급자와 키 보관함. `bind`가 받은 값을 기록한다.
+    private final class Providers {
+        let fakes: [ProviderID: FakeDecisionProvider]
+        let keys: [ProviderID: InMemoryKeyStore]
+        private(set) var bound: [DecisionSelection.Ready] = []
+
+        init(keys: [ProviderID: String] = [:], fakes: [ProviderID: FakeDecisionProvider] = [:]) {
+            var all: [ProviderID: FakeDecisionProvider] = [
+                .typesafe: FakeDecisionProvider(name: "fake-a", answer: .success(answer())),
+                .liquid: FakeDecisionProvider(name: "fake-b", answer: .success(answer())),
+                .microsoft: FakeDecisionProvider(name: "fake-ms", answer: .success(answer())),
+            ]
+            all.merge(fakes) { $1 }
+            self.fakes = all
+            self.keys = Dictionary(
+                uniqueKeysWithValues: ProviderID.allCases.map { ($0, InMemoryKeyStore(key: keys[$0])) })
+        }
+
+        func provider(_ id: ProviderID) -> FakeDecisionProvider {
+            fakes[id] ?? FakeDecisionProvider(name: "fake-other", answer: .success(answer()))
+        }
+
+        func setup(catalog: [ProviderConfig], questions: QuestionSet?) -> DecisionSetup {
+            DecisionSetup(
+                bind: { ready in
+                    self.bound.append(ready)
+                    return DecisionBinding(
+                        provider: self.provider(ready.config.id), baseModel: ready.baseModel,
+                        requestModel: ready.requestModel)
+                },
+                keyStore: { id in self.keys[id] ?? InMemoryKeyStore() }, catalog: catalog, questions: questions)
+        }
+
+        /// 모든 가짜 공급자에 닿은 요청 수.
+        func totalCalls() async -> Int {
+            var total = 0
+            for fake in fakes.values { total += await fake.calls.count }
+            return total
+        }
+    }
+
+    private struct Harness {
+        let state: AppState
+        let repository: InMemoryTaskRepository
+        let scoreStore: InMemoryScoreStore
+        let settings: ControlledSettingsStore
+        let providers: Providers
+        let clock: TestClock
+    }
+
+    private func harness(
+        count: Int, providers: Providers, settings: [String: String] = [:],
+        catalog: [ProviderConfig] = AppProviderTests.catalog(opening: [.liquid]),
+        questions: QuestionSet? = AppProviderTests.bundled
+    ) throws -> Harness {
+        let repository = InMemoryTaskRepository()
+        for index in 0..<count {
+            _ = try repository.insertTask(
+                NewTask(title: "가짜 할 일 \(index + 1)", deadline: nil, estMin: nil, recurrence: .none, weekday: nil),
+                cycleDay: nil, at: AppTestFixture.noon)
+        }
+        let store = ControlledSettingsStore()
+        for (key, value) in settings {
+            try store.setValue(value, for: key)
+        }
+        store.resetWritten()
+        let scoreStore = InMemoryScoreStore(tasks: repository)
+        let clock = TestClock(AppTestFixture.noon)
+        let state = makeState(
+            repository, settings: store, clock: clock, scores: scoreStore,
+            decision: providers.setup(catalog: catalog, questions: questions))
+        return Harness(
+            state: state, repository: repository, scoreStore: scoreStore, settings: store, providers: providers,
+            clock: clock)
+    }
+
+    private func launched(_ h: Harness) async -> Harness {
+        h.state.launch()
+        await h.state.requestScores()?.value
+        return h
+    }
+
+    private static let microsoftSettings = [CoreSettings.decisionProviderKey: "microsoft"]
+    private static let microsoftCatalog = catalog(opening: [.microsoft, .liquid])
+
+    // MARK: - T019 설정 없음·고른 공급자·꺼짐(R-613, R-614, R-617, SC-606~SC-608)
+
+    func test_ADR0011_R614_SC607_upgradeWithTypeSafeKeyScoresWithoutAnyAction() async throws {
+        let providers = Providers(keys: [.typesafe: "fake-key-a"])
+        let h = await launched(try harness(count: 2, providers: providers))
+
+        XCTAssertEqual(h.state.selectedProvider, .typesafe, "설정이 없으면 Jev")
+        XCTAssertNil(h.state.selectionOff)
+        XCTAssertTrue(h.state.hasKey)
+        XCTAssertEqual(Set(try h.scoreStore.scores().keys), [1, 2])
+        XCTAssertEqual(Set(try h.scoreStore.scores().values.map(\.provider)), ["fake-a"])
+        XCTAssertEqual(providers.bound.last?.requestModel, "jev-1.13.0")
+        XCTAssertEqual(providers.bound.last?.baseModel, "jev-1.13.0")
+        XCTAssertEqual(h.state.sendingHost, "api.typesafe.ai")
+        XCTAssertTrue(h.settings.written.isEmpty, "업그레이드는 설정을 쓰지 않는다")
+    }
+
+    func test_ADR0011_R614_existingThreeArgumentSetupStillWorks() async throws {
+        let repository = InMemoryTaskRepository()
+        _ = try repository.insertTask(
+            NewTask(title: "가짜 할 일 1", deadline: nil, estMin: nil, recurrence: .none, weekday: nil), cycleDay: nil,
+            at: AppTestFixture.noon)
+        let scoreStore = InMemoryScoreStore(tasks: repository)
+        let provider = FakeDecisionProvider(answer: .success(Self.answer()))
+        let state = makeState(
+            repository, scores: scoreStore,
+            decision: DecisionSetup(
+                keyStore: InMemoryKeyStore(key: "fake-key"), provider: provider, questions: Self.bundled))
+        state.launch()
+        await state.requestScores()?.value
+
+        XCTAssertEqual(try scoreStore.scores()[1]?.provider, "fake")
+        XCTAssertEqual(state.selectedProvider, .typesafe)
+    }
+
+    func test_ADR0011_R613_SC608_keyGoesOnlyToSelectedProviderStore() async throws {
+        let providers = Providers()
+        let h = await launched(
+            try harness(count: 1, providers: providers, settings: [CoreSettings.decisionProviderKey: "liquid"]))
+
+        XCTAssertEqual(h.state.selectedProvider, .liquid)
+        XCTAssertFalse(h.state.hasKey)
+        XCTAssertTrue(h.state.saveKey(" fake-key-b "))
+        await h.state.requestScores()?.value
+
+        XCTAssertEqual(try providers.keys[.liquid]?.read(), "fake-key-b")
+        XCTAssertNil(try providers.keys[.typesafe]?.read(), "다른 공급자 항목에 넣지 않는다")
+        XCTAssertTrue(h.state.hasKey)
+        XCTAssertEqual(try h.scoreStore.scores()[1]?.provider, "fake-b")
+        XCTAssertEqual(providers.bound.last?.requestModel, "d1-ultra")
+    }
+
+    func test_ADR0011_R613_SC608_keyValuesAreNotStoredOutsideKeyStores() async throws {
+        let secretA = "fake-secret-key-a-7f3a"
+        let secretB = "fake-secret-key-b-91c2"
+        let providers = Providers()
+        let h = try harness(count: 1, providers: providers)
+        h.state.launch()
+        XCTAssertTrue(
+            h.state.finishOnboarding(
+                OnboardingValues(context: nil, quantumMin: 25, extendMin: 10, dayStart: Defaults.dayStart)))
+        XCTAssertTrue(h.state.saveKey(secretA))
+        await h.state.requestScores()?.value
+        h.state.selectProvider(.liquid)
+        XCTAssertTrue(h.state.saveKey(secretB))
+        await h.state.requestScores()?.value
+        h.state.start()
+        h.clock.advance(minutes: 5)
+        h.state.tick()
+        h.state.complete()
+
+        XCTAssertFalse(h.settings.written.isEmpty)
+        XCTAssertFalse(try h.repository.decisions().isEmpty, "행동 로그가 남았다")
+        for secret in [secretA, secretB] {
+            for (name, value) in h.settings.written {
+                XCTAssertFalse(name.contains(secret) || value.contains(secret), "설정 \(name)")
+            }
+            XCTAssertFalse(String(describing: try h.scoreStore.scores()).contains(secret), "판단 결과")
+            XCTAssertFalse(String(describing: try h.repository.decisions()).contains(secret), "행동 로그")
+        }
+    }
+
+    func test_ADR0011_R617_SC606_closedProviderInSettingsTurnsJudgingOff() async throws {
+        let providers = Providers(keys: [.liquid: "fake-key-b"])
+        let h = try harness(
+            count: 2, providers: providers, settings: [CoreSettings.decisionProviderKey: "liquid"],
+            catalog: ProviderCatalog.all)
+        try h.scoreStore.upsertScore(
+            TaskScore(
+                taskID: 1, questionVersion: "v2", provider: "fake-b", modelSnapshot: "fake-model", urgency: 1,
+                impact: 1, concrete: 0.1, avoiding: 0.3, probsJSON: "{}", stateHash: "0000000000000000",
+                scoredAt: AppTestFixture.noon))
+        let state = await launched(h).state
+
+        XCTAssertEqual(state.selectionOff, .closedProvider(.liquid))
+        XCTAssertEqual(state.selectedProvider, .liquid)
+        let calls = await providers.totalCalls()
+        XCTAssertEqual(calls, 0, "질의를 보내지 않는다")
+        XCTAssertEqual(state.ranks, [1: 1, 2: 2], "마감일 순(판단 결과를 쓰지 않음)")
+        XCTAssertEqual(state.reasonLine, "마감 없음 · 미룬 0번", "손해 칸이 없다")
+        XCTAssertEqual(state.gatePhase, .closed)
+        XCTAssertTrue(state.hasKey, "꺼져 있어도 고른 공급자 항목을 읽는다")
+        XCTAssertTrue(state.deleteKey())
+        XCTAssertNil(try providers.keys[.liquid]?.read())
+        XCTAssertTrue(state.saveKey("fake-key-b2"))
+        XCTAssertEqual(try providers.keys[.liquid]?.read(), "fake-key-b2")
+    }
+
+    func test_ADR0011_R617_offMicrosoftWithoutEndpointStillHandlesKeys() async throws {
+        let providers = Providers()
+        let h = await launched(
+            try harness(
+                count: 1, providers: providers, settings: Self.microsoftSettings, catalog: Self.microsoftCatalog,
+                questions: Self.withMicrosoft))
+
+        XCTAssertEqual(h.state.selectionOff, .needsEndpoint)
+        XCTAssertNil(h.state.sendingHost, "주소가 없으면 보내는 곳이 없다")
+        XCTAssertFalse(h.state.hasKey)
+        XCTAssertTrue(h.state.saveKey("fake-key-ms"))
+        XCTAssertTrue(h.state.hasKey)
+        XCTAssertEqual(try providers.keys[.microsoft]?.read(), "fake-key-ms")
+        XCTAssertTrue(h.state.deleteKey())
+        XCTAssertFalse(h.state.hasKey)
+        let calls = await providers.totalCalls()
+        XCTAssertEqual(calls, 0)
+    }
+
+    func test_ADR0011_R614_SC606_unknownProviderTurnsKeyActionsOff() async throws {
+        let providers = Providers(keys: [.typesafe: "fake-key-a"])
+        let h = await launched(
+            try harness(count: 1, providers: providers, settings: [CoreSettings.decisionProviderKey: "fake-unknown"]))
+
+        XCTAssertNil(h.state.selectedProvider)
+        XCTAssertEqual(h.state.selectionOff, .unknownProvider)
+        XCTAssertFalse(h.state.hasKey)
+        XCTAssertFalse(h.state.saveKey("fake-key-x"))
+        XCTAssertFalse(h.state.deleteKey())
+        XCTAssertEqual(try providers.keys[.typesafe]?.read(), "fake-key-a", "다른 항목을 건드리지 않는다")
+        let calls = await providers.totalCalls()
+        XCTAssertEqual(calls, 0)
+        XCTAssertNil(h.state.sendingHost)
+    }
+
+    func test_ADR0011_R609_SC606_missingTypeSafeBaseModelTurnsJudgingOff() async throws {
+        let providers = Providers(keys: [.typesafe: "fake-key-a"])
+        let h = await launched(
+            try harness(count: 2, providers: providers, catalog: ProviderCatalog.all, questions: Self.withoutTypeSafe))
+
+        XCTAssertEqual(h.state.selectionOff, .closedProvider(.typesafe))
+        let calls = await providers.totalCalls()
+        XCTAssertEqual(calls, 0, "질문 파일에 기준 모델이 없으면 묻지 않는다")
+        XCTAssertTrue(try h.scoreStore.scores().isEmpty)
+        XCTAssertEqual(h.state.ranks, [1: 1, 2: 2])
+        XCTAssertTrue(h.state.hasKey, "키 칸은 그대로 Jev 항목을 읽는다")
+        XCTAssertNil(h.state.requestScores())
+    }
+
+    // MARK: - T024 바꾸기(R-615, R-611, SC-605)
+
+    func test_ADR0011_R615_selectingSameProviderDoesNothing() async throws {
+        let providers = Providers(keys: [.typesafe: "fake-key-a"])
+        let h = await launched(try harness(count: 2, providers: providers))
+        let boundBefore = providers.bound.count
+
+        h.state.selectProvider(.typesafe)
+
+        XCTAssertTrue(h.settings.written.isEmpty)
+        XCTAssertEqual(providers.bound.count, boundBefore, "바인딩을 다시 만들지 않는다")
+        XCTAssertNil(h.state.requestScores())
+        let calls = await providers.provider(.typesafe).calls
+        XCTAssertEqual(calls.count, 2)
+    }
+
+    func test_ADR0011_R615_R617_selectingClosedProviderDoesNothing() async throws {
+        let providers = Providers(keys: [.typesafe: "fake-key-a"])
+        let h = await launched(try harness(count: 1, providers: providers))
+
+        h.state.selectProvider(.perplexity)
+
+        XCTAssertEqual(h.state.selectedProvider, .typesafe)
+        XCTAssertTrue(h.settings.written.isEmpty)
+        XCTAssertNil(h.state.selectionOff)
+    }
+
+    func test_ADR0011_R615_settingsWriteFailureKeepsCurrentProvider() async throws {
+        let providers = Providers(keys: [.typesafe: "fake-key-a", .liquid: "fake-key-b"])
+        let h = await launched(try harness(count: 1, providers: providers))
+        h.settings.failingKeys = [CoreSettings.decisionProviderKey]
+
+        h.state.selectProvider(.liquid)
+
+        XCTAssertEqual(h.state.selectedProvider, .typesafe)
+        XCTAssertEqual(h.state.providerActionFailure, .select)
+        XCTAssertNil(h.state.requestScores(), "바꾸지 않았으므로 다시 묻지 않는다")
+
+        h.settings.failingKeys = []
+        h.state.selectProvider(.liquid)
+        XCTAssertEqual(h.state.selectedProvider, .liquid)
+        XCTAssertNil(h.state.providerActionFailure, "다음 성공에 지운다")
+        XCTAssertEqual(try h.settings.value(for: CoreSettings.decisionProviderKey), "liquid")
+    }
+
+    func test_ADR0011_R615_R611_SC605_switchStopsUsingOldScoresAndAsksEveryTaskAgain() async throws {
+        let first = FakeDecisionProvider(name: "fake-a", answer: .success(Self.answer()))
+        await first.setAnswer(.success(Self.answer(urgency: 0)), for: 1)
+        await first.setAnswer(.success(Self.answer(urgency: 3)), for: 3)
+        let providers = Providers(keys: [.typesafe: "fake-key-a", .liquid: "fake-key-b"], fakes: [.typesafe: first])
+        let h = await launched(try harness(count: 3, providers: providers))
+        XCTAssertEqual(h.state.ranks, [3: 1, 2: 2, 1: 3], "Jev 판단 결과로 순서")
+
+        let second = providers.provider(.liquid)
+        await second.hold()
+        h.state.selectProvider(.liquid)
+
+        XCTAssertEqual(h.state.ranks, [1: 1, 2: 2, 3: 3], "바꾸면 이전 공급자 판단 결과를 쓰지 않는다")
+        let runner = try XCTUnwrap(h.state.requestScores())
+        await second.waitForHeld(count: 3)
+        await second.releaseAll()
+        await runner.value
+
+        let calls = await second.calls
+        XCTAssertEqual(Set(calls), [1, 2, 3], "대기 할 일을 모두 새 공급자에 묻는다")
+        XCTAssertEqual(Set(try h.scoreStore.scores().values.map(\.provider)), ["fake-b"])
+        XCTAssertEqual(try h.settings.value(for: CoreSettings.decisionProviderKey), "liquid")
+    }
+
+    func test_ADR0011_R615_switchClearsKeyNoticeAndReadsNewStore() async throws {
+        let first = FakeDecisionProvider(name: "fake-a", answer: .failure(.unauthorized))
+        let providers = Providers(keys: [.typesafe: "fake-key-a"], fakes: [.typesafe: first])
+        let h = await launched(try harness(count: 1, providers: providers))
+        XCTAssertTrue(h.state.showsKeyNotice, "401 뒤 키 확인 필요")
+
+        h.state.selectProvider(.liquid)
+
+        XCTAssertFalse(h.state.showsKeyNotice)
+        XCTAssertFalse(h.state.hasKey, "새 공급자 항목에는 키가 없다")
+        XCTAssertNil(h.state.requestScores(), "키가 없어 묻지 않는다")
+    }
+
+    func test_ADR0011_R615_answerSentBeforeSwitchIsNotStored() async throws {
+        let providers = Providers(keys: [.typesafe: "fake-key-a", .liquid: "fake-key-b"])
+        let first = providers.provider(.typesafe)
+        let second = providers.provider(.liquid)
+        await first.hold()
+        let h = try harness(count: 2, providers: providers)
+        h.state.launch()
+        let runner = try XCTUnwrap(h.state.requestScores())
+        await first.waitForHeld(count: 2)
+
+        await second.hold()
+        h.state.selectProvider(.liquid)
+        await first.releaseAll()
+        await second.waitForHeld(count: 2)
+
+        XCTAssertTrue(try h.scoreStore.scores().isEmpty, "바꾸기 전 떠난 답은 저장하지 않는다")
+        await second.releaseAll()
+        await runner.value
+        XCTAssertEqual(Set(try h.scoreStore.scores().values.map(\.provider)), ["fake-b"])
+    }
+
+    func test_ADR0011_R615_unauthorizedSentBeforeSwitchDoesNotNeedKeyCheck() async throws {
+        let first = FakeDecisionProvider(name: "fake-a", answer: .failure(.unauthorized))
+        let providers = Providers(keys: [.typesafe: "fake-key-a", .liquid: "fake-key-b"], fakes: [.typesafe: first])
+        let second = providers.provider(.liquid)
+        await first.hold()
+        let h = try harness(count: 1, providers: providers)
+        h.state.launch()
+        let runner = try XCTUnwrap(h.state.requestScores())
+        await first.waitForHeld(count: 1)
+
+        await second.hold()
+        h.state.selectProvider(.liquid)
+        await first.releaseAll()
+        await second.waitForHeld(count: 1)
+
+        XCTAssertFalse(h.state.showsKeyNotice, "이전 공급자의 401로 키 확인 필요를 켜지 않는다")
+        await second.releaseAll()
+        await runner.value
+        XCTAssertFalse(h.state.showsKeyNotice)
+        XCTAssertEqual(try h.scoreStore.scores()[1]?.provider, "fake-b")
+    }
+
+    /// 이전 공급자의 실패가 새 공급자 장부를 실패로 적으면 활성화 때 그 할 일을 장부에서 빼 한 번 더 보낸다.
+    func test_ADR0011_R615_failureSentBeforeSwitchDoesNotMarkNewLedger() async throws {
+        let first = FakeDecisionProvider(name: "fake-a", answer: .success(Self.answer()))
+        await first.setAnswer(.failure(.rateLimited), for: 2)
+        let providers = Providers(keys: [.typesafe: "fake-key-a", .liquid: "fake-key-b"], fakes: [.typesafe: first])
+        let second = providers.provider(.liquid)
+        await first.hold()
+        let h = try harness(count: 3, providers: providers)
+        h.state.launch()
+        let runner = try XCTUnwrap(h.state.requestScores())
+        await first.waitForHeld(count: 3)
+
+        await second.hold()
+        h.state.selectProvider(.liquid)
+        await first.release(taskID: 1)
+        await second.waitForHeld(count: 2)
+        await first.release(taskID: 2)
+        await second.waitForHeld(count: 3)
+        h.state.activate()
+        await first.release(taskID: 3)
+        await second.releaseAll()
+        await first.releaseAll()
+        await runner.value
+        await h.state.requestScores()?.value
+
+        let calls = await second.calls
+        XCTAssertEqual(calls.filter { $0 == 2 }.count, 1, "이전 공급자의 429로 새 장부를 실패로 적지 않는다")
+        XCTAssertEqual(Set(try h.scoreStore.scores().values.map(\.provider)), ["fake-b"])
+    }
+
+    func test_ADR0011_R615_switchToOffProviderReadsItsKeyStore() async throws {
+        let providers = Providers(keys: [.typesafe: "fake-key-a", .microsoft: "fake-key-ms"])
+        let h = await launched(
+            try harness(count: 1, providers: providers, catalog: Self.microsoftCatalog, questions: Self.withMicrosoft))
+
+        h.state.selectProvider(.microsoft)
+
+        XCTAssertEqual(h.state.selectedProvider, .microsoft)
+        XCTAssertEqual(h.state.selectionOff, .needsEndpoint)
+        XCTAssertTrue(h.state.hasKey, "주소 없는 off 상태에서도 그 항목을 읽는다")
+        XCTAssertNil(h.state.requestScores())
+    }
+
+    func test_ADR0011_R615_R611_switchingBackReusesEarlierKeyAndScores() async throws {
+        let providers = Providers(keys: [.typesafe: "fake-key-a"])
+        let h = await launched(try harness(count: 2, providers: providers))
+
+        h.state.selectProvider(.liquid)
+        XCTAssertFalse(h.state.hasKey)
+        h.state.selectProvider(.typesafe)
+        await h.state.requestScores()?.value
+
+        XCTAssertTrue(h.state.hasKey)
+        let first = await providers.provider(.typesafe).calls
+        let second = await providers.provider(.liquid).calls
+        XCTAssertEqual(first.count, 2, "이전 판단 결과를 다시 쓰고 다시 묻지 않는다")
+        XCTAssertTrue(second.isEmpty)
+        XCTAssertEqual(Set(try h.scoreStore.scores().values.map(\.provider)), ["fake-a"])
+    }
+
+    // MARK: - T026 Microsoft 칸 저장(R-616, R-623, SC-609)
+
+    private func microsoftHarness(
+        count: Int = 1, providers: Providers, settings: [String: String] = AppProviderTests.microsoftSettings
+    ) throws -> Harness {
+        try harness(
+            count: count, providers: providers, settings: settings, catalog: Self.microsoftCatalog,
+            questions: Self.withMicrosoft)
+    }
+
+    func test_ADR0011_R616_rejectedEndpointIsNotSaved() async throws {
+        let h = await launched(try microsoftHarness(providers: Providers()))
+
+        XCTAssertEqual(
+            h.state.saveMicrosoft(endpoint: "http://example-resource.invalid", deployment: "fake-deploy"), .scheme)
+        XCTAssertEqual(
+            h.state.saveMicrosoft(endpoint: "https://example-resource.invalid/openai", deployment: "fake-deploy"),
+            .path)
+        XCTAssertTrue(h.settings.written.isEmpty)
+        XCTAssertEqual(h.state.selectionOff, .needsEndpoint)
+    }
+
+    func test_ADR0011_R616_emptyValuesAreNotSaved() async throws {
+        let h = await launched(try microsoftHarness(providers: Providers()))
+
+        XCTAssertNil(h.state.saveMicrosoft(endpoint: "  ", deployment: "fake-deploy"))
+        XCTAssertNil(h.state.saveMicrosoft(endpoint: "https://example-resource.invalid", deployment: " \n"))
+        XCTAssertTrue(h.settings.written.isEmpty)
+    }
+
+    func test_ADR0011_R616_SC609_firstSaveKeepsKeyAndTurnsJudgingOn() async throws {
+        let providers = Providers()
+        let h = await launched(try microsoftHarness(providers: providers))
+        XCTAssertTrue(h.state.saveKey("fake-key-ms"), "주소 없는 off 상태에서 먼저 넣은 키")
+
+        XCTAssertNil(
+            h.state.saveMicrosoft(endpoint: " https://example-resource.invalid/ ", deployment: " fake-deploy "))
+        await h.state.requestScores()?.value
+
+        XCTAssertEqual(try providers.keys[.microsoft]?.read(), "fake-key-ms", "처음 저장에는 키를 지우지 않는다")
+        XCTAssertNil(h.state.selectionOff)
+        XCTAssertEqual(
+            try h.settings.value(for: CoreSettings.microsoftEndpointKey), "https://example-resource.invalid")
+        XCTAssertEqual(try h.settings.value(for: CoreSettings.microsoftDeploymentKey), "fake-deploy")
+        XCTAssertEqual(providers.bound.last?.requestModel, "fake-deploy")
+        XCTAssertEqual(providers.bound.last?.baseModel, "fake-ms-base")
+        XCTAssertEqual(
+            providers.bound.last?.url, URL(string: "https://example-resource.invalid/providers/microsoft/v1/systemone"))
+        XCTAssertEqual(h.state.sendingHost, "example-resource.invalid")
+        XCTAssertEqual(try h.scoreStore.scores()[1]?.provider, "fake-ms")
+    }
+
+    func test_ADR0011_R616_SC609_changingSavedEndpointDeletesKey() async throws {
+        let providers = Providers(keys: [.microsoft: "fake-key-ms"])
+        let h = await launched(try microsoftHarness(providers: providers))
+        XCTAssertNil(h.state.saveMicrosoft(endpoint: "https://example-resource.invalid", deployment: "fake-deploy"))
+
+        XCTAssertNil(h.state.saveMicrosoft(endpoint: "https://example-resource.invalid", deployment: "fake-deploy-2"))
+        XCTAssertEqual(try providers.keys[.microsoft]?.read(), "fake-key-ms", "주소가 같으면 키를 지우지 않는다")
+
+        XCTAssertNil(h.state.saveMicrosoft(endpoint: "https://other-resource.invalid", deployment: "fake-deploy-2"))
+        XCTAssertNil(try providers.keys[.microsoft]?.read(), "주소를 바꾸면 키를 먼저 지운다")
+        XCTAssertFalse(h.state.hasKey)
+        XCTAssertEqual(h.state.sendingHost, "other-resource.invalid")
+    }
+
+    func test_ADR0011_R616_keyDeleteFailureKeepsOldEndpoint() async throws {
+        let providers = Providers(keys: [.microsoft: "fake-key-ms"])
+        let h = await launched(try microsoftHarness(providers: providers))
+        XCTAssertNil(h.state.saveMicrosoft(endpoint: "https://example-resource.invalid", deployment: "fake-deploy"))
+        try XCTUnwrap(providers.keys[.microsoft]).failing = [.delete]
+
+        XCTAssertNil(h.state.saveMicrosoft(endpoint: "https://other-resource.invalid", deployment: "fake-deploy"))
+
+        XCTAssertEqual(
+            try h.settings.value(for: CoreSettings.microsoftEndpointKey), "https://example-resource.invalid",
+            "옛 키가 새 호스트로 가지 않게 주소를 저장하지 않는다")
+        XCTAssertTrue(h.state.keyActionFailed)
+        XCTAssertEqual(h.state.sendingHost, "example-resource.invalid")
+    }
+
+    func test_ADR0011_R616_settingsWriteFailureKeepsOldBindingAndShowsDeletedKey() async throws {
+        let providers = Providers(keys: [.microsoft: "fake-key-ms"])
+        let h = await launched(try microsoftHarness(providers: providers))
+        XCTAssertNil(h.state.saveMicrosoft(endpoint: "https://example-resource.invalid", deployment: "fake-deploy"))
+        h.settings.failingKeys = [CoreSettings.microsoftEndpointKey]
+
+        XCTAssertNil(h.state.saveMicrosoft(endpoint: "https://other-resource.invalid", deployment: "fake-deploy"))
+
+        XCTAssertEqual(h.state.providerActionFailure, .saveMicrosoft)
+        XCTAssertEqual(h.state.sendingHost, "example-resource.invalid", "바인딩은 옛 주소 그대로")
+        XCTAssertFalse(h.state.hasKey, "이미 지운 키는 키 없음으로 보인다")
+        XCTAssertNil(h.state.requestScores(), "키가 없어 옛 주소로도 묻지 않는다")
+    }
+
+    func test_ADR0011_R616_saveClearsKeyNoticeAndLedger() async throws {
+        let microsoft = FakeDecisionProvider(name: "fake-ms", answer: .failure(.unauthorized))
+        let providers = Providers(keys: [.microsoft: "fake-key-ms"], fakes: [.microsoft: microsoft])
+        let h = await launched(try microsoftHarness(providers: providers))
+        XCTAssertNil(h.state.saveMicrosoft(endpoint: "https://example-resource.invalid", deployment: "fake-deploy"))
+        await h.state.requestScores()?.value
+        XCTAssertTrue(h.state.showsKeyNotice)
+
+        await microsoft.setAnswer(.success(Self.answer()), for: 1)
+        XCTAssertNil(h.state.saveMicrosoft(endpoint: "https://example-resource.invalid", deployment: "fake-deploy-2"))
+
+        XCTAssertFalse(h.state.showsKeyNotice)
+        await h.state.requestScores()?.value
+        let calls = await microsoft.calls
+        XCTAssertEqual(calls, [1, 1], "장부를 비워 다시 묻는다")
+        XCTAssertEqual(try h.scoreStore.scores()[1]?.provider, "fake-ms")
+    }
+
+    func test_ADR0011_R616_deploymentChangeSendsNewNameAndKeepsScores() async throws {
+        let microsoft = FakeDecisionProvider(name: "fake-ms", answer: .success(Self.answer()))
+        let providers = Providers(keys: [.microsoft: "fake-key-ms"], fakes: [.microsoft: microsoft])
+        let h = await launched(try microsoftHarness(count: 2, providers: providers))
+        XCTAssertNil(h.state.saveMicrosoft(endpoint: "https://example-resource.invalid", deployment: "fake-deploy"))
+        await h.state.requestScores()?.value
+        let before = try h.scoreStore.scores()
+
+        XCTAssertNil(h.state.saveMicrosoft(endpoint: "https://example-resource.invalid", deployment: "fake-deploy-2"))
+
+        XCTAssertNil(h.state.requestScores(), "판단 입력이 같으면 다시 묻지 않는다")
+        XCTAssertEqual(try h.scoreStore.scores(), before, "저장된 판단 결과는 그대로 쓴다")
+        XCTAssertEqual(h.state.ranks.count, 2)
+        XCTAssertEqual(providers.bound.last?.requestModel, "fake-deploy-2", "다음 요청 모델은 새 배포 이름")
+    }
+}
+
+/// 정한 키의 쓰기만 던지는 설정 저장소. 쓴 값을 기록한다.
+final class ControlledSettingsStore: SettingsStore {
+    struct Failure: Error {}
+
+    private let inner = InMemorySettingsStore()
+    var failingKeys: Set<String> = []
+    private(set) var written: [(String, String)] = []
+
+    func value(for key: String) throws -> String? { try inner.value(for: key) }
+
+    func setValue(_ value: String, for key: String) throws {
+        if failingKeys.contains(key) { throw Failure() }
+        written.append((key, value))
+        try inner.setValue(value, for: key)
+    }
+
+    func resetWritten() {
+        written = []
+    }
+}
