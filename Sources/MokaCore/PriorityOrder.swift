@@ -5,12 +5,13 @@ public enum PriorityOrder {
     /// 점수 있는 대기 할 일을 priority 내림차순으로 앞에, 점수 없는 대기 할 일을 마감 순으로 뒤에 둔다.
     /// priority가 같으면 마감 순으로 가른다.
     public static func order(
-        tasks: [MokaTask], usable: [TaskID: TaskScore], questions: QuestionSet, today: LocalDay, calendar: Calendar
+        tasks: [MokaTask], usable: [TaskID: TaskScore], thresholds: ModelThresholds?, today: LocalDay,
+        calendar: Calendar
     ) -> [MokaTask] {
         let todo = tasks.filter { $0.status == .todo }
         let scored = todo.compactMap { task in
             usable[task.id].map {
-                (task, ScoreRules.priority($0, task: task, today: today, questions: questions, calendar: calendar))
+                (task, ScoreRules.priority($0, task: task, today: today, thresholds: thresholds, calendar: calendar))
             }
         }
         .sorted { lhs, rhs in
@@ -27,7 +28,7 @@ public enum PriorityOrder {
             return input.tasks.filter { $0.status == .todo }.sorted(by: TaskListView.deadlineFirst)
         }
         return order(
-            tasks: input.tasks, usable: scoring.usable, questions: scoring.questions, today: scoring.today,
+            tasks: input.tasks, usable: scoring.usable, thresholds: scoring.thresholds, today: scoring.today,
             calendar: input.calendar)
     }
 }

@@ -1,7 +1,13 @@
 {
-  "version": "v1",
+  "version": "v2",
   "language": "ko",
-  "model": "jev-1.13.0",
+  "models": {
+    "typesafe": "jev-1.13.0",
+    "liquid": "d1-ultra",
+    "perplexity": "pplx-decider-v1.2",
+    "openai": "gpt-6-luna"
+  },
+  "provisional": ["d1-ultra", "pplx-decider-v1.2", "gpt-6-luna"],
   "questions": {
     "urgency": {
       "type": "score",
@@ -23,6 +29,9 @@
     }
   },
   "thresholds": {
-    "jev-1.13.0": {"concrete": 0.5, "avoiding": 0.7}
+    "jev-1.13.0": {"concrete": 0.5, "avoiding": 0.7},
+    "d1-ultra": {"concrete": 0.5, "avoiding": 0.7},
+    "pplx-decider-v1.2": {"concrete": 0.5, "avoiding": 0.7},
+    "gpt-6-luna": {"concrete": 0.5, "avoiding": 0.7}
   }
 }

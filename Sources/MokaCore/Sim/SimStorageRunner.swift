@@ -233,7 +233,9 @@ private struct StorageEvent {
         try SimRunner.storing(seq: event.seq) { try scores.upsertScore(score) }
     }
 
+    /// 가짜 공급자는 질문 파일 `models`를 거치지 않고 기준 모델 ID를 직접 받는다(spec 006 research R14).
     private static let fakeProvider = "fake"
+    private static let baseModel = "jev-1.13.0"
     private static let fakeModel = "fake-1"
 
     /// 확신도 1, 옵션 확률은 모두 같은 값.
@@ -302,7 +304,8 @@ private struct StorageEvent {
         return SessionInput(
             tasks: try tasks(), now: event.at, defaultQuantumMin: defaultQuantumMin, calendar: calendar,
             scoring: SessionScoring(
-                usable: ScoreRules.usable(scores: stored, hasKey: hasKey, questionVersion: questions.version),
-                questions: questions, today: today))
+                usable: ScoreRules.usable(
+                    scores: stored, hasKey: hasKey, questionVersion: questions.version, provider: Self.fakeProvider),
+                questions: questions, thresholds: questions.thresholds(for: Self.baseModel), today: today))
     }
 }

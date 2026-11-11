@@ -53,14 +53,17 @@ public struct SessionInput: Sendable {
 }
 
 /// 노치 순서가 기대는 판단 결과. `usable`은 `ScoreRules.usable`로 거른 사전, `today`는 고르는 날(spec 002 R-114).
+/// `thresholds`는 기준 모델의 임계값이고 순서 계산이 `ScoreRules.priority`에 넘긴다(spec 006 R-609).
 public struct SessionScoring: Sendable {
     public var usable: [TaskID: TaskScore]
     public var questions: QuestionSet
+    public var thresholds: ModelThresholds?
     public var today: LocalDay
 
-    public init(usable: [TaskID: TaskScore], questions: QuestionSet, today: LocalDay) {
+    public init(usable: [TaskID: TaskScore], questions: QuestionSet, thresholds: ModelThresholds?, today: LocalDay) {
         self.usable = usable
         self.questions = questions
+        self.thresholds = thresholds
         self.today = today
     }
 }

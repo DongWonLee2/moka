@@ -88,20 +88,24 @@ public enum ScoreRules {
     }
 
     /// 고를 때마다 계산한다. 마감이 내일까지(지난 마감 포함)면 urgency를 1로 본다.
+    /// `thresholds`는 기준 모델의 임계값이고, `nil`이면 avoiding을 임계값 미만(배율 1)으로 본다(spec 006 R-609).
     public static func priority(
-        _ score: TaskScore, task: MokaTask, today: LocalDay, questions: QuestionSet, calendar: Calendar
+        _ score: TaskScore, task: MokaTask, today: LocalDay, thresholds: ModelThresholds?, calendar: Calendar
     ) -> Double {
         let dueSoon = task.deadline.map { $0 <= today.adding(days: 1, calendar: calendar) } ?? false
         let urgency = dueSoon ? 1 : score.urgency
-        let agingFactor = score.avoiding >= questions.avoidingThreshold ? Defaults.avoidingAgingFactor : 1
+        let avoids = thresholds.map { score.avoiding >= $0.avoiding } ?? false
+        let agingFactor = avoids ? Defaults.avoidingAgingFactor : 1
         let aging = Double(task.skipCount) * agingFactor
         return Defaults.weightUrgency * urgency + Defaults.weightImpact * score.impact + Defaults.weightAging * aging
     }
 
-    /// 키가 있고 질문 버전이 같은 판단 결과만. 판단 입력이 바뀐 결과도 다시 묻기 전까지는 쓴다.
-    public static func usable(scores: [TaskID: TaskScore], hasKey: Bool, questionVersion: String) -> [TaskID: TaskScore]
-    {
+    /// 키가 있고 질문 버전이 같고 공급자가 지금 주입된 공급자 이름과 같은 판단 결과만(spec 006 R-611).
+    /// 판단 입력이 바뀐 결과도 다시 묻기 전까지는 쓴다.
+    public static func usable(
+        scores: [TaskID: TaskScore], hasKey: Bool, questionVersion: String, provider: String
+    ) -> [TaskID: TaskScore] {
         guard hasKey else { return [:] }
-        return scores.filter { $0.value.questionVersion == questionVersion }
+        return scores.filter { $0.value.questionVersion == questionVersion && $0.value.provider == provider }
     }
 }

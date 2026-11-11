@@ -38,6 +38,14 @@ struct DecisionSetup {
     let questions: QuestionSet?
 }
 
+/// 지금 판단 설정에서 판단 결과 규칙이 쓰는 값(spec 006 data-model §7). `provider`는 주입된 공급자 `name`이다.
+/// spec 006 단위 3 전까지 기준 모델과 보낼 모델 이름은 질문 파일의 `typesafe` 기준 모델 ID다.
+private struct Judging {
+    let questions: QuestionSet
+    let provider: String
+    let baseModel: String
+}
+
 /// 알림 처리기 하나. 없어질 때 등록을 해제한다(#37). 처리기는 주 스레드에서 돈다.
 final class NotificationObservation {
     private let center: NotificationCenter
@@ -192,8 +200,8 @@ final class AppState {
 
     /// "다시 물어보기"를 누를 수 있는지: 물을 수 있고 다시 물을 할 일이 있다.
     var canRetryScores: Bool {
-        guard let questions = queryableQuestions else { return false }
-        return !pendingQueries(questions, skippingAttempted: false).isEmpty
+        guard let judging = queryable else { return false }
+        return !pendingQueries(judging, skippingAttempted: false).isEmpty
     }
 
     /// 노치·할 일 탭의 키 확인 한 줄(spec 004 R-318). 기본 탭 키 칸이 키 확인 필요를 보일 때와 같다.
@@ -205,11 +213,12 @@ final class AppState {
     /// 노치 할 일의 이유 줄(spec 004 data-model §2·§4). 시작 전과 도는 중에만 있다.
     var reasonLine: String? {
         guard Self.isDraft(timer) || Self.isRunning(timer), let id = session.taskID,
-            let task = tasks.first(where: { $0.id == id }), let questions = decision?.questions
+            let task = tasks.first(where: { $0.id == id }), let judging
         else { return nil }
-        let usable = ScoreRules.usable(scores: scores, hasKey: hasKey, questionVersion: questions.version)
+        let usable = usableScores(judging)
         return ReasonText.line(
-            ReasonLine.make(task: task, usable: usable, questions: questions, today: logicalToday, calendar: calendar))
+            ReasonLine.make(
+                task: task, usable: usable, questions: judging.questions, today: logicalToday, calendar: calendar))
     }
 
     // MARK: 구체화 게이트(spec 004 data-model §3·§4). 메모리에만 두고 로그에 남기지 않는다.
@@ -677,7 +686,7 @@ final class AppState {
     @discardableResult
     func requestScores() -> Task<Void, Never>? {
         if let queryRunner { return queryRunner }
-        guard let questions = queryableQuestions, !pendingQueries(questions, skippingAttempted: true).isEmpty else {
+        guard let judging = queryable, !pendingQueries(judging, skippingAttempted: true).isEmpty else {
             return nil
         }
         let runner = Task { @MainActor in await self.runQueries() }
@@ -768,7 +777,7 @@ final class AppState {
 
     /// 게이트 판정(data-model §3 "판정 시점"). 노치 할 일의 지금 판단 입력 해시는 여기서만 계산한다.
     func refreshGate() {
-        guard let questions = decision?.questions, let id = session.taskID, Self.isDraft(timer),
+        guard let judging, let id = session.taskID, Self.isDraft(timer),
             let currentHash = currentJudgmentHash(id)
         else {
             setGate(.closed)
@@ -776,10 +785,10 @@ final class AppState {
         }
         let record = gateRecords[id] ?? GateRecord()
         let facts = ConcreteGate.Facts(
-            isDraft: true, canQuery: queryableQuestions != nil,
-            score: ScoreRules.usable(scores: scores, hasKey: hasKey, questionVersion: questions.version)[id],
+            isDraft: true, canQuery: queryable != nil, score: usableScores(judging)[id],
             currentHash: currentHash, failedHash: attempted[id].flatMap { $0.failed ? $0.hash : nil },
-            threshold: ConcreteGate.threshold(questions), record: record, waiting: gateWaitingTaskID == id)
+            threshold: ConcreteGate.threshold(judging.questions, baseModel: judging.baseModel), record: record,
+            waiting: gateWaitingTaskID == id)
         let updated = ConcreteGate.afterAnswer(facts)
         if updated != record {
             gateRecords[id] = updated
@@ -838,13 +847,26 @@ final class AppState {
     }
 
     /// 묻지 않는 경우(판단 기능 꺼짐, 키 없음, 키 확인 필요, 판단 결과 저장소 없음)가 아니면 질문 세트.
-    private var queryableQuestions: QuestionSet? {
-        guard let questions = decision?.questions, hasKey, !keyNeedsCheck, scoreStore != nil else { return nil }
-        return questions
+    private var queryable: Judging? {
+        guard let judging, hasKey, !keyNeedsCheck, scoreStore != nil else { return nil }
+        return judging
+    }
+
+    /// 질문 파일이 없거나 `models`에 `typesafe` 기준 모델 ID가 없으면 판단 기능을 끈다(spec 006 R-609).
+    private var judging: Judging? {
+        guard let decision, let questions = decision.questions,
+            let baseModel = questions.models[ProviderID.typesafe.rawValue]
+        else { return nil }
+        return Judging(questions: questions, provider: decision.provider.name, baseModel: baseModel)
+    }
+
+    private func usableScores(_ judging: Judging) -> [TaskID: TaskScore] {
+        ScoreRules.usable(
+            scores: scores, hasKey: hasKey, questionVersion: judging.questions.version, provider: judging.provider)
     }
 
     /// 다시 물을 할 일과 지금 판단 입력, 보낼 순서대로. 체크포인트는 그때그때 읽는다(data-model §4).
-    private func pendingQueries(_ questions: QuestionSet, skippingAttempted: Bool) -> [(TaskID, JudgmentState)] {
+    private func pendingQueries(_ judging: Judging, skippingAttempted: Bool) -> [(TaskID, JudgmentState)] {
         guard let repository, !tasks.isEmpty else { return [] }
         let checkpoints: [Checkpoint]
         do {
@@ -854,12 +876,15 @@ final class AppState {
             return []
         }
         let states = judgmentStates(checkpoints: checkpoints)
-        return ScoringPlan.needsQuery(tasks: tasks, scores: scores, states: states, questionVersion: questions.version)
-            .compactMap { id in
-                guard let state = states[id] else { return nil }
-                if skippingAttempted, attempted[id]?.hash == state.hash { return nil }
-                return (id, state)
-            }
+        return ScoringPlan.needsQuery(
+            tasks: tasks, scores: scores, states: states, questionVersion: judging.questions.version,
+            provider: judging.provider
+        )
+        .compactMap { id in
+            guard let state = states[id] else { return nil }
+            if skippingAttempted, attempted[id]?.hash == state.hash { return nil }
+            return (id, state)
+        }
     }
 
     private func judgmentStates(checkpoints: [Checkpoint]) -> [TaskID: JudgmentState] {
@@ -908,8 +933,8 @@ final class AppState {
 
     /// 다음에 보낼 질의 하나. 꺼낼 때마다 묻지 않는 경우를 다시 보고, 키를 읽은 뒤에만 장부에 적는다.
     private func takeNextQuery() -> Query? {
-        guard let questions = queryableQuestions, let keyStore = decision?.keyStore,
-            let next = pendingQueries(questions, skippingAttempted: true).first
+        guard let judging = queryable, let keyStore = decision?.keyStore,
+            let next = pendingQueries(judging, skippingAttempted: true).first
         else { return nil }
         let (id, state) = next
         let key: String?
@@ -926,7 +951,8 @@ final class AppState {
         let hash = state.hash
         attempted[id] = Attempt(hash: hash, failed: false)
         return Query(
-            request: DecisionRequest(taskID: id, model: questions.model, state: state.bytes, questions: questions),
+            request: DecisionRequest(
+                taskID: id, model: judging.baseModel, state: state.bytes, questions: judging.questions),
             hash: hash, key: key)
     }
 
@@ -944,7 +970,7 @@ final class AppState {
             markFailed(outcome, kind: String(describing: error))
             return
         }
-        guard let questions = decision?.questions, let scoreStore, let repository,
+        guard let questions = judging?.questions, let scoreStore, let repository,
             let task = tasks.first(where: { $0.id == outcome.taskID })
         else { return }
         let checkpoints: [Checkpoint]
@@ -1022,10 +1048,10 @@ final class AppState {
     // MARK: - 내부
 
     private func input(at now: Date) -> SessionInput {
-        let scoring = decision?.questions.map { questions in
+        let scoring = judging.map { judging in
             SessionScoring(
-                usable: ScoreRules.usable(scores: scores, hasKey: hasKey, questionVersion: questions.version),
-                questions: questions,
+                usable: usableScores(judging), questions: judging.questions,
+                thresholds: judging.questions.thresholds(for: judging.baseModel),
                 today: DayBoundary.day(
                     containing: now, dayStart: CoreSettings.readDayStart(from: settings), calendar: calendar))
         }

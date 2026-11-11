@@ -2,15 +2,18 @@ import Foundation
 
 /// 다시 물을 할 일과 답 받기(spec R-206, data-model §6).
 public enum ScoringPlan {
-    /// 대기·진행 중 할 일 가운데 판단 결과가 없거나, 질문 버전이 다르거나, 지금 판단 입력의 해시가 다른 것.
-    /// 판단 결과가 없는 할 일이 먼저이고 그 안에서 id 오름차순이다. `states`에 없는 할 일은 입력이 바뀐 것으로 본다.
+    /// 대기·진행 중 할 일 가운데 판단 결과가 없거나, 질문 버전이나 공급자가 다르거나, 지금 판단 입력의 해시가 다른 것.
+    /// 판단 결과가 없는 할 일이 먼저이고 그 안에서 id 오름차순이다. 공급자가 다른 판단 결과는 "있음"으로 센다.
+    /// `states`에 없는 할 일은 입력이 바뀐 것으로 본다.
     public static func needsQuery(
-        tasks: [MokaTask], scores: [TaskID: TaskScore], states: [TaskID: JudgmentState], questionVersion: String
+        tasks: [MokaTask], scores: [TaskID: TaskScore], states: [TaskID: JudgmentState], questionVersion: String,
+        provider: String
     ) -> [TaskID] {
         tasks.filter { task in
             guard isOpen(task.status) else { return false }
             guard let score = scores[task.id] else { return true }
-            return score.questionVersion != questionVersion || states[task.id]?.hash != score.stateHash
+            return score.questionVersion != questionVersion || score.provider != provider
+                || states[task.id]?.hash != score.stateHash
         }
         .map { (hasScore: scores[$0.id] != nil, id: $0.id) }
         .sorted { ($0.hasScore ? 1 : 0, $0.id) < ($1.hasScore ? 1 : 0, $1.id) }
