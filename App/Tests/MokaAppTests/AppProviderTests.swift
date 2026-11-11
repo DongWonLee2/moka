@@ -56,7 +56,7 @@ final class AppProviderTests: XCTestCase {
     }
 
     /// 공급자별 가짜 공급자와 키 보관함. `bind`가 받은 값을 기록한다.
-    private final class Providers {
+    @MainActor private final class Providers {
         let fakes: [ProviderID: FakeDecisionProvider]
         let keys: [ProviderID: InMemoryKeyStore]
         private(set) var bound: [DecisionSelection.Ready] = []
@@ -567,6 +567,7 @@ final class AppProviderTests: XCTestCase {
         let providers = Providers(keys: [.microsoft: "fake-key-ms"])
         let h = await launched(try microsoftHarness(providers: providers))
         XCTAssertNil(h.state.saveMicrosoft(endpoint: "https://example-resource.invalid", deployment: "fake-deploy"))
+        await h.state.requestScores()?.value
         h.settings.failingKeys = [CoreSettings.microsoftEndpointKey]
 
         XCTAssertNil(h.state.saveMicrosoft(endpoint: "https://other-resource.invalid", deployment: "fake-deploy"))

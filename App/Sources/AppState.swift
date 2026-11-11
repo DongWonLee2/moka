@@ -30,20 +30,52 @@ struct AppStorage {
     }
 }
 
-/// 판단 기능 주입(spec 003 data-model §9). 앱은 Keychain 보관함과 TypeSafe 공급자를, 시험은 가짜를 넘긴다.
-/// `questions`가 nil(질문 파일 해석 실패)이면 판단 기능을 끈다.
-struct DecisionSetup {
-    let keyStore: any KeyStore
+/// 고른 공급자로 만든 판단 설정(spec 006 data-model §8). 키 보관함은 들지 않는다.
+struct DecisionBinding {
     let provider: any DecisionProvider
+    let baseModel: String
+    let requestModel: String
+}
+
+/// 판단 기능 주입(spec 006 data-model §8, research R5). 앱은 HTTP 공급자와 공급자별 Keychain 항목을, 시험은 가짜를 넘긴다.
+/// `questions`가 nil(질문 파일 해석 실패)이면 판단 기능을 끈다. `catalog`은 시험이 공급자를 연 가짜 표를 넣을 때만 바꾼다.
+struct DecisionSetup {
+    let bind: @MainActor (DecisionSelection.Ready) -> DecisionBinding
+    let keyStore: @MainActor (ProviderID) -> any KeyStore
+    let catalog: [ProviderConfig]
     let questions: QuestionSet?
+
+    init(
+        bind: @escaping @MainActor (DecisionSelection.Ready) -> DecisionBinding,
+        keyStore: @escaping @MainActor (ProviderID) -> any KeyStore, catalog: [ProviderConfig] = ProviderCatalog.all,
+        questions: QuestionSet?
+    ) {
+        self.bind = bind
+        self.keyStore = keyStore
+        self.catalog = catalog
+        self.questions = questions
+    }
+
+    /// 공급자 하나와 보관함 하나로 고정한 설정. 공급자와 상관없이 같은 보관함과 공급자를 쓴다.
+    @MainActor init(keyStore: any KeyStore, provider: any DecisionProvider, questions: QuestionSet?) {
+        self.init(
+            bind: { DecisionBinding(provider: provider, baseModel: $0.baseModel, requestModel: $0.requestModel) },
+            keyStore: { _ in keyStore }, questions: questions)
+    }
+}
+
+/// 공급자 설정 동작 가운데 실패한 것(spec 006 data-model §8). 다음 성공에 지운다.
+enum ProviderAction: Equatable {
+    case select
+    case saveMicrosoft
 }
 
 /// 지금 판단 설정에서 판단 결과 규칙이 쓰는 값(spec 006 data-model §7). `provider`는 주입된 공급자 `name`이다.
-/// spec 006 단위 3 전까지 기준 모델과 보낼 모델 이름은 질문 파일의 `typesafe` 기준 모델 ID다.
 private struct Judging {
     let questions: QuestionSet
-    let provider: String
-    let baseModel: String
+    let binding: DecisionBinding
+    var provider: String { binding.provider.name }
+    var baseModel: String { binding.baseModel }
 }
 
 /// 알림 처리기 하나. 없어질 때 등록을 해제한다(#37). 처리기는 주 스레드에서 돈다.
@@ -185,6 +217,33 @@ final class AppState {
     /// 저장소의 판단 결과. 켤 때와 답을 저장한 뒤 다시 읽는다.
     private(set) var scores: [TaskID: TaskScore] = [:]
 
+    // MARK: 판단 공급자(spec 006 data-model §6·§8)
+
+    /// 고른 공급자. 설정이 없으면 Jev, 모르는 ID면 nil이고 그때는 키 동작을 끈다.
+    private(set) var selectedProvider: ProviderID?
+    /// 판단 기능이 꺼진 이유. 켜져 있거나 질문 파일이 없으면 nil이다.
+    private(set) var selectionOff: DecisionSelection.OffReason?
+    /// 공급자 고르기·Microsoft 칸 저장 가운데 실패한 동작. 다음 성공에 지운다.
+    private(set) var providerActionFailure: ProviderAction?
+
+    /// 요청이 갈 곳의 호스트(spec 006 R-606). Microsoft는 저장한 주소에서 꺼내고, 주소가 없으면 nil이다.
+    var sendingHost: String? {
+        guard let selectedProvider,
+            let config = ProviderCatalog.config(selectedProvider, in: decision?.catalog ?? ProviderCatalog.all)
+        else { return nil }
+        let resource: URL?
+        switch config.endpoint {
+        case .fixed:
+            resource = nil
+        case .userResource:
+            guard let text = CoreSettings.readMicrosoftEndpoint(from: settings),
+                case .success(let url) = EndpointRule.check(text, allowsPath: false)
+            else { return nil }
+            resource = url
+        }
+        return config.url(resource: resource).map(EndpointRule.host(of:))
+    }
+
     /// 노치 후보 순서의 앞 세 대기 할 일과 순위(1~3, data-model §10 할 일 탭).
     var ranks: [TaskID: Int] {
         let order = PriorityOrder.order(input(at: clock.now())).prefix(3)
@@ -213,12 +272,11 @@ final class AppState {
     /// 노치 할 일의 이유 줄(spec 004 data-model §2·§4). 시작 전과 도는 중에만 있다.
     var reasonLine: String? {
         guard Self.isDraft(timer) || Self.isRunning(timer), let id = session.taskID,
-            let task = tasks.first(where: { $0.id == id }), let judging
+            let task = tasks.first(where: { $0.id == id }), let questions = decision?.questions
         else { return nil }
-        let usable = usableScores(judging)
+        let usable = judging.map(usableScores) ?? [:]
         return ReasonText.line(
-            ReasonLine.make(
-                task: task, usable: usable, questions: judging.questions, today: logicalToday, calendar: calendar))
+            ReasonLine.make(task: task, usable: usable, questions: questions, today: logicalToday, calendar: calendar))
     }
 
     // MARK: 구체화 게이트(spec 004 data-model §3·§4). 메모리에만 두고 로그에 남기지 않는다.
@@ -251,6 +309,10 @@ final class AppState {
     @ObservationIgnored private var firstActionRedrawTask: Task<Void, Never>?
     @ObservationIgnored private var observations: [NotificationObservation] = []
     @ObservationIgnored private let decision: DecisionSetup?
+    /// 지금 판단 설정. 꺼져 있으면 nil이다. 공급자를 바꾸거나 Microsoft 칸을 저장할 때 다시 만든다.
+    @ObservationIgnored private var binding: DecisionBinding?
+    /// 바인딩을 다시 만들 때마다 오른다. 다른 세대의 답은 받지 않는다(spec 006 research R6).
+    @ObservationIgnored private var providerGeneration = 0
     @ObservationIgnored private let scoreStore: (any ScoreStore)?
     /// 보내기 장부(data-model §6). 메모리에만 둔다.
     @ObservationIgnored private var attempted: [TaskID: Attempt] = [:]
@@ -287,6 +349,9 @@ final class AppState {
                 self?.lifecycleCheckpoint(.sleep)
             },
         ]
+        let stored = CoreSettings.readDecisionProvider(from: storage.settings)
+        selectedProvider = stored.map { ProviderID(rawValue: $0) } ?? .typesafe
+        rebind()
     }
 
     // MARK: - 앱 수명
@@ -698,7 +763,7 @@ final class AppState {
     @discardableResult
     func saveKey(_ text: String) -> Bool {
         let key = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let keyStore = decision?.keyStore, !key.isEmpty else { return false }
+        guard let keyStore = selectedKeyStore, !key.isEmpty else { return false }
         do {
             try keyStore.save(key)
         } catch {
@@ -717,7 +782,7 @@ final class AppState {
     /// 키 지우기. 판단 결과는 지우지 않고 키가 없는 순서(마감 순)로만 바뀐다.
     @discardableResult
     func deleteKey() -> Bool {
-        guard let keyStore = decision?.keyStore else { return false }
+        guard let keyStore = selectedKeyStore else { return false }
         do {
             try keyStore.delete()
         } catch {
@@ -729,6 +794,109 @@ final class AppState {
         keyNeedsCheck = false
         refreshHasKey()
         return true
+    }
+
+    /// 공급자 바꾸기(spec 006 data-model §6 "바꾸기"). 같거나 열리지 않은 공급자면 아무것도 하지 않는다.
+    func selectProvider(_ id: ProviderID) {
+        guard id != selectedProvider, let decision, let questions = decision.questions,
+            ProviderCatalog.isOpen(id, questions: questions, catalog: decision.catalog)
+        else { return }
+        do {
+            try CoreSettings.writeDecisionProvider(id, to: settings)
+        } catch {
+            providerActionFailure = .select
+            Self.decisionLogger.error(
+                "공급자 고르기 실패: \(String(reflecting: type(of: error)), privacy: .public)")
+            return
+        }
+        selectedProvider = id
+        providerChanged()
+    }
+
+    /// Microsoft 칸 저장(spec 006 data-model §6). 주소가 거부되면 저장하지 않고 이유를 돌려준다. 빈 값이면 아무것도 하지 않는다.
+    /// 저장된 주소를 다른 주소로 바꿀 때만 Microsoft 키를 먼저 지운다(옛 키가 새 호스트로 가지 않게).
+    @discardableResult
+    func saveMicrosoft(endpoint: String, deployment: String) -> EndpointRejection? {
+        let endpointText = endpoint.trimmingCharacters(in: .whitespacesAndNewlines)
+        let deploymentText = deployment.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let decision, !endpointText.isEmpty, !deploymentText.isEmpty else { return nil }
+        let url: URL
+        switch EndpointRule.check(endpointText, allowsPath: false) {
+        case .success(let value): url = value
+        case .failure(let rejection): return rejection
+        }
+        if let saved = CoreSettings.readMicrosoftEndpoint(from: settings), saved != url.absoluteString {
+            do {
+                try decision.keyStore(.microsoft).delete()
+            } catch {
+                keyActionFailure = .delete
+                Self.logKeyFailure("지우기", error)
+                return nil
+            }
+        }
+        do {
+            try CoreSettings.writeMicrosoftEndpoint(url, to: settings)
+            try CoreSettings.writeMicrosoftDeployment(deploymentText, to: settings)
+        } catch {
+            providerActionFailure = .saveMicrosoft
+            Self.decisionLogger.error(
+                "Microsoft 칸 저장 실패: \(String(reflecting: type(of: error)), privacy: .public)")
+            refreshHasKey()
+            return nil
+        }
+        providerChanged()
+        return nil
+    }
+
+    /// 바꾸기 4~7단계: 세대를 올리고 바인딩을 다시 만든 뒤 장부와 키 확인 필요를 비우고 새 항목으로 다시 묻는다.
+    private func providerChanged() {
+        providerGeneration += 1
+        rebind()
+        providerActionFailure = nil
+        attempted = [:]
+        keyNeedsCheck = false
+        keyActionFailure = nil
+        refreshHasKey()
+        refreshGate()
+        requestScores()
+    }
+
+    /// 설정 값으로 바인딩을 다시 만든다. 꺼지면 이유 종류만 로그에 남긴다.
+    private func rebind() {
+        guard let decision, let questions = decision.questions else {
+            binding = nil
+            selectionOff = nil
+            return
+        }
+        let resolution = DecisionSelection.resolve(
+            providerID: CoreSettings.readDecisionProvider(from: settings),
+            microsoftEndpoint: CoreSettings.readMicrosoftEndpoint(from: settings),
+            microsoftDeployment: CoreSettings.readMicrosoftDeployment(from: settings), questions: questions,
+            catalog: decision.catalog)
+        switch resolution {
+        case .ready(let ready):
+            binding = decision.bind(ready)
+            selectionOff = nil
+        case .off(let reason):
+            binding = nil
+            selectionOff = reason
+            Self.decisionLogger.error("판단 기능 꺼짐: \(Self.offKind(reason), privacy: .public)")
+        }
+    }
+
+    private static func offKind(_ reason: DecisionSelection.OffReason) -> String {
+        switch reason {
+        case .unknownProvider: "unknownProvider"
+        case .closedProvider: "closedProvider"
+        case .needsEndpoint: "needsEndpoint"
+        case .needsDeployment: "needsDeployment"
+        }
+    }
+
+    /// 고른 공급자의 키 보관함. 모르는 공급자 ID면 nil이다.
+    private var selectedKeyStore: (any KeyStore)? {
+        guard let decision, let selectedProvider else { return nil }
+        return decision.keyStore(selectedProvider)
     }
 
     /// "다시 물어보기". 장부를 비우고 다시 물을 할 일을 묻는다. 키 확인이 필요한 동안은 꺼져 있다.
@@ -838,12 +1006,16 @@ final class AppState {
         let request: DecisionRequest
         let hash: String
         let key: String
+        let provider: any DecisionProvider
+        let generation: Int
     }
 
     private struct QueryOutcome: Sendable {
         let taskID: TaskID
         let hash: String
         let result: Result<DecisionResponse, DecisionError>
+        let provider: String
+        let generation: Int
     }
 
     /// 묻지 않는 경우(판단 기능 꺼짐, 키 없음, 키 확인 필요, 판단 결과 저장소 없음)가 아니면 지금 판단 설정.
@@ -852,12 +1024,10 @@ final class AppState {
         return judging
     }
 
-    /// 질문 파일이 없거나 `models`에 `typesafe` 기준 모델 ID가 없으면 판단 기능을 끈다(spec 006 R-609).
+    /// 질문 파일이 없거나 고른 공급자로 판단 설정을 만들지 못하면(spec 006 data-model §6) 판단 기능을 끈다.
     private var judging: Judging? {
-        guard let decision, let questions = decision.questions,
-            let baseModel = questions.models[ProviderID.typesafe.rawValue]
-        else { return nil }
-        return Judging(questions: questions, provider: decision.provider.name, baseModel: baseModel)
+        guard let questions = decision?.questions, let binding else { return nil }
+        return Judging(questions: questions, binding: binding)
     }
 
     private func usableScores(_ judging: Judging) -> [TaskID: TaskScore] {
@@ -901,23 +1071,22 @@ final class AppState {
 
     /// 단일 실행기. 꺼내기·답 받기·끝내기 판정은 MainActor에서 하고, 끝내기 판정과 `queryRunner = nil`은
     /// 같은 동기 구간에서 한다(끝나는 순간 들어온 트리거를 잃지 않게).
+    /// 공급자는 꺼낼 때마다 지금 바인딩에서 읽는다(spec 006 research R6).
     private func runQueries() async {
-        guard let provider = decision?.provider else {
-            queryRunner = nil
-            return
-        }
         await withTaskGroup(of: QueryOutcome.self) { group in
             var inFlight = 0
             while true {
                 while inFlight < Defaults.maxConcurrentDecisions, let query = takeNextQuery() {
                     group.addTask {
+                        let result: Result<DecisionResponse, DecisionError>
                         do throws(DecisionError) {
-                            let response = try await provider.decide(query.request, key: query.key)
-                            return QueryOutcome(
-                                taskID: query.request.taskID, hash: query.hash, result: .success(response))
+                            result = .success(try await query.provider.decide(query.request, key: query.key))
                         } catch {
-                            return QueryOutcome(taskID: query.request.taskID, hash: query.hash, result: .failure(error))
+                            result = .failure(error)
                         }
+                        return QueryOutcome(
+                            taskID: query.request.taskID, hash: query.hash, result: result,
+                            provider: query.provider.name, generation: query.generation)
                     }
                     inFlight += 1
                 }
@@ -926,14 +1095,14 @@ final class AppState {
                     return
                 }
                 inFlight -= 1
-                receive(outcome, provider: provider.name)
+                receive(outcome)
             }
         }
     }
 
     /// 다음에 보낼 질의 하나. 꺼낼 때마다 묻지 않는 경우를 다시 보고, 키를 읽은 뒤에만 장부에 적는다.
     private func takeNextQuery() -> Query? {
-        guard let judging = queryable, let keyStore = decision?.keyStore,
+        guard let judging = queryable, let keyStore = selectedKeyStore,
             let next = pendingQueries(judging, skippingAttempted: true).first
         else { return nil }
         let (id, state) = next
@@ -952,12 +1121,14 @@ final class AppState {
         attempted[id] = Attempt(hash: hash, failed: false)
         return Query(
             request: DecisionRequest(
-                taskID: id, model: judging.baseModel, state: state.bytes, questions: judging.questions),
-            hash: hash, key: key)
+                taskID: id, model: judging.binding.requestModel, state: state.bytes, questions: judging.questions),
+            hash: hash, key: key, provider: judging.binding.provider, generation: providerGeneration)
     }
 
     /// 답 받기: 지금 판단 입력이 요청 때와 같고 할 일이 대기·진행 중일 때만 저장한다. 실패는 종류만 남긴다.
-    private func receive(_ outcome: QueryOutcome, provider: String) {
+    /// 공급자를 바꾸기 전에 떠난 답은 성공이든 실패든 아무것도 바꾸지 않는다(spec 006 research R6).
+    private func receive(_ outcome: QueryOutcome) {
+        guard outcome.generation == providerGeneration else { return }
         let response: DecisionResponse
         switch outcome.result {
         case .success(let value):
@@ -987,7 +1158,7 @@ final class AppState {
         else { return }
         guard
             let score = ScoreRules.score(
-                taskID: task.id, response: response, questions: questions, provider: provider,
+                taskID: task.id, response: response, questions: questions, provider: outcome.provider,
                 stateHash: outcome.hash, now: clock.now())
         else {
             markFailed(outcome, kind: "malformed")
@@ -1013,7 +1184,7 @@ final class AppState {
     }
 
     private func refreshHasKey() {
-        guard let keyStore = decision?.keyStore else {
+        guard let keyStore = selectedKeyStore else {
             hasKey = false
             return
         }
