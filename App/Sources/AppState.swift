@@ -846,7 +846,7 @@ final class AppState {
         let result: Result<DecisionResponse, DecisionError>
     }
 
-    /// 묻지 않는 경우(판단 기능 꺼짐, 키 없음, 키 확인 필요, 판단 결과 저장소 없음)가 아니면 질문 세트.
+    /// 묻지 않는 경우(판단 기능 꺼짐, 키 없음, 키 확인 필요, 판단 결과 저장소 없음)가 아니면 지금 판단 설정.
     private var queryable: Judging? {
         guard let judging, hasKey, !keyNeedsCheck, scoreStore != nil else { return nil }
         return judging
