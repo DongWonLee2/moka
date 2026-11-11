@@ -88,6 +88,13 @@ public enum ProviderCatalog {
         catalog.first { $0.id == id }
     }
 
+    /// 그 줄의 첫 호출을 확인했고 질문 파일 `models`에 기준 모델 ID가 있을 때만 고를 수 있다(spec 006 R-617).
+    /// 주입한 표에 줄이 없으면 거짓이다.
+    public static func isOpen(_ id: ProviderID, questions: QuestionSet, catalog: [ProviderConfig] = all) -> Bool {
+        guard let row = config(id, in: catalog) else { return false }
+        return row.firstCallConfirmed && questions.models[id.rawValue] != nil
+    }
+
     private static func fixedRow(
         _ id: ProviderID, _ displayName: String, url: String, shape: RequestShape, issueURL: String?,
         firstCallConfirmed: Bool

@@ -184,3 +184,50 @@ func dayStartFromDateDropsSeconds() throws {
     let date = try #require(calendar.date(from: parts))
     #expect(DayStart(date: date, calendar: calendar).text == "07:15")
 }
+
+// MARK: - 판단 공급자 (spec 006 research R8)
+
+@Test("ADR-0011 R-614: 판단 공급자 설정 키 이름은 research R8 그대로")
+func decisionProviderKeys() {
+    #expect(CoreSettings.decisionProviderKey == "decision_provider")
+    #expect(CoreSettings.microsoftEndpointKey == "microsoft_endpoint")
+    #expect(CoreSettings.microsoftDeploymentKey == "microsoft_deployment")
+}
+
+@Test("ADR-0011 R-614: 판단 공급자 행이 없거나 읽기가 실패하면 nil(Jev로 본다)")
+func decisionProviderMissingIsNil() {
+    #expect(CoreSettings.readDecisionProvider(from: InMemorySettingsStore()) == nil)
+    #expect(CoreSettings.readDecisionProvider(from: ThrowingSettingsStore()) == nil)
+    #expect(CoreSettings.readMicrosoftEndpoint(from: InMemorySettingsStore()) == nil)
+    #expect(CoreSettings.readMicrosoftDeployment(from: ThrowingSettingsStore()) == nil)
+}
+
+@Test("ADR-0011 R-614: 판단 공급자는 공급자 ID 원시값으로 쓰고 읽은 글자는 그대로 돌려준다")
+func decisionProviderRoundTrip() throws {
+    let store = InMemorySettingsStore()
+    try CoreSettings.writeDecisionProvider(.liquid, to: store)
+    #expect(try store.value(for: CoreSettings.decisionProviderKey) == "liquid")
+    #expect(CoreSettings.readDecisionProvider(from: store) == "liquid")
+    try store.setValue("fake-unknown", for: CoreSettings.decisionProviderKey)
+    #expect(CoreSettings.readDecisionProvider(from: store) == "fake-unknown")
+}
+
+@Test("ADR-0011 R-614: Microsoft 주소는 검사를 통과한 주소 글자로, 배포 이름은 앞뒤 공백을 지워 쓴다")
+func microsoftFieldsRoundTrip() throws {
+    let store = InMemorySettingsStore()
+    let endpoint = try EndpointRule.check(" https://example-resource.invalid/ ", allowsPath: false).get()
+    try CoreSettings.writeMicrosoftEndpoint(endpoint, to: store)
+    try CoreSettings.writeMicrosoftDeployment("  fake-deploy \n", to: store)
+    #expect(try store.value(for: CoreSettings.microsoftEndpointKey) == "https://example-resource.invalid")
+    #expect(CoreSettings.readMicrosoftEndpoint(from: store) == "https://example-resource.invalid")
+    #expect(CoreSettings.readMicrosoftDeployment(from: store) == "fake-deploy")
+}
+
+@Test("ADR-0011 R-614: 판단 공급자 설정 쓰기가 실패하면 던진다")
+func decisionProviderWriteFailureThrows() throws {
+    let endpoint = try EndpointRule.check("https://example-resource.invalid", allowsPath: false).get()
+    let failing = ThrowingSettingsStore()
+    #expect(throws: (any Error).self) { try CoreSettings.writeDecisionProvider(.typesafe, to: failing) }
+    #expect(throws: (any Error).self) { try CoreSettings.writeMicrosoftEndpoint(endpoint, to: failing) }
+    #expect(throws: (any Error).self) { try CoreSettings.writeMicrosoftDeployment("fake-deploy", to: failing) }
+}

@@ -92,20 +92,20 @@ private func reason(
 
     @Test("FR-04 R-303 SC-302: 키가 없어 쓰는 판단 결과가 비면 손해가 없다")
     func noKey() {
-        let usable = ScoreRules.usable(scores: [1: judged()], hasKey: false, questionVersion: questions.version)
+        let usable = ScoreRules.usable(scores: [1: judged()], hasKey: false, questionVersion: "v1", provider: "fake")
         #expect(reason(Fake.task(1), usable: usable).loss == nil)
     }
 
     @Test("FR-04 R-303 SC-302: 그 할 일의 판단 결과가 없으면 손해가 없다(다른 할 일 결과는 쓰지 않는다)")
     func noScore() {
-        let usable = ScoreRules.usable(scores: [2: judged(2)], hasKey: true, questionVersion: questions.version)
+        let usable = ScoreRules.usable(scores: [2: judged(2)], hasKey: true, questionVersion: "v1", provider: "fake")
         #expect(reason(Fake.task(1), usable: usable).loss == nil)
     }
 
     @Test("FR-04 R-303 SC-302: 질문 버전이 다른 판단 결과면 손해가 없다")
     func otherVersion() {
         let usable = ScoreRules.usable(
-            scores: [1: judged(version: "v0")], hasKey: true, questionVersion: questions.version)
+            scores: [1: judged(version: "v0")], hasKey: true, questionVersion: "v1", provider: "fake")
         #expect(reason(Fake.task(1), usable: usable).loss == nil)
     }
 }

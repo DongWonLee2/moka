@@ -1,3 +1,5 @@
+import Foundation
+
 public enum CoreSettingsError: Error, Equatable {
     case outOfRange
 }
@@ -7,6 +9,9 @@ public enum CoreSettings {
     public static let extendMinKey = "default_extend_min"
     public static let dayStartKey = "day_start"
     public static let onboardingDoneKey = "onboarding_done"
+    public static let decisionProviderKey = "decision_provider"
+    public static let microsoftEndpointKey = "microsoft_endpoint"
+    public static let microsoftDeploymentKey = "microsoft_deployment"
 
     /// 없거나 읽기 실패·정수 아님·1~180 밖이면 10.
     public static func readExtendMin(from store: some SettingsStore) -> Int {
@@ -51,5 +56,33 @@ public enum CoreSettings {
 
     public static func markOnboardingDone(in store: some SettingsStore) throws {
         try store.setValue("true", for: onboardingDoneKey)
+    }
+
+    /// 고른 공급자 ID 글자(spec 006 research R8). 없거나 읽기 실패면 `nil`이고 `DecisionSelection`이 Jev로 본다.
+    public static func readDecisionProvider(from store: some SettingsStore) -> String? {
+        (try? store.value(for: decisionProviderKey)) ?? nil
+    }
+
+    public static func writeDecisionProvider(_ id: ProviderID, to store: some SettingsStore) throws {
+        try store.setValue(id.rawValue, for: decisionProviderKey)
+    }
+
+    /// 저장한 Microsoft 리소스 주소 글자. `DecisionSelection`이 주소 규칙으로 다시 본다.
+    public static func readMicrosoftEndpoint(from store: some SettingsStore) -> String? {
+        (try? store.value(for: microsoftEndpointKey)) ?? nil
+    }
+
+    /// `endpoint`는 `EndpointRule.check`를 통과한 주소다.
+    public static func writeMicrosoftEndpoint(_ endpoint: URL, to store: some SettingsStore) throws {
+        try store.setValue(endpoint.absoluteString, for: microsoftEndpointKey)
+    }
+
+    public static func readMicrosoftDeployment(from store: some SettingsStore) -> String? {
+        (try? store.value(for: microsoftDeploymentKey)) ?? nil
+    }
+
+    /// 앞뒤 공백·줄바꿈을 지워 쓴다.
+    public static func writeMicrosoftDeployment(_ deployment: String, to store: some SettingsStore) throws {
+        try store.setValue(deployment.trimmingCharacters(in: .whitespacesAndNewlines), for: microsoftDeploymentKey)
     }
 }

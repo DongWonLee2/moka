@@ -29,14 +29,15 @@ public enum ConcreteGate {
         public var currentHash: String
         /// 보내기 장부에 그 할 일이 실패로 적힌 해시.
         public var failedHash: String?
-        public var threshold: Double
+        /// 기준 모델의 concrete 임계값. `nil`이면 열지 않는다(spec 006 R-609).
+        public var threshold: Double?
         public var record: GateRecord
         /// 제출 뒤 판정을 기다리는 중이다.
         public var waiting: Bool
 
         public init(
             isDraft: Bool, canQuery: Bool, score: TaskScore?, currentHash: String, failedHash: String?,
-            threshold: Double, record: GateRecord, waiting: Bool
+            threshold: Double?, record: GateRecord, waiting: Bool
         ) {
             self.isDraft = isDraft
             self.canQuery = canQuery
@@ -49,9 +50,9 @@ public enum ConcreteGate {
         }
     }
 
-    /// `thresholds[model]["concrete"]`. `QuestionSet`이 읽을 때 있는지 확인했다.
-    public static func threshold(_ questions: QuestionSet) -> Double {
-        questions.thresholds[questions.model]!["concrete"]!
+    /// 기준 모델의 concrete 임계값. 질문 파일에 그 기준 모델이 없으면 `nil`이다.
+    public static func threshold(_ questions: QuestionSet, baseModel: String) -> Double? {
+        questions.thresholds(for: baseModel)?.concrete
     }
 
     /// 보일 단계. 기다림은 `checking`일 때만 이어지고, 그 밖의 단계가 나오면 끝낸다.
@@ -71,12 +72,15 @@ public enum ConcreteGate {
     private static func judge(_ facts: Facts) -> (phase: GatePhase, passes: Bool) {
         guard facts.isDraft, !facts.record.passed else { return (.closed, false) }
         guard facts.waiting else {
-            let low = facts.canQuery && facts.score.map { $0.concrete < facts.threshold } == true
+            let low = facts.canQuery && facts.score.map { score in facts.threshold.map { score.concrete < $0 } } == true
             return (low ? .asking : .closed, false)
         }
-        guard facts.canQuery, facts.failedHash != facts.currentHash else { return (.closed, true) }
+        // 물을 수 없게 되거나 임계값이 없어지면 그 제출에서 통과다(spec 004 R-309).
+        guard facts.canQuery, let threshold = facts.threshold, facts.failedHash != facts.currentHash else {
+            return (.closed, true)
+        }
         guard let score = facts.score, score.stateHash == facts.currentHash else { return (.checking, false) }
-        if score.concrete >= facts.threshold || facts.record.submissions >= Defaults.concreteGateMaxSubmissions {
+        if score.concrete >= threshold || facts.record.submissions >= Defaults.concreteGateMaxSubmissions {
             return (.closed, true)
         }
         return (.asking, false)

@@ -41,7 +41,9 @@ v1 줄은 이미 쌓인 `(question_version = v1, provider = typesafe)` 판단 �
 ## 튜닝 계약 (pytest)
 
 - `tuning/tests/test_questions_contract.py`의 임계값 시험은 `data["thresholds"][data["model"]]` 대신 `data["models"]`의 모든 값에 대해 같은 조건을 본다.
-- 튜닝 스크립트가 지난 버전 질문 파일을 어디서 읽을지는 열린 질문이다(research R11, 승인 항목 2a). 단위 2 PR에서 debate로 추천안을 정하고 사람이 고른다.
+- 지난 버전 질문 파일은 저장소 루트 `questions-history/<version>.json` 사본에서 읽는다(research R11, 승인 항목 2a, 단위 2 PR #122에서 debate 3:0으로 B안 채택). 사본은 `Sources/MokaCore/` 밖이라 번들에 들지 않는다.
+- 사본 시험 둘을 Swift(`QuestionsHistoryTests`)와 pytest 양쪽에 둔다. 지금 파일은 같은 `version`의 사본과 바이트까지 같다. 지난 사본은 지문을 시험에 고정한다(pytest SHA-256, Swift FNV-1a 64).
+- 새 버전을 만들면 사본 `questions-history/<새 version>.json`을 더하고, 지난 사본이 된 파일의 지문을 두 시험에 고정한다.
 
 ## v2 제안 내용
 

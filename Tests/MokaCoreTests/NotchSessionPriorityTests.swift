@@ -23,7 +23,10 @@ private let abc: [TaskID: TaskScore] = [
 
 private func input(_ tasks: [MokaTask], _ usable: [TaskID: TaskScore]? = abc, now: Date = t0) -> SessionInput {
     var input = Fake.input(tasks, now: now)
-    input.scoring = usable.map { SessionScoring(usable: $0, questions: questions, today: today) }
+    input.scoring = usable.map {
+        SessionScoring(
+            usable: $0, questions: questions, thresholds: ModelThresholds(concrete: 0.5, avoiding: 0.7), today: today)
+    }
     return input
 }
 

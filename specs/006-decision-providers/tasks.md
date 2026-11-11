@@ -67,7 +67,7 @@ description: "spec 006 판단 공급자 고르기와 키 넣기 작업 목록"
 - [ ] T015 [P] `Tests/MokaCoreTests/DecisionSelectionTests.swift`: data-model §6 "정하기" 일곱 단계(설정 없음이면 `typesafe`, 모르는 ID, 열리지 않은 공급자, Microsoft 주소 없음·거부·배포 이름 없음, 보낼 모델 이름, `url`), 가짜 `catalog`로 연 Microsoft, `ProviderCatalog.isOpen`과 `config(_:in:)`이 주입한 `catalog`를 보고 배열에 없는 ID면 거짓과 `nil`(멈추지 않음). `Tests/MokaCoreTests/CoreSettingsTests.swift`에 설정 키 셋 읽기·쓰기. 실패를 확인한다(`ADR-0011 R-609`, `ADR-0011 R-610`, `ADR-0011 R-614`, `ADR-0011 R-617`) 〔단위 2〕
 - [ ] T016 `Sources/MokaCore/Resources/questions.json`을 contracts/questions-json-v2.md "v2 제안 내용"으로, `Sources/MokaCore/Decision/QuestionSet.swift`를 v2 읽기로 바꾼다. 잠정 임계값의 이전 값 없음·새 값 0.5·0.7을 PR "사람이 볼 결정"에 적는다. T012·T013 PASS 〔단위 2〕
 - [ ] T017 `Sources/MokaCore/Decision/ScoreRules.swift`·`ScoringPlan.swift`·`ConcreteGate.swift`(강제 언래핑 제거), `SessionScoring`의 `thresholds`, `Sources/MokaCore/Decision/DecisionSelection.swift`(새), `ProviderCatalog.isOpen`·`config(_:in:)`(주입한 `catalog`에서 `first(where:)`, 강제 언래핑 금지), `Sources/MokaCore/PriorityOrder.swift`·`Sources/MokaCore/NotchSession.swift`(임계값 전달), `Sources/MokaCore/CoreSettings.swift` 키 셋(research R8), `Sources/MokaCore/Sim/SimStorageRunner.swift`(가짜 공급자 `fake`와 기준 모델 `jev-1.13.0`, research R14), `App/Sources/AppState.swift`의 호출(지금 공급자 `name`, 요청 모델과 기준 모델은 질문 파일 `typesafe` 값, T020 전까지의 최소 변경). T014·T015 PASS, `SimGoldenTests` 기대 출력 그대로 PASS, 앱 시험 PASS 〔단위 2〕
-- [ ] T018 [P] 대체 표기: `specs/003-decision-model/contracts/questions-json.md` 머리에 "spec 006 contracts/questions-json-v2.md가 대체", `specs/003-decision-model/data-model.md` §1 `QuestionSet` 줄과 §3 `usable` 줄에 "spec 006 data-model §1이 대체". PR "사람이 볼 결정"에 v2 비용(모든 할 일 다시 묻기, plan 위험 2)과 열린 질문 research R11(debate로 추천안)을 적는다(`ADR-0011 R-630`) 〔단위 2〕
+- [ ] T018 [P] 대체 표기: `specs/003-decision-model/contracts/questions-json.md` 머리에 "spec 006 contracts/questions-json-v2.md가 대체", `specs/003-decision-model/data-model.md` §1 `QuestionSet` 줄과 §3 `usable` 줄에 "spec 006 data-model §1이 대체". PR "사람이 볼 결정"에 v2 비용(모든 할 일 다시 묻기, plan 위험 2)과 research R11 판정(debate 3:0 B안, 루트 `questions-history/` 사본과 사본 시험 둘)을 적는다(`ADR-0011 R-630`) 〔단위 2〕
 
 **확인 지점**: `swift test`, pytest PASS. `moka-sim` golden과 기존 스냅샷 그대로. 앱은 지금처럼 Jev로만 판단한다.
 
@@ -220,7 +220,7 @@ moka는 2026-11-02부터 무인 실행을 하지 않는다(사용자 결정). �
 | R-609 기준 모델 찾기와 임계값 | T014, T015 | T017 | 없음 |
 | R-610 보낼 모델 이름 | T015, T026 | T017, T027 | 없음 |
 | R-611 공급자 비교 | T014, T024 | T017, T025 | 없음 |
-| R-612 pytest 계약 | T013 | T016 | 단위 2 PR 승인(R11 열린 질문) |
+| R-612 pytest 계약 | T013 | T016 | 단위 2 PR 승인(R11 B안 채택) |
 | R-613 공급자별 Keychain | T019 | T020 | T023 |
 | R-614 설정 표와 기본 Jev | T015, T019 | T017, T020 | T023 |
 | R-615 공급자 바꾸기 | T024 | T025 | 없음 |

@@ -18,19 +18,31 @@ public enum QuestionSetError: Error, Equatable {
     case malformed
 }
 
-/// `questions.json`을 읽은 값(contracts/questions-json.md). 계약과 다르면 읽지 않는다.
+/// 기준 모델 하나의 임계값 둘(spec 006 data-model §1).
+public struct ModelThresholds: Equatable, Sendable {
+    public let concrete: Double
+    public let avoiding: Double
+
+    public init(concrete: Double, avoiding: Double) {
+        self.concrete = concrete
+        self.avoiding = avoiding
+    }
+}
+
+/// `questions.json` v2를 읽은 값(spec 006 contracts/questions-json-v2.md). 읽기 규칙을 어기면 읽지 않는다.
 public struct QuestionSet: Equatable, Sendable {
     static let scoreNames: Set<String> = ["urgency", "impact"]
     static let noulNames: Set<String> = ["concrete", "avoiding"]
 
     public let version: String
     public let language: String
-    public let model: String
+    /// 공급자 ID → 기준 모델 ID.
+    public let models: [String: String]
+    /// 잠정 임계값을 쓰는 기준 모델 ID.
+    public let provisional: Set<String>
     public let questions: [String: Question]
-    /// 모델 ID → 질문 이름 → 임계값.
+    /// 기준 모델 ID → 질문 이름 → 임계값.
     public let thresholds: [String: [String: Double]]
-    /// `thresholds[model]["avoiding"]`. 읽을 때 있는지 확인했다.
-    public let avoidingThreshold: Double
 
     public init(json: Data) throws(QuestionSetError) {
         let raw: RawSet
@@ -39,10 +51,11 @@ public struct QuestionSet: Equatable, Sendable {
         } catch {
             throw .malformed
         }
+        let baseModels = Set(raw.models.values)
         guard Set(raw.questions.keys) == Self.scoreNames.union(Self.noulNames),
-            let modelThresholds = raw.thresholds[raw.model],
-            let avoiding = modelThresholds["avoiding"], modelThresholds["concrete"] != nil,
-            raw.thresholds.values.allSatisfy({ $0.values.allSatisfy { (0...1).contains($0) } })
+            baseModels.allSatisfy({ raw.thresholds[$0]?["concrete"] != nil && raw.thresholds[$0]?["avoiding"] != nil }),
+            raw.thresholds.values.allSatisfy({ $0.values.allSatisfy { (0...1).contains($0) } }),
+            Set(raw.provisional).count == raw.provisional.count, Set(raw.provisional).isSubset(of: baseModels)
         else { throw .malformed }
         var questions: [String: Question] = [:]
         for (name, question) in raw.questions {
@@ -58,10 +71,17 @@ public struct QuestionSet: Equatable, Sendable {
         }
         version = raw.version
         language = raw.language
-        model = raw.model
+        models = raw.models
+        provisional = Set(raw.provisional)
         self.questions = questions
         thresholds = raw.thresholds
-        avoidingThreshold = avoiding
+    }
+
+    /// `thresholds[baseModel]`의 `concrete`·`avoiding`. 둘 중 하나라도 없으면 `nil`이다.
+    public func thresholds(for baseModel: String) -> ModelThresholds? {
+        guard let entry = thresholds[baseModel], let concrete = entry["concrete"], let avoiding = entry["avoiding"]
+        else { return nil }
+        return ModelThresholds(concrete: concrete, avoiding: avoiding)
     }
 
     /// MokaCore 번들의 질문 파일. 번들이 없으면 SwiftPM 생성 코드가 멈추므로 빌드 결함이다(research R19 F4).
@@ -76,7 +96,8 @@ public struct QuestionSet: Equatable, Sendable {
 private struct RawSet: Decodable {
     let version: String
     let language: String
-    let model: String
+    let models: [String: String]
+    let provisional: [String]
     let questions: [String: RawQuestion]
     let thresholds: [String: [String: Double]]
 }
