@@ -7,7 +7,7 @@
 | 타입 | 모양 | 비고 |
 |---|---|---|
 | `DeadlineDistance` | `none`, `today`, `left(Int)`, `overdue(Int)` | 마감과 오늘(spec 002 R-114 하루 경계)의 날 수 차이 |
-| `ReasonLine` | `deadline: DeadlineDistance`, `loss: String?`, `skipCount: Int` | `ReasonLine.make(task:usable:questions:today:calendar:)`. `loss`는 질문 파일 impact 옵션 말 하나이고, `usable`에 그 할 일이 없으면 `nil` |
+| `ReasonLine` | `deadline: DeadlineDistance`, `impact: String?`, `skipCount: Int` | `ReasonLine.make(task:usable:questions:today:calendar:)`. `impact`는 화면 말 낮음·보통·높음 하나이고, `usable`에 그 할 일이 없거나 impact 옵션이 셋이 아니면 `nil` |
 | `ReasonText` | `static func line(_ reason: ReasonLine) -> String` | 노치에 보일 한 줄. 칸 사이 구분자와 글자는 아래 §2 확정 표기다 |
 | `GateRecord` | `submissions: Int`, `passed: Bool` | 할 일 하나의 게이트 기록. AppState 메모리에만 있다 |
 | `GatePhase` | `asking`, `checking`, `closed` | 노치에 보일 게이트 단계 |
@@ -18,9 +18,9 @@
 ## 2. 이유 줄 규칙 (spec R-301~R-305)
 
 - **남은 날**: 마감이 없으면 `none`. 마감이 오늘이면 `today`. 마감이 오늘 뒤면 `left(날 수)`, 오늘 앞이면 `overdue(날 수)`. 오늘은 고르기와 같은 `LocalDay`(spec 003 `SessionScoring.today`)다.
-- **손해**: `usable[taskID]`가 있으면 옵션 번호 `round(impact 곱하기 (옵션 수 빼기 1))`의 옵션 말. 반올림은 0.5에서 위로 간다. 지금 옵션 셋이라 0.25 미만은 "조금", 0.25 이상 0.75 미만은 "꽤", 0.75 이상은 "아주"다. 없으면 `nil`이고 칸을 그리지 않는다.
+- **중요도**(사용자 결정 2026-11-12, 이전 이름 손해): `usable[taskID]`가 있으면 옵션 번호 `round(impact 곱하기 (옵션 수 빼기 1))`를 고르고 번호 0·1·2를 "낮음"·"보통"·"높음"으로 보인다. 반올림은 0.5에서 위로 간다. 0.25 미만은 "낮음", 0.25 이상 0.75 미만은 "보통", 0.75 이상은 "높음"이다. 질문 파일 옵션 말(조금·꽤·아주)은 화면에 쓰지 않는다. 판단 결과가 없거나 impact 옵션이 셋이 아니면 `nil`이고 칸을 그리지 않는다.
 - **미룬 횟수**: `task.skipCount` 그대로. 0도 그린다.
-- **표기**(시안 확정 2026-11-10): `D-3 · 손해 꽤 · 미룬 2번`, 오늘 `D-day`, 지남 `D+2`, 마감 없음 `마감 없음`, 손해 없음이면 그 칸과 구분자를 뺀다.
+- **표기**(시안 확정 2026-11-10, 가운데 칸 사용자 결정 2026-11-12): `D-3 · 중요도 보통 · 미룬 2번`, 오늘 `D-day`, 지남 `D+2`, 마감 없음 `마감 없음`, 중요도 없음이면 그 칸과 구분자를 뺀다.
 - **보이는 곳**: 시작 전과 도는 중 펼친 화면의 제목 아래. 이어서 할 일 줄이 있으면 이유 줄이 위이고 이어서 할 일 줄이 그 아래다(시안 확정 2026-11-10). 접힌 화면, 시간 끝, 빈 상태에는 없다.
 - **다시 그리기**: AppState의 계산 속성이라 할 일, 판단 결과, 오늘이 바뀌면 다시 계산된다. 노치 할 일은 바꾸지 않는다.
 

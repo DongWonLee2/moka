@@ -783,13 +783,13 @@ final class AppDecisionTests: XCTestCase {
         h.state.launch()
         let runner = try XCTUnwrap(h.state.requestScores())
         await provider.waitForHeld(count: 1)
-        XCTAssertEqual(h.state.reasonLine, "D-3 · 미룬 0번", "판단 결과가 없으면 손해 칸이 없다")
+        XCTAssertEqual(h.state.reasonLine, "D-3 · 미룬 0번", "판단 결과가 없으면 중요도 칸이 없다")
         await provider.releaseAll()
         await runner.value
-        XCTAssertEqual(h.state.reasonLine, "D-3 · 손해 꽤 · 미룬 0번")
+        XCTAssertEqual(h.state.reasonLine, "D-3 · 중요도 보통 · 미룬 0번")
 
         h.state.start()
-        XCTAssertEqual(h.state.reasonLine, "D-3 · 손해 꽤 · 미룬 0번", "도는 중")
+        XCTAssertEqual(h.state.reasonLine, "D-3 · 중요도 보통 · 미룬 0번", "도는 중")
         h.clock.advance(minutes: 60 * 3)
         h.state.tick()
         guard case .expired = h.state.timer else { return XCTFail("시간 끝: \(h.state.timer)") }
@@ -810,14 +810,14 @@ final class AppDecisionTests: XCTestCase {
         await provider.releaseAll()
         await runner.value
 
-        XCTAssertEqual(h.state.reasonLine, "마감 없음 · 손해 꽤 · 미룬 0번", "답이 저장되면 손해가 보인다")
+        XCTAssertEqual(h.state.reasonLine, "마감 없음 · 중요도 보통 · 미룬 0번", "답이 저장되면 중요도가 보인다")
         XCTAssertEqual(h.state.session.taskID, 1, "노치 할 일은 그대로(spec US1-5)")
         XCTAssertEqual(h.state.ranks[2], 1, "순서는 바뀐다")
     }
 
-    func test_FR04_R305_deletingKeyDropsLoss() async throws {
+    func test_FR04_R305_deletingKeyDropsImpact() async throws {
         let h = await launched(try harness(count: 1))
-        XCTAssertEqual(h.state.reasonLine, "마감 없음 · 손해 꽤 · 미룬 0번")
+        XCTAssertEqual(h.state.reasonLine, "마감 없음 · 중요도 보통 · 미룬 0번")
 
         XCTAssertTrue(h.state.deleteKey())
 

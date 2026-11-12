@@ -239,7 +239,7 @@ final class AppProviderTests: XCTestCase {
         let calls = await providers.totalCalls()
         XCTAssertEqual(calls, 0, "질의를 보내지 않는다")
         XCTAssertEqual(state.ranks, [1: 1, 2: 2], "마감일 순(판단 결과를 쓰지 않음)")
-        XCTAssertEqual(state.reasonLine, "마감 없음 · 미룬 0번", "손해 칸이 없다")
+        XCTAssertEqual(state.reasonLine, "마감 없음 · 미룬 0번", "중요도 칸이 없다")
         XCTAssertEqual(state.gatePhase, .closed)
         XCTAssertTrue(state.hasKey, "꺼져 있어도 고른 공급자 항목을 읽는다")
         XCTAssertTrue(state.deleteKey())
