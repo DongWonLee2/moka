@@ -901,7 +901,7 @@ final class AppState {
         case .success(let value): url = value
         case .failure(let rejection): return rejection
         }
-        let saved = CoreSettings.readMicrosoftEndpoint(from: settings)
+        let saved = MicrosoftFieldRule.comparable(savedEndpoint: CoreSettings.readMicrosoftEndpoint(from: settings))
         if saved == url.absoluteString, CoreSettings.readMicrosoftDeployment(from: settings) == deploymentText {
             return nil
         }
