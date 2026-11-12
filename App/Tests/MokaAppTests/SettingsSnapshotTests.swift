@@ -251,19 +251,16 @@ final class SettingsSnapshotTests: XCTestCase {
         try write(name, content: content, size: CGSize(width: 400, height: 250))
     }
 
-    /// 006 시안 11번: Jev 키 없음. TypeSafe 발급 링크 주소는 확인 전이라 링크가 없다.
     func test_R624_onboardingKeyEmpty() throws {
         try writeOnboardingKey("o27-onboarding-key-empty", key: Self.onboardingKey(hasKey: false))
     }
 
-    /// 006 시안 11번에서 발급 링크 주소를 확인한 뒤의 모양.
     func test_R624_onboardingKeyEmptyWithLink() throws {
         try writeOnboardingKey(
             "o27-onboarding-key-link",
             key: Self.onboardingKey(hasKey: false, issueURL: URL(string: "https://example.invalid/keys")))
     }
 
-    /// 006 시안 12번: `false`를 돌려주는 `onSave`로 "다음"을 누른 뒤의 키 단계 상태로 그린다.
     func test_R624_onboardingKeyFailed() throws {
         let key = Self.onboardingKey(hasKey: false) { _ in false }
         var draft = OnboardingKeyDraft(text: "fake-onboarding-key")
@@ -272,7 +269,6 @@ final class SettingsSnapshotTests: XCTestCase {
         try writeOnboardingKey("o27-onboarding-key-failed", key: key, draft: draft)
     }
 
-    /// 006 시안 13번: Jev 키가 이미 있다.
     func test_R624_onboardingKeySaved() throws {
         try writeOnboardingKey("o27-onboarding-key-saved", key: Self.onboardingKey(hasKey: true))
     }

@@ -875,7 +875,6 @@ final class AppDecisionTests: XCTestCase {
         let clock: TestClock
     }
 
-    /// 공급자마다 메모리 키 보관함을 둔 상태. 공급자는 하나의 가짜 공급자로 고정한다.
     private func onboardingHarness(
         count: Int = 0, keys: [ProviderID: String] = [:], settings: [String: String] = [:],
         provider: FakeDecisionProvider = AppDecisionTests.ok(),

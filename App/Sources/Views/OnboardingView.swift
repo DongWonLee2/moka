@@ -9,7 +9,6 @@ struct OnboardingValues: Equatable {
     var dayStart: DayStart
 }
 
-/// 온보딩 키 단계 값(spec 006 data-model §8). `hasKey`는 창을 열 때의 첫 값이고, `onSave`는 Jev 보관함에 저장한다.
 struct OnboardingKeyInput {
     let hasKey: Bool
     let onSave: (String) -> Bool
@@ -17,7 +16,6 @@ struct OnboardingKeyInput {
     let host: String
 }
 
-/// 키 단계 문구(006 시안 11~13번, 사람 확정 2026-11-12). 보내는 곳 줄 앞 문구는 `DecisionFieldText.destinationPrefix`다.
 enum OnboardingKeyText {
     static let title = "판단 모델 키가 있나요?"
     static let message = "TypeSafe에서 받은 키를 붙여 넣으면 판단 모델이 할 일 순서를 정해요. 키가 없으면 마감이 가까운 순으로 떠요."
@@ -38,7 +36,6 @@ struct OnboardingKeyDraft: Equatable {
         hasKey || KeyFieldState.canSave(text)
     }
 
-    /// "다음"을 눌렀을 때. 다음 단계로 가면 true다. 키가 이미 있으면 저장하지 않는다.
     mutating func submit(hasKey: Bool, onSave: (String) -> Bool) -> Bool {
         if hasKey { return true }
         guard KeyFieldState.canSave(text) else { return false }
