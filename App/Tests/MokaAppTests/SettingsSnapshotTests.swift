@@ -251,6 +251,58 @@ final class SettingsSnapshotTests: XCTestCase {
         try write(name, content: content, size: CGSize(width: 400, height: 250))
     }
 
+    func test_R624_onboardingKeyEmpty() throws {
+        try writeOnboardingKey("o27-onboarding-key-empty", key: Self.onboardingKey(hasKey: false))
+    }
+
+    func test_R624_onboardingKeyEmptyWithLink() throws {
+        try writeOnboardingKey(
+            "o27-onboarding-key-link",
+            key: Self.onboardingKey(hasKey: false, issueURL: URL(string: "https://example.invalid/keys")))
+    }
+
+    func test_R624_onboardingKeyFailed() throws {
+        let key = Self.onboardingKey(hasKey: false) { _ in false }
+        var draft = OnboardingKeyDraft(text: "fake-onboarding-key")
+        XCTAssertFalse(draft.submit(hasKey: key.hasKey, onSave: key.onSave))
+        XCTAssertTrue(draft.saveFailed)
+        try writeOnboardingKey("o27-onboarding-key-failed", key: key, draft: draft)
+    }
+
+    func test_R624_onboardingKeySaved() throws {
+        try writeOnboardingKey("o27-onboarding-key-saved", key: Self.onboardingKey(hasKey: true))
+    }
+
+    func test_R624_onboardingThreeStepContext() throws {
+        try writeOnboardingKey("o27-onboarding-3step-2", key: Self.onboardingKey(hasKey: false), step: 2)
+    }
+
+    func test_R624_onboardingThreeStepDefaults() throws {
+        try writeOnboardingKey("o27-onboarding-3step-3", key: Self.onboardingKey(hasKey: false), step: 3)
+    }
+
+    private static func onboardingKey(
+        hasKey: Bool, issueURL: URL? = nil, onSave: @escaping (String) -> Bool = { _ in true }
+    ) -> OnboardingKeyInput {
+        OnboardingKeyInput(hasKey: hasKey, onSave: onSave, issueURL: issueURL, host: "api.typesafe.ai")
+    }
+
+    private func writeOnboardingKey(
+        _ name: String, key: OnboardingKeyInput, draft: OnboardingKeyDraft = OnboardingKeyDraft(), step: Int = 1
+    ) throws {
+        let calendar = GregorianCalendar.make(timeZone: try XCTUnwrap(TimeZone(identifier: "Asia/Seoul")))
+        let content = OnboardingView(
+            today: try XCTUnwrap(LocalDay(text: "2026-11-06")), calendar: calendar, initialQuantum: 25,
+            initialExtend: 10, initialDayStart: Defaults.dayStart, initialStep: step, keyStep: key,
+            initialKeyDraft: draft,
+            onFinish: { _ in }
+        )
+        .environment(\.timeZone, calendar.timeZone)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(MokaColors.settingsWindow)
+        try write(name, content: content, size: CGSize(width: 400, height: 250))
+    }
+
     func test_R121_editContextSheet() throws {
         let calendar = GregorianCalendar.make(timeZone: try XCTUnwrap(TimeZone(identifier: "Asia/Seoul")))
         let content = ContextFormView(

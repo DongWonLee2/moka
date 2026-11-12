@@ -1,3 +1,4 @@
+import AppKit
 import MokaCore
 import SwiftUI
 
@@ -8,14 +9,89 @@ struct OnboardingValues: Equatable {
     var dayStart: DayStart
 }
 
-/// 첫 실행 온보딩 두 단계(시안 11·12번, R-116). 1단계 일정 한 건(건너뛸 수 있음), 2단계 기본값 확인.
-/// 저장은 2단계 "시작하기"에서 한꺼번에 한다. 값과 콜백만 받는다(ADR-0009).
+struct OnboardingKeyInput {
+    let hasKey: Bool
+    let onSave: (String) -> Bool
+    let issueURL: URL?
+    let host: String
+}
+
+enum OnboardingKeyText {
+    static let title = "판단 모델 키가 있나요?"
+    static let message = "TypeSafe에서 받은 키를 붙여 넣으면 판단 모델이 할 일 순서를 정해요. 키가 없으면 마감이 가까운 순으로 떠요."
+    static let issueLink = DecisionFieldText.issueLink("TypeSafe Jev")
+    static let otherProviders = "다른 판단 모델은 시작한 뒤 설정에서 고를 수 있어요."
+    static let fieldLabel = "키"
+    static let placeholder = "키를 붙여 넣어 주세요"
+    static let saveFailed = "키를 저장하지 못했어요. 다시 해 주세요."
+    static let saved = "저장되어 있어요"
+}
+
+/// 키 단계에서 붙여 넣는 글자와 저장 실패 표시(R-624·R-625). 창은 AppState를 관찰하지 않으므로 실패는 뷰가 든다.
+struct OnboardingKeyDraft: Equatable {
+    var text = ""
+    var saveFailed = false
+
+    func canGoNext(hasKey: Bool) -> Bool {
+        hasKey || KeyFieldState.canSave(text)
+    }
+
+    mutating func submit(hasKey: Bool, onSave: (String) -> Bool) -> Bool {
+        if hasKey { return true }
+        guard KeyFieldState.canSave(text) else { return false }
+        guard onSave(text) else {
+            saveFailed = true
+            return false
+        }
+        saveFailed = false
+        text = ""
+        return true
+    }
+}
+
+/// 온보딩 단계 이동(R-116, R-624). 키 단계가 있으면 키, 일정, 기본값이고 없으면 일정, 기본값이다.
+struct OnboardingSteps: Equatable {
+    enum Page: Equatable {
+        case key
+        case context
+        case defaults
+    }
+
+    private let pages: [Page]
+    private(set) var step: Int
+
+    init(hasKeyStep: Bool, initialStep: Int) {
+        pages = hasKeyStep ? [.key, .context, .defaults] : [.context, .defaults]
+        step = initialStep
+    }
+
+    var total: Int { pages.count }
+    var page: Page { pages[step - 1] }
+
+    mutating func next() {
+        if step < total { step += 1 }
+    }
+
+    mutating func back() {
+        if step > 1 { step -= 1 }
+    }
+
+    mutating func submitKey(_ draft: inout OnboardingKeyDraft, hasKey: Bool, onSave: (String) -> Bool) {
+        if draft.submit(hasKey: hasKey, onSave: onSave) { next() }
+    }
+}
+
+/// 첫 실행 온보딩(R-116, spec 006 R-624). `keyStep`이 있으면 키, 일정, 기본값 세 단계이고 없으면 일정, 기본값 두 단계다.
+/// 일정·기본값 저장은 마지막 "시작하기"에서 한꺼번에 하고, 키는 키 단계 "다음"에서 따로 저장한다. 값과 콜백만 받는다(ADR-0009).
 struct OnboardingView: View {
     let today: LocalDay
     let calendar: Calendar
+    let keyStep: OnboardingKeyInput?
     let onFinish: (OnboardingValues) -> Void
 
-    @State private var step: Int
+    @State private var steps: OnboardingSteps
+    @State private var keyDraft: OnboardingKeyDraft
+    @FocusState private var isKeyFocused: Bool
     @State private var name = ""
     @State private var date: LocalDay
     @State private var impact: ContextImpact = .normal
@@ -29,12 +105,15 @@ struct OnboardingView: View {
 
     init(
         today: LocalDay, calendar: Calendar, initialQuantum: Int, initialExtend: Int, initialDayStart: DayStart,
-        initialStep: Int = 1, onFinish: @escaping (OnboardingValues) -> Void
+        initialStep: Int = 1, keyStep: OnboardingKeyInput? = nil,
+        initialKeyDraft: OnboardingKeyDraft = OnboardingKeyDraft(), onFinish: @escaping (OnboardingValues) -> Void
     ) {
         self.today = today
         self.calendar = calendar
+        self.keyStep = keyStep
         self.onFinish = onFinish
-        _step = State(initialValue: initialStep)
+        _steps = State(initialValue: OnboardingSteps(hasKeyStep: keyStep != nil, initialStep: initialStep))
+        _keyDraft = State(initialValue: initialKeyDraft)
         _date = State(initialValue: today)
         _quantumText = State(initialValue: String(initialQuantum))
         _extendText = State(initialValue: String(initialExtend))
@@ -47,10 +126,13 @@ struct OnboardingView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            StepBar(step: step)
-            if step == 1 {
+            StepBar(step: steps.step, total: steps.total)
+            switch steps.page {
+            case .key:
+                if let keyStep { keyStepView(keyStep) }
+            case .context:
                 contextStep
-            } else {
+            case .defaults:
                 defaultsStep
             }
         }
@@ -58,6 +140,62 @@ struct OnboardingView: View {
         .padding(.top, 14)
         .padding(.bottom, 16)
         .frame(width: 400, alignment: .leading)
+    }
+
+    private func keyStepView(_ input: OnboardingKeyInput) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            heading(OnboardingKeyText.title, OnboardingKeyText.message)
+            if let issueURL = input.issueURL, !input.hasKey {
+                Button(OnboardingKeyText.issueLink) { NSWorkspace.shared.open(issueURL) }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 12))
+                    .underline()
+                    .foregroundStyle(MokaColors.mocha)
+                    .padding(.top, 2)
+                    .padding(.bottom, 8)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(DecisionFieldText.destinationPrefix) + Text(input.host).fontWeight(.semibold)
+                Text(OnboardingKeyText.otherProviders)
+            }
+            .font(.system(size: 11))
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.bottom, 10)
+            if input.hasKey {
+                Text(OnboardingKeyText.saved)
+                    .font(.system(size: 12.5))
+            } else {
+                Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 6) {
+                    GridRow {
+                        label(OnboardingKeyText.fieldLabel, width: 52)
+                        SecureField(OnboardingKeyText.placeholder, text: $keyDraft.text)
+                            .textFieldStyle(.roundedBorder)
+                            .focused($isKeyFocused)
+                            .accessibilityLabel(OnboardingKeyText.fieldLabel)
+                    }
+                }
+                if keyDraft.saveFailed {
+                    Text(OnboardingKeyText.saveFailed)
+                        .font(.system(size: 11))
+                        .foregroundStyle(MokaColors.danger)
+                        .padding(.top, 5)
+                }
+            }
+            HStack(spacing: 6) {
+                Spacer()
+                if !input.hasKey {
+                    SheetButton(title: "건너뛰기", kind: .normal) { steps.next() }
+                }
+                SheetButton(title: "다음", kind: .primary) {
+                    steps.submitKey(&keyDraft, hasKey: input.hasKey, onSave: input.onSave)
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(!keyDraft.canGoNext(hasKey: input.hasKey))
+            }
+            .padding(.top, 14)
+        }
+        .onAppear { isKeyFocused = !input.hasKey }
     }
 
     private var contextStep: some View {
@@ -96,11 +234,11 @@ struct OnboardingView: View {
                 Spacer()
                 SheetButton(title: "건너뛰기", kind: .normal) {
                     includesContext = false
-                    step = 2
+                    steps.next()
                 }
                 SheetButton(title: "다음", kind: .primary) {
                     includesContext = true
-                    step = 2
+                    steps.next()
                 }
                 .keyboardShortcut(.defaultAction)
                 .disabled(!hasName)
@@ -132,7 +270,7 @@ struct OnboardingView: View {
                     .padding(.top, 6)
             }
             HStack(spacing: 6) {
-                SheetButton(title: "이전", kind: .normal) { step = 1 }
+                SheetButton(title: "이전", kind: .normal) { steps.back() }
                 Spacer()
                 SheetButton(title: "시작하기", kind: .primary, action: finish)
                     .keyboardShortcut(.defaultAction)
@@ -189,19 +327,20 @@ struct OnboardingView: View {
 
 private struct StepBar: View {
     let step: Int
+    let total: Int
 
     var body: some View {
         HStack(spacing: 5) {
-            ForEach(1...2, id: \.self) { index in
+            ForEach(1...total, id: \.self) { index in
                 RoundedRectangle(cornerRadius: 2)
                     .fill(index <= step ? MokaColors.mocha : Color(hex: 0x806E5F, opacity: 0.3))
                     .frame(width: 18, height: 4)
             }
-            Text("\(step)/2")
+            Text("\(step)/\(total)")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(step)/2단계")
+        .accessibilityLabel("\(step)/\(total)단계")
     }
 }

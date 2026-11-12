@@ -119,14 +119,14 @@ description: "spec 004 판단 결과 화면 연결 작업 목록"
 
 ### Tests (Red)
 
-- [ ] T017 [US3] `App/Tests/MokaAppTests/AppDecisionTests.swift`: 온보딩이 안 끝난 상태에서 키 단계 첫 값(`hasKey`), 키 단계 저장 콜백이 실패면 `false`·성공이면 `true`를 돌려줌, 키 단계 저장이 spec 003 `saveKey`와 같은 결과(앞뒤 공백 제거, 장부 비움, 실패면 `keyActionFailure == .save`), 이미 있음, 키 없이 `finishOnboarding` 뒤 할 일을 넣으면 노치에 뜸, 키 저장 뒤 끝내기 전 다시 만든 `AppState`에서 온보딩이 다시 보이고 키는 있음, 키 값이 설정 저장소·판단 결과·행동 로그에 없음. 실패를 확인한다(`FR-21 R-314`, `FR-21 R-315`, SC-307, SC-308) 〔단위 4〕
-- [ ] T018 [US3] [화면 뒤] `App/Tests/MokaAppTests/SettingsSnapshotTests.swift`에 `test_R313_onboardingKeyEmpty`, `test_R313_onboardingKeyFailed`, `test_R313_onboardingKeySaved`(라이트·다크)를 확정 시안대로 쓰고 실패를 확인한다. `onboardingKeyFailed`는 `false`를 돌려주는 `onSave`로 뷰를 만들고 저장을 눌러, 뷰가 스스로 실패 문구로 바뀌는지 찍는다(뷰를 다시 만들지 않음, data-model §5). 기존 온보딩 두 단계 스냅샷은 그대로 둔다(`FR-21 R-313`) 〔단위 4〕
+- [ ] T017 [US3] `App/Tests/MokaAppTests/AppDecisionTests.swift`: 온보딩이 안 끝난 상태에서 키 단계 첫 값(`hasKey`), 키 단계 저장 콜백이 실패면 `false`·성공이면 `true`를 돌려줌, 키 단계 저장이 spec 003 `saveKey`와 같은 결과(앞뒤 공백 제거, 장부 비움, 실패면 `keyActionFailure == .save`), 이미 있음, 키 없이 `finishOnboarding` 뒤 할 일을 넣으면 노치에 뜸, 키 저장 뒤 끝내기 전 다시 만든 `AppState`에서 온보딩이 다시 보이고 키는 있음, 키 값이 설정 저장소·판단 결과·행동 로그에 없음. 실패를 확인한다(`FR-21 R-314`, `FR-21 R-315`, SC-307, SC-308) 〔단위 4〕 (spec 006 단위 4·5가 담음, ADR-0011 R-630)
+- [ ] T018 [US3] [화면 뒤] `App/Tests/MokaAppTests/SettingsSnapshotTests.swift`에 `test_R313_onboardingKeyEmpty`, `test_R313_onboardingKeyFailed`, `test_R313_onboardingKeySaved`(라이트·다크)를 확정 시안대로 쓰고 실패를 확인한다. `onboardingKeyFailed`는 `false`를 돌려주는 `onSave`로 뷰를 만들고 저장을 눌러, 뷰가 스스로 실패 문구로 바뀌는지 찍는다(뷰를 다시 만들지 않음, data-model §5). 기존 온보딩 두 단계 스냅샷은 그대로 둔다(`FR-21 R-313`) 〔단위 4〕 (spec 006 단위 4·5가 담음, ADR-0011 R-630)
 
 ### Implementation (Green)
 
-- [ ] T019 [US3] [화면 뒤] `App/Sources/Views/OnboardingView.swift`에 `keyStep: OnboardingKeyInput? = nil`(data-model §5 표, 저장 실패는 `onSave`의 `false`를 `@State`로 들고 있음), 값이 있으면 세 단계이고 첫 단계가 키, 칸이 비면 "다음" 꺼짐, 발급 링크는 `NSWorkspace`로 연다. `nil`이면 지금 두 단계 그대로. T018 PASS, 기존 스냅샷 PASS 〔단위 4〕
-- [ ] T020 [US3] `App/Sources/AppState.swift`에 온보딩 키 단계가 쓰는 값(`hasKey`)과 저장 콜백(`saveKey` 재사용, 성공 여부를 Bool로 돌려줌. 실패 문구는 뷰가 그 false로 보이고 `keyActionFailure`는 설정 창 기본 탭 문구용), `App/Sources/MokaApp.swift`가 온보딩에 `keyStep`과 발급 링크 상수(T002에서 확정한 주소, 앱 상수 한 곳)를 넘긴다. T017 PASS 〔단위 4〕
-- [ ] T021 [사람] [US3] quickstart 6-4(macOS 새 사용자 계정) 〔단위 4〕
+- [ ] T019 [US3] [화면 뒤] `App/Sources/Views/OnboardingView.swift`에 `keyStep: OnboardingKeyInput? = nil`(data-model §5 표, 저장 실패는 `onSave`의 `false`를 `@State`로 들고 있음), 값이 있으면 세 단계이고 첫 단계가 키, 칸이 비면 "다음" 꺼짐, 발급 링크는 `NSWorkspace`로 연다. `nil`이면 지금 두 단계 그대로. T018 PASS, 기존 스냅샷 PASS 〔단위 4〕 (spec 006 단위 4·5가 담음, ADR-0011 R-630)
+- [ ] T020 [US3] `App/Sources/AppState.swift`에 온보딩 키 단계가 쓰는 값(`hasKey`)과 저장 콜백(`saveKey` 재사용, 성공 여부를 Bool로 돌려줌. 실패 문구는 뷰가 그 false로 보이고 `keyActionFailure`는 설정 창 기본 탭 문구용), `App/Sources/MokaApp.swift`가 온보딩에 `keyStep`과 발급 링크 상수(T002에서 확정한 주소, 앱 상수 한 곳)를 넘긴다. T017 PASS 〔단위 4〕 (spec 006 단위 4·5가 담음, ADR-0011 R-630)
+- [ ] T021 [사람] [US3] quickstart 6-4(macOS 새 사용자 계정) 〔단위 4〕 (spec 006 단위 4·5가 담음, ADR-0011 R-630)
 
 **확인 지점**: SC-307·SC-308. 키 없이 온보딩을 끝내도 노치에 할 일이 뜬다.
 
@@ -142,14 +142,14 @@ description: "spec 004 판단 결과 화면 연결 작업 목록"
 
 - [ ] T022 [US4] `App/Tests/MokaAppTests/AppDecisionTests.swift`: 가짜 공급자 401 뒤 `showsKeyNotice == true`, 키 저장·지움 뒤 `false`, 401 뒤 키 저장이 실패하면 `showsKeyNotice`가 기본 탭 `keyFieldState == .needsCheck`와 같은 값(`false`), 키 없음이면 `false`, 키 확인 동작이 `settingsTabRequest == .basic`을 남김. 실패를 확인한다(`FR-14 R-318`, SC-309) 〔단위 2〕
 - [x] T024 [US4] [화면 뒤] `App/Tests/MokaAppTests/ScreenStateSnapshotTests.swift`에 `test_R316_keyNoticeEmpty`, `test_R316_keyNoticeDraft`, `test_R316_keyNoticeRunning`(라이트·다크)과 접힌 노치에 표시가 없는 것(기존 접힌 스냅샷과 같은 그림)을 쓰고 실패를 확인한다(`FR-14 R-316`) 〔단위 3〕
-- [ ] T026 [US4] [화면 뒤] `App/Tests/MokaAppTests/SettingsSnapshotTests.swift`에 `test_R317_taskTabKeyNotice`(라이트·다크)를 쓰고 실패를 확인한다(`FR-14 R-317`) 〔단위 4〕
+- [ ] T026 [US4] [화면 뒤] `App/Tests/MokaAppTests/SettingsSnapshotTests.swift`에 `test_R317_taskTabKeyNotice`(라이트·다크)를 쓰고 실패를 확인한다(`FR-14 R-317`) 〔단위 4〕 (spec 006 단위 4·5가 담음, ADR-0011 R-630)
 
 ### Implementation (Green)
 
 - [ ] T023 [US4] `App/Sources/AppState.swift`: `showsKeyNotice`, `settingsTabRequest: SettingsTab?`, 키 확인 동작 `requestKeySettings()`(data-model §4, research R8). T022 PASS 〔단위 2〕
 - [x] T025 [US4] [화면 뒤] `App/Sources/Views/ExpandedView.swift`에 `keyNotice: Bool = false`, `onOpenKeySettings` 인자와 한 줄(빈 상태, 시작 전, 도는 중, 시간 끝은 없음). `App/Sources/Notch/NotchPanelHost.swift`가 `requestKeySettings()` 뒤 기존 "설정…"과 같은 순서로 창을 연다(plan "앱 연결"). T024 PASS 〔단위 3〕
-- [ ] T027 [US4] [화면 뒤] `App/Sources/Views/TaskListTabView.swift`에 `keyNotice: Bool = false`, `onOpenKeySettings` 인자와 목록 위 한 줄, `App/Sources/Settings/SettingsView.swift`가 나타날 때와 `settingsTabRequest`가 바뀔 때 탭을 바꾸고 값을 비우며, 할 일 탭 한 줄의 동작은 탭을 기본으로 바꾼다. T026 PASS 〔단위 4〕
-- [ ] T028 [사람] [US4] quickstart 6-5 〔단위 4〕
+- [ ] T027 [US4] [화면 뒤] `App/Sources/Views/TaskListTabView.swift`에 `keyNotice: Bool = false`, `onOpenKeySettings` 인자와 목록 위 한 줄, `App/Sources/Settings/SettingsView.swift`가 나타날 때와 `settingsTabRequest`가 바뀔 때 탭을 바꾸고 값을 비우며, 할 일 탭 한 줄의 동작은 탭을 기본으로 바꾼다. T026 PASS 〔단위 4〕 (spec 006 단위 4·5가 담음, ADR-0011 R-630)
+- [ ] T028 [사람] [US4] quickstart 6-5 〔단위 4〕 (spec 006 단위 4·5가 담음, ADR-0011 R-630)
 
 **확인 지점**: SC-309. 키 확인 필요가 세 곳에서 함께 켜지고 꺼진다.
 

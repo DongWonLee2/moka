@@ -188,7 +188,7 @@ final class OnboardingWindow {
             today: appState.logicalToday, calendar: calendar,
             initialQuantum: QuantumSettings.readDefault(from: settings),
             initialExtend: CoreSettings.readExtendMin(from: settings),
-            initialDayStart: CoreSettings.readDayStart(from: settings),
+            initialDayStart: CoreSettings.readDayStart(from: settings), keyStep: appState.onboardingKey,
             onFinish: { [weak self] values in
                 guard let self, appState.finishOnboarding(values) else { return }
                 self.window?.close()

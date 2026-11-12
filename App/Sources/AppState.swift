@@ -813,6 +813,45 @@ final class AppState {
         return true
     }
 
+    /// 온보딩 키 단계 값(spec 006 data-model §8, R-624). 고른 공급자·바인딩과 상관없이 Jev 보관함과 Jev 호스트를 쓴다.
+    var onboardingKey: OnboardingKeyInput? {
+        guard let decision, let config = ProviderCatalog.config(.typesafe, in: decision.catalog),
+            case .fixed(let url) = config.endpoint
+        else { return nil }
+        let hasKey: Bool
+        do {
+            hasKey = try decision.keyStore(.typesafe).hasKey()
+        } catch {
+            Self.logKeyFailure("확인", error)
+            hasKey = false
+        }
+        return OnboardingKeyInput(
+            hasKey: hasKey, onSave: { [weak self] in self?.saveOnboardingKey($0) ?? false },
+            issueURL: config.issueURLConfirmed ? config.issueURL : nil, host: EndpointRule.host(of: url))
+    }
+
+    /// 온보딩 키 단계 저장(R-625). 설정 창 키 저장처럼 앞뒤 공백을 지우고 장부를 비운 뒤 다시 묻지만, Jev 보관함에만
+    /// 저장하고 고른 공급자 설정은 쓰지 않는다. 실패는 온보딩 창이 보이므로 기본 탭 키 칸 실패 표시를 남기지 않는다.
+    @discardableResult
+    func saveOnboardingKey(_ text: String) -> Bool {
+        let key = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let decision, !key.isEmpty else { return false }
+        do {
+            try decision.keyStore(.typesafe).save(key)
+        } catch {
+            Self.logKeyFailure("저장", error)
+            return false
+        }
+        if selectedProvider == .typesafe {
+            keyActionFailure = nil
+            keyNeedsCheck = false
+        }
+        attempted = [:]
+        refreshHasKey()
+        requestScores()
+        return true
+    }
+
     /// 키 지우기. 판단 결과는 지우지 않고 키가 없는 순서(마감 순)로만 바뀐다.
     @discardableResult
     func deleteKey() -> Bool {
