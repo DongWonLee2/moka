@@ -225,10 +225,8 @@ final class AppState {
     private(set) var selectionOff: DecisionSelection.OffReason?
     /// 공급자 고르기·Microsoft 칸 저장 가운데 실패한 동작. 다음 성공에 지운다.
     private(set) var providerActionFailure: ProviderAction?
-    /// 설정에 저장된 Microsoft 칸 값. 바인딩을 다시 만들 때 함께 읽는다.
     private(set) var microsoftEndpoint: String?
     private(set) var microsoftDeployment: String?
-    /// Microsoft 주소를 바꿔 키를 지웠고 아직 키를 다시 넣지 않았다(006 시안 10번).
     private(set) var microsoftKeyCleared = false
 
     /// 요청이 갈 곳의 호스트(spec 006 R-606). 판단 기능이 켜져 있으면 지금 바인딩의 주소에서 꺼내 실제 목적지와 늘 같다.
@@ -249,7 +247,6 @@ final class AppState {
         }
     }
 
-    /// 설정 창 기본 탭 판단 모델 칸(spec 006 data-model §9).
     var decisionField: DecisionFieldInput {
         let catalog = decision?.catalog ?? ProviderCatalog.all
         let questions = decision?.questions
@@ -968,7 +965,6 @@ final class AppState {
         settingsTabRequest = .basic
     }
 
-    /// 설정 창이 열 탭을 꺼내고 비운다. 요청이 없으면 nil이다.
     func takeSettingsTabRequest() -> SettingsTab? {
         guard let request = settingsTabRequest else { return nil }
         settingsTabRequest = nil

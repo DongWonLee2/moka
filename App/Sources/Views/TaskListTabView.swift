@@ -1,13 +1,11 @@
 import MokaCore
 import SwiftUI
 
-/// 할 일 탭 키 확인 한 줄 글자(spec 004 시안 15번, 사용자 확정 2026-11-10).
 enum TaskListText {
     static let keyNotice = "키가 맞지 않아 새 할 일은 판단 모델에 묻지 못하고 있어요."
     static let keyNoticeButton = "기본 탭에서 확인"
 }
 
-/// 목록 위 키 확인 한 줄. 경고색 글자와 옅은 경고색 바탕이다.
 private struct TaskListKeyNotice: View {
     let onOpen: () -> Void
 
@@ -44,7 +42,6 @@ struct TaskListTabView: View {
     let onDelete: () -> Void
     /// 키 확인 필요인 동안 목록 위에 한 줄을 보인다(spec 006 R-627, spec 004 시안 15번).
     var keyNotice = false
-    /// 같은 창을 기본 탭으로 바꾼다.
     var onOpenKeySettings: () -> Void = {}
 
     @Environment(\.colorScheme) private var colorScheme

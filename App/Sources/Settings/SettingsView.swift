@@ -158,7 +158,6 @@ struct SettingsView: View {
             load()
             takeTabRequest()
         }
-        // 노치 "키 확인"이 설정 창을 열기 전에 기본 탭을 요청한다(spec 004 research R8).
         .onChange(of: appState.settingsTabRequest) { takeTabRequest() }
         // 보기를 바꾸면 체크를 비운다. 숨은 줄에 체크가 남아 전체 고르기·지우기와 엇갈리지 않게 한다(R-122).
         .onChange(of: appState.taskListScope) { checkedTaskIDs = [] }

@@ -4,7 +4,6 @@ import SwiftUI
 
 /// 설정 창 기본 탭(시안 6번, R-012, data-model §6). 값과 콜백만 받는다(ADR-0009).
 /// 숫자 칸은 제출(Enter)이나 포커스를 잃을 때 `onCommit`을 부른다. 받지 않는 값을 적는 동안은 안내 대신 이유를 보인다.
-/// 아래에 판단 모델 칸(spec 006 data-model §9, 006 시안 1~10번)을 둔다.
 struct BasicTabView: View {
     let quantum: MinutesFieldInput
     let extend: MinutesFieldInput
@@ -109,7 +108,6 @@ struct KeyFieldBox: View {
     let onSave: (String) -> Void
     let onDelete: () -> Void
     let onRetry: () -> Void
-    /// 키가 없을 때 칸 위 안내. Microsoft 주소를 바꿔 키를 지운 뒤에는 지웠다는 문구가 대신한다(006 시안 10번).
     var showsIntro = true
     @State private var keyText = ""
 

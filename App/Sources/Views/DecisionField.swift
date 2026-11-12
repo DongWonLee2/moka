@@ -2,7 +2,6 @@ import AppKit
 import MokaCore
 import SwiftUI
 
-/// 공급자 목록 한 줄(spec 006 data-model §9). 열리지 않은 줄은 흐리게 이유와 함께 보이고 고를 수 없다.
 struct ProviderRow: Equatable {
     let id: ProviderID
     let displayName: String
@@ -10,24 +9,17 @@ struct ProviderRow: Equatable {
     let closedNote: String?
 }
 
-/// Microsoft를 골랐을 때만 있는 칸 값. 저장된 값이 없으면 nil이다.
 struct MicrosoftFieldInput: Equatable {
     let savedEndpoint: String?
     let savedDeployment: String?
-    /// 저장된 주소가 있어 다른 주소로 저장하면 키를 지운다는 안내를 보인다.
     let showsKeyResetNotice: Bool
-    /// 주소를 바꿔 키를 지웠고 아직 키를 다시 넣지 않았다.
     let keyCleared: Bool
 }
 
-/// 설정 창 기본 탭 판단 모델 칸의 값과 콜백(spec 006 data-model §9, ADR-0009). AppState가 만든다.
 struct DecisionFieldInput {
     var providers: [ProviderRow] = []
-    /// 고른 공급자. 설정에 모르는 공급자 ID가 있으면 nil이고 키 칸 대신 다시 골라 달라는 안내만 보인다.
     var selected: ProviderID? = .typesafe
-    /// 사람이 확인한 발급 링크만 있다.
     var issueURL: URL?
-    /// 할 일 제목이 가는 곳. 없으면 줄을 보이지 않는다.
     var host: String?
     var provisional = false
     var offNote: String?
@@ -36,7 +28,6 @@ struct DecisionFieldInput {
     var canRetry = false
     var failure: ProviderAction?
     var onSelect: (ProviderID) -> Void = { _ in }
-    /// 거부하면 이유를 돌려주고 저장하지 않는다.
     var onSaveMicrosoft: (String, String) -> EndpointRejection? = { _, _ in nil }
     var onSaveKey: (String) -> Void = { _ in }
     var onDeleteKey: () -> Void = {}
@@ -47,7 +38,6 @@ struct DecisionFieldInput {
     }
 }
 
-/// 판단 모델 칸이 스스로 들고 있는 값의 처음 값. 앱은 기본값을 쓰고, 스냅샷만 펼친 목록과 적는 중인 주소를 넣는다.
 struct DecisionFieldStart {
     var listOpen = false
     var endpoint: String?
@@ -55,7 +45,6 @@ struct DecisionFieldStart {
     var rejection: EndpointRejection?
 }
 
-/// 판단 모델 칸 글자. 확정 시안(006-mockup, 2026-11-12) 그대로다.
 enum DecisionFieldText {
     static let providerLabel = "공급자"
     static let choosePlaceholder = "골라 주세요"
@@ -79,7 +68,6 @@ enum DecisionFieldText {
         return "판단 모델 키 (\(providerName))"
     }
 
-    /// 화면 이름의 첫 낱말이 회사 이름이다("TypeSafe Jev" → "TypeSafe에서 키 받기").
     static func issueLink(_ displayName: String) -> String {
         let company = displayName.split(separator: " ").first.map(String.init) ?? displayName
         return "\(company)에서 키 받기"
@@ -192,8 +180,6 @@ struct DecisionFieldBox: View {
     }
 }
 
-/// 칸 안 안내 한 줄. `isWarning`이면 경고색이다.
-/// 잠정값 안내(시안 4번). 다른 안내와 갈리게 모카색이다.
 private struct ProvisionalNote: View {
     @Environment(\.colorScheme) private var colorScheme
 
@@ -217,7 +203,6 @@ private struct FieldNote: View {
     }
 }
 
-/// 고른 공급자를 보이는 단추. 누르면 아래에 목록을 펼친다. 펼친 목록이 칸 안에 있어야 열리지 않은 이유가 함께 보인다.
 private struct ProviderPopButton: View {
     let title: String
     let action: () -> Void
@@ -248,7 +233,6 @@ private struct ProviderPopButton: View {
     }
 }
 
-/// 펼친 공급자 목록(시안 3번). 열리지 않은 줄은 흐리게 이유 한 줄과 함께 보이고 누를 수 없다.
 private struct ProviderList: View {
     let rows: [ProviderRow]
     let selected: ProviderID?

@@ -114,16 +114,12 @@ final class SettingsSnapshotTests: XCTestCase {
         try snapshot("s24-key-unavailable", decision: Self.typeSafe(.storageUnavailable))
     }
 
-    // MARK: - 판단 모델 칸(spec 006 data-model §9, 006 시안 1~10번, 시안 확정 2026-11-12)
-
-    /// 시안 3번: 다섯 공급자가 보이고 열리지 않은 넷은 흐리게 이유 한 줄과 함께 보인다.
     func test_ADR0011_R620_providerListOpen() throws {
         try snapshot(
             "s25-provider-list", decision: Self.typeSafe(.saved, canRetry: true),
             start: DecisionFieldStart(listOpen: true), height: 580)
     }
 
-    /// 시안 4번: 가짜로 연 Perplexity 줄. 지금 빌드에서는 고를 수 없어 뷰만 그린다.
     func test_ADR0011_R621_provisionalProvider() throws {
         let decision = DecisionFieldInput(
             providers: Self.rows(opening: [.typesafe, .perplexity]), selected: .perplexity,
@@ -132,14 +128,12 @@ final class SettingsSnapshotTests: XCTestCase {
         try snapshot("s25-provider-provisional", decision: decision)
     }
 
-    /// 시안 6번: 설정을 저장하지 못하면 원래 공급자로 남고 다시 해 달라는 문구가 보인다.
     func test_ADR0011_R622_selectFailed() throws {
         var decision = Self.typeSafe(.saved, canRetry: true)
         decision.failure = .select
         try snapshot("s25-provider-select-failed", decision: decision)
     }
 
-    /// 시안 7번: 주소가 없으면 가는 곳 줄 대신 묻지 않는다는 안내가 보인다.
     func test_ADR0011_R623_microsoftEmpty() throws {
         try snapshot(
             "s26-microsoft-empty",
@@ -150,7 +144,6 @@ final class SettingsSnapshotTests: XCTestCase {
             height: Self.microsoftHeight)
     }
 
-    /// 시안 8번: https가 아닌 주소를 저장하려 하면 이유를 보이고 저장하지 않는다.
     func test_ADR0011_R623_microsoftRejectedScheme() throws {
         try snapshot(
             "s26-microsoft-rejected-scheme", decision: Self.microsoftUnsaved,
@@ -168,7 +161,6 @@ final class SettingsSnapshotTests: XCTestCase {
             height: Self.microsoftHeight)
     }
 
-    /// 시안 9번: 저장됨. 주소를 바꾸면 키를 지운다는 안내가 늘 보인다.
     func test_ADR0011_R623_microsoftSaved() throws {
         try snapshot(
             "s26-microsoft-saved",
@@ -180,7 +172,6 @@ final class SettingsSnapshotTests: XCTestCase {
             height: Self.microsoftHeight)
     }
 
-    /// 시안 10번: 주소를 바꿔 키를 지운 뒤.
     func test_ADR0011_R616_R623_microsoftKeyCleared() throws {
         try snapshot(
             "s26-microsoft-key-cleared",
@@ -419,7 +410,6 @@ final class SettingsSnapshotTests: XCTestCase {
         try write(name, content: content, size: CGSize(width: 460, height: height))
     }
 
-    /// 다섯 공급자 줄. `opening`에 든 공급자만 고를 수 있다.
     private static func rows(opening: Set<ProviderID> = [.typesafe]) -> [ProviderRow] {
         ProviderCatalog.all.map { row in
             let isOpen = opening.contains(row.id)
@@ -429,13 +419,11 @@ final class SettingsSnapshotTests: XCTestCase {
         }
     }
 
-    /// 지금 빌드처럼 TypeSafe Jev만 열렸고 골라져 있다. 발급 링크는 확인 전이라 없다.
     private static func typeSafe(_ keyState: KeyFieldState, canRetry: Bool = false) -> DecisionFieldInput {
         DecisionFieldInput(
             providers: rows(), selected: .typesafe, host: "api.typesafe.ai", keyState: keyState, canRetry: canRetry)
     }
 
-    /// 가짜로 연 Microsoft 줄을 고른 칸.
     private static func microsoft(
         _ input: MicrosoftFieldInput, host: String?, offNote: String? = nil, keyState: KeyFieldState,
         canRetry: Bool = false
@@ -449,7 +437,6 @@ final class SettingsSnapshotTests: XCTestCase {
         MicrosoftFieldInput(savedEndpoint: nil, savedDeployment: nil, showsKeyResetNotice: false, keyCleared: false),
         host: nil, offNote: DecisionFieldText.offNote(.needsEndpoint), keyState: .noKey)
 
-    /// 기본 탭(숫자 칸, 판단 모델 칸) 높이.
     private static let basicHeight: CGFloat = 440
     private static let microsoftHeight: CGFloat = 540
 
