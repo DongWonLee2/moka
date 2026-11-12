@@ -67,46 +67,63 @@ private func reason(
     }
 }
 
-@Suite struct ReasonLineLossTests {
+@Suite struct ReasonLineImpactTests {
     @Test(
-        "FR-04 R-303: 손해는 impact에 (옵션 수 - 1)을 곱해 0.5에서 올림한 번호의 옵션 말이다",
+        "FR-04 R-303: 중요도는 impact에 (옵션 수 - 1)을 곱해 0.5에서 올림한 옵션 번호 0·1·2를 낮음·보통·높음으로 보인다",
         arguments: [
-            (0.0, "조금"), (0.24, "조금"), (0.25, "꽤"), (0.5, "꽤"), (0.74, "꽤"), (0.75, "아주"), (1.0, "아주"),
+            (0.0, "낮음"), (0.24, "낮음"), (0.25, "보통"), (0.5, "보통"), (0.74, "보통"), (0.75, "높음"), (1.0, "높음"),
         ])
     func roundingBoundaries(impact: Double, expected: String) {
-        #expect(reason(Fake.task(1), usable: [1: judged(impact: impact)]).loss == expected)
+        #expect(reason(Fake.task(1), usable: [1: judged(impact: impact)]).impact == expected)
     }
 
-    @Test("FR-04 R-303: 손해 말과 옵션 수는 질문 파일의 impact 옵션에서 읽는다")
-    func optionsFromQuestionFile() throws {
-        let five = try QuestionSet(
+    @Test("FR-04 R-303: 저장소 값이 0~1 밖이어도 끝 옵션에 머문다")
+    func outOfRange() {
+        #expect(reason(Fake.task(1), usable: [1: judged(impact: -0.2)]).impact == "낮음")
+        #expect(reason(Fake.task(1), usable: [1: judged(impact: 1.3)]).impact == "높음")
+    }
+
+    @Test("FR-04 R-303: 화면 말은 질문 파일 impact 옵션 말과 따로다")
+    func wordsNotFromQuestionFile() throws {
+        let renamed = try QuestionSet(
             json: questionsJSON { root in
                 editQuestions(&root) {
-                    $0["impact"] = ["type": "score", "instructions": "가짜", "criteria": ["가", "나", "다", "라", "마"]]
+                    $0["impact"] = ["type": "score", "instructions": "가짜", "criteria": ["가", "나", "다"]]
                 }
             })
-        #expect(reason(Fake.task(1), usable: [1: judged(impact: 0.5)], set: five).loss == "다")
-        #expect(reason(Fake.task(1), usable: [1: judged(impact: 0.124)], set: five).loss == "가")
-        #expect(reason(Fake.task(1), usable: [1: judged(impact: 0.125)], set: five).loss == "나")
+        #expect(reason(Fake.task(1), usable: [1: judged(impact: 0.5)], set: renamed).impact == "보통")
     }
 
-    @Test("FR-04 R-303 SC-302: 키가 없어 쓰는 판단 결과가 비면 손해가 없다")
+    @Test(
+        "FR-04 R-303: impact 옵션 수가 3이 아닌 질문 파일이면 중요도가 없다",
+        arguments: [["가", "나"], ["가", "나", "다", "라", "마"]])
+    func notThreeOptions(criteria: [String]) throws {
+        let set = try QuestionSet(
+            json: questionsJSON { root in
+                editQuestions(&root) {
+                    $0["impact"] = ["type": "score", "instructions": "가짜", "criteria": criteria]
+                }
+            })
+        #expect(reason(Fake.task(1), usable: [1: judged(impact: 0.5)], set: set).impact == nil)
+    }
+
+    @Test("FR-04 R-303 SC-302: 키가 없어 쓰는 판단 결과가 비면 중요도가 없다")
     func noKey() {
         let usable = ScoreRules.usable(scores: [1: judged()], hasKey: false, questionVersion: "v1", provider: "fake")
-        #expect(reason(Fake.task(1), usable: usable).loss == nil)
+        #expect(reason(Fake.task(1), usable: usable).impact == nil)
     }
 
-    @Test("FR-04 R-303 SC-302: 그 할 일의 판단 결과가 없으면 손해가 없다(다른 할 일 결과는 쓰지 않는다)")
+    @Test("FR-04 R-303 SC-302: 그 할 일의 판단 결과가 없으면 중요도가 없다(다른 할 일 결과는 쓰지 않는다)")
     func noScore() {
         let usable = ScoreRules.usable(scores: [2: judged(2)], hasKey: true, questionVersion: "v1", provider: "fake")
-        #expect(reason(Fake.task(1), usable: usable).loss == nil)
+        #expect(reason(Fake.task(1), usable: usable).impact == nil)
     }
 
-    @Test("FR-04 R-303 SC-302: 질문 버전이 다른 판단 결과면 손해가 없다")
+    @Test("FR-04 R-303 SC-302: 질문 버전이 다른 판단 결과면 중요도가 없다")
     func otherVersion() {
         let usable = ScoreRules.usable(
             scores: [1: judged(version: "v0")], hasKey: true, questionVersion: "v1", provider: "fake")
-        #expect(reason(Fake.task(1), usable: usable).loss == nil)
+        #expect(reason(Fake.task(1), usable: usable).impact == nil)
     }
 }
 
@@ -120,27 +137,27 @@ private func reason(
 
 @Suite struct ReasonTextTests {
     @Test(
-        "FR-04 R-302 R-303 R-304: 한 줄은 남은 날 · 손해 · 미룬 횟수다",
+        "FR-04 R-302 R-303 R-304: 한 줄은 남은 날 · 중요도 · 미룬 횟수다",
         arguments: [
-            (DeadlineDistance.left(3), "꽤", 2, "D-3 · 손해 꽤 · 미룬 2번"),
-            (.today, "아주", 0, "D-day · 손해 아주 · 미룬 0번"),
-            (.overdue(2), "조금", 1, "D+2 · 손해 조금 · 미룬 1번"),
-            (.none, "꽤", 0, "마감 없음 · 손해 꽤 · 미룬 0번"),
+            (DeadlineDistance.left(3), "보통", 2, "D-3 · 중요도 보통 · 미룬 2번"),
+            (.today, "높음", 0, "D-day · 중요도 높음 · 미룬 0번"),
+            (.overdue(2), "낮음", 1, "D+2 · 중요도 낮음 · 미룬 1번"),
+            (.none, "보통", 0, "마감 없음 · 중요도 보통 · 미룬 0번"),
         ])
-    func line(deadline: DeadlineDistance, loss: String, skipCount: Int, expected: String) {
-        #expect(ReasonText.line(ReasonLine(deadline: deadline, loss: loss, skipCount: skipCount)) == expected)
+    func line(deadline: DeadlineDistance, impact: String, skipCount: Int, expected: String) {
+        #expect(ReasonText.line(ReasonLine(deadline: deadline, impact: impact, skipCount: skipCount)) == expected)
     }
 
-    @Test("FR-04 R-303 SC-302: 손해가 없으면 손해 칸과 그 구분자를 뺀다")
-    func lineWithoutLoss() {
-        #expect(ReasonText.line(ReasonLine(deadline: .left(3), loss: nil, skipCount: 0)) == "D-3 · 미룬 0번")
-        #expect(ReasonText.line(ReasonLine(deadline: .none, loss: nil, skipCount: 4)) == "마감 없음 · 미룬 4번")
+    @Test("FR-04 R-303 SC-302: 중요도가 없으면 중요도 칸과 그 구분자를 뺀다")
+    func lineWithoutImpact() {
+        #expect(ReasonText.line(ReasonLine(deadline: .left(3), impact: nil, skipCount: 0)) == "D-3 · 미룬 0번")
+        #expect(ReasonText.line(ReasonLine(deadline: .none, impact: nil, skipCount: 4)) == "마감 없음 · 미룬 4번")
     }
 
     @Test("FR-04 R-302 R-303 R-304 SC-301: 할 일과 판단 결과에서 노치에 보일 한 줄을 만든다")
     func endToEnd() {
         let task = Fake.task(1, deadline: Fake.day("2027-01-16"), skipCount: 2)
-        #expect(ReasonText.line(reason(task, usable: [1: judged(impact: 0.6)])) == "D-3 · 손해 꽤 · 미룬 2번")
+        #expect(ReasonText.line(reason(task, usable: [1: judged(impact: 0.6)])) == "D-3 · 중요도 보통 · 미룬 2번")
         #expect(ReasonText.line(reason(task)) == "D-3 · 미룬 2번")
     }
 }
