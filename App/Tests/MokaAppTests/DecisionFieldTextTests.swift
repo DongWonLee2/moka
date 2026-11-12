@@ -12,7 +12,7 @@ final class DecisionFieldTextTests: XCTestCase {
         XCTAssertEqual(
             DecisionFieldText.switchNotice, "공급자를 바꾸면 할 일을 모두 새 판단 모델에 다시 물어요. 그동안은 마감이 가까운 순으로 떠요.")
         XCTAssertEqual(DecisionFieldText.closedNote, "아직 연결을 확인하는 중이라 고를 수 없어요.")
-        XCTAssertEqual(DecisionFieldText.destinationPrefix, "할 일 제목이 가는 곳: ")
+        XCTAssertEqual(DecisionFieldText.destinationPrefix, "판단을 받으러 보내는 곳: ")
         XCTAssertEqual(DecisionFieldText.selectFailed, "공급자를 바꾸지 못했어요. 다시 해 주세요.")
         XCTAssertEqual(DecisionFieldText.issueLink("TypeSafe Jev"), "TypeSafe에서 키 받기")
         XCTAssertEqual(DecisionFieldText.issueLink("Perplexity Decider v1.2"), "Perplexity에서 키 받기")
