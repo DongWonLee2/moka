@@ -49,21 +49,48 @@ struct OnboardingKeyDraft: Equatable {
     }
 }
 
-/// 첫 실행 온보딩(R-116, spec 006 R-624). `keyStep`이 있으면 키, 일정, 기본값 세 단계이고 없으면 일정, 기본값 두 단계다.
-/// 일정·기본값 저장은 마지막 "시작하기"에서 한꺼번에 하고, 키는 키 단계 "다음"에서 따로 저장한다. 값과 콜백만 받는다(ADR-0009).
-struct OnboardingView: View {
-    private enum Page {
+/// 온보딩 단계 이동(R-116, R-624). 키 단계가 있으면 키, 일정, 기본값이고 없으면 일정, 기본값이다.
+struct OnboardingSteps: Equatable {
+    enum Page: Equatable {
         case key
         case context
         case defaults
     }
 
+    private let pages: [Page]
+    private(set) var step: Int
+
+    init(hasKeyStep: Bool, initialStep: Int) {
+        pages = hasKeyStep ? [.key, .context, .defaults] : [.context, .defaults]
+        step = initialStep
+    }
+
+    var total: Int { pages.count }
+    var page: Page { pages[step - 1] }
+
+    mutating func next() {
+        if step < total { step += 1 }
+    }
+
+    mutating func back() {
+        if step > 1 { step -= 1 }
+    }
+
+    /// 키 단계 "다음": 저장하거나 키가 이미 있으면 일정 단계로 가고, 저장이 실패하면 머문다.
+    mutating func submitKey(_ draft: inout OnboardingKeyDraft, hasKey: Bool, onSave: (String) -> Bool) {
+        if draft.submit(hasKey: hasKey, onSave: onSave) { next() }
+    }
+}
+
+/// 첫 실행 온보딩(R-116, spec 006 R-624). `keyStep`이 있으면 키, 일정, 기본값 세 단계이고 없으면 일정, 기본값 두 단계다.
+/// 일정·기본값 저장은 마지막 "시작하기"에서 한꺼번에 하고, 키는 키 단계 "다음"에서 따로 저장한다. 값과 콜백만 받는다(ADR-0009).
+struct OnboardingView: View {
     let today: LocalDay
     let calendar: Calendar
     let keyStep: OnboardingKeyInput?
     let onFinish: (OnboardingValues) -> Void
 
-    @State private var step: Int
+    @State private var steps: OnboardingSteps
     @State private var keyDraft: OnboardingKeyDraft
     @FocusState private var isKeyFocused: Bool
     @State private var name = ""
@@ -86,7 +113,7 @@ struct OnboardingView: View {
         self.calendar = calendar
         self.keyStep = keyStep
         self.onFinish = onFinish
-        _step = State(initialValue: initialStep)
+        _steps = State(initialValue: OnboardingSteps(hasKeyStep: keyStep != nil, initialStep: initialStep))
         _keyDraft = State(initialValue: initialKeyDraft)
         _date = State(initialValue: today)
         _quantumText = State(initialValue: String(initialQuantum))
@@ -98,13 +125,10 @@ struct OnboardingView: View {
     private var quantumMin: Int? { QuantumChip.parseCustom(quantumText) }
     private var extendMin: Int? { QuantumChip.parseCustom(extendText) }
 
-    private var pages: [Page] { keyStep == nil ? [.context, .defaults] : [.key, .context, .defaults] }
-    private var page: Page { pages[step - 1] }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            StepBar(step: step, total: pages.count)
-            switch page {
+            StepBar(step: steps.step, total: steps.total)
+            switch steps.page {
             case .key:
                 if let keyStep { keyStepView(keyStep) }
             case .context:
@@ -162,10 +186,10 @@ struct OnboardingView: View {
             HStack(spacing: 6) {
                 Spacer()
                 if !input.hasKey {
-                    SheetButton(title: "건너뛰기", kind: .normal) { step += 1 }
+                    SheetButton(title: "건너뛰기", kind: .normal) { steps.next() }
                 }
                 SheetButton(title: "다음", kind: .primary) {
-                    if keyDraft.submit(hasKey: input.hasKey, onSave: input.onSave) { step += 1 }
+                    steps.submitKey(&keyDraft, hasKey: input.hasKey, onSave: input.onSave)
                 }
                 .keyboardShortcut(.defaultAction)
                 .disabled(!keyDraft.canGoNext(hasKey: input.hasKey))
@@ -211,11 +235,11 @@ struct OnboardingView: View {
                 Spacer()
                 SheetButton(title: "건너뛰기", kind: .normal) {
                     includesContext = false
-                    step += 1
+                    steps.next()
                 }
                 SheetButton(title: "다음", kind: .primary) {
                     includesContext = true
-                    step += 1
+                    steps.next()
                 }
                 .keyboardShortcut(.defaultAction)
                 .disabled(!hasName)
@@ -247,7 +271,7 @@ struct OnboardingView: View {
                     .padding(.top, 6)
             }
             HStack(spacing: 6) {
-                SheetButton(title: "이전", kind: .normal) { step -= 1 }
+                SheetButton(title: "이전", kind: .normal) { steps.back() }
                 Spacer()
                 SheetButton(title: "시작하기", kind: .primary, action: finish)
                     .keyboardShortcut(.defaultAction)

@@ -164,7 +164,7 @@ v2 `models`는 ADR-0011 결정 3 예시 그대로 넷(`typesafe`, `liquid`, `per
 
 할 일 탭: spec 004 data-model §5 `TaskListTabView` 인자 그대로(`keyNotice`, `onOpenKeySettings`). 문구는 시안 15번 확정 그대로.
 
-온보딩 키 단계: spec 004 data-model §5 표의 세 상태(키 없음, 저장 실패, 이미 있음)에 보내는 곳 한 줄을 더한다. 문구는 006 시안 11~13번(사람 확정 2026-11-12)이고 `OnboardingKeyText`에 둔다. 보내는 곳 줄은 설정 창과 같은 `DecisionFieldText.destinationPrefix`(`판단을 받으러 보내는 곳: `, 사용자 결정 2026-11-12) 뒤에 Jev 호스트를 굵게 쓰고, 다음 줄에 다른 판단 모델은 설정에서 고른다는 안내를 둔다. 이미 있음에서는 발급 링크와 "건너뛰기"를 보이지 않는다(시안 13번). 저장 실패 표시는 뷰의 `OnboardingKeyDraft`가 든다.
+온보딩 키 단계: spec 004 data-model §5 표의 세 상태(키 없음, 저장 실패, 이미 있음)에 보내는 곳 한 줄을 더한다. 문구는 006 시안 11~13번(사람 확정 2026-11-12)이고 `OnboardingKeyText`에 둔다. 보내는 곳 줄은 설정 창과 같은 `DecisionFieldText.destinationPrefix`(`판단을 받으러 보내는 곳: `. 설정 칸 문구는 사용자 결정 2026-11-12, 온보딩에 같은 문구를 쓰는 것은 메인 세션 가정이며 사람 확인 대기) 뒤에 Jev 호스트를 굵게 쓰고, 다음 줄에 다른 판단 모델은 설정에서 고른다는 안내를 둔다. 이미 있음에서는 발급 링크와 "건너뛰기"를 보이지 않는다(시안 13번). 저장 실패 표시는 뷰의 `OnboardingKeyDraft`가 든다.
 
 ## 10. 시험 경계와 기존 기대 출력
 
