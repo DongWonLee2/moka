@@ -393,8 +393,7 @@ enum MicrosoftFieldRule {
         return values.endpoint != comparable(savedEndpoint: savedEndpoint) || values.deployment != savedDeployment
     }
 
-    /// 저장된 주소를 지금 규칙의 모양으로 맞춘다. 호스트를 소문자로 바꾸기 전에 저장된 값과도 같은 주소로 견주기 위해서다.
-    /// 규칙을 어긴 값은 그대로 둔다.
+    /// 호스트를 소문자로 바꾸기 전에 저장된 값도 같은 주소로 견주려고, 저장된 주소를 지금 규칙의 모양으로 맞춘다.
     static func comparable(savedEndpoint: String?) -> String? {
         guard let savedEndpoint, case .success(let url) = EndpointRule.check(savedEndpoint, allowsPath: false) else {
             return savedEndpoint

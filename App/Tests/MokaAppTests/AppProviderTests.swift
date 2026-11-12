@@ -591,7 +591,6 @@ final class AppProviderTests: XCTestCase {
         XCTAssertEqual(h.state.sendingHost, "other-resource.invalid")
     }
 
-    /// #139: 스킴·호스트 대소문자만 바꿔 다시 저장하면 같은 주소라 키를 지우지 않는다.
     func test_ADR0011_R616_139_caseOnlyEndpointChangeKeepsKey() async throws {
         let providers = Providers(keys: [.microsoft: "fake-key-ms"])
         let h = await launched(try microsoftHarness(providers: providers))
@@ -608,7 +607,6 @@ final class AppProviderTests: XCTestCase {
         XCTAssertEqual(providers.bound.last?.requestModel, "fake-deploy-2")
     }
 
-    /// #139: 고치기 전에 대문자 호스트로 저장된 값이 남아 있어도 같은 정규화로 견줘 키를 지우지 않는다.
     func test_ADR0011_R616_139_oldUppercaseSavedEndpointKeepsKey() async throws {
         let providers = Providers(keys: [.microsoft: "fake-key-ms"])
         var settings = Self.microsoftSettings
