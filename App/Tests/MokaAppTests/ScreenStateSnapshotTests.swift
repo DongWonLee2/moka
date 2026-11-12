@@ -185,10 +185,10 @@ final class ScreenStateSnapshotTests: XCTestCase {
     func test_R301_draftReason() throws {
         try snapshot(
             "18-reason-draft", timer: Self.fakeDraft, remaining: nil, expanded: true, hovering: true,
-            firstAction: Self.fakeFirstAction, reasonLine: "D-3 · 손해 꽤 · 미룬 2번")
+            firstAction: Self.fakeFirstAction, reasonLine: "D-3 · 중요도 보통 · 미룬 2번")
     }
 
-    /// 시안 2번: 판단 결과가 없으면 손해 칸 없이 두 칸.
+    /// 시안 2번: 판단 결과가 없으면 중요도 칸 없이 두 칸.
     func test_R301_draftReasonNoLoss() throws {
         try snapshot(
             "18-reason-draft-no-loss", timer: Self.fakeDraft, remaining: nil, expanded: true, hovering: true,
@@ -199,14 +199,14 @@ final class ScreenStateSnapshotTests: XCTestCase {
     func test_R301_runningReason() throws {
         try snapshot(
             "18-reason-running", timer: Self.fakeRunning, remaining: Self.runningRemaining, expanded: true,
-            hovering: true, firstAction: Self.fakeFirstAction, reasonLine: "D-3 · 손해 꽤 · 미룬 2번")
+            hovering: true, firstAction: Self.fakeFirstAction, reasonLine: "D-3 · 중요도 보통 · 미룬 2번")
     }
 
     /// 시안 4번. 할 일에 첫 행동이 있어도 게이트가 묻는 중이면 제목 아래 이어서 할 일 줄을 숨긴다(R-311).
     func test_R307_gateAsking() throws {
         try snapshot(
             "19-gate-asking", timer: Self.fakeDraft, remaining: nil, expanded: true, hovering: true,
-            firstAction: Self.fakeFirstAction, reasonLine: "D-3 · 손해 꽤 · 미룬 0번",
+            firstAction: Self.fakeFirstAction, reasonLine: "D-3 · 중요도 보통 · 미룬 0번",
             gate: Self.gate(.asking, text: Self.fakeGateLine))
     }
 
@@ -214,7 +214,7 @@ final class ScreenStateSnapshotTests: XCTestCase {
     func test_R307_gateChecking() throws {
         try snapshot(
             "19-gate-checking", timer: Self.fakeDraft, remaining: nil, expanded: true, hovering: true,
-            firstAction: Self.fakeFirstAction, reasonLine: "D-3 · 손해 꽤 · 미룬 0번",
+            firstAction: Self.fakeFirstAction, reasonLine: "D-3 · 중요도 보통 · 미룬 0번",
             gate: Self.gate(.checking, text: Self.fakeGateLine, submissions: 1))
     }
 
@@ -222,7 +222,7 @@ final class ScreenStateSnapshotTests: XCTestCase {
     func test_R309_gateRetry() throws {
         try snapshot(
             "19-gate-retry", timer: Self.fakeDraft, remaining: nil, expanded: true, hovering: true,
-            firstAction: Self.fakeGateLine, reasonLine: "D-3 · 손해 꽤 · 미룬 0번",
+            firstAction: Self.fakeGateLine, reasonLine: "D-3 · 중요도 보통 · 미룬 0번",
             gate: Self.gate(.asking, text: Self.fakeGateLine, submissions: 1))
     }
 
@@ -230,7 +230,7 @@ final class ScreenStateSnapshotTests: XCTestCase {
     func test_R311_gatePassed() throws {
         try snapshot(
             "19-gate-passed", timer: Self.fakeDraft, remaining: nil, expanded: true, hovering: true,
-            firstAction: "가짜 자료 폴더 열기", reasonLine: "D-3 · 손해 꽤 · 미룬 0번",
+            firstAction: "가짜 자료 폴더 열기", reasonLine: "D-3 · 중요도 보통 · 미룬 0번",
             gate: Self.gate(.closed, text: "가짜 자료 폴더 열기", submissions: 2))
     }
 
@@ -238,7 +238,7 @@ final class ScreenStateSnapshotTests: XCTestCase {
     func test_R307_gateSaveFailed() throws {
         try snapshot(
             "19-gate-save-failed", timer: Self.fakeDraft, remaining: nil, expanded: true, hovering: true,
-            firstAction: Self.fakeFirstAction, reasonLine: "D-3 · 손해 꽤 · 미룬 0번",
+            firstAction: Self.fakeFirstAction, reasonLine: "D-3 · 중요도 보통 · 미룬 0번",
             gate: Self.gate(.asking, text: Self.fakeGateLine, saveFailed: true))
     }
 
@@ -261,14 +261,14 @@ final class ScreenStateSnapshotTests: XCTestCase {
     func test_R316_keyNoticeDraft() throws {
         try snapshot(
             "20-key-notice-draft", timer: Self.fakeDraft, remaining: nil, expanded: true, hovering: true,
-            reasonLine: "D-3 · 손해 꽤 · 미룬 2번", keyNotice: true)
+            reasonLine: "D-3 · 중요도 보통 · 미룬 2번", keyNotice: true)
     }
 
     /// 시안 14번: 도는 중 버튼 줄 아래.
     func test_R316_keyNoticeRunning() throws {
         try snapshot(
             "20-key-notice-running", timer: Self.fakeRunning, remaining: Self.runningRemaining, expanded: true,
-            hovering: true, reasonLine: "D-3 · 손해 꽤 · 미룬 2번", keyNotice: true)
+            hovering: true, reasonLine: "D-3 · 중요도 보통 · 미룬 2번", keyNotice: true)
     }
 
     /// 접힌 노치에는 키 확인 표시가 없다(R-316, debate Q3). 키 확인 필요여도 그림이 같다.

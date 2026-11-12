@@ -11,15 +11,18 @@ public enum DeadlineDistance: Equatable, Sendable {
 /// 노치 할 일이 왜 떴는지 보이는 세 칸(spec 004 R-302~R-304, data-model §2).
 public struct ReasonLine: Equatable, Sendable {
     public var deadline: DeadlineDistance
-    /// 질문 파일 impact 옵션 말 하나. 쓰는 판단 결과가 없으면 nil이고 칸을 그리지 않는다.
-    public var loss: String?
+    /// 판단 결과 impact의 화면 말(낮음·보통·높음) 하나. 쓰는 판단 결과가 없거나 impact 옵션이 셋이 아니면 nil이고 칸을 그리지 않는다.
+    public var impact: String?
     public var skipCount: Int
 
-    public init(deadline: DeadlineDistance, loss: String?, skipCount: Int) {
+    public init(deadline: DeadlineDistance, impact: String?, skipCount: Int) {
         self.deadline = deadline
-        self.loss = loss
+        self.impact = impact
         self.skipCount = skipCount
     }
+
+    /// impact 옵션 번호 0·1·2의 화면 말(사용자 결정 2026-11-12). 질문 파일 옵션 말과 따로 둔다.
+    private static let impactWords = ["낮음", "보통", "높음"]
 
     /// `usable`은 `ScoreRules.usable`로 거른 사전, `today`는 고르기와 같은 날(`SessionScoring.today`).
     public static func make(
@@ -27,7 +30,7 @@ public struct ReasonLine: Equatable, Sendable {
     ) -> ReasonLine {
         ReasonLine(
             deadline: distance(to: task.deadline, from: today),
-            loss: usable[task.id].flatMap { lossWord(impact: $0.impact, questions: questions) },
+            impact: usable[task.id].flatMap { impactWord(impact: $0.impact, questions: questions) },
             skipCount: task.skipCount)
     }
 
@@ -44,10 +47,11 @@ public struct ReasonLine: Equatable, Sendable {
     }
 
     /// 옵션 번호 `round(impact × (옵션 수 - 1))`, 0.5는 위로. 저장소 값이 0~1 밖이어도 끝 옵션에 머문다.
-    private static func lossWord(impact: Double, questions: QuestionSet) -> String? {
-        guard case .score(_, let criteria) = questions.questions["impact"] else { return nil }
+    private static func impactWord(impact: Double, questions: QuestionSet) -> String? {
+        guard case .score(_, let criteria) = questions.questions["impact"], criteria.count == impactWords.count
+        else { return nil }
         let index = Int((impact * Double(criteria.count - 1)).rounded(.toNearestOrAwayFromZero))
-        return criteria[min(max(index, 0), criteria.count - 1)]
+        return impactWords[min(max(index, 0), criteria.count - 1)]
     }
 }
 
@@ -55,8 +59,8 @@ public struct ReasonLine: Equatable, Sendable {
 public enum ReasonText {
     public static func line(_ reason: ReasonLine) -> String {
         var parts = [deadline(reason.deadline)]
-        if let loss = reason.loss {
-            parts.append("손해 \(loss)")
+        if let impact = reason.impact {
+            parts.append("중요도 \(impact)")
         }
         parts.append("미룬 \(reason.skipCount)번")
         return parts.joined(separator: " · ")
