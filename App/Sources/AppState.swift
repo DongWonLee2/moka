@@ -847,7 +847,8 @@ final class AppState {
         providerChanged()
     }
 
-    /// Microsoft 칸 저장(spec 006 data-model §6). 주소가 거부되면 저장하지 않고 이유를 돌려준다. 빈 값이면 아무것도 하지 않는다.
+    /// Microsoft 칸 저장(spec 006 data-model §6). 주소가 거부되면 저장하지 않고 이유를 돌려준다. 빈 값이거나
+    /// 주소 규칙으로 정규화한 값이 저장된 값과 같으면 아무것도 하지 않는다.
     /// 저장된 주소를 다른 주소로 바꿀 때만 Microsoft 키를 먼저 지운다(옛 키가 새 호스트로 가지 않게).
     @discardableResult
     func saveMicrosoft(endpoint: String, deployment: String) -> EndpointRejection? {
@@ -861,8 +862,12 @@ final class AppState {
         case .success(let value): url = value
         case .failure(let rejection): return rejection
         }
+        let saved = CoreSettings.readMicrosoftEndpoint(from: settings)
+        if saved == url.absoluteString, CoreSettings.readMicrosoftDeployment(from: settings) == deploymentText {
+            return nil
+        }
         var deletedKey = false
-        if let saved = CoreSettings.readMicrosoftEndpoint(from: settings), saved != url.absoluteString {
+        if let saved, saved != url.absoluteString {
             do {
                 try decision.keyStore(.microsoft).delete()
             } catch {

@@ -166,7 +166,10 @@ struct DecisionFieldBox: View {
                 KeyFieldBox(
                     state: input.keyState, canRetry: input.canRetry, onSave: input.onSaveKey,
                     onDelete: input.onDeleteKey, onRetry: input.onRetry,
-                    showsIntro: input.microsoft?.keyCleared != true)
+                    showsIntro: input.microsoft?.keyCleared != true
+                )
+                // 공급자를 바꾸면 붙여 넣던 글자를 버린다. 앞 공급자의 키가 새 공급자 보관함에 저장되지 않게 한다.
+                .id(input.selected)
             }
         }
         .padding(.top, 10)
@@ -350,22 +353,43 @@ private struct MicrosoftFields: View {
         Text(text).font(.system(size: 12)).frame(width: 64, alignment: .leading)
     }
 
-    private var trimmed: (endpoint: String, deployment: String) {
-        (
-            endpoint.trimmingCharacters(in: .whitespacesAndNewlines),
-            deployment.trimmingCharacters(in: .whitespacesAndNewlines)
-        )
-    }
-
     private var canSave: Bool {
-        let values = trimmed
-        guard !values.endpoint.isEmpty, !values.deployment.isEmpty else { return false }
-        return values.endpoint != input.savedEndpoint || values.deployment != input.savedDeployment
+        MicrosoftFieldRule.canSave(
+            endpoint: endpoint, deployment: deployment, savedEndpoint: input.savedEndpoint,
+            savedDeployment: input.savedDeployment)
     }
 
     private func save() {
         guard canSave else { return }
-        let values = trimmed
-        rejection = onSave(values.endpoint, values.deployment)
+        rejection = onSave(endpoint, deployment)
+        if rejection == nil, let values = MicrosoftFieldRule.normalized(endpoint: endpoint, deployment: deployment) {
+            endpoint = values.endpoint
+            deployment = values.deployment
+        }
+    }
+}
+
+/// Microsoft 칸 저장 규칙. 주소는 `EndpointRule.check`가 돌려준 모양(앞뒤 공백을 지우고 끝 `/`를 뗌)으로 저장된 값과 비교한다.
+enum MicrosoftFieldRule {
+    struct Values: Equatable {
+        let endpoint: String
+        let deployment: String
+    }
+
+    /// 주소 규칙을 지키면 저장될 모양, 아니면 nil.
+    static func normalized(endpoint: String, deployment: String) -> Values? {
+        guard case .success(let url) = EndpointRule.check(endpoint, allowsPath: false) else { return nil }
+        return Values(
+            endpoint: url.absoluteString, deployment: deployment.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+
+    /// 두 칸이 차 있고 저장될 값이 저장된 값과 다를 때 켠다. 규칙을 어긴 주소도 눌러서 이유를 볼 수 있게 켠다.
+    static func canSave(endpoint: String, deployment: String, savedEndpoint: String?, savedDeployment: String?) -> Bool
+    {
+        let trimmedEndpoint = endpoint.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedDeployment = deployment.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedEndpoint.isEmpty, !trimmedDeployment.isEmpty else { return false }
+        guard let values = normalized(endpoint: endpoint, deployment: deployment) else { return true }
+        return values.endpoint != savedEndpoint || values.deployment != savedDeployment
     }
 }
