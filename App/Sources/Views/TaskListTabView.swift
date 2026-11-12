@@ -1,6 +1,31 @@
 import MokaCore
 import SwiftUI
 
+/// 할 일 탭 키 확인 한 줄 글자(spec 004 시안 15번, 사용자 확정 2026-11-10).
+enum TaskListText {
+    static let keyNotice = "키가 맞지 않아 새 할 일은 판단 모델에 묻지 못하고 있어요."
+    static let keyNoticeButton = "기본 탭에서 확인"
+}
+
+/// 목록 위 키 확인 한 줄. 경고색 글자와 옅은 경고색 바탕이다.
+private struct TaskListKeyNotice: View {
+    let onOpen: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(TaskListText.keyNotice)
+                .font(.system(size: 11.5))
+                .foregroundStyle(MokaColors.danger)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+            SheetButton(title: TaskListText.keyNoticeButton, kind: .normal, action: onOpen)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(MokaColors.danger.opacity(0.26), in: RoundedRectangle(cornerRadius: 5))
+    }
+}
+
 /// 설정 창 할 일 탭(시안 7번, R-102·R-118). 값과 콜백만 받는다(ADR-0009).
 struct TaskListTabView: View {
     let rows: [MokaTask]
@@ -17,11 +42,18 @@ struct TaskListTabView: View {
     let onAdd: () -> Void
     let onEdit: (TaskID) -> Void
     let onDelete: () -> Void
+    /// 키 확인 필요인 동안 목록 위에 한 줄을 보인다(spec 006 R-627, spec 004 시안 15번).
+    var keyNotice = false
+    /// 같은 창을 기본 탭으로 바꾼다.
+    var onOpenKeySettings: () -> Void = {}
 
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
+            if keyNotice {
+                TaskListKeyNotice(onOpen: onOpenKeySettings)
+            }
             HStack {
                 ChoiceChips(
                     label: "보기", items: [(TaskListScope.all, "전체"), (.today, "오늘"), (.thisWeek, "이번 주")],

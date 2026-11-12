@@ -225,16 +225,57 @@ final class AppState {
     private(set) var selectionOff: DecisionSelection.OffReason?
     /// 공급자 고르기·Microsoft 칸 저장 가운데 실패한 동작. 다음 성공에 지운다.
     private(set) var providerActionFailure: ProviderAction?
+    /// 설정에 저장된 Microsoft 칸 값. 바인딩을 다시 만들 때 함께 읽는다.
+    private(set) var microsoftEndpoint: String?
+    private(set) var microsoftDeployment: String?
+    /// Microsoft 주소를 바꿔 키를 지웠고 아직 키를 다시 넣지 않았다(006 시안 10번).
+    private(set) var microsoftKeyCleared = false
 
     /// 요청이 갈 곳의 호스트(spec 006 R-606). 판단 기능이 켜져 있으면 지금 바인딩의 주소에서 꺼내 실제 목적지와 늘 같다.
-    /// 꺼져 있으면 고정 주소 공급자만 표의 주소에서 꺼내고, Microsoft는 nil이다.
+    /// 꺼져 있으면 고정 주소 공급자는 표의 주소, Microsoft는 저장된 주소가 규칙을 지킬 때 그 주소에서 꺼낸다(US3 시나리오 7, #127).
     var sendingHost: String? {
         if let boundURL { return EndpointRule.host(of: boundURL) }
         guard let selectedProvider,
-            let config = ProviderCatalog.config(selectedProvider, in: decision?.catalog ?? ProviderCatalog.all),
-            case .fixed(let url) = config.endpoint
+            let config = ProviderCatalog.config(selectedProvider, in: decision?.catalog ?? ProviderCatalog.all)
         else { return nil }
-        return EndpointRule.host(of: url)
+        switch config.endpoint {
+        case .fixed(let url):
+            return EndpointRule.host(of: url)
+        case .userResource:
+            guard let microsoftEndpoint,
+                case .success(let url) = EndpointRule.check(microsoftEndpoint, allowsPath: false)
+            else { return nil }
+            return EndpointRule.host(of: url)
+        }
+    }
+
+    /// 설정 창 기본 탭 판단 모델 칸(spec 006 data-model §9).
+    var decisionField: DecisionFieldInput {
+        let catalog = decision?.catalog ?? ProviderCatalog.all
+        let questions = decision?.questions
+        let rows = catalog.map { row in
+            let isOpen = questions.map { ProviderCatalog.isOpen(row.id, questions: $0, catalog: catalog) } ?? false
+            return ProviderRow(
+                id: row.id, displayName: row.displayName, isOpen: isOpen,
+                closedNote: isOpen ? nil : DecisionFieldText.closedNote)
+        }
+        let config = selectedProvider.flatMap { ProviderCatalog.config($0, in: catalog) }
+        let baseModel = selectedProvider.flatMap { questions?.models[$0.rawValue] }
+        return DecisionFieldInput(
+            providers: rows, selected: selectedProvider,
+            issueURL: config.flatMap { $0.issueURLConfirmed ? $0.issueURL : nil }, host: sendingHost,
+            provisional: baseModel.map { questions?.provisional.contains($0) ?? false } ?? false,
+            offNote: selectionOff.map(DecisionFieldText.offNote),
+            microsoft: selectedProvider == .microsoft
+                ? MicrosoftFieldInput(
+                    savedEndpoint: microsoftEndpoint, savedDeployment: microsoftDeployment,
+                    showsKeyResetNotice: microsoftEndpoint != nil && !microsoftKeyCleared,
+                    keyCleared: microsoftKeyCleared) : nil,
+            keyState: keyFieldState, canRetry: canRetryScores, failure: providerActionFailure,
+            onSelect: { [weak self] in self?.selectProvider($0) },
+            onSaveMicrosoft: { [weak self] in self?.saveMicrosoft(endpoint: $0, deployment: $1) },
+            onSaveKey: { [weak self] in self?.saveKey($0) }, onDeleteKey: { [weak self] in self?.deleteKey() },
+            onRetry: { [weak self] in self?.retryScores() })
     }
 
     /// 노치 후보 순서의 앞 세 대기 할 일과 순위(1~3, data-model §10 할 일 탭).
@@ -768,6 +809,7 @@ final class AppState {
         }
         keyActionFailure = nil
         keyNeedsCheck = false
+        microsoftKeyCleared = false
         attempted = [:]
         refreshHasKey()
         requestScores()
@@ -822,6 +864,7 @@ final class AppState {
         case .success(let value): url = value
         case .failure(let rejection): return rejection
         }
+        var deletedKey = false
         if let saved = CoreSettings.readMicrosoftEndpoint(from: settings), saved != url.absoluteString {
             do {
                 try decision.keyStore(.microsoft).delete()
@@ -830,6 +873,7 @@ final class AppState {
                 Self.logKeyFailure("지우기", error)
                 return nil
             }
+            deletedKey = true
         }
         do {
             try CoreSettings.writeMicrosoftEndpoint(url, to: settings)
@@ -841,9 +885,11 @@ final class AppState {
                 "Microsoft 칸 저장 실패: \(String(reflecting: type(of: error)), privacy: .public)")
             providerChanged()
             providerActionFailure = .saveMicrosoft
+            microsoftKeyCleared = deletedKey
             return nil
         }
         providerChanged()
+        microsoftKeyCleared = deletedKey
         return nil
     }
 
@@ -855,6 +901,7 @@ final class AppState {
         attempted = [:]
         keyNeedsCheck = false
         keyActionFailure = nil
+        microsoftKeyCleared = false
         refreshHasKey()
         refreshGate()
         requestScores()
@@ -871,11 +918,11 @@ final class AppState {
             setBinding(nil, off: .unknownProvider)
             return
         }
+        microsoftEndpoint = CoreSettings.readMicrosoftEndpoint(from: settings)
+        microsoftDeployment = CoreSettings.readMicrosoftDeployment(from: settings)
         let resolution = DecisionSelection.resolve(
-            providerID: selectedProvider.rawValue,
-            microsoftEndpoint: CoreSettings.readMicrosoftEndpoint(from: settings),
-            microsoftDeployment: CoreSettings.readMicrosoftDeployment(from: settings), questions: questions,
-            catalog: decision.catalog)
+            providerID: selectedProvider.rawValue, microsoftEndpoint: microsoftEndpoint,
+            microsoftDeployment: microsoftDeployment, questions: questions, catalog: decision.catalog)
         switch resolution {
         case .ready(let ready):
             setBinding((decision.bind(ready), ready.url), off: nil)
@@ -919,6 +966,13 @@ final class AppState {
     /// 노치 설정 열기 앞에 기본 탭을 요청한다(spec 004 research R8).
     func requestKeySettings() {
         settingsTabRequest = .basic
+    }
+
+    /// 설정 창이 열 탭을 꺼내고 비운다. 요청이 없으면 nil이다.
+    func takeSettingsTabRequest() -> SettingsTab? {
+        guard let request = settingsTabRequest else { return nil }
+        settingsTabRequest = nil
+        return request
     }
 
     /// 게이트 제출(spec 004 data-model §3). 앞뒤 공백·줄바꿈을 지운 줄을 첫 행동으로 쓰고 할 일을 다시 읽는다.

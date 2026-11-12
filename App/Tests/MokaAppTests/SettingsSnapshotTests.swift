@@ -120,7 +120,7 @@ final class SettingsSnapshotTests: XCTestCase {
     func test_ADR0011_R620_providerListOpen() throws {
         try snapshot(
             "s25-provider-list", decision: Self.typeSafe(.saved, canRetry: true),
-            start: DecisionFieldStart(listOpen: true), height: 640)
+            start: DecisionFieldStart(listOpen: true), height: 580)
     }
 
     /// 시안 4번: 가짜로 연 Perplexity 줄. 지금 빌드에서는 고를 수 없어 뷰만 그린다.
@@ -450,8 +450,8 @@ final class SettingsSnapshotTests: XCTestCase {
         host: nil, offNote: DecisionFieldText.offNote(.needsEndpoint), keyState: .noKey)
 
     /// 기본 탭(숫자 칸, 판단 모델 칸) 높이.
-    private static let basicHeight: CGFloat = 470
-    private static let microsoftHeight: CGFloat = 600
+    private static let basicHeight: CGFloat = 440
+    private static let microsoftHeight: CGFloat = 540
 
     private static func input(_ text: String, range: ClosedRange<Int>) -> MinutesFieldInput {
         MinutesFieldInput(

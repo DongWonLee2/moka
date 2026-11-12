@@ -4,23 +4,18 @@ import SwiftUI
 
 /// 설정 창 기본 탭(시안 6번, R-012, data-model §6). 값과 콜백만 받는다(ADR-0009).
 /// 숫자 칸은 제출(Enter)이나 포커스를 잃을 때 `onCommit`을 부른다. 받지 않는 값을 적는 동안은 안내 대신 이유를 보인다.
-/// 아래에 판단 모델 키 칸(spec 003 시안 v2 1~7번, R-213)을 둔다.
+/// 아래에 판단 모델 칸(spec 006 data-model §9, 006 시안 1~10번)을 둔다.
 struct BasicTabView: View {
     let quantum: MinutesFieldInput
     let extend: MinutesFieldInput
     @Binding var dayStart: Date
-    var keyState: KeyFieldState = .noKey
-    /// 다시 물을 할 일이 없거나 물을 수 없으면 "다시 물어보기"가 꺼진다.
-    var canRetry: Bool = false
-    var onSaveKey: (String) -> Void = { _ in }
-    var onDeleteKey: () -> Void = {}
-    var onRetry: () -> Void = {}
+    var decision = DecisionFieldInput()
+    var decisionStart = DecisionFieldStart()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             settingsGrid
-            KeyFieldBox(
-                state: keyState, canRetry: canRetry, onSave: onSaveKey, onDelete: onDeleteKey, onRetry: onRetry)
+            DecisionFieldBox(input: decision, start: decisionStart)
         }
         .padding(.horizontal, 14)
         .padding(.top, 10)
@@ -105,20 +100,21 @@ private struct MinutesFieldRow: View {
     }
 }
 
-/// 판단 모델 키 칸. 키 값은 붙여 넣는 동안 가림 입력에만 있고, 저장을 누르면 넘긴 뒤 바로 비운다(R-214).
-private struct KeyFieldBox: View {
+/// 판단 모델 칸 아래 키 칸(spec 003 R-213 여섯 상태). 키 값은 붙여 넣는 동안 가림 입력에만 있고,
+/// 저장을 누르면 넘긴 뒤 바로 비운다(R-214).
+struct KeyFieldBox: View {
     let state: KeyFieldState
+    /// 다시 물을 할 일이 없거나 물을 수 없으면 "다시 물어보기"가 꺼진다.
     let canRetry: Bool
     let onSave: (String) -> Void
     let onDelete: () -> Void
     let onRetry: () -> Void
+    /// 키가 없을 때 칸 위 안내. Microsoft 주소를 바꿔 키를 지운 뒤에는 지웠다는 문구가 대신한다(006 시안 10번).
+    var showsIntro = true
     @State private var keyText = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("판단 모델 키 (TypeSafe)")
-                .font(.system(size: 12.5, weight: .semibold))
-                .padding(.bottom, 6)
             if state.showsSavedRow {
                 HStack(spacing: 6) {
                     Text("저장되어 있어요")
@@ -129,7 +125,7 @@ private struct KeyFieldBox: View {
                         .disabled(!canRetry)
                 }
             } else {
-                if let intro = KeyFieldState.noKey.notice {
+                if showsIntro, let intro = KeyFieldState.noKey.notice {
                     Text(intro.text)
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
@@ -152,14 +148,7 @@ private struct KeyFieldBox: View {
                     .padding(.top, 5)
             }
         }
-        .padding(.top, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(Color(hex: 0x806E5F, opacity: 0.22))
-                .frame(height: 1)
-        }
-        .padding(.top, 12)
     }
 
     private func save() {
