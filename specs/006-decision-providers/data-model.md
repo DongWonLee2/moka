@@ -120,7 +120,7 @@ v2 `models`는 ADR-0011 결정 3 예시 그대로 넷(`typesafe`, `liquid`, `per
 1. 두 값의 앞뒤 공백·줄바꿈을 지운다. 비면 저장하지 않는다(화면이 저장을 끔).
 2. 주소를 `EndpointRule.check(allowsPath: false)`로 본다. 거부면 저장하지 않고 이유를 돌려준다.
    통과한 주소와 배포 이름이 설정 표의 값과 같으면 아무것도 하지 않는다(장부와 키 확인 필요를 그대로 둔다, PR #136).
-3. 저장된 주소가 있고 새 값과 다를 때만 `keyStore(for: .microsoft)`의 키를 먼저 지운다. 저장된 주소가 없으면(처음 저장) 지우지 않는다. 지우기가 던지면 주소를 저장하지 않고 `keyActionFailure = .delete`를 켠다(옛 키가 새 호스트로 가지 않게).
+3. 저장된 주소가 있고 새 값과 다를 때만 `keyStore(for: .microsoft)`의 키를 먼저 지운다. 저장된 주소가 없으면(처음 저장) 지우지 않는다. 저장된 주소를 읽지 못하면 같은 주소인지 모르므로 다르다고 보고 키를 먼저 지운다(#128). 지우기가 던지면 주소를 저장하지 않고 `keyActionFailure = .delete`를 켠다(옛 키가 새 호스트로 가지 않게).
 4. 설정 표에 주소, 배포 이름 순으로 쓴다. 던지면 쓴 값을 되돌리지 않고, 설정 표에 남은 값으로 바꾸기 4~7과 같은 정리(세대 올림, 바인딩 다시 만듦, 장부 비움, 키 확인 필요 끔, `hasKey` 다시 읽기, 다시 묻기)를 한 뒤 `providerActionFailure = .saveMicrosoft`를 켠다. 주소만 저장됐으면 바인딩은 새 주소와 저장된 옛 배포 이름이다. 보내는 곳(`sendingHost`)은 바인딩 주소에서 꺼내므로 실제 목적지와 늘 같다. 판단 기능이 꺼진 Microsoft(`needsDeployment`, `closedProvider`)는 요청을 보내지 않으므로, 저장된 주소가 §4 규칙을 지키면 그 호스트를 보내는 곳으로 보인다(spec US3 시나리오 7, #127). 3에서 키를 이미 지웠으면 키 없음으로 보이고 묻지 않는다.
 5. 바꾸기 4~7과 같다. 저장된 판단 결과는 그대로 쓴다(research R3).
 
@@ -137,7 +137,7 @@ v2 `models`는 ADR-0011 결정 3 예시 그대로 넷(`typesafe`, `liquid`, `per
 ## 8. 앱 상태
 
 - `DecisionSetup`: `bind: @MainActor (DecisionSelection.Ready) -> DecisionBinding`, `keyStore: @MainActor (ProviderID) -> any KeyStore`, `catalog: [ProviderConfig] = ProviderCatalog.all`, `questions: QuestionSet?`, 기존 3인자 편의 생성자(research R5). `DecisionBinding`은 `provider`, `baseModel`, `requestModel`이고 키 보관함을 들지 않는다. 키는 판단 기능이 꺼져 있어도 다뤄야 하므로 바인딩과 따로 받는다. `MokaApp`의 `bind`는 `HTTPDecisionProvider(config:url:)`를, `keyStore`는 `KeychainKeyStore(account: id.rawValue)`를 만든다. 편의 생성자의 `keyStore`는 공급자와 상관없이 받은 보관함 하나를 돌려준다.
-- 메모리 값: `selectedProvider: ProviderID?`(설정 없음이면 `.typesafe`, 모르는 ID면 `nil`), `binding: DecisionBinding?`(`off`면 `nil`), `selectionOff: DecisionSelection.OffReason?`, `providerGeneration`, `providerActionFailure: ProviderAction?`(`select`, `saveMicrosoft`. 다음 성공에 `nil`), 기존 `hasKey`·`keyNeedsCheck`·`keyActionFailure`·`attempted`·`queryRunner`.
+- 메모리 값: `selectedProvider: ProviderID?`(설정 없음이면 `.typesafe`, 모르는 ID거나 켤 때 읽기 실패면 `nil`, #128), `binding: DecisionBinding?`(`off`면 `nil`), `selectionOff: DecisionSelection.OffReason?`, `providerGeneration`, `providerActionFailure: ProviderAction?`(`select`, `saveMicrosoft`. 다음 성공에 `nil`), 기존 `hasKey`·`keyNeedsCheck`·`keyActionFailure`·`attempted`·`queryRunner`.
 - 키 저장·지우기·`hasKey` 읽기·보내기 직전 키 읽기는 모두 `keyStore(for: selectedProvider)`다. `selectedProvider`가 `nil`이면 키 동작을 끄고 `hasKey = false`다.
 - `KeyFieldState`는 여섯 상태 그대로다. 칸 제목은 뷰가 고른 공급자 이름으로 만든다.
 - `showsKeyNotice`는 그대로 `keyFieldState == .needsCheck`이고, 바꾸기와 Microsoft 칸 저장이 `keyNeedsCheck`를 끄므로 함께 꺼진다(spec R-627).

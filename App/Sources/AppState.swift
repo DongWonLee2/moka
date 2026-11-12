@@ -382,8 +382,13 @@ final class AppState {
                 self?.lifecycleCheckpoint(.sleep)
             },
         ]
-        let stored = CoreSettings.readDecisionProvider(from: storage.settings)
-        selectedProvider = stored.map { ProviderID(rawValue: $0) } ?? .typesafe
+        // 읽기 실패는 값 없음과 다르다. 어느 공급자인지 모르니 Jev로 되돌리지 않고 모르는 공급자 ID처럼 다룬다.
+        do {
+            let stored = try CoreSettings.readDecisionProvider(from: storage.settings)
+            selectedProvider = stored.map { ProviderID(rawValue: $0) } ?? .typesafe
+        } catch {
+            selectedProvider = nil
+        }
         rebind()
     }
 
@@ -901,12 +906,21 @@ final class AppState {
         case .success(let value): url = value
         case .failure(let rejection): return rejection
         }
-        let saved = MicrosoftFieldRule.comparable(savedEndpoint: CoreSettings.readMicrosoftEndpoint(from: settings))
-        if saved == url.absoluteString, CoreSettings.readMicrosoftDeployment(from: settings) == deploymentText {
+        // 저장된 주소를 읽지 못하면 같은 주소인지 모르므로 바꾼 것으로 보고 키를 지운다. 정규화는 읽은 값에만 씌운다.
+        let saved = Result(catching: { try CoreSettings.readMicrosoftEndpoint(from: settings) })
+            .map { MicrosoftFieldRule.comparable(savedEndpoint: $0) }
+        if (try? saved.get()) == url.absoluteString,
+            CoreSettings.readMicrosoftDeployment(from: settings) == deploymentText
+        {
             return nil
         }
+        let endpointChanged =
+            switch saved {
+            case .success(let text): text != nil && text != url.absoluteString
+            case .failure: true
+            }
         var deletedKey = false
-        if let saved, saved != url.absoluteString {
+        if endpointChanged {
             do {
                 try decision.keyStore(.microsoft).delete()
             } catch {
@@ -959,7 +973,7 @@ final class AppState {
             setBinding(nil, off: .unknownProvider)
             return
         }
-        microsoftEndpoint = CoreSettings.readMicrosoftEndpoint(from: settings)
+        microsoftEndpoint = try? CoreSettings.readMicrosoftEndpoint(from: settings)
         microsoftDeployment = CoreSettings.readMicrosoftDeployment(from: settings)
         let resolution = DecisionSelection.resolve(
             providerID: selectedProvider.rawValue, microsoftEndpoint: microsoftEndpoint,
