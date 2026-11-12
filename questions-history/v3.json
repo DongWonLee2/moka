@@ -1,0 +1,37 @@
+{
+  "version": "v3",
+  "language": "ko",
+  "models": {
+    "typesafe": "jev-1.13.0",
+    "liquid": "d1-ultra",
+    "perplexity": "pplx-decider-v1.2",
+    "openai": "gpt-6-luna"
+  },
+  "provisional": ["d1-ultra", "pplx-decider-v1.2", "gpt-6-luna"],
+  "questions": {
+    "urgency": {
+      "type": "score",
+      "instructions": "마감과 남은 분량을 기준으로, 이 일을 언제까지 시작해야 하는가",
+      "criteria": ["여유", "이번주", "급함", "오늘안에"]
+    },
+    "impact": {
+      "type": "score",
+      "instructions": "마감이 언제인지와 상관없이, 이 일을 안 하면 시험 점수나 제출 결과에 생기는 손해의 크기",
+      "criteria": ["조금", "꽤", "아주"]
+    },
+    "concrete": {
+      "type": "noul",
+      "instructions": "이 할 일은 지금 바로 손댈 첫 행동이 무엇인지 분명할 만큼 구체적이다"
+    },
+    "avoiding": {
+      "type": "noul",
+      "instructions": "이 일은 사람이 미루기 쉬운 종류의 일이다 (하기 싫거나 지루하고, 어디까지 하면 끝인지 모호한)"
+    }
+  },
+  "thresholds": {
+    "jev-1.13.0": {"concrete": 0.5, "avoiding": 0.7},
+    "d1-ultra": {"concrete": 0.5, "avoiding": 0.7},
+    "pplx-decider-v1.2": {"concrete": 0.5, "avoiding": 0.7},
+    "gpt-6-luna": {"concrete": 0.5, "avoiding": 0.7}
+  }
+}

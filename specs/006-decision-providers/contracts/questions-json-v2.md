@@ -35,6 +35,7 @@ MokaCore 시험에 버전 문자열을 키로 하는 `models`·`thresholds` 고�
 |---|---|---|
 | v1 | `typesafe`: `jev-1.13.0`(v1 `model`을 공급자 `typesafe`로 읽음) | `jev-1.13.0`: concrete 0.5, avoiding 0.7 |
 | v2 | 아래 제안 내용 | 아래 제안 내용 |
+| v3 | v2 그대로 | v2 그대로 |
 
 v1 줄은 이미 쌓인 `(question_version = v1, provider = typesafe)` 판단 결과와 행동 로그 줄을 기준 모델 `jev-1.13.0`으로 풀기 위한 기록이다(ADR-0011 결정 6).
 
@@ -72,3 +73,17 @@ v1 줄은 이미 쌓인 `(question_version = v1, provider = typesafe)` 판단 �
 - Microsoft 줄은 기준 모델 ID가 정해질 때까지 두지 않는다. Microsoft를 여는 PR이 줄을 더하고 `version`을 올린다.
 - `d1-ultra`가 별칭인지는 미확인이다(ADR-0011 미확인). Liquid를 여는 PR의 첫 실제 호출에서 고정 버전 ID가 따로 있다고 나오면 값을 바꾸고 `version`을 올린다.
 - v1에서 v2로 올리면 질문 버전이 달라져 기존 판단 결과는 모두 다시 묻는다(ADR-0011 트레이드오프).
+
+## v3 (사용자 결정 2026-11-12)
+
+형식, 읽기 규칙, `models`, `provisional`, `thresholds`, 질문 이름·타입·`criteria`는 v2 그대로다. 바뀌는 것은 `version`과 질문 셋의 `instructions`다. urgency는 그대로다.
+
+| 질문 | v2 `instructions` | v3 `instructions` |
+|---|---|---|
+| impact | 이 일을 안 하면 시험이나 제출 결과에 생기는 손해의 크기 | 마감이 언제인지와 상관없이, 이 일을 안 하면 시험 점수나 제출 결과에 생기는 손해의 크기 |
+| concrete | 이 할 일은 2분 안에 첫 행동을 시작할 수 있을 만큼 구체적이다 | 이 할 일은 지금 바로 손댈 첫 행동이 무엇인지 분명할 만큼 구체적이다 |
+| avoiding | 이 일은 사람이 미루기 쉬운 종류의 일이다 (크고, 지루하고, 끝이 안 보이는) | 이 일은 사람이 미루기 쉬운 종류의 일이다 (하기 싫거나 지루하고, 어디까지 하면 끝인지 모호한) |
+
+- 지난 사본이 된 `questions-history/v2.json`의 지문을 두 시험에 고정하고, `questions-history/v3.json`을 지금 파일과 같은 바이트로 둔다.
+- concrete 문구에서 2분이 빠져 spec 004 R-307 게이트 설명도 같이 바꾼다.
+- v2에서 v3로 올리면 질문 버전이 달라져 기존 판단 결과는 모두 다시 묻는다.
