@@ -273,6 +273,15 @@ final class SettingsSnapshotTests: XCTestCase {
         try writeOnboardingKey("o27-onboarding-key-saved", key: Self.onboardingKey(hasKey: true))
     }
 
+    /// 키 단계가 있을 때 일정(2/3)과 기본값(3/3) 단계.
+    func test_R624_onboardingThreeStepContext() throws {
+        try writeOnboardingKey("o27-onboarding-3step-2", key: Self.onboardingKey(hasKey: false), step: 2)
+    }
+
+    func test_R624_onboardingThreeStepDefaults() throws {
+        try writeOnboardingKey("o27-onboarding-3step-3", key: Self.onboardingKey(hasKey: false), step: 3)
+    }
+
     private static func onboardingKey(
         hasKey: Bool, issueURL: URL? = nil, onSave: @escaping (String) -> Bool = { _ in true }
     ) -> OnboardingKeyInput {
@@ -280,12 +289,13 @@ final class SettingsSnapshotTests: XCTestCase {
     }
 
     private func writeOnboardingKey(
-        _ name: String, key: OnboardingKeyInput, draft: OnboardingKeyDraft = OnboardingKeyDraft()
+        _ name: String, key: OnboardingKeyInput, draft: OnboardingKeyDraft = OnboardingKeyDraft(), step: Int = 1
     ) throws {
         let calendar = GregorianCalendar.make(timeZone: try XCTUnwrap(TimeZone(identifier: "Asia/Seoul")))
         let content = OnboardingView(
             today: try XCTUnwrap(LocalDay(text: "2026-11-06")), calendar: calendar, initialQuantum: 25,
-            initialExtend: 10, initialDayStart: Defaults.dayStart, keyStep: key, initialKeyDraft: draft,
+            initialExtend: 10, initialDayStart: Defaults.dayStart, initialStep: step, keyStep: key,
+            initialKeyDraft: draft,
             onFinish: { _ in }
         )
         .environment(\.timeZone, calendar.timeZone)

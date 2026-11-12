@@ -68,4 +68,51 @@ final class OnboardingKeyStepTests: XCTestCase {
         XCTAssertFalse(called)
         XCTAssertFalse(draft.saveFailed)
     }
+
+    func test_FR21_R624_keyNextMovesToContextOnlyWhenSaved() {
+        var steps = OnboardingSteps(hasKeyStep: true, initialStep: 1)
+        var draft = OnboardingKeyDraft(text: "fake-key")
+        XCTAssertEqual(steps.total, 3)
+        XCTAssertEqual(steps.page, .key)
+
+        steps.submitKey(&draft, hasKey: false) { _ in false }
+        XCTAssertEqual(steps.step, 1, "저장에 실패하면 1/3에 머문다")
+        XCTAssertEqual(steps.page, .key)
+        XCTAssertTrue(draft.saveFailed)
+
+        steps.submitKey(&draft, hasKey: false) { _ in true }
+        XCTAssertEqual(steps.step, 2, "저장하면 2/3 일정으로 넘어간다")
+        XCTAssertEqual(steps.page, .context)
+    }
+
+    func test_FR21_R624_existingKeyNextAndSkipMoveToContext() {
+        var saved = OnboardingSteps(hasKeyStep: true, initialStep: 1)
+        var draft = OnboardingKeyDraft()
+        saved.submitKey(&draft, hasKey: true) { _ in false }
+        XCTAssertEqual(saved.page, .context)
+
+        var skipped = OnboardingSteps(hasKeyStep: true, initialStep: 1)
+        skipped.next()
+        XCTAssertEqual(skipped.page, .context, "건너뛰기는 저장 없이 2/3으로 간다")
+    }
+
+    func test_FR21_R624_threeStepsForwardAndBack() {
+        var steps = OnboardingSteps(hasKeyStep: true, initialStep: 2)
+        steps.next()
+        XCTAssertEqual(steps.step, 3)
+        XCTAssertEqual(steps.page, .defaults)
+        steps.back()
+        XCTAssertEqual(steps.step, 2, "\"이전\"은 3/3에서 2/3 일정으로 돌아간다")
+        XCTAssertEqual(steps.page, .context)
+    }
+
+    func test_FR21_R116_twoStepsWithoutKeyStep() {
+        var steps = OnboardingSteps(hasKeyStep: false, initialStep: 1)
+        XCTAssertEqual(steps.total, 2)
+        XCTAssertEqual(steps.page, .context)
+        steps.next()
+        XCTAssertEqual(steps.page, .defaults)
+        steps.back()
+        XCTAssertEqual(steps.page, .context)
+    }
 }

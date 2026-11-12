@@ -924,6 +924,18 @@ final class AppDecisionTests: XCTestCase {
         XCTAssertEqual(otherProvider.state.onboardingKey?.hasKey, false, "고른 공급자와 상관없이 Jev 보관함을 본다")
     }
 
+    /// spec 006 Edge Case: 온보딩 중 Keychain을 읽지 못하면 키 없음으로 보고 붙여 넣는 칸을 보인다.
+    func test_FR21_R624_keychainReadFailureMeansNoKey() throws {
+        let stores = Dictionary(
+            uniqueKeysWithValues: ProviderID.allCases.map { ($0, InMemoryKeyStore(key: "fake-key")) })
+        stores[.typesafe]?.failing = [.hasKey]
+        let h = try onboardingHarness(stores: stores)
+        h.state.launch()
+
+        let step = try XCTUnwrap(h.state.onboardingKey, "읽기에 실패해도 키 단계는 보인다")
+        XCTAssertFalse(step.hasKey)
+    }
+
     func test_FR21_R625_saveGoesOnlyToTypeSafeStoreWithoutWritingProvider() throws {
         for providerSetting in ["liquid", "fake-unknown-provider"] {
             let h = try onboardingHarness(settings: [CoreSettings.decisionProviderKey: providerSetting])
