@@ -591,6 +591,37 @@ final class AppProviderTests: XCTestCase {
         XCTAssertEqual(h.state.sendingHost, "other-resource.invalid")
     }
 
+    /// #139: 스킴·호스트 대소문자만 바꿔 다시 저장하면 같은 주소라 키를 지우지 않는다.
+    func test_ADR0011_R616_139_caseOnlyEndpointChangeKeepsKey() async throws {
+        let providers = Providers(keys: [.microsoft: "fake-key-ms"])
+        let h = await launched(try microsoftHarness(providers: providers))
+        XCTAssertNil(h.state.saveMicrosoft(endpoint: "https://Example-Resource.invalid", deployment: "fake-deploy"))
+        XCTAssertEqual(
+            try h.settings.value(for: CoreSettings.microsoftEndpointKey), "https://example-resource.invalid",
+            "소문자 호스트로 저장한다")
+
+        XCTAssertNil(
+            h.state.saveMicrosoft(endpoint: "HTTPS://EXAMPLE-RESOURCE.INVALID", deployment: "fake-deploy-2"))
+
+        XCTAssertEqual(try providers.keys[.microsoft]?.read(), "fake-key-ms", "대소문자만 다르면 키를 지우지 않는다")
+        XCTAssertEqual(h.state.decisionField.microsoft?.keyCleared, false)
+        XCTAssertEqual(providers.bound.last?.requestModel, "fake-deploy-2")
+    }
+
+    /// #139: 고치기 전에 대문자 호스트로 저장된 값이 남아 있어도 같은 정규화로 견줘 키를 지우지 않는다.
+    func test_ADR0011_R616_139_oldUppercaseSavedEndpointKeepsKey() async throws {
+        let providers = Providers(keys: [.microsoft: "fake-key-ms"])
+        var settings = Self.microsoftSettings
+        settings[CoreSettings.microsoftEndpointKey] = "https://Example-Resource.INVALID"
+        settings[CoreSettings.microsoftDeploymentKey] = "fake-deploy"
+        let h = await launched(try microsoftHarness(providers: providers, settings: settings))
+
+        XCTAssertNil(h.state.saveMicrosoft(endpoint: "https://example-resource.invalid", deployment: "fake-deploy-2"))
+
+        XCTAssertEqual(try providers.keys[.microsoft]?.read(), "fake-key-ms")
+        XCTAssertEqual(try h.settings.value(for: CoreSettings.microsoftDeploymentKey), "fake-deploy-2")
+    }
+
     func test_ADR0011_R616_keyDeleteFailureKeepsOldEndpoint() async throws {
         let providers = Providers(keys: [.microsoft: "fake-key-ms"])
         let h = await launched(try microsoftHarness(providers: providers))
