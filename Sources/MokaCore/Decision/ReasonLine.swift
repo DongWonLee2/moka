@@ -21,7 +21,6 @@ public struct ReasonLine: Equatable, Sendable {
         self.skipCount = skipCount
     }
 
-    /// impact 옵션 번호 0·1·2의 화면 말(사용자 결정 2026-11-12). 질문 파일 옵션 말과 따로 둔다.
     private static let impactWords = ["낮음", "보통", "높음"]
 
     /// `usable`은 `ScoreRules.usable`로 거른 사전, `today`는 고르기와 같은 날(`SessionScoring.today`).
