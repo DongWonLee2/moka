@@ -862,6 +862,182 @@ final class AppDecisionTests: XCTestCase {
 
         XCTAssertEqual(state.settingsTabRequest, .basic)
     }
+
+    // MARK: - spec 006 T031 온보딩 Jev 키 단계(FR-21 R-624~R-626, SC-611)
+
+    private struct OnboardingHarness {
+        let state: AppState
+        let keys: [ProviderID: InMemoryKeyStore]
+        let settings: RecordingSettingsStore
+        let repository: InMemoryTaskRepository
+        let scoreStore: InMemoryScoreStore
+        let provider: FakeDecisionProvider
+        let clock: TestClock
+    }
+
+    /// 공급자마다 메모리 키 보관함을 둔 상태. 공급자는 하나의 가짜 공급자로 고정한다.
+    private func onboardingHarness(
+        count: Int = 0, keys: [ProviderID: String] = [:], settings: [String: String] = [:],
+        provider: FakeDecisionProvider = AppDecisionTests.ok(),
+        stores: [ProviderID: InMemoryKeyStore]? = nil, settingsStore: RecordingSettingsStore? = nil,
+        repository: InMemoryTaskRepository? = nil
+    ) throws -> OnboardingHarness {
+        let repository = repository ?? InMemoryTaskRepository()
+        for index in 0..<count {
+            _ = try repository.insertTask(
+                Self.newTask("가짜 할 일 \(index + 1)"), cycleDay: nil, at: AppTestFixture.noon)
+        }
+        let store = settingsStore ?? RecordingSettingsStore()
+        for (key, value) in settings {
+            try store.setValue(value, for: key)
+        }
+        let keyStores =
+            stores
+            ?? Dictionary(uniqueKeysWithValues: ProviderID.allCases.map { ($0, InMemoryKeyStore(key: keys[$0])) })
+        let scoreStore = InMemoryScoreStore(tasks: repository)
+        let clock = TestClock(AppTestFixture.noon)
+        let state = makeState(
+            repository, settings: store, clock: clock, scores: scoreStore,
+            decision: DecisionSetup(
+                bind: { DecisionBinding(provider: provider, baseModel: $0.baseModel, requestModel: $0.requestModel) },
+                keyStore: { keyStores[$0] ?? InMemoryKeyStore() }, questions: Self.questions))
+        return OnboardingHarness(
+            state: state, keys: keyStores, settings: store, repository: repository, scoreStore: scoreStore,
+            provider: provider, clock: clock)
+    }
+
+    func test_FR21_R624_keyStepFirstValuesComeFromTypeSafeStore() throws {
+        let empty = try onboardingHarness()
+        empty.state.launch()
+        XCTAssertTrue(empty.state.showsOnboarding)
+        let step = try XCTUnwrap(empty.state.onboardingKey)
+        XCTAssertFalse(step.hasKey)
+        XCTAssertEqual(step.host, "api.typesafe.ai", "보내는 곳은 Jev 주소의 호스트")
+        XCTAssertNil(step.issueURL, "TypeSafe 발급 링크 주소는 아직 확인되지 않았다")
+
+        let saved = try onboardingHarness(keys: [.typesafe: "fake-key"])
+        saved.state.launch()
+        XCTAssertEqual(saved.state.onboardingKey?.hasKey, true)
+
+        let otherProvider = try onboardingHarness(
+            keys: [.liquid: "fake-liquid-key"], settings: [CoreSettings.decisionProviderKey: "liquid"])
+        otherProvider.state.launch()
+        XCTAssertEqual(otherProvider.state.onboardingKey?.hasKey, false, "고른 공급자와 상관없이 Jev 보관함을 본다")
+    }
+
+    func test_FR21_R625_saveGoesOnlyToTypeSafeStoreWithoutWritingProvider() throws {
+        for providerSetting in ["liquid", "fake-unknown-provider"] {
+            let h = try onboardingHarness(settings: [CoreSettings.decisionProviderKey: providerSetting])
+            h.state.launch()
+            let writtenBefore = h.settings.written.count
+            let step = try XCTUnwrap(h.state.onboardingKey, providerSetting)
+
+            XCTAssertTrue(step.onSave("  fake-onboarding-key\n"), providerSetting)
+
+            XCTAssertEqual(try h.keys[.typesafe]?.read(), "fake-onboarding-key", "앞뒤 공백·줄바꿈을 지운다")
+            for id in ProviderID.allCases where id != .typesafe {
+                XCTAssertNil(try h.keys[id]?.read(), "\(providerSetting): \(id) 보관함에는 저장하지 않는다")
+            }
+            XCTAssertEqual(h.settings.written.count, writtenBefore, "\(providerSetting): 설정을 쓰지 않는다")
+            XCTAssertEqual(h.state.onboardingKey?.hasKey, true, providerSetting)
+        }
+    }
+
+    func test_FR21_R625_saveFailureAndEmptyInputReturnFalse() throws {
+        let stores = Dictionary(uniqueKeysWithValues: ProviderID.allCases.map { ($0, InMemoryKeyStore()) })
+        stores[.typesafe]?.failing = [.save]
+        let h = try onboardingHarness(stores: stores)
+        h.state.launch()
+        let step = try XCTUnwrap(h.state.onboardingKey)
+
+        XCTAssertFalse(step.onSave(" \n "), "빈 입력은 저장하지 않는다")
+        XCTAssertFalse(step.onSave("fake-key"), "보관함 저장이 실패하면 false")
+        XCTAssertEqual(h.state.keyFieldState, .noKey, "온보딩 실패는 기본 탭 키 칸에 실패 문구를 남기지 않는다")
+
+        stores[.typesafe]?.failing = []
+        XCTAssertTrue(step.onSave("fake-key"))
+        XCTAssertEqual(h.state.keyFieldState, .savedNoTasks)
+    }
+
+    func test_FR21_R625_saveClearsLedgerAndAsksAgain() async throws {
+        let provider = Self.ok()
+        await provider.setAnswer(.failure(.timeout), for: 1)
+        let h = try onboardingHarness(count: 2, keys: [.typesafe: "fake-key"], provider: provider)
+        h.state.launch()
+        await h.state.requestScores()?.value
+        XCTAssertNil(h.state.requestScores(), "실패한 할 일은 장부에 남아 다시 묻지 않는다")
+
+        await provider.setAnswer(.success(Self.answer(urgency: 1)), for: 1)
+        XCTAssertTrue(try XCTUnwrap(h.state.onboardingKey).onSave("fake-key-2"))
+        await h.state.requestScores()?.value
+
+        let calls = await provider.calls
+        XCTAssertEqual(Array(calls.dropFirst(2)), [1], "장부를 비워 실패했던 할 일을 다시 묻는다")
+        XCTAssertEqual(try h.scoreStore.scores().count, 2)
+    }
+
+    func test_FR21_R626_SC611_skippingKeyThenFinishingShowsTaskInNotch() async throws {
+        let h = try onboardingHarness()
+        h.state.launch()
+        XCTAssertTrue(h.state.showsOnboarding)
+
+        XCTAssertTrue(
+            h.state.finishOnboarding(
+                OnboardingValues(context: nil, quantumMin: 25, extendMin: 10, dayStart: Defaults.dayStart)))
+        XCTAssertTrue(
+            h.state.addTask(
+                NewTask(
+                    title: "가짜 할 일 1", deadline: Self.day("2027-01-20"), estMin: nil, recurrence: .none,
+                    weekday: nil)))
+
+        XCTAssertFalse(h.state.showsOnboarding)
+        let added = try XCTUnwrap(try h.repository.tasks().first)
+        XCTAssertEqual(h.state.session.taskID, added.id, "키 없이도 노치에 뜬다")
+        XCTAssertNil(h.state.requestScores(), "키가 없으면 묻지 않는다")
+        let calls = await h.provider.calls
+        XCTAssertEqual(calls, [])
+    }
+
+    func test_FR21_R626_keySavedBeforeFinishingSurvivesRelaunch() throws {
+        let stores = Dictionary(uniqueKeysWithValues: ProviderID.allCases.map { ($0, InMemoryKeyStore()) })
+        let settings = RecordingSettingsStore()
+        let repository = InMemoryTaskRepository()
+        let first = try onboardingHarness(stores: stores, settingsStore: settings, repository: repository)
+        first.state.launch()
+        XCTAssertTrue(try XCTUnwrap(first.state.onboardingKey).onSave("fake-key"))
+
+        let second = try onboardingHarness(stores: stores, settingsStore: settings, repository: repository)
+        second.state.launch()
+
+        XCTAssertTrue(second.state.showsOnboarding, "끝내지 않았으므로 온보딩이 다시 보인다")
+        XCTAssertEqual(second.state.onboardingKey?.hasKey, true, "키는 남아 있다")
+    }
+
+    func test_FR21_R625_SC208_onboardingKeyIsNotStoredOutsideKeyStore() async throws {
+        let secret = "fake-onboarding-secret-9c2e"
+        let h = try onboardingHarness(count: 1)
+        h.state.launch()
+
+        XCTAssertTrue(try XCTUnwrap(h.state.onboardingKey).onSave("  \(secret)  "))
+        XCTAssertTrue(
+            h.state.finishOnboarding(
+                OnboardingValues(context: nil, quantumMin: 25, extendMin: 10, dayStart: Defaults.dayStart)))
+        await h.state.requestScores()?.value
+        h.state.start()
+        h.clock.advance(minutes: 5)
+        h.state.tick()
+        h.state.complete()
+
+        XCTAssertEqual(try h.keys[.typesafe]?.read(), secret)
+        XCTAssertFalse(try h.scoreStore.scores().isEmpty, "판단 결과가 저장됐다")
+        XCTAssertFalse(try h.repository.decisions().isEmpty, "행동 로그가 남았다")
+        XCTAssertFalse(h.settings.written.isEmpty, "설정 값이 저장됐다")
+        for (name, value) in h.settings.written {
+            XCTAssertFalse(name.contains(secret) || value.contains(secret), "설정 \(name)")
+        }
+        XCTAssertFalse(String(describing: try h.scoreStore.scores()).contains(secret), "판단 결과")
+        XCTAssertFalse(String(describing: try h.repository.decisions()).contains(secret), "행동 로그")
+    }
 }
 
 /// 쓴 값을 모두 남기는 설정 저장소. 키 값이 설정에 들어가지 않는지 본다(SC-208).

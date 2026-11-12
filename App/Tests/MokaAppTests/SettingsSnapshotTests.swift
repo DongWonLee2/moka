@@ -251,6 +251,52 @@ final class SettingsSnapshotTests: XCTestCase {
         try write(name, content: content, size: CGSize(width: 400, height: 250))
     }
 
+    /// 006 시안 11번: Jev 키 없음. TypeSafe 발급 링크 주소는 확인 전이라 링크가 없다.
+    func test_R624_onboardingKeyEmpty() throws {
+        try writeOnboardingKey("o27-onboarding-key-empty", key: Self.onboardingKey(hasKey: false))
+    }
+
+    /// 006 시안 11번에서 발급 링크 주소를 확인한 뒤의 모양.
+    func test_R624_onboardingKeyEmptyWithLink() throws {
+        try writeOnboardingKey(
+            "o27-onboarding-key-link",
+            key: Self.onboardingKey(hasKey: false, issueURL: URL(string: "https://example.invalid/keys")))
+    }
+
+    /// 006 시안 12번: `false`를 돌려주는 `onSave`로 "다음"을 누른 뒤의 키 단계 상태로 그린다.
+    func test_R624_onboardingKeyFailed() throws {
+        let key = Self.onboardingKey(hasKey: false) { _ in false }
+        var draft = OnboardingKeyDraft(text: "fake-onboarding-key")
+        XCTAssertFalse(draft.submit(hasKey: key.hasKey, onSave: key.onSave))
+        XCTAssertTrue(draft.saveFailed)
+        try writeOnboardingKey("o27-onboarding-key-failed", key: key, draft: draft)
+    }
+
+    /// 006 시안 13번: Jev 키가 이미 있다.
+    func test_R624_onboardingKeySaved() throws {
+        try writeOnboardingKey("o27-onboarding-key-saved", key: Self.onboardingKey(hasKey: true))
+    }
+
+    private static func onboardingKey(
+        hasKey: Bool, issueURL: URL? = nil, onSave: @escaping (String) -> Bool = { _ in true }
+    ) -> OnboardingKeyInput {
+        OnboardingKeyInput(hasKey: hasKey, onSave: onSave, issueURL: issueURL, host: "api.typesafe.ai")
+    }
+
+    private func writeOnboardingKey(
+        _ name: String, key: OnboardingKeyInput, draft: OnboardingKeyDraft = OnboardingKeyDraft()
+    ) throws {
+        let calendar = GregorianCalendar.make(timeZone: try XCTUnwrap(TimeZone(identifier: "Asia/Seoul")))
+        let content = OnboardingView(
+            today: try XCTUnwrap(LocalDay(text: "2026-11-06")), calendar: calendar, initialQuantum: 25,
+            initialExtend: 10, initialDayStart: Defaults.dayStart, keyStep: key, initialKeyDraft: draft,
+            onFinish: { _ in }
+        )
+        .environment(\.timeZone, calendar.timeZone)
+        .background(MokaColors.settingsWindow)
+        try write(name, content: content, size: CGSize(width: 400, height: 290))
+    }
+
     func test_R121_editContextSheet() throws {
         let calendar = GregorianCalendar.make(timeZone: try XCTUnwrap(TimeZone(identifier: "Asia/Seoul")))
         let content = ContextFormView(
