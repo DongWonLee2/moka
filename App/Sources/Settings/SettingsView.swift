@@ -48,9 +48,7 @@ struct SettingsView: View {
                         onCommit: { applyExtend(CoreSettings.commitExtendField(extendText, to: store)) },
                         onStep: { applyExtend(CoreSettings.saveExtendField($0, to: store)) }),
                     dayStart: Binding(get: { dayStart }, set: { saveDayStart($0) }),
-                    keyState: appState.keyFieldState, canRetry: appState.canRetryScores,
-                    onSaveKey: { appState.saveKey($0) }, onDeleteKey: { appState.deleteKey() },
-                    onRetry: { appState.retryScores() }
+                    decision: appState.decisionField
                 )
             case .tasks:
                 TaskListTabView(
@@ -68,7 +66,8 @@ struct SettingsView: View {
                                 ids: ids,
                                 stopsTimer: appState.tasks.contains { ids.contains($0.id) && $0.status == .active })
                         }
-                    }
+                    },
+                    keyNotice: appState.showsKeyNotice, onOpenKeySettings: { tab = .basic }
                 )
             case .contexts:
                 ContextTabView(
@@ -155,7 +154,11 @@ struct SettingsView: View {
         .background(MokaColors.settingsWindow)
         .frame(width: 460)
         .background(SettingsWindowRaiser.Anchor())
-        .onAppear(perform: load)
+        .onAppear {
+            load()
+            takeTabRequest()
+        }
+        .onChange(of: appState.settingsTabRequest) { takeTabRequest() }
         // 보기를 바꾸면 체크를 비운다. 숨은 줄에 체크가 남아 전체 고르기·지우기와 엇갈리지 않게 한다(R-122).
         .onChange(of: appState.taskListScope) { checkedTaskIDs = [] }
         .onChange(of: tab) { previous, _ in
@@ -189,6 +192,10 @@ struct SettingsView: View {
         TaskEdit(
             title: values.title, deadline: values.deadline.map { .set($0) } ?? .clear,
             estMin: values.estMin.map { .set($0) } ?? .clear, recurrence: values.recurrence, weekday: values.weekday)
+    }
+
+    private func takeTabRequest() {
+        if let request = appState.takeSettingsTabRequest() { tab = request }
     }
 
     private func commitFields() {

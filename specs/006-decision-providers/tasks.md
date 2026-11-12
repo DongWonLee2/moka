@@ -5,7 +5,7 @@ description: "spec 006 판단 공급자 고르기와 키 넣기 작업 목록"
 
 # Tasks: 판단 공급자 고르기와 키 넣기
 
-**Input**: `specs/006-decision-providers/`의 plan.md, spec.md(R-601~R-630), research.md(R1~R14), data-model.md, contracts/(decision-provider-v2.md, questions-json-v2.md), quickstart.md. 화면 시안 `~/Dev/ai-platform/projects/moka/design/006-mockup.html`(저장소 밖, T002에서 사용자 확정)
+**Input**: `specs/006-decision-providers/`의 plan.md, spec.md(R-601~R-630), research.md(R1~R14), data-model.md, contracts/(decision-provider-v2.md, questions-json-v2.md), quickstart.md. 화면 시안 `~/Dev/ai-platform/projects/moka/design/006-mockup.html`(저장소 밖, T002에서 사용자 확정, 시안 확정 2026-11-12)
 
 **Tests**: 넣는다. 헌법 II와 AGENTS.md "실패하는 테스트를 먼저 쓰고 실패를 확인한 뒤 구현한다". 테스트 태스크마다 Red 커밋을 남기고, 구현 태스크에서 Green 커밋을 남긴다.
 
@@ -39,7 +39,7 @@ description: "spec 006 판단 공급자 고르기와 키 넣기 작업 목록"
 ## Phase 1: Setup
 
 - [ ] T001 기준 상태 확인: `swift test`, `cd tuning && python3 -m pytest`, 앱 빌드, quickstart 4의 앱 시험을 돌려 기존 시험이 PASS인지 기록하고, 기존 스냅샷 참조 이미지 폴더(`SnapshotHelper.swift`가 가리키는 곳)의 파일 해시 목록을 PR "완료 증거"에 적는다(SC-613 비교 기준) 〔단위 1〕
-- [ ] T002 [사람] 시안 `~/Dev/ai-platform/projects/moka/design/006-mockup.html`을 사용자에게 보이고 "확정할 것" 목록(판단 모델 칸 구성과 문구, 열리지 않은 공급자 표시, 잠정값 안내, 바꾸기 안내, Microsoft 칸과 거부 문구, 온보딩 키 단계 문구와 보내는 곳 줄, TypeSafe 발급 링크 주소)을 확정받는다. 확정 전에는 [화면 뒤] 태스크를 시작하지 않는다 〔단위 1〕
+- [ ] T002 [사람] 시안 `~/Dev/ai-platform/projects/moka/design/006-mockup.html`을 사용자에게 보이고 "확정할 것" 목록(판단 모델 칸 구성과 문구, 열리지 않은 공급자 표시, 잠정값 안내, 바꾸기 안내, Microsoft 칸과 거부 문구, 온보딩 키 단계 문구와 보내는 곳 줄, TypeSafe 발급 링크 주소)을 확정받는다. 확정 전에는 [화면 뒤] 태스크를 시작하지 않는다. 시안 확정 2026-11-12(사람이 "확정할 것" 12항목을 모두 확인) 〔단위 1〕
 
 ---
 
