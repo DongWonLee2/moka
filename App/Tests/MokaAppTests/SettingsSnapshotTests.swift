@@ -293,8 +293,9 @@ final class SettingsSnapshotTests: XCTestCase {
             onFinish: { _ in }
         )
         .environment(\.timeZone, calendar.timeZone)
+        .frame(maxHeight: .infinity, alignment: .top)
         .background(MokaColors.settingsWindow)
-        try write(name, content: content, size: CGSize(width: 400, height: 290))
+        try write(name, content: content, size: CGSize(width: 400, height: 250))
     }
 
     func test_R121_editContextSheet() throws {
