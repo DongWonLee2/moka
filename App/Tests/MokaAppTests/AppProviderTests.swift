@@ -673,6 +673,22 @@ final class AppProviderTests: XCTestCase {
         XCTAssertEqual(h.state.decisionField.microsoft?.keyCleared, true)
     }
 
+    /// 대소문자 정규화는 읽은 값에만 씌운다. 읽기가 실패하면 대소문자만 다른 주소여도 바꾼 것으로 본다.
+    func test_ADR0011_R616_128_139_savedEndpointReadFailureDeletesKeyEvenForCaseOnlyChange() async throws {
+        for endpoint in ["HTTPS://Example-Resource.INVALID", "https://other-resource.invalid"] {
+            let providers = Providers(keys: [.microsoft: "fake-key-ms"])
+            let h = await launched(try microsoftHarness(providers: providers))
+            XCTAssertNil(
+                h.state.saveMicrosoft(endpoint: "https://example-resource.invalid", deployment: "fake-deploy"))
+            h.settings.failingReads = [CoreSettings.microsoftEndpointKey]
+
+            XCTAssertNil(h.state.saveMicrosoft(endpoint: endpoint, deployment: "fake-deploy"))
+
+            XCTAssertNil(try providers.keys[.microsoft]?.read(), endpoint)
+            XCTAssertEqual(h.state.decisionField.microsoft?.keyCleared, true, endpoint)
+        }
+    }
+
     func test_ADR0011_R616_keyDeleteFailureKeepsOldEndpoint() async throws {
         let providers = Providers(keys: [.microsoft: "fake-key-ms"])
         let h = await launched(try microsoftHarness(providers: providers))
