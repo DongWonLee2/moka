@@ -382,7 +382,7 @@ final class AppState {
                 self?.lifecycleCheckpoint(.sleep)
             },
         ]
-        // 읽기 실패는 값 없음(Jev)과 달리 모르는 공급자 ID처럼 판단 기능을 끈다(#128).
+        // 읽기 실패는 값 없음과 다르다. 어느 공급자인지 모르니 Jev로 되돌리지 않고 모르는 공급자 ID처럼 다룬다.
         do {
             let stored = try CoreSettings.readDecisionProvider(from: storage.settings)
             selectedProvider = stored.map { ProviderID(rawValue: $0) } ?? .typesafe
@@ -906,7 +906,7 @@ final class AppState {
         case .success(let value): url = value
         case .failure(let rejection): return rejection
         }
-        // 저장된 주소를 읽지 못하면 같은 주소인지 모르므로 바꾼 것으로 보고 키를 지운다(#128).
+        // 저장된 주소를 읽지 못하면 같은 주소인지 모르므로 바꾼 것으로 보고 키를 지운다.
         let saved = Result(catching: { try CoreSettings.readMicrosoftEndpoint(from: settings) })
         if (try? saved.get()) == url.absoluteString,
             CoreSettings.readMicrosoftDeployment(from: settings) == deploymentText

@@ -472,7 +472,6 @@ final class AppProviderTests: XCTestCase {
         XCTAssertEqual(try h.scoreStore.scores()[1]?.provider, "fake-b")
     }
 
-    /// #128: 고른 공급자 읽기가 실패하면 값이 없을 때(Jev)와 달리 모르는 공급자 ID와 같은 꺼진 상태다.
     func test_ADR0011_R614_128_settingsReadFailureAtLaunchTurnsJudgingOff() async throws {
         let providers = Providers(keys: [.typesafe: "fake-key-a", .liquid: "fake-key-b"])
         let repository = InMemoryTaskRepository()
@@ -601,7 +600,6 @@ final class AppProviderTests: XCTestCase {
         XCTAssertEqual(h.state.sendingHost, "other-resource.invalid")
     }
 
-    /// #128: 저장된 주소를 읽지 못하면 같은 주소인지 모르므로 바꾼 것으로 보고 키를 먼저 지운다.
     func test_ADR0011_R616_128_savedEndpointReadFailureDeletesKey() async throws {
         let providers = Providers(keys: [.microsoft: "fake-key-ms"])
         let h = await launched(try microsoftHarness(providers: providers))

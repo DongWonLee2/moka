@@ -59,7 +59,7 @@ public enum CoreSettings {
     }
 
     /// 고른 공급자 ID 글자(spec 006 research R8). 없으면 `nil`이고 `DecisionSelection`이 Jev로 본다.
-    /// 읽기 실패는 없음과 다르므로 던진다(#128).
+    /// 읽기 실패는 없음과 다르므로 던진다.
     public static func readDecisionProvider(from store: some SettingsStore) throws -> String? {
         try store.value(for: decisionProviderKey)
     }
@@ -68,7 +68,7 @@ public enum CoreSettings {
         try store.setValue(id.rawValue, for: decisionProviderKey)
     }
 
-    /// 저장한 Microsoft 리소스 주소 글자. `DecisionSelection`이 주소 규칙으로 다시 본다. 읽기 실패는 던진다(#128).
+    /// 저장한 Microsoft 리소스 주소 글자. `DecisionSelection`이 주소 규칙으로 다시 본다. 읽기 실패는 던진다.
     public static func readMicrosoftEndpoint(from store: some SettingsStore) throws -> String? {
         try store.value(for: microsoftEndpointKey)
     }
