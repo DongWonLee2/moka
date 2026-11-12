@@ -50,7 +50,7 @@ enum DecisionFieldText {
     static let choosePlaceholder = "골라 주세요"
     static let switchNotice = "공급자를 바꾸면 할 일을 모두 새 판단 모델에 다시 물어요. 그동안은 마감이 가까운 순으로 떠요."
     static let closedNote = "아직 연결을 확인하는 중이라 고를 수 없어요."
-    static let destinationPrefix = "할 일 제목이 가는 곳: "
+    static let destinationPrefix = "판단을 받으러 보내는 곳: "
     static let provisionalNotice = "이 판단 모델은 순서를 정하는 기준값을 아직 맞추는 중이에요. 순서가 조금 다를 수 있어요."
     static let selectFailed = "공급자를 바꾸지 못했어요. 다시 해 주세요."
     static let saveMicrosoftFailed = "주소를 저장하지 못했어요. 다시 해 주세요."
@@ -92,7 +92,7 @@ enum DecisionFieldText {
     }
 }
 
-/// 기본 탭 아래 판단 모델 칸(006 시안 1~10번). 공급자 고르기, 바꾸기 안내, Microsoft 칸, 가는 곳, 잠정값 안내,
+/// 기본 탭 아래 판단 모델 칸(006 시안 1~10번). 공급자 고르기, 바꾸기 안내, Microsoft 칸, 보내는 곳, 잠정값 안내,
 /// 발급 링크, 키 칸 순이다. 바꾸기 전에 확인 창을 띄우지 않는다(R-622).
 struct DecisionFieldBox: View {
     let input: DecisionFieldInput
