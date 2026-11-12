@@ -504,6 +504,34 @@ final class AppProviderTests: XCTestCase {
         XCTAssertNil(state.sendingHost)
     }
 
+    func test_ADR0011_R614_R615_128_choosingProviderAfterLaunchReadFailureTurnsJudgingBackOn() async throws {
+        let providers = Providers(keys: [.typesafe: "fake-key-a", .liquid: "fake-key-b"])
+        let repository = InMemoryTaskRepository()
+        _ = try repository.insertTask(
+            NewTask(title: "가짜 할 일 1", deadline: nil, estMin: nil, recurrence: .none, weekday: nil), cycleDay: nil,
+            at: AppTestFixture.noon)
+        let settings = ControlledSettingsStore()
+        settings.failingReads = [CoreSettings.decisionProviderKey]
+        let scoreStore = InMemoryScoreStore(tasks: repository)
+        let state = makeState(
+            repository, settings: settings, scores: scoreStore,
+            decision: providers.setup(catalog: Self.catalog(opening: [.liquid]), questions: Self.bundled))
+        state.launch()
+        await state.requestScores()?.value
+        XCTAssertEqual(state.selectionOff, .unknownProvider)
+
+        state.selectProvider(.liquid)
+        await state.requestScores()?.value
+
+        XCTAssertEqual(state.selectedProvider, .liquid)
+        XCTAssertNil(state.selectionOff, "다시 고르면 읽기가 계속 실패해도 판단 기능이 켜진다")
+        XCTAssertNil(state.decisionField.offNote)
+        XCTAssertEqual(state.sendingHost, "api.liquid.ai")
+        XCTAssertEqual(try scoreStore.scores()[1]?.provider, "fake-b")
+        let typesafeCalls = await providers.provider(.typesafe).calls
+        XCTAssertTrue(typesafeCalls.isEmpty)
+    }
+
     func test_ADR0011_R615_switchToOffProviderReadsItsKeyStore() async throws {
         let providers = Providers(keys: [.typesafe: "fake-key-a", .microsoft: "fake-key-ms"])
         let h = await launched(
