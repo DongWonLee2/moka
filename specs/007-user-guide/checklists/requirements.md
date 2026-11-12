@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -31,6 +31,6 @@
 
 ## Notes
 
-- [NEEDS CLARIFICATION] 표시는 본문에 쓰지 않고 "확정할 것" Q1~Q12로 모았다. 추천 없이 선택지만 있고, debate로 추천을 정한 뒤 사람이 확인하면 이 항목을 채운다.
+- 확인 질문 Q1~Q12는 2026-11-12에 정해 "확정한 것" 절에 답과 근거 표기를 적었다. Q1·Q3~Q8·Q10은 debate 3:0(사용자 위임), Q2·Q9·Q12는 사용자 결정이다. Q11(글)은 사람이 시안으로 확정한다.
 - 구현 내용 항목의 판정 근거: 인용 문구의 출처를 밝히려고 화면 파일 이름(`GateView`, `ReasonText` 등)과 기존 타입 이름(`OnboardingSteps`, `StepBar`, `JudgmentState`)을 적었다. 구현 방법(뷰 구성, 상수 꺼내는 방식)은 plan에 둔다. spec 004·006과 같은 기준이다.
 - 금지 기호(em dash, 화살표)는 0건이다.
