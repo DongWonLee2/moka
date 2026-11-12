@@ -8,7 +8,7 @@
 
 | 키 | 타입 | 규칙 |
 |---|---|---|
-| `version` | 문자열 | `"v2"`. 로그 `question_version`과 `scores.question_version`에 그대로 |
+| `version` | 문자열 | 질문 버전 문자열(v2·v3). 로그 `question_version`과 `scores.question_version`에 그대로 |
 | `language` | 문자열 | `"ko"` |
 | `models` | 객체 | 키는 공급자 ID, 값은 기준 모델 ID(GLOSSARY). 별칭과 배포 이름은 값이 될 수 없다. v1의 `model`을 대체한다 |
 | `provisional` | 배열 | 잠정 임계값을 쓰는 기준 모델 ID. 중복 없음 |
@@ -76,7 +76,7 @@ v1 줄은 이미 쌓인 `(question_version = v1, provider = typesafe)` 판단 �
 
 ## v3 (사용자 결정 2026-11-12)
 
-형식, 읽기 규칙, `models`, `provisional`, `thresholds`, 질문 이름·타입·`criteria`는 v2 그대로다. 바뀌는 것은 `version`과 질문 셋의 `instructions`다. urgency는 그대로다.
+형식, 읽기 규칙, `models`, `provisional`, `thresholds`, 질문 이름·타입·`criteria`는 v2 그대로다. 바뀌는 것은 `version`과 질문 셋의 `instructions`다. `version`은 `"v3"`이다. urgency는 그대로다.
 
 | 질문 | v2 `instructions` | v3 `instructions` |
 |---|---|---|
