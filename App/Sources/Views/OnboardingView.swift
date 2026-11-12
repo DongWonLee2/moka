@@ -76,7 +76,6 @@ struct OnboardingSteps: Equatable {
         if step > 1 { step -= 1 }
     }
 
-    /// 키 단계 "다음": 저장하거나 키가 이미 있으면 일정 단계로 가고, 저장이 실패하면 머문다.
     mutating func submitKey(_ draft: inout OnboardingKeyDraft, hasKey: Bool, onSave: (String) -> Bool) {
         if draft.submit(hasKey: hasKey, onSave: onSave) { next() }
     }

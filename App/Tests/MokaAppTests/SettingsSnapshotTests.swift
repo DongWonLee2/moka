@@ -273,7 +273,6 @@ final class SettingsSnapshotTests: XCTestCase {
         try writeOnboardingKey("o27-onboarding-key-saved", key: Self.onboardingKey(hasKey: true))
     }
 
-    /// 키 단계가 있을 때 일정(2/3)과 기본값(3/3) 단계.
     func test_R624_onboardingThreeStepContext() throws {
         try writeOnboardingKey("o27-onboarding-3step-2", key: Self.onboardingKey(hasKey: false), step: 2)
     }
