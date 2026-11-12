@@ -709,6 +709,177 @@ final class AppProviderTests: XCTestCase {
         XCTAssertEqual(h.state.ranks.count, 2)
         XCTAssertEqual(providers.bound.last?.requestModel, "fake-deploy-2", "다음 요청 모델은 새 배포 이름")
     }
+
+    // MARK: - 단위 4 판단 모델 칸 값(R-620~R-623, data-model §9)
+
+    func test_ADR0011_R620_fieldListsFiveProvidersAndOnlyTypeSafeIsOpen() async throws {
+        let h = await launched(try harness(count: 1, providers: Providers(), catalog: ProviderCatalog.all))
+        let field = h.state.decisionField
+
+        XCTAssertEqual(field.providers.map(\.id), [.typesafe, .microsoft, .liquid, .perplexity, .openai])
+        XCTAssertEqual(
+            field.providers.map(\.displayName),
+            ["TypeSafe Jev", "Microsoft-Decision-1", "Liquid d1-ultra", "Perplexity Decider v1.2", "OpenAI Decisions"])
+        XCTAssertEqual(field.providers.filter(\.isOpen).map(\.id), [.typesafe])
+        XCTAssertEqual(field.providers.first?.closedNote, nil)
+        XCTAssertEqual(Set(field.providers.dropFirst().map(\.closedNote)), [DecisionFieldText.closedNote])
+        XCTAssertEqual(field.selected, .typesafe)
+        XCTAssertEqual(field.host, "api.typesafe.ai")
+        XCTAssertNil(field.issueURL, "발급 링크를 확인하지 않은 공급자는 링크가 없다")
+        XCTAssertFalse(field.provisional)
+        XCTAssertNil(field.offNote)
+        XCTAssertNil(field.microsoft, "Microsoft를 고르지 않으면 주소 칸이 없다")
+        XCTAssertEqual(field.keyState, .noKey)
+        XCTAssertNil(field.failure)
+    }
+
+    func test_ADR0011_R620_issueURLOnlyWhenConfirmed() async throws {
+        let confirmed = ProviderCatalog.all.map { row in
+            guard row.id == .liquid else { return row }
+            return ProviderConfig(
+                id: row.id, displayName: row.displayName, endpoint: row.endpoint, auth: row.auth, shape: row.shape,
+                issueURL: row.issueURL, issueURLConfirmed: true, firstCallConfirmed: true)
+        }
+        let unconfirmed = await launched(try harness(count: 1, providers: Providers()))
+        unconfirmed.state.selectProvider(.liquid)
+        XCTAssertNil(unconfirmed.state.decisionField.issueURL)
+
+        let h = await launched(try harness(count: 1, providers: Providers(), catalog: confirmed))
+        h.state.selectProvider(.liquid)
+        XCTAssertEqual(h.state.decisionField.issueURL, URL(string: "https://console.liquid.ai"))
+        XCTAssertEqual(h.state.decisionField.host, "api.liquid.ai")
+    }
+
+    func test_ADR0011_R621_provisionalFollowsSelectedBaseModel() async throws {
+        let h = await launched(try harness(count: 1, providers: Providers()))
+        XCTAssertFalse(h.state.decisionField.provisional, "Jev 기준값은 잠정값이 아니다")
+
+        h.state.selectProvider(.liquid)
+
+        XCTAssertTrue(h.state.decisionField.provisional, "d1-ultra는 질문 파일 provisional에 있다")
+        XCTAssertNil(h.state.decisionField.providers.first { $0.id == .liquid }?.closedNote)
+    }
+
+    func test_ADR0011_R615_R620_selectFailureShowsInField() async throws {
+        let h = await launched(try harness(count: 1, providers: Providers()))
+        h.settings.failingKeys = [CoreSettings.decisionProviderKey]
+
+        h.state.decisionField.onSelect(.liquid)
+
+        XCTAssertEqual(h.state.decisionField.selected, .typesafe)
+        XCTAssertEqual(h.state.decisionField.failure, .select)
+        h.settings.failingKeys = []
+        h.state.decisionField.onSelect(.liquid)
+        XCTAssertEqual(h.state.decisionField.selected, .liquid)
+        XCTAssertNil(h.state.decisionField.failure)
+    }
+
+    func test_ADR0011_R614_unknownProviderFieldAsksToChooseAgain() async throws {
+        let h = await launched(
+            try harness(count: 1, providers: Providers(), settings: [CoreSettings.decisionProviderKey: "fake-unknown"]))
+
+        XCTAssertNil(h.state.decisionField.selected)
+        XCTAssertEqual(h.state.decisionField.offNote, DecisionFieldText.offNote(.unknownProvider))
+        XCTAssertNil(h.state.decisionField.host)
+    }
+
+    func test_ADR0011_R623_microsoftFieldBeforeAndAfterSave() async throws {
+        let h = await launched(try microsoftHarness(providers: Providers()))
+        let empty = try XCTUnwrap(h.state.decisionField.microsoft)
+        XCTAssertNil(empty.savedEndpoint)
+        XCTAssertNil(empty.savedDeployment)
+        XCTAssertFalse(empty.showsKeyResetNotice, "처음 저장은 키를 지우지 않는다")
+        XCTAssertFalse(empty.keyCleared)
+        XCTAssertEqual(h.state.decisionField.offNote, DecisionFieldText.offNote(.needsEndpoint))
+        XCTAssertNil(h.state.decisionField.host, "주소가 없으면 가는 곳 줄 대신 안내가 보인다")
+
+        XCTAssertEqual(
+            h.state.decisionField.onSaveMicrosoft("http://example-resource.invalid", "fake-deploy"), .scheme)
+        XCTAssertNil(h.state.decisionField.onSaveMicrosoft(" https://example-resource.invalid/ ", " fake-deploy "))
+
+        let saved = try XCTUnwrap(h.state.decisionField.microsoft)
+        XCTAssertEqual(saved.savedEndpoint, "https://example-resource.invalid")
+        XCTAssertEqual(saved.savedDeployment, "fake-deploy")
+        XCTAssertTrue(saved.showsKeyResetNotice, "저장된 주소가 있으면 바꾸기 전에 키를 지운다고 안내한다")
+        XCTAssertFalse(saved.keyCleared)
+        XCTAssertNil(h.state.decisionField.offNote)
+        XCTAssertEqual(h.state.decisionField.host, "example-resource.invalid")
+    }
+
+    func test_ADR0011_R616_R623_changingEndpointShowsKeyClearedUntilKeySaved() async throws {
+        let providers = Providers(keys: [.microsoft: "fake-key-ms"])
+        let h = await launched(try microsoftHarness(providers: providers))
+        XCTAssertNil(h.state.saveMicrosoft(endpoint: "https://example-resource.invalid", deployment: "fake-deploy"))
+        XCTAssertEqual(h.state.decisionField.microsoft?.keyCleared, false)
+
+        XCTAssertNil(h.state.saveMicrosoft(endpoint: "https://other-resource.invalid", deployment: "fake-deploy"))
+
+        let cleared = try XCTUnwrap(h.state.decisionField.microsoft)
+        XCTAssertTrue(cleared.keyCleared)
+        XCTAssertFalse(cleared.showsKeyResetNotice, "지운 뒤에는 지웠다는 문구로 바뀐다")
+        XCTAssertEqual(h.state.decisionField.keyState, .noKey)
+        XCTAssertEqual(h.state.decisionField.host, "other-resource.invalid")
+
+        XCTAssertTrue(h.state.saveKey("fake-key-ms2"))
+        XCTAssertEqual(h.state.decisionField.microsoft?.keyCleared, false, "키를 다시 넣으면 문구가 사라진다")
+        XCTAssertEqual(h.state.decisionField.microsoft?.showsKeyResetNotice, true)
+    }
+
+    func test_ADR0011_R623_deploymentOnlyChangeKeepsKeyAndNoClearedNotice() async throws {
+        let providers = Providers(keys: [.microsoft: "fake-key-ms"])
+        let h = await launched(try microsoftHarness(providers: providers))
+        XCTAssertNil(h.state.saveMicrosoft(endpoint: "https://example-resource.invalid", deployment: "fake-deploy"))
+
+        XCTAssertNil(h.state.saveMicrosoft(endpoint: "https://example-resource.invalid", deployment: "fake-deploy-2"))
+
+        XCTAssertEqual(h.state.decisionField.microsoft?.keyCleared, false)
+        XCTAssertEqual(h.state.decisionField.microsoft?.savedDeployment, "fake-deploy-2")
+        XCTAssertNotEqual(h.state.decisionField.keyState, .noKey)
+    }
+
+    func test_ADR0011_R616_saveMicrosoftWriteFailureShowsInField() async throws {
+        let h = await launched(try microsoftHarness(providers: Providers()))
+        h.settings.failingKeys = [CoreSettings.microsoftDeploymentKey]
+
+        XCTAssertNil(h.state.decisionField.onSaveMicrosoft("https://example-resource.invalid", "fake-deploy"))
+
+        XCTAssertEqual(h.state.decisionField.failure, .saveMicrosoft)
+        XCTAssertEqual(h.state.decisionField.microsoft?.savedEndpoint, "https://example-resource.invalid")
+        XCTAssertNil(h.state.decisionField.microsoft?.savedDeployment)
+    }
+
+    /// US3 시나리오 7, #127: 꺼진 Microsoft라도 저장한 주소가 규칙을 지키면 그 호스트를 보내는 곳으로 보인다.
+    func test_ADR0011_R606_US3_7_offMicrosoftWithSavedEndpointShowsItsHost() async throws {
+        var settings = Self.microsoftSettings
+        settings[CoreSettings.microsoftEndpointKey] = "https://example-resource.invalid"
+        let noDeployment = await launched(try microsoftHarness(providers: Providers(), settings: settings))
+        XCTAssertEqual(noDeployment.state.selectionOff, .needsDeployment)
+        XCTAssertEqual(noDeployment.state.sendingHost, "example-resource.invalid")
+
+        let closed = await launched(
+            try harness(
+                count: 1, providers: Providers(), settings: settings, catalog: ProviderCatalog.all,
+                questions: Self.withMicrosoft))
+        XCTAssertEqual(closed.state.selectionOff, .closedProvider(.microsoft))
+        XCTAssertEqual(closed.state.sendingHost, "example-resource.invalid")
+
+        settings[CoreSettings.microsoftEndpointKey] = "http://example-resource.invalid"
+        let rejected = await launched(try microsoftHarness(providers: Providers(), settings: settings))
+        XCTAssertNil(rejected.state.sendingHost, "규칙을 어긴 저장 값은 보내는 곳으로 보이지 않는다")
+    }
+
+    // MARK: - 단위 4 할 일 탭 키 확인(R-627)
+
+    func test_FR14_R627_settingsTabRequestIsTakenOnce() async throws {
+        let h = await launched(try harness(count: 1, providers: Providers()))
+        XCTAssertNil(h.state.takeSettingsTabRequest())
+
+        h.state.requestKeySettings()
+
+        XCTAssertEqual(h.state.takeSettingsTabRequest(), .basic)
+        XCTAssertNil(h.state.settingsTabRequest, "한 번 바꾸면 비운다")
+        XCTAssertNil(h.state.takeSettingsTabRequest())
+    }
 }
 
 /// 정한 키의 쓰기만 던지는 설정 저장소. 쓴 값을 기록한다.

@@ -5,11 +5,8 @@ import XCTest
 /// 설정 창 탭 내용을 라이트·다크 PNG로 만든다(ADR-0009, 시안 6번). sanity만 보고 정합은 사람이 비교 페이지에서 본다.
 @MainActor
 final class SettingsSnapshotTests: XCTestCase {
-    /// 설정 창 폭 460pt. 높이는 기본 탭 내용(아래 키 칸 포함, spec 003)이 들어가는 만큼.
-    private static let size = CGSize(width: 460, height: 330)
-
     func test_R012_basicTabDefaults() throws {
-        try snapshot("s06-basic", quantumText: "25", extendText: "10")
+        try snapshot("s06-basic")
     }
 
     /// 받지 않는 값을 적는 동안은 안내 대신 이유가 보인다(#59, #35에서 옮겨 온 항목).
@@ -89,35 +86,134 @@ final class SettingsSnapshotTests: XCTestCase {
         }
     }
 
-    // MARK: - 기본 탭 키 칸 상태 여섯(spec 003 R-213, SC-210, 시안 v2 1·3~7번)
+    // MARK: - 기본 탭 키 칸 상태 여섯(spec 003 R-213, SC-210, 시안 v2 1·3~7번). spec 006에서 판단 모델 칸 안으로 옮겼다.
 
     func test_R213_keyFieldNoKey() throws {
-        try snapshot("s24-key-none", quantumText: "25", extendText: "10", keyState: .noKey, canRetry: false)
+        try snapshot("s24-key-none", decision: Self.typeSafe(.noKey))
     }
 
     func test_R213_keyFieldSaved() throws {
-        try snapshot("s24-key-saved", quantumText: "25", extendText: "10", keyState: .saved, canRetry: true)
+        try snapshot("s24-key-saved", decision: Self.typeSafe(.saved, canRetry: true))
     }
 
     func test_R213_keyFieldSavedNoTasks() throws {
-        try snapshot(
-            "s24-key-saved-no-tasks", quantumText: "25", extendText: "10", keyState: .savedNoTasks, canRetry: false)
+        try snapshot("s24-key-saved-no-tasks", decision: Self.typeSafe(.savedNoTasks))
     }
 
     func test_R213_keyFieldNeedsCheck() throws {
-        try snapshot("s24-key-needs-check", quantumText: "25", extendText: "10", keyState: .needsCheck, canRetry: false)
+        try snapshot("s24-key-needs-check", decision: Self.typeSafe(.needsCheck))
     }
 
     /// 시안 6번: 저장됨 줄 아래 저장 실패 문구.
     func test_R213_keyFieldActionFailed() throws {
         try snapshot(
-            "s24-key-action-failed", quantumText: "25", extendText: "10",
-            keyState: .actionFailed(.save, hasKey: true), canRetry: true)
+            "s24-key-action-failed", decision: Self.typeSafe(.actionFailed(.save, hasKey: true), canRetry: true))
     }
 
     func test_R213_keyFieldStorageUnavailable() throws {
+        try snapshot("s24-key-unavailable", decision: Self.typeSafe(.storageUnavailable))
+    }
+
+    // MARK: - 판단 모델 칸(spec 006 data-model §9, 006 시안 1~10번, 시안 확정 2026-11-12)
+
+    /// 시안 3번: 다섯 공급자가 보이고 열리지 않은 넷은 흐리게 이유 한 줄과 함께 보인다.
+    func test_ADR0011_R620_providerListOpen() throws {
         try snapshot(
-            "s24-key-unavailable", quantumText: "25", extendText: "10", keyState: .storageUnavailable, canRetry: false)
+            "s25-provider-list", decision: Self.typeSafe(.saved, canRetry: true),
+            start: DecisionFieldStart(listOpen: true), height: 640)
+    }
+
+    /// 시안 4번: 가짜로 연 Perplexity 줄. 지금 빌드에서는 고를 수 없어 뷰만 그린다.
+    func test_ADR0011_R621_provisionalProvider() throws {
+        let decision = DecisionFieldInput(
+            providers: Self.rows(opening: [.typesafe, .perplexity]), selected: .perplexity,
+            issueURL: URL(string: "https://console.perplexity.ai"), host: "api.perplexity.ai", provisional: true,
+            keyState: .noKey)
+        try snapshot("s25-provider-provisional", decision: decision)
+    }
+
+    /// 시안 6번: 설정을 저장하지 못하면 원래 공급자로 남고 다시 해 달라는 문구가 보인다.
+    func test_ADR0011_R622_selectFailed() throws {
+        var decision = Self.typeSafe(.saved, canRetry: true)
+        decision.failure = .select
+        try snapshot("s25-provider-select-failed", decision: decision)
+    }
+
+    /// 시안 7번: 주소가 없으면 가는 곳 줄 대신 묻지 않는다는 안내가 보인다.
+    func test_ADR0011_R623_microsoftEmpty() throws {
+        try snapshot(
+            "s26-microsoft-empty",
+            decision: Self.microsoft(
+                MicrosoftFieldInput(
+                    savedEndpoint: nil, savedDeployment: nil, showsKeyResetNotice: false, keyCleared: false),
+                host: nil, offNote: DecisionFieldText.offNote(.needsEndpoint), keyState: .noKey),
+            height: Self.microsoftHeight)
+    }
+
+    /// 시안 8번: https가 아닌 주소를 저장하려 하면 이유를 보이고 저장하지 않는다.
+    func test_ADR0011_R623_microsoftRejectedScheme() throws {
+        try snapshot(
+            "s26-microsoft-rejected-scheme", decision: Self.microsoftUnsaved,
+            start: DecisionFieldStart(
+                endpoint: "http://example-resource.invalid", deployment: "가짜-배포-1", rejection: .scheme),
+            height: Self.microsoftHeight)
+    }
+
+    /// 경로가 붙은 주소(R-605 7번 규칙).
+    func test_ADR0011_R623_microsoftRejectedPath() throws {
+        try snapshot(
+            "s26-microsoft-rejected-path", decision: Self.microsoftUnsaved,
+            start: DecisionFieldStart(
+                endpoint: "https://example-resource.invalid/openai", deployment: "가짜-배포-1", rejection: .path),
+            height: Self.microsoftHeight)
+    }
+
+    /// 시안 9번: 저장됨. 주소를 바꾸면 키를 지운다는 안내가 늘 보인다.
+    func test_ADR0011_R623_microsoftSaved() throws {
+        try snapshot(
+            "s26-microsoft-saved",
+            decision: Self.microsoft(
+                MicrosoftFieldInput(
+                    savedEndpoint: "https://example-resource.invalid", savedDeployment: "가짜-배포-1",
+                    showsKeyResetNotice: true, keyCleared: false),
+                host: "example-resource.invalid", keyState: .saved, canRetry: true),
+            height: Self.microsoftHeight)
+    }
+
+    /// 시안 10번: 주소를 바꿔 키를 지운 뒤.
+    func test_ADR0011_R616_R623_microsoftKeyCleared() throws {
+        try snapshot(
+            "s26-microsoft-key-cleared",
+            decision: Self.microsoft(
+                MicrosoftFieldInput(
+                    savedEndpoint: "https://example-other.invalid", savedDeployment: "가짜-배포-1",
+                    showsKeyResetNotice: false, keyCleared: true),
+                host: "example-other.invalid", keyState: .noKey),
+            height: Self.microsoftHeight)
+    }
+
+    // MARK: - 할 일 탭 키 확인 한 줄(spec 006 R-627, spec 004 시안 15번)
+
+    func test_FR14_R627_taskTabKeyNotice() throws {
+        let created = Date(timeIntervalSince1970: 1_800_000_000)
+        let rows = [
+            ("가짜 할 일 A", "2026-11-13", 0), ("가짜 할 일 B", "2026-11-15", 2), ("가짜 할 일 C", nil, 0),
+        ].enumerated().map { index, row in
+            MokaTask(
+                id: TaskID(index + 1), title: row.0, deadline: row.1.flatMap(LocalDay.init(text:)), estMin: nil,
+                recurrence: .none, weekday: nil, cycleDay: nil, firstAction: nil, status: .todo, skipCount: row.2,
+                streak: 0, createdAt: created)
+        }
+        let content = VStack(spacing: 0) {
+            SettingsTabBar(selection: .constant(.tasks))
+            TaskListTabView(
+                rows: rows, nextMarkID: 1, ranks: [1: 1, 2: 2, 3: 3], scope: .constant(.all),
+                order: .constant(.created), selectedID: .constant(nil), checkedIDs: .constant([]), canEdit: true,
+                onAdd: {}, onEdit: { _ in }, onDelete: {}, keyNotice: true)
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(MokaColors.settingsWindow)
+        try write("s27-task-list-key-notice", content: content, size: CGSize(width: 460, height: 480))
     }
 
     func test_R115_contextTab() throws {
@@ -302,14 +398,15 @@ final class SettingsSnapshotTests: XCTestCase {
     }
 
     private func snapshot(
-        _ name: String, quantumText: String, extendText: String, keyState: KeyFieldState = .noKey,
-        canRetry: Bool = false
+        _ name: String, quantumText: String = "25", extendText: String = "10",
+        decision: DecisionFieldInput = SettingsSnapshotTests.typeSafe(.noKey),
+        start: DecisionFieldStart = DecisionFieldStart(), height: CGFloat = SettingsSnapshotTests.basicHeight
     ) throws {
         let calendar = GregorianCalendar.make(timeZone: try XCTUnwrap(TimeZone(identifier: "Asia/Seoul")))
         let tab = BasicTabView(
             quantum: Self.input(quantumText, range: Defaults.quantumMinRange),
             extend: Self.input(extendText, range: Defaults.extendMinRange),
-            dayStart: .constant(Defaults.dayStart.date(calendar: calendar)), keyState: keyState, canRetry: canRetry
+            dayStart: .constant(Defaults.dayStart.date(calendar: calendar)), decision: decision, decisionStart: start
         )
         .environment(\.timeZone, calendar.timeZone)
         let content = VStack(spacing: 0) {
@@ -319,8 +416,42 @@ final class SettingsSnapshotTests: XCTestCase {
         .frame(maxHeight: .infinity, alignment: .top)
         .background(MokaColors.settingsWindow)
 
-        try write(name, content: content, size: Self.size)
+        try write(name, content: content, size: CGSize(width: 460, height: height))
     }
+
+    /// 다섯 공급자 줄. `opening`에 든 공급자만 고를 수 있다.
+    private static func rows(opening: Set<ProviderID> = [.typesafe]) -> [ProviderRow] {
+        ProviderCatalog.all.map { row in
+            let isOpen = opening.contains(row.id)
+            return ProviderRow(
+                id: row.id, displayName: row.displayName, isOpen: isOpen,
+                closedNote: isOpen ? nil : DecisionFieldText.closedNote)
+        }
+    }
+
+    /// 지금 빌드처럼 TypeSafe Jev만 열렸고 골라져 있다. 발급 링크는 확인 전이라 없다.
+    private static func typeSafe(_ keyState: KeyFieldState, canRetry: Bool = false) -> DecisionFieldInput {
+        DecisionFieldInput(
+            providers: rows(), selected: .typesafe, host: "api.typesafe.ai", keyState: keyState, canRetry: canRetry)
+    }
+
+    /// 가짜로 연 Microsoft 줄을 고른 칸.
+    private static func microsoft(
+        _ input: MicrosoftFieldInput, host: String?, offNote: String? = nil, keyState: KeyFieldState,
+        canRetry: Bool = false
+    ) -> DecisionFieldInput {
+        DecisionFieldInput(
+            providers: rows(opening: [.typesafe, .microsoft]), selected: .microsoft, host: host, offNote: offNote,
+            microsoft: input, keyState: keyState, canRetry: canRetry)
+    }
+
+    private static let microsoftUnsaved = microsoft(
+        MicrosoftFieldInput(savedEndpoint: nil, savedDeployment: nil, showsKeyResetNotice: false, keyCleared: false),
+        host: nil, offNote: DecisionFieldText.offNote(.needsEndpoint), keyState: .noKey)
+
+    /// 기본 탭(숫자 칸, 판단 모델 칸) 높이.
+    private static let basicHeight: CGFloat = 470
+    private static let microsoftHeight: CGFloat = 600
 
     private static func input(_ text: String, range: ClosedRange<Int>) -> MinutesFieldInput {
         MinutesFieldInput(
