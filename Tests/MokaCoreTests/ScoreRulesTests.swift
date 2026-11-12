@@ -43,7 +43,7 @@ private func near(_ a: Double, _ b: Double) -> Bool { abs(a - b) < 1e-9 }
     func parsesAndNormalizes() throws {
         let result = try #require(score())
         #expect(result.taskID == 1)
-        #expect(result.questionVersion == "v2")
+        #expect(result.questionVersion == "v3")
         #expect(result.provider == "fake")
         #expect(result.modelSnapshot == "jev-1.13.0")
         #expect(near(result.urgency, 2.1 / 3))

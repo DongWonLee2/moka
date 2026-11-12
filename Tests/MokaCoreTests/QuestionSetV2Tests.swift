@@ -23,6 +23,18 @@ private let fixedValues: [String: (models: [String: String], thresholds: [String
             "gpt-6-luna": ["concrete": 0.5, "avoiding": 0.7],
         ]
     ),
+    "v3": (
+        models: [
+            "typesafe": "jev-1.13.0", "liquid": "d1-ultra", "perplexity": "pplx-decider-v1.2",
+            "openai": "gpt-6-luna",
+        ],
+        thresholds: [
+            "jev-1.13.0": ["concrete": 0.5, "avoiding": 0.7],
+            "d1-ultra": ["concrete": 0.5, "avoiding": 0.7],
+            "pplx-decider-v1.2": ["concrete": 0.5, "avoiding": 0.7],
+            "gpt-6-luna": ["concrete": 0.5, "avoiding": 0.7],
+        ]
+    ),
 ]
 
 /// 기준 모델 둘(가짜 이름)과 잠정 하나를 둔 v2 모양.
@@ -39,10 +51,10 @@ private func twoModelsJSON(_ edit: (inout [String: Any]) -> Void = { _ in }) thr
 }
 
 @Suite struct QuestionSetV2Tests {
-    @Test("ADR-0011 R-607: 번들 질문 파일은 v2이고 models·provisional이 제안 내용 그대로다")
-    func bundledV2() throws {
+    @Test("ADR-0011 R-607: 번들 질문 파일은 v3이고 models·provisional이 제안 내용 그대로다")
+    func bundledV3() throws {
         let set = try QuestionSet.bundled()
-        #expect(set.version == "v2")
+        #expect(set.version == "v3")
         #expect(
             set.models == [
                 "typesafe": "jev-1.13.0", "liquid": "d1-ultra", "perplexity": "pplx-decider-v1.2",
@@ -50,6 +62,25 @@ private func twoModelsJSON(_ edit: (inout [String: Any]) -> Void = { _ in }) thr
             ])
         #expect(set.models["microsoft"] == nil)
         #expect(set.provisional == ["d1-ultra", "pplx-decider-v1.2", "gpt-6-luna"])
+    }
+
+    @Test("FR-03 R-202: 번들 질문 파일 v3의 질문 문구는 사용자 결정 2026-11-12 그대로다")
+    func bundledV3Instructions() throws {
+        let set = try QuestionSet.bundled()
+        #expect(
+            set.questions["urgency"]
+                == .score(
+                    instructions: "마감과 남은 분량을 기준으로, 이 일을 언제까지 시작해야 하는가",
+                    criteria: ["여유", "이번주", "급함", "오늘안에"]))
+        #expect(
+            set.questions["impact"]
+                == .score(
+                    instructions: "마감이 언제인지와 상관없이, 이 일을 안 하면 시험 점수나 제출 결과에 생기는 손해의 크기",
+                    criteria: ["조금", "꽤", "아주"]))
+        #expect(set.questions["concrete"] == .noul(instructions: "이 할 일은 지금 바로 손댈 첫 행동이 무엇인지 분명할 만큼 구체적이다"))
+        #expect(
+            set.questions["avoiding"]
+                == .noul(instructions: "이 일은 사람이 미루기 쉬운 종류의 일이다 (하기 싫거나 지루하고, 어디까지 하면 끝인지 모호한)"))
     }
 
     @Test("ADR-0011 R-608 SC-604: 지금 파일의 version은 버전별 고정값에 있고 models·thresholds가 같다")

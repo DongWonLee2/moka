@@ -7,6 +7,8 @@ QUESTIONS = ROOT / "Sources" / "MokaCore" / "Resources" / "questions.json"
 HISTORY = ROOT / "questions-history"
 # ADR-0011 승인 항목 2a(B안): v1 사본은 v1을 마지막으로 담은 커밋의 파일을 그대로 꺼낸 것
 V1_SHA256 = "e302020530edacf468001b9b35d254582907c8e3b99c8f3bb11ddcfffdbd9538"
+# v2 사본은 v2를 마지막으로 담은 커밋(9f07336)의 파일 그대로
+V2_SHA256 = "39792c7ddd157813b6b016a367d77f60446639e4ffee905cc6d480a791e6f29e"
 
 
 def load_questions():
@@ -67,3 +69,10 @@ def test_v1_history_copy_is_fixed():
     data = (HISTORY / "v1.json").read_bytes()
     assert hashlib.sha256(data).hexdigest() == V1_SHA256
     assert json.loads(data)["version"] == "v1"
+
+
+def test_v2_history_copy_is_fixed():
+    # ADR-0011 R-612: 지난 사본 v2의 SHA-256 고정
+    data = (HISTORY / "v2.json").read_bytes()
+    assert hashlib.sha256(data).hexdigest() == V2_SHA256
+    assert json.loads(data)["version"] == "v2"
