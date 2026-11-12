@@ -53,10 +53,10 @@ final class GateDisplayTests: XCTestCase {
         XCTAssertEqual(GateDisplay.title, "어디서 시작할지 막연해 보여요")
         XCTAssertEqual(
             GateDisplay.subtitle(phase: .asking, submissions: 0),
-            "2분 안에 바로 할 수 있는 첫 행동을 한 줄 적어 주세요. 판단 모델이 다시 확인하고, 노치를 펼치면 제목 아래 보여요.")
+            "지금 바로 손댈 첫 행동을 한 줄 적어 주세요. 판단 모델이 다시 확인하고, 노치를 펼치면 제목 아래 보여요.")
         XCTAssertEqual(
             GateDisplay.subtitle(phase: .checking, submissions: 1),
-            "2분 안에 바로 할 수 있는 첫 행동을 한 줄 적어 주세요. 판단 모델이 다시 확인하고, 노치를 펼치면 제목 아래 보여요.")
+            "지금 바로 손댈 첫 행동을 한 줄 적어 주세요. 판단 모델이 다시 확인하고, 노치를 펼치면 제목 아래 보여요.")
         XCTAssertEqual(GateDisplay.subtitle(phase: .asking, submissions: 1), "방금 적은 줄이에요. 고쳐 써도 돼요.")
     }
 

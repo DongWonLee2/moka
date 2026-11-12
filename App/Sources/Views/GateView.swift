@@ -23,7 +23,7 @@ enum GateDisplay {
     /// 키 확인 한 줄(확정 시안 12~14번).
     static let keyNoticeText = "키가 맞지 않아 판단 모델에 묻지 못하고 있어요."
     static let keyNoticeButton = "키 확인"
-    private static let firstSubtitle = "2분 안에 바로 할 수 있는 첫 행동을 한 줄 적어 주세요. 판단 모델이 다시 확인하고, 노치를 펼치면 제목 아래 보여요."
+    private static let firstSubtitle = "지금 바로 손댈 첫 행동을 한 줄 적어 주세요. 판단 모델이 다시 확인하고, 노치를 펼치면 제목 아래 보여요."
     private static let retrySubtitle = "방금 적은 줄이에요. 고쳐 써도 돼요."
 
     /// 새 할 일 제목 칸이 열린 동안은 숨기고 닫히면 다시 보인다(시안 확정할 것 9번).

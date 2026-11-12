@@ -9,8 +9,9 @@ private let repositoryRoot = URL(fileURLWithPath: #filePath)
 private let bundledURL = repositoryRoot.appendingPathComponent("Sources/MokaCore/Resources/questions.json")
 private let historyURL = repositoryRoot.appendingPathComponent("questions-history")
 
-/// v1 사본의 FNV-1a 64. 리눅스 CI에 CryptoKit이 없어 SHA-256 고정은 pytest가 맡는다.
+/// 지난 사본의 FNV-1a 64. 리눅스 CI에 CryptoKit이 없어 SHA-256 고정은 pytest가 맡는다.
 private let v1Fingerprint = "2cafc8ae6880c139"
+private let v2Fingerprint = "beb90dd1bbf813d4"
 
 @Suite struct QuestionsHistoryTests {
     @Test("ADR-0011 R-612: 지금 질문 파일은 questions-history의 같은 버전 사본과 바이트까지 같다")
@@ -28,5 +29,12 @@ private let v1Fingerprint = "2cafc8ae6880c139"
         let root = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
         #expect(root["version"] as? String == "v1")
         #expect(root["model"] as? String == "jev-1.13.0")
+    }
+
+    @Test("ADR-0011 R-612: 지난 사본 v2는 고정한 지문 그대로이고 v2로 읽힌다")
+    func v2CopyIsFixed() throws {
+        let data = try Data(contentsOf: historyURL.appendingPathComponent("v2.json"))
+        #expect(JudgmentState.fnv1a64(Array(data)) == v2Fingerprint)
+        #expect(try QuestionSet(json: data).version == "v2")
     }
 }
