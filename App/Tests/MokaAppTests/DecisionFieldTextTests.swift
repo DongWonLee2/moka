@@ -55,6 +55,33 @@ final class DecisionFieldTextTests: XCTestCase {
         XCTAssertEqual(DecisionFieldText.offNote(.unknownProvider), "고른 판단 모델을 찾지 못했어요. 공급자를 다시 골라 주세요.")
     }
 
+    /// "주소 저장"은 두 칸이 차 있고, 주소 규칙으로 정규화한 값이 저장된 값과 다를 때만 켜진다(PR #136 리뷰 중간 2).
+    func test_ADR0011_R623_saveButtonComparesNormalizedValues() {
+        let saved = "https://example-resource.invalid"
+        func canSave(_ endpoint: String, _ deployment: String, saved: String? = saved, deploy: String? = "fake-deploy")
+            -> Bool
+        {
+            MicrosoftFieldRule.canSave(
+                endpoint: endpoint, deployment: deployment, savedEndpoint: saved, savedDeployment: deploy)
+        }
+        XCTAssertFalse(canSave("https://example-resource.invalid/", "fake-deploy"), "끝 / 는 같은 주소")
+        XCTAssertFalse(canSave(" https://example-resource.invalid \n", " fake-deploy "), "앞뒤 공백은 같은 값")
+        XCTAssertTrue(canSave("https://other-resource.invalid", "fake-deploy"))
+        XCTAssertTrue(canSave("https://example-resource.invalid/", "fake-deploy-2"))
+        XCTAssertTrue(canSave("http://example-resource.invalid", "fake-deploy"), "거부할 주소도 눌러 이유를 본다")
+        XCTAssertFalse(canSave(" ", "fake-deploy"))
+        XCTAssertFalse(canSave("https://other-resource.invalid", " "))
+        XCTAssertTrue(canSave("https://example-resource.invalid/", "fake-deploy", saved: nil, deploy: nil))
+    }
+
+    /// 저장에 성공하면 칸 글자를 저장된 모양(앞뒤 공백, 끝 / 뗌)으로 바꾼다.
+    func test_ADR0011_R623_fieldTextAfterSaveIsNormalized() {
+        XCTAssertEqual(
+            MicrosoftFieldRule.normalized(endpoint: " https://example-resource.invalid/ ", deployment: " fake-deploy "),
+            MicrosoftFieldRule.Values(endpoint: "https://example-resource.invalid", deployment: "fake-deploy"))
+        XCTAssertNil(MicrosoftFieldRule.normalized(endpoint: "http://example-resource.invalid", deployment: "a"))
+    }
+
     func test_FR14_R627_taskTabKeyNoticeTexts() {
         XCTAssertEqual(TaskListText.keyNotice, "키가 맞지 않아 새 할 일은 판단 모델에 묻지 못하고 있어요.")
         XCTAssertEqual(TaskListText.keyNoticeButton, "기본 탭에서 확인")

@@ -694,6 +694,27 @@ final class AppProviderTests: XCTestCase {
         XCTAssertEqual(try h.scoreStore.scores()[1]?.provider, "fake-ms")
     }
 
+    /// 정규화하면 저장된 값과 같은 주소를 다시 저장하면 아무것도 바꾸지 않는다(PR #136 리뷰 중간 2).
+    func test_ADR0011_R616_savingSameNormalizedValuesDoesNothing() async throws {
+        let microsoft = FakeDecisionProvider(name: "fake-ms", answer: .failure(.unauthorized))
+        let providers = Providers(keys: [.microsoft: "fake-key-ms"], fakes: [.microsoft: microsoft])
+        let h = await launched(try microsoftHarness(providers: providers))
+        XCTAssertNil(h.state.saveMicrosoft(endpoint: "https://example-resource.invalid/", deployment: "fake-deploy"))
+        await h.state.requestScores()?.value
+        XCTAssertTrue(h.state.showsKeyNotice)
+        h.settings.resetWritten()
+        let boundCount = providers.bound.count
+
+        XCTAssertNil(
+            h.state.saveMicrosoft(endpoint: " https://example-resource.invalid/ ", deployment: " fake-deploy "))
+
+        XCTAssertTrue(h.settings.written.isEmpty, "설정을 다시 쓰지 않는다")
+        XCTAssertTrue(h.state.showsKeyNotice, "키 확인 필요를 끄지 않는다")
+        XCTAssertEqual(providers.bound.count, boundCount, "바인딩을 다시 만들지 않는다")
+        XCTAssertNil(h.state.requestScores(), "장부를 비우지 않아 다시 묻지 않는다")
+        XCTAssertEqual(try providers.keys[.microsoft]?.read(), "fake-key-ms")
+    }
+
     func test_ADR0011_R616_deploymentChangeSendsNewNameAndKeepsScores() async throws {
         let microsoft = FakeDecisionProvider(name: "fake-ms", answer: .success(Self.answer()))
         let providers = Providers(keys: [.microsoft: "fake-key-ms"], fakes: [.microsoft: microsoft])
