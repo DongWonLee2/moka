@@ -50,7 +50,7 @@ public struct ReasonLine: Equatable, Sendable {
         guard case .score(_, let criteria) = questions.questions["impact"], criteria.count == impactWords.count
         else { return nil }
         let index = Int((impact * Double(criteria.count - 1)).rounded(.toNearestOrAwayFromZero))
-        return impactWords[min(max(index, 0), criteria.count - 1)]
+        return impactWords[min(max(index, 0), impactWords.count - 1)]
     }
 }
 
