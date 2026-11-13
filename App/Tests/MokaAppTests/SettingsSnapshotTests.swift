@@ -427,6 +427,68 @@ final class SettingsSnapshotTests: XCTestCase {
         try write("s08-deadline-calendar", content: content, size: CGSize(width: 214, height: 230))
     }
 
+    /// 확정 시안(spec 007) 1번: 도움말 탭, 모두 접힘.
+    func test_R701_R702_helpTabCollapsed() throws {
+        let content = VStack(spacing: 0) {
+            SettingsTabBar(selection: .constant(.help))
+            HelpTabView(expanded: .constant([]), onShowGuide: {})
+        }
+        .background(MokaColors.settingsWindow)
+        try write("h01-help-collapsed", content: content, size: Self.fittingSize(content))
+    }
+
+    /// 확정 시안 2~9번: 항목 하나씩 펼침(라이트). 시안처럼 탭 내용 전체를 그리려고 스크롤 칸 안의 내용을 그린다.
+    func test_R703_helpTopic1Notch() throws {
+        try writeHelpTopic("h02-help-notch", .notch)
+    }
+
+    func test_R703_helpTopic2TasksAndContexts() throws {
+        try writeHelpTopic("h03-help-tasks", .tasksAndContexts)
+    }
+
+    func test_R703_helpTopic3RankAndNext() throws {
+        try writeHelpTopic("h04-help-rank", .rankAndNext)
+    }
+
+    func test_R703_helpTopic4ReasonLine() throws {
+        try writeHelpTopic("h05-help-reason", .reasonLine)
+    }
+
+    func test_R703_helpTopic5FirstAction() throws {
+        try writeHelpTopic("h06-help-first-action", .firstAction)
+    }
+
+    func test_R703_helpTopic6DecisionModel() throws {
+        try writeHelpTopic("h07-help-decision-model", .decisionModel)
+    }
+
+    func test_R703_helpTopic7Destination() throws {
+        try writeHelpTopic("h08-help-destination", .destination)
+    }
+
+    func test_R703_R708_helpTopic8Shortcuts() throws {
+        try writeHelpTopic("h09-help-shortcuts", .shortcuts)
+    }
+
+    private func writeHelpTopic(_ name: String, _ topic: HelpTopic) throws {
+        let content = VStack(spacing: 0) {
+            SettingsTabBar(selection: .constant(.help))
+            HelpTabContent(expanded: .constant([topic]), onShowGuide: {})
+        }
+        .background(MokaColors.settingsWindow)
+        let size = Self.fittingSize(content)
+        let png = try renderPNG(view: content, size: size, appearance: .aqua)
+        let url = try SnapshotOutput.write(png, name: "\(name)-light")
+        XCTAssertNil(SnapshotSanity.issue(in: png), url.lastPathComponent)
+        XCTAssertNil(SnapshotSanity.sizeIssue(in: png, size: size), url.lastPathComponent)
+    }
+
+    /// 설정 창 폭 460pt에서 내용이 원하는 높이.
+    private static func fittingSize(_ content: some View) -> CGSize {
+        let hosting = NSHostingView(rootView: content.frame(width: 460))
+        return CGSize(width: 460, height: hosting.fittingSize.height.rounded(.up))
+    }
+
     private func write(_ name: String, content: some View, size: CGSize) throws {
         let light = try renderPNG(view: content, size: size, appearance: .aqua)
         let dark = try renderPNG(view: content, size: size, appearance: .darkAqua)
