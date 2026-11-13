@@ -337,6 +337,21 @@ final class SettingsSnapshotTests: XCTestCase {
         try write(name, content: content, size: Self.fittingSize(content, width: 400))
     }
 
+    /// 확정 시안 14·15번: 시트 내용만. 설정 창 위에 붙은 모양은 사람이 본다(quickstart 6-2).
+    func test_R713_guideSheetFirst() throws {
+        try writeGuideSheet("g14-guide-sheet-first", index: 1)
+    }
+
+    func test_R714_guideSheetLast() throws {
+        try writeGuideSheet("g15-guide-sheet-last", index: 3)
+    }
+
+    private func writeGuideSheet(_ name: String, index: Int) throws {
+        let content = GuideSheetView(initialIndex: index, onClose: {})
+            .background(MokaColors.settingsWindow)
+        try write(name, content: content, size: Self.fittingSize(content, width: 400))
+    }
+
     func test_R121_editContextSheet() throws {
         let calendar = GregorianCalendar.make(timeZone: try XCTUnwrap(TimeZone(identifier: "Asia/Seoul")))
         let content = ContextFormView(
