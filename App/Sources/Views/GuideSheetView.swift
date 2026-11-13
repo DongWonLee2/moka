@@ -12,7 +12,6 @@ struct GuideSheetState {
 
     var card: GuideCard { GuideCard.allCases[index - 1] }
 
-    /// 셋째 장이면 닫으라는 참, 아니면 다음 장으로 가고 거짓.
     mutating func primary() -> Bool {
         guard index < Self.total else { return true }
         index += 1
