@@ -82,7 +82,7 @@ final class GuideTests: XCTestCase {
         XCTAssertEqual(GuideCard.allCases, [.notch, .rank, .firstAction])
         XCTAssertEqual(GuideText.title(.notch), "할 일은 노치에 떠요")
         XCTAssertEqual(GuideText.message(.notch), "마우스를 노치에 올리면 펼쳐져요. 시간을 고르고 \"시작\"을 누르면 접힌 노치에 남은 시간이 보여요.")
-        XCTAssertEqual(GuideText.title(.rank), "무엇부터 할지 노치가 골라요")
+        XCTAssertEqual(GuideText.title(.rank), "무엇부터 할지 Moka가 골라요")
         XCTAssertEqual(
             GuideText.message(.rank),
             "판단 모델이 마감과 일정을 보고 순서를 정해요. 키가 없으면 마감이 가까운 순으로 떠요. 펼친 노치의 제목 아래 줄에서 왜 떴는지 볼 수 있어요.")
