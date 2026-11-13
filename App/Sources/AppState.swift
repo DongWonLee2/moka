@@ -906,8 +906,9 @@ final class AppState {
         case .success(let value): url = value
         case .failure(let rejection): return rejection
         }
-        // 저장된 주소를 읽지 못하면 같은 주소인지 모르므로 바꾼 것으로 보고 키를 지운다.
+        // 저장된 주소를 읽지 못하면 같은 주소인지 모르므로 바꾼 것으로 보고 키를 지운다. 정규화는 읽은 값에만 씌운다.
         let saved = Result(catching: { try CoreSettings.readMicrosoftEndpoint(from: settings) })
+            .map { MicrosoftFieldRule.comparable(savedEndpoint: $0) }
         if (try? saved.get()) == url.absoluteString,
             CoreSettings.readMicrosoftDeployment(from: settings) == deploymentText
         {

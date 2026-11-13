@@ -72,9 +72,13 @@ final class DecisionFieldTextTests: XCTestCase {
         XCTAssertFalse(canSave(" ", "fake-deploy"))
         XCTAssertFalse(canSave("https://other-resource.invalid", " "))
         XCTAssertTrue(canSave("https://example-resource.invalid/", "fake-deploy", saved: nil, deploy: nil))
+        XCTAssertFalse(canSave("https://Example-Resource.INVALID", "fake-deploy"), "호스트 대소문자만 다르면 같은 주소")
+        XCTAssertFalse(
+            canSave("https://example-resource.invalid", "fake-deploy", saved: "HTTPS://Example-Resource.invalid"),
+            "대문자로 남은 옛 저장 값도 같은 정규화로 견준다")
     }
 
-    /// 저장에 성공하면 칸 글자를 저장된 모양(앞뒤 공백, 끝 / 뗌)으로 바꾼다.
+    /// 저장에 성공하면 칸 글자를 저장된 모양(앞뒤 공백, 끝 / 뗌, 스킴·호스트 소문자)으로 바꾼다.
     func test_ADR0011_R623_fieldTextAfterSaveIsNormalized() {
         XCTAssertEqual(
             MicrosoftFieldRule.normalized(endpoint: " https://example-resource.invalid/ ", deployment: " fake-deploy "),

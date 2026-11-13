@@ -15,7 +15,8 @@ public enum EndpointRejection: Error, Equatable, Sendable {
 public enum EndpointRule {
     private static let loopbackHosts: Set<String> = ["localhost", "127.0.0.1", "::1"]
 
-    /// 앞뒤 공백·줄바꿈을 지우고 data-model §4 순서로 처음 걸린 거부 이유를 돌려준다. 통과하면 끝 `/`를 뗀 주소다.
+    /// 앞뒤 공백·줄바꿈을 지우고 data-model §4 순서로 처음 걸린 거부 이유를 돌려준다. 통과하면 끝 `/`를 떼고
+    /// 스킴·호스트를 ASCII 소문자로 바꾼 주소다. 경로와 포트는 그대로 둔다.
     public static func check(_ text: String, allowsPath: Bool) -> Result<URL, EndpointRejection> {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let components = URLComponents(string: trimmed), let scheme = components.scheme?.lowercased(),
@@ -29,7 +30,7 @@ public enum EndpointRule {
         if components.fragment != nil { return .failure(.fragment) }
         if !allowsPath && !components.path.isEmpty && components.path != "/" { return .failure(.path) }
         let kept = trimmed.hasSuffix("/") ? String(trimmed.dropLast()) : trimmed
-        guard let url = URL(string: kept) else { return .failure(.unparseable) }
+        guard let url = URL(string: lowercasingSchemeAndHost(kept)) else { return .failure(.unparseable) }
         return .success(url)
     }
 
@@ -37,6 +38,14 @@ public enum EndpointRule {
     public static func host(of url: URL) -> String {
         let host = URLComponents(url: url, resolvingAgainstBaseURL: false)?.host ?? url.host ?? ""
         return bare(host)
+    }
+
+    /// 사용자 정보·쿼리·조각은 이미 거부했으므로 `://` 뒤 첫 `/` 앞까지가 호스트와 포트다.
+    private static func lowercasingSchemeAndHost(_ text: String) -> String {
+        guard let separator = text.range(of: "://") else { return text }
+        let hostEnd = text[separator.upperBound...].firstIndex(of: "/") ?? text.endIndex
+        let head = text[..<hostEnd].unicodeScalars.map { $0.isASCII ? String($0).lowercased() : String($0) }
+        return head.joined() + text[hostEnd...]
     }
 
     private static func bare(_ host: String) -> String {

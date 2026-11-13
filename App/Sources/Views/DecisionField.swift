@@ -369,7 +369,8 @@ private struct MicrosoftFields: View {
     }
 }
 
-/// Microsoft 칸 저장 규칙. 주소는 `EndpointRule.check`가 돌려준 모양(앞뒤 공백을 지우고 끝 `/`를 뗌)으로 저장된 값과 비교한다.
+/// Microsoft 칸 저장 규칙. 주소는 `EndpointRule.check`가 돌려준 모양(앞뒤 공백을 지우고 끝 `/`를 떼고 스킴·호스트를 소문자로)으로
+/// 저장된 값과 비교한다.
 enum MicrosoftFieldRule {
     struct Values: Equatable {
         let endpoint: String
@@ -390,6 +391,15 @@ enum MicrosoftFieldRule {
         let trimmedDeployment = deployment.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedEndpoint.isEmpty, !trimmedDeployment.isEmpty else { return false }
         guard let values = normalized(endpoint: endpoint, deployment: deployment) else { return true }
-        return values.endpoint != savedEndpoint || values.deployment != savedDeployment
+        return values.endpoint != comparable(savedEndpoint: savedEndpoint) || values.deployment != savedDeployment
+    }
+
+    /// 호스트를 소문자로 바꾸기 전에 저장된 값도 같은 주소로 견주려고, 저장된 주소를 지금 규칙의 모양으로 맞춘다.
+    /// 규칙을 어긴 값은 그대로 둔다.
+    static func comparable(savedEndpoint: String?) -> String? {
+        guard let savedEndpoint, case .success(let url) = EndpointRule.check(savedEndpoint, allowsPath: false) else {
+            return savedEndpoint
+        }
+        return url.absoluteString
     }
 }

@@ -9,15 +9,35 @@ import Testing
             ("https://example-resource.invalid", "https://example-resource.invalid"),
             ("https://example-resource.invalid/", "https://example-resource.invalid"),
             ("http://localhost:8080", "http://localhost:8080"),
-            ("http://LOCALHOST", "http://LOCALHOST"),
+            ("http://LOCALHOST", "http://localhost"),
             ("http://127.0.0.1:9000", "http://127.0.0.1:9000"),
             ("http://[::1]:8080", "http://[::1]:8080"),
             ("https://example-resource.invalid:8443", "https://example-resource.invalid:8443"),
-            ("HTTPS://example-resource.invalid", "HTTPS://example-resource.invalid"),
+            ("HTTPS://example-resource.invalid", "https://example-resource.invalid"),
             ("  https://example-resource.invalid/ \n", "https://example-resource.invalid"),
         ])
     func accepted(text: String, expected: String) {
         #expect(EndpointRule.check(text, allowsPath: false).map(\.absoluteString) == .success(expected))
+    }
+
+    @Test(
+        "ADR-0011 R-605 #139: 대소문자만 다른 스킴·호스트는 같은 주소(ASCII 소문자)로 받고 포트는 그대로",
+        arguments: [
+            ("https://Example-Resource.invalid", "https://example-resource.invalid"),
+            ("HTTPS://EXAMPLE-RESOURCE.INVALID/", "https://example-resource.invalid"),
+            ("HtTpS://Example-Resource.Invalid:8443", "https://example-resource.invalid:8443"),
+            ("HTTP://LocalHost:8080", "http://localhost:8080"),
+            ("http://[::1]:8080", "http://[::1]:8080"),
+        ])
+    func hostCaseFolded(text: String, expected: String) {
+        #expect(EndpointRule.check(text, allowsPath: false).map(\.absoluteString) == .success(expected))
+    }
+
+    @Test("ADR-0011 R-605 #139: 경로의 대소문자는 바꾸지 않는다")
+    func pathCaseKept() {
+        #expect(
+            EndpointRule.check("HTTPS://Example-Resource.invalid/OpenAI/V1/", allowsPath: true).map(\.absoluteString)
+                == .success("https://example-resource.invalid/OpenAI/V1"))
     }
 
     @Test(
