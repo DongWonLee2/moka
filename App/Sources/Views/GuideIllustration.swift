@@ -2,7 +2,6 @@ import MokaCore
 import SwiftUI
 
 extension EnvironmentValues {
-    /// 안내 장 그림 안의 노치 뷰인지(research R4). 참이면 기본 버튼 단축키를 떼고 자동 포커스를 하지 않는다.
     @Entry var isNotchIllustration = false
 }
 
@@ -50,14 +49,14 @@ struct GuideIllustration: View {
 
     private static let taskA = "가짜 할 일 A"
     private static let startedAt = Date(timeIntervalSince1970: 1_800_000_000)
-    /// 400pt 창 안에 들게 줄인 노치 크기(research R4). 실제 화면 노치와 다르다.
-    private static let metrics = NotchMetrics(holeWidth: 120, height: 32)
+    private static let illustrationMetrics = NotchMetrics(holeWidth: 120, height: 32)
 
     private static func notch(
         timer: NotchTimer, remaining: Int? = nil, expanded: Bool, reasonLine: String? = nil, gate: GateInput? = nil
     ) -> NotchContentView {
         NotchContentView(
-            timer: timer, remainingSeconds: remaining, isExpanded: expanded, metrics: metrics, reasonLine: reasonLine,
+            timer: timer, remainingSeconds: remaining, isExpanded: expanded, metrics: illustrationMetrics,
+            reasonLine: reasonLine,
             gate: gate, titleFocusRequest: 0,
             chip: QuantumChipInput(
                 customText: nil, canStart: true, onChoose: { _ in }, onBeginCustom: {}, onEditCustom: { _ in },
@@ -65,7 +64,6 @@ struct GuideIllustration: View {
             onEnterTitle: { _ in }, onStart: {}, onComplete: {})
     }
 
-    /// 시안 `.pic` 바탕(바탕 화면 느낌의 기울어진 그러데이션).
     private var background: LinearGradient {
         let stops: [Color] =
             colorScheme == .dark
@@ -80,7 +78,6 @@ struct GuideIllustration: View {
     }
 }
 
-/// 순위 장의 할 일 탭 줄(시안 `.mini`). 순위 배지는 할 일 탭과 같은 `RankBadge`다.
 private struct GuideTaskRow: View {
     let title: String
     let rank: Int

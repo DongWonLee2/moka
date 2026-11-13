@@ -303,7 +303,6 @@ final class SettingsSnapshotTests: XCTestCase {
         try write(name, content: content, size: CGSize(width: 400, height: 250))
     }
 
-    /// 확정 시안 10~12번: 온보딩 안내 장 1/6~3/6(키 단계 있음).
     func test_R710_guideCard1Notch() throws {
         try writeGuide("g10-guide-notch", step: 1, key: Self.onboardingKey(hasKey: false))
     }
@@ -316,12 +315,10 @@ final class SettingsSnapshotTests: XCTestCase {
         try writeGuide("g12-guide-first-action", step: 3, key: Self.onboardingKey(hasKey: false))
     }
 
-    /// 키 단계가 없으면 1/5(시안 10번에서 숫자만 다름).
     func test_R711_guideCard1WithoutKeyStep() throws {
         try writeGuide("g10-guide-notch-5step", step: 1, key: nil)
     }
 
-    /// 확정 시안 13번: 키 단계 4/6. 키 단계 문구와 동작은 spec 006 그대로이고 단계 표시만 바뀐다.
     func test_R711_onboardingKeyStep4of6() throws {
         try writeOnboardingKey(
             "g13-onboarding-key-4of6",

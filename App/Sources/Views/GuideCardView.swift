@@ -66,8 +66,6 @@ struct GuideButtons: Equatable {
     }
 }
 
-/// 안내 장 한 장: 단계 표시, 제목, 설명, 그림, 버튼 줄. 온보딩과 다시 보기 시트가 함께 쓴다(research R7).
-/// 값을 받지 않고 저장하지 않는다. 주 버튼은 기본 버튼(Enter)이다.
 struct GuideCardView: View {
     let card: GuideCard
     let index: Int

@@ -167,7 +167,6 @@ final class GuideTests: XCTestCase {
         XCTAssertFalse(GateDisplay.requestsFocus(false, isIllustration: false))
     }
 
-    /// 큰따옴표 쌍 안 글자(data-model §3).
     private static func quotes(_ text: String) -> [String] {
         let parts = text.components(separatedBy: "\"")
         return stride(from: 1, to: parts.count, by: 2).map { parts[$0] }

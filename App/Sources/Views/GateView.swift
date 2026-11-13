@@ -42,12 +42,10 @@ enum GateDisplay {
         isIllustration || isEnteringTitle || gatePhase == .asking
     }
 
-    /// 게이트 칸은 묻는 중일 때 포커스를 가져간다. 안내 장 그림에서는 가져가지 않는다(research R4).
     static func requestsFocus(phase: GatePhase, isIllustration: Bool) -> Bool {
         requestsFocus(phase == .asking, isIllustration: isIllustration)
     }
 
-    /// 제목 칸(`TitleEntryRow`)처럼 단계 없이 포커스를 원하는 칸의 같은 규칙.
     static func requestsFocus(_ wanted: Bool, isIllustration: Bool) -> Bool {
         wanted && !isIllustration
     }

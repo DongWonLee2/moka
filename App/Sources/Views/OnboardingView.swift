@@ -71,7 +71,6 @@ struct OnboardingSteps: Equatable {
     var total: Int { pages.count }
     var page: Page { pages[step - 1] }
 
-    /// 지금 쪽이 안내 장이면 1~3, 아니면 nil.
     var guideIndex: Int? {
         guard case .guide(let card) = page, let index = GuideCard.allCases.firstIndex(of: card) else { return nil }
         return index + 1
@@ -351,7 +350,6 @@ struct OnboardingView: View {
     }
 }
 
-/// 온보딩 쪽 제목과 설명. 설정 단계와 안내 장이 함께 쓴다.
 struct OnboardingHeading: View {
     let title: String
     let message: String
