@@ -1,6 +1,6 @@
 # ADR-0005: 앱 실행 형태(샌드박스, 서명, 메뉴 막대)
 
-- 상태: Accepted
+- 상태: Accepted ([ADR-0012](ADR-0012-settings-window-activation.md)가 일부 대체: `LSUIElement` 메뉴 막대 전용)
 - 작성일 / 사람 승인일: 2026-10-28 / 2026-10-28
 - 결정 책임자: 저장소 소유자
 - 관련 Spec/R-ID: PRD 1장(macOS 14+, 메뉴바 상주), PRD v2 범위(App Store), 헌법 비밀값 조항(키는 Keychain에만)
