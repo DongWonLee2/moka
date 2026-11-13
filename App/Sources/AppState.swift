@@ -697,6 +697,7 @@ final class AppState {
 
     func extendChanged() {
         extendMin = CoreSettings.readExtendMin(from: settings)
+        session.timer.applyExtendChange(extendMin, isEditingCustom: customText != nil)
     }
 
     /// 시작 전이면 시작, 시간 끝이면 같은 할 일을 고른 칩으로 다시 시작(N분 더, R-107).

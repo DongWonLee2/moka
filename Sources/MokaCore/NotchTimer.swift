@@ -97,6 +97,13 @@ extension NotchTimer {
         self = .empty(draft: draft)
     }
 
+    /// 추가 시간이 바뀌었다(R-013과 같은 규칙, #151). 칩을 직접 고르지 않았고 직접 입력 중이 아닌 시간 끝 칩만
+    /// 새 추가 시간으로 바꾼다. 초안, 도는 타이머, 빈 상태는 그대로다.
+    public mutating func applyExtendChange(_ extendMin: Int, isEditingCustom: Bool) {
+        guard !isEditingCustom, case .expired(let title, _, false) = self else { return }
+        self = .expired(title: title, chipMin: extendMin)
+    }
+
     public func remainingSeconds(at now: Date) -> Int? {
         switch self {
         case .empty:
