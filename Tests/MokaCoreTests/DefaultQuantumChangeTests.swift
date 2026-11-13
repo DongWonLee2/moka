@@ -109,3 +109,44 @@ func defaultChangeLeavesRunningAndEmpty(isEditingCustom: Bool) {
     empty.applyDefaultQuantumChange(40, isEditingCustom: isEditingCustom)
     #expect(empty == .empty(draft: nil))
 }
+
+@Test("FR-16 R-013 R-010: 시간 끝에서 칩을 고르지 않았으면 추가 시간 변경이 칩에 반영되고 그 값으로 다시 돈다")
+func extendChangeUpdatesUnpickedExpiredChip() {
+    var timer = expired()
+    timer.applyExtendChange(20, isEditingCustom: false)
+    #expect(timer == .expired(title: title, chipMin: 20))
+
+    let restart = clock.now().addingTimeInterval(1600)
+    #expect(timer.apply(.start, at: restart, defaultQuantumMin: 25, extendMin: 20) == .applied)
+    #expect(
+        timer == .running(title: title, quantumMin: 20, startedAt: restart, endsAt: restart.addingTimeInterval(1200)))
+}
+
+@Test("FR-16 R-013: 시간 끝 칩을 직접 골랐거나 직접 입력 중이면 추가 시간을 바꿔도 칩은 그대로")
+func extendChangeKeepsPickedOrEditingExpiredChip() {
+    var picked = expired()
+    _ = picked.apply(.chooseQuantum(15), at: clock.now().addingTimeInterval(1600), defaultQuantumMin: 25, extendMin: 10)
+    picked.applyExtendChange(20, isEditingCustom: false)
+    #expect(picked == .expired(title: title, chipMin: 15, chipPicked: true))
+
+    var editing = expired()
+    editing.applyExtendChange(20, isEditingCustom: true)
+    #expect(editing == .expired(title: title, chipMin: 10))
+}
+
+@Test("FR-16 R-013: 추가 시간 변경은 초안 칩·도는 타이머·빈 상태를 바꾸지 않는다", arguments: [false, true])
+func extendChangeLeavesDraftRunningAndEmpty(isEditingCustom: Bool) {
+    var drafted = draft()
+    drafted.applyExtendChange(20, isEditingCustom: isEditingCustom)
+    #expect(drafted == .empty(draft: Draft(title: title, chipMin: 25)))
+
+    var running = draft()
+    _ = running.apply(.start, at: clock.now(), defaultQuantumMin: 25, extendMin: 10)
+    let started = running
+    running.applyExtendChange(20, isEditingCustom: isEditingCustom)
+    #expect(running == started)
+
+    var empty = NotchTimer.empty(draft: nil)
+    empty.applyExtendChange(20, isEditingCustom: isEditingCustom)
+    #expect(empty == .empty(draft: nil))
+}

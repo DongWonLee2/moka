@@ -349,7 +349,7 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertEqual(QuantumChip.againLabel(chipMin: chipMin, customText: state.customText), "15분 더")
     }
 
-    func test_issue151_extendChangeIsUsedAtNextExpiryButKeepsShownChip() throws {
+    func test_issue151_extendChangeIsUsedAtNextExpiryAndUpdatesShownChip() throws {
         let settings = CountingSettingsStore()
         let clock = TestClock(Self.noon)
         let state = makeState(try Self.seeded(1), settings: settings, clock: clock)
@@ -367,7 +367,28 @@ final class AppLifecycleTests: XCTestCase {
 
         try CoreSettings.writeExtendMin(30, to: settings)
         state.extendChanged()
-        XCTAssertEqual(state.timer, .expired(title: "가짜 할 일 1", chipMin: 20), "보이는 시간 끝 칩은 그대로")
+        XCTAssertEqual(state.timer, .expired(title: "가짜 할 일 1", chipMin: 30), "고르지 않은 시간 끝 칩은 바로 새 값")
+
+        state.chooseQuantum(15)
+        try CoreSettings.writeExtendMin(40, to: settings)
+        state.extendChanged()
+        XCTAssertEqual(state.timer, .expired(title: "가짜 할 일 1", chipMin: 15, chipPicked: true), "고른 칩은 그대로")
+    }
+
+    func test_issue151_extendChangeKeepsExpiredChipWhileEditingCustom() throws {
+        let settings = InMemorySettingsStore()
+        let clock = TestClock(Self.noon)
+        let state = makeState(try Self.seeded(1), settings: settings, clock: clock)
+        state.launch()
+        state.start()
+        clock.advance(minutes: 25)
+        state.tick()
+        state.beginCustom()
+
+        try CoreSettings.writeExtendMin(30, to: settings)
+        state.extendChanged()
+
+        XCTAssertEqual(state.timer, .expired(title: "가짜 할 일 1", chipMin: 10), "직접 입력 중에는 그대로")
     }
 
     func test_issue35_defaultQuantumChangeIsReadOnceAndUsed() throws {
