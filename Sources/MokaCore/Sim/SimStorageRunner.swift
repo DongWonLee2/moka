@@ -130,6 +130,7 @@ private struct StorageEvent {
     let calendar: Calendar
 
     private var defaultQuantumMin: Int { QuantumSettings.readDefault(from: settings) }
+    private var extendMin: Int { CoreSettings.readExtendMin(from: settings) }
     private var dayStart: DayStart { CoreSettings.readDayStart(from: settings) }
 
     /// 적용 뒤 세션. nil이면 꺼짐.
@@ -139,7 +140,7 @@ private struct StorageEvent {
             return try launch()
         }
         // 암묵 tick(꺼짐 단계 제외)
-        _ = session.timer.apply(.tick, at: event.at, defaultQuantumMin: defaultQuantumMin)
+        _ = session.timer.apply(.tick, at: event.at, defaultQuantumMin: defaultQuantumMin, extendMin: extendMin)
 
         switch event.kind {
         case .addTask(let new):
@@ -274,7 +275,7 @@ private struct StorageEvent {
 
     private func applyTimer(_ timerEvent: TimerEvent, to session: inout NotchSession) throws(SimError) {
         if case .rejected(let reason) = session.timer.apply(
-            timerEvent, at: event.at, defaultQuantumMin: defaultQuantumMin)
+            timerEvent, at: event.at, defaultQuantumMin: defaultQuantumMin, extendMin: extendMin)
         {
             throw SimRunner.rejection(reason, event: event)
         }
@@ -303,7 +304,8 @@ private struct StorageEvent {
     func input() throws(SimError) -> SessionInput {
         let stored = try SimRunner.storing(seq: event.seq) { try scores.scores() }
         return SessionInput(
-            tasks: try tasks(), now: event.at, defaultQuantumMin: defaultQuantumMin, calendar: calendar,
+            tasks: try tasks(), now: event.at, defaultQuantumMin: defaultQuantumMin, extendMin: extendMin,
+            calendar: calendar,
             scoring: SessionScoring(
                 usable: ScoreRules.usable(
                     scores: stored, hasKey: hasKey, questionVersion: questions.version, provider: Self.fakeProvider),

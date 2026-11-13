@@ -14,7 +14,7 @@ private func step(
     _ timer: inout NotchTimer, pinned: Bool, _ event: TimerEvent, at now: Date, defaultQuantumMin: Int = 25
 ) -> Bool {
     let before = timer
-    let result = timer.apply(event, at: now, defaultQuantumMin: defaultQuantumMin)
+    let result = timer.apply(event, at: now, defaultQuantumMin: defaultQuantumMin, extendMin: 10)
     return pinnedOpenAfter(event, result: result, from: before, to: timer, wasPinned: pinned)
 }
 
@@ -23,7 +23,7 @@ func expiryByTickPinsOpen() {
     var timer = running25()
     #expect(step(&timer, pinned: false, .tick, at: t0.addingTimeInterval(24 * 60)) == false)
     #expect(step(&timer, pinned: false, .tick, at: t0.addingTimeInterval(25 * 60)))
-    #expect(timer == .expired(title: title, chipMin: 25))
+    #expect(timer == .expired(title: title, chipMin: 10))
 }
 
 @Test("FR-06 R-008: 잠자는 동안 끝 시각이 지나면 깨어난 뒤 첫 tick에 고정한다")

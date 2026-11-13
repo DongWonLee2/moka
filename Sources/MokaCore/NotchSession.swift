@@ -36,17 +36,21 @@ public struct SessionInput: Sendable {
     public var tasks: [MokaTask]
     public var now: Date
     public var defaultQuantumMin: Int
+    /// 추가 시간. 시간 끝 칩을 채운다(#151).
+    public var extendMin: Int
     /// `GregorianCalendar.make(timeZone:)`.
     public var calendar: Calendar
     /// 노치 순서에 쓸 판단 결과(spec 003 data-model §1). nil이면 모든 할 일이 점수 없음(마감 순).
     public var scoring: SessionScoring?
 
     public init(
-        tasks: [MokaTask], now: Date, defaultQuantumMin: Int, calendar: Calendar, scoring: SessionScoring? = nil
+        tasks: [MokaTask], now: Date, defaultQuantumMin: Int, extendMin: Int, calendar: Calendar,
+        scoring: SessionScoring? = nil
     ) {
         self.tasks = tasks
         self.now = now
         self.defaultQuantumMin = defaultQuantumMin
+        self.extendMin = extendMin
         self.calendar = calendar
         self.scoring = scoring
     }
@@ -135,7 +139,10 @@ extension NotchSession {
             let task = input.tasks.first(where: { $0.id == id }), task.status == .todo
         else { throw .notAllowed }
         var next = self
-        guard next.timer.apply(.start, at: input.now, defaultQuantumMin: input.defaultQuantumMin) == .applied,
+        guard
+            next.timer.apply(
+                .start, at: input.now, defaultQuantumMin: input.defaultQuantumMin, extendMin: input.extendMin)
+                == .applied,
             case .running(_, let quantumMin, let startedAt, _) = next.timer
         else { throw .notAllowed }
         next.run = RunInfo(startedAt: startedAt, quantumMin: quantumMin)
@@ -189,9 +196,13 @@ extension NotchSession {
         var next = self
         next.timer = ticked(input)
         guard
-            next.timer.apply(.chooseQuantum(quantumMin), at: input.now, defaultQuantumMin: input.defaultQuantumMin)
+            next.timer.apply(
+                .chooseQuantum(quantumMin), at: input.now, defaultQuantumMin: input.defaultQuantumMin,
+                extendMin: input.extendMin)
                 == .applied,
-            next.timer.apply(.start, at: input.now, defaultQuantumMin: input.defaultQuantumMin) == .applied
+            next.timer.apply(
+                .start, at: input.now, defaultQuantumMin: input.defaultQuantumMin, extendMin: input.extendMin)
+                == .applied
         else { throw .notAllowed }
         next.run = RunInfo(startedAt: input.now, quantumMin: quantumMin)
         var updated = button.task
@@ -242,7 +253,9 @@ extension NotchSession {
     private func drafting(_ task: MokaTask, _ input: SessionInput) -> NotchSession {
         var next = self
         guard
-            next.timer.apply(.enterTitle(task.title), at: input.now, defaultQuantumMin: input.defaultQuantumMin)
+            next.timer.apply(
+                .enterTitle(task.title), at: input.now, defaultQuantumMin: input.defaultQuantumMin,
+                extendMin: input.extendMin)
                 == .applied
         else { return self }
         next.taskID = task.id
@@ -253,7 +266,7 @@ extension NotchSession {
     /// 암묵 tick(끝 시각이 지난 running → expired)을 적용한 타이머.
     private func ticked(_ input: SessionInput) -> NotchTimer {
         var timer = self.timer
-        _ = timer.apply(.tick, at: input.now, defaultQuantumMin: input.defaultQuantumMin)
+        _ = timer.apply(.tick, at: input.now, defaultQuantumMin: input.defaultQuantumMin, extendMin: input.extendMin)
         return timer
     }
 
@@ -301,7 +314,8 @@ extension NotchSession {
     /// 버튼 뒤 세션: 타이머는 `.complete`로 빈 상태, 할 일·회차 없음.
     private func finished(cursor: TaskID?, _ input: SessionInput) -> NotchSession {
         var timer = self.timer
-        _ = timer.apply(.complete, at: input.now, defaultQuantumMin: input.defaultQuantumMin)
+        _ = timer.apply(
+            .complete, at: input.now, defaultQuantumMin: input.defaultQuantumMin, extendMin: input.extendMin)
         return NotchSession(timer: timer, taskID: nil, previousTaskID: cursor, run: nil)
     }
 

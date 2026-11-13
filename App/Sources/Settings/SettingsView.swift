@@ -229,6 +229,7 @@ struct SettingsView: View {
     private func applyExtend(_ result: FieldCommit) {
         log(result.error, "추가 시간")
         extendText = result.shown
+        if result.attempted { appState.extendChanged() }
     }
 
     private func saveDayStart(_ date: Date) {

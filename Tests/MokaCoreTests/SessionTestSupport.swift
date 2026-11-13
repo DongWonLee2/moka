@@ -45,9 +45,11 @@ enum Fake {
     }
 
     static func input(
-        _ tasks: [MokaTask], now: Date = noon, defaultQuantumMin: Int = 25, calendar: Calendar = seoul
+        _ tasks: [MokaTask], now: Date = noon, defaultQuantumMin: Int = 25, extendMin: Int = 10,
+        calendar: Calendar = seoul
     ) -> SessionInput {
-        SessionInput(tasks: tasks, now: now, defaultQuantumMin: defaultQuantumMin, calendar: calendar)
+        SessionInput(
+            tasks: tasks, now: now, defaultQuantumMin: defaultQuantumMin, extendMin: extendMin, calendar: calendar)
     }
 
     static func notes(_ done: String, _ next: String) -> CheckpointNotes {

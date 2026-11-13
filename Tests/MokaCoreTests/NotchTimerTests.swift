@@ -14,7 +14,7 @@ private func running(quantumMin: Int = 25, startedAt: Date = t0) -> NotchTimer {
 @Test("FR-05 R-003: 빈 상태에서 제목을 넣으면 칩이 기본값으로 채워진다")
 func enterTitleFromEmptyFillsDefaultChip() {
     var timer = NotchTimer.empty(draft: nil)
-    let result = timer.apply(.enterTitle("  \(title)  "), at: t0, defaultQuantumMin: 45)
+    let result = timer.apply(.enterTitle("  \(title)  "), at: t0, defaultQuantumMin: 45, extendMin: 10)
     #expect(result == .applied)
     #expect(timer == .empty(draft: Draft(title: title, chipMin: 45)))
 }
@@ -23,7 +23,7 @@ func enterTitleFromEmptyFillsDefaultChip() {
 func blankTitleIsRejected(text: String) {
     for initial in [NotchTimer.empty(draft: nil), .empty(draft: Draft(title: title, chipMin: 25))] {
         var timer = initial
-        let result = timer.apply(.enterTitle(text), at: t0, defaultQuantumMin: 25)
+        let result = timer.apply(.enterTitle(text), at: t0, defaultQuantumMin: 25, extendMin: 10)
         #expect(result == .rejected(.emptyTitle))
         #expect(timer == initial)
     }
@@ -33,7 +33,7 @@ func blankTitleIsRejected(text: String) {
 func tickInEmptyChangesNothing() {
     for initial in [NotchTimer.empty(draft: nil), .empty(draft: Draft(title: title, chipMin: 25))] {
         var timer = initial
-        #expect(timer.apply(.tick, at: t0, defaultQuantumMin: 25) == .applied)
+        #expect(timer.apply(.tick, at: t0, defaultQuantumMin: 25, extendMin: 10) == .applied)
         #expect(timer == initial)
     }
 }
@@ -61,7 +61,7 @@ let rejectedCells: [RejectedCell] = [
 @Test("FR-06 R-005: 단계에 맞지 않는 이벤트는 rejected이고 상태를 바꾸지 않는다", arguments: rejectedCells)
 func eventNotAllowedInPhaseIsRejected(cell: RejectedCell) {
     var timer = cell.initial
-    let result = timer.apply(cell.event, at: t0.addingTimeInterval(60), defaultQuantumMin: 25)
+    let result = timer.apply(cell.event, at: t0.addingTimeInterval(60), defaultQuantumMin: 25, extendMin: 10)
     #expect(result == .rejected(.notAllowedInPhase))
     #expect(timer == cell.initial)
 }
@@ -69,14 +69,14 @@ func eventNotAllowedInPhaseIsRejected(cell: RejectedCell) {
 @Test("FR-06 R-002: 초안에서 제목을 다시 넣으면 제목만 바뀌고 칩은 그대로")
 func enterTitleInDraftKeepsChip() {
     var timer = NotchTimer.empty(draft: Draft(title: title, chipMin: 45))
-    #expect(timer.apply(.enterTitle("가짜 할 일 B"), at: t0, defaultQuantumMin: 25) == .applied)
+    #expect(timer.apply(.enterTitle("가짜 할 일 B"), at: t0, defaultQuantumMin: 25, extendMin: 10) == .applied)
     #expect(timer == .empty(draft: Draft(title: "가짜 할 일 B", chipMin: 45)))
 }
 
 @Test("FR-05 R-004: 초안에서 칩을 고르면 칩 값이 바뀐다", arguments: [1, 15, 60, 180])
 func chooseQuantumInDraft(minutes: Int) {
     var timer = NotchTimer.empty(draft: Draft(title: title, chipMin: 25))
-    #expect(timer.apply(.chooseQuantum(minutes), at: t0, defaultQuantumMin: 25) == .applied)
+    #expect(timer.apply(.chooseQuantum(minutes), at: t0, defaultQuantumMin: 25, extendMin: 10) == .applied)
     #expect(timer == .empty(draft: Draft(title: title, chipMin: minutes, chipPicked: true)))
 }
 
@@ -84,7 +84,9 @@ func chooseQuantumInDraft(minutes: Int) {
 func chooseQuantumOutOfRangeIsRejected(minutes: Int) {
     for initial in [NotchTimer.empty(draft: Draft(title: title, chipMin: 25)), .expired(title: title, chipMin: 25)] {
         var timer = initial
-        #expect(timer.apply(.chooseQuantum(minutes), at: t0, defaultQuantumMin: 25) == .rejected(.quantumOutOfRange))
+        #expect(
+            timer.apply(.chooseQuantum(minutes), at: t0, defaultQuantumMin: 25, extendMin: 10)
+                == .rejected(.quantumOutOfRange))
         #expect(timer == initial)
     }
 }
@@ -92,7 +94,7 @@ func chooseQuantumOutOfRangeIsRejected(minutes: Int) {
 @Test("FR-06 R-005: 초안에서 시작하면 칩 시간만큼 돌고 끝 시각은 시작 + 칩·60초")
 func startFromDraft() {
     var timer = NotchTimer.empty(draft: Draft(title: title, chipMin: 25))
-    #expect(timer.apply(.start, at: t0, defaultQuantumMin: 45) == .applied)
+    #expect(timer.apply(.start, at: t0, defaultQuantumMin: 45, extendMin: 10) == .applied)
     #expect(timer == .running(title: title, quantumMin: 25, startedAt: t0, endsAt: t0.addingTimeInterval(1500)))
     #expect(timer.remainingSeconds(at: t0) == 1500)
 }
@@ -109,30 +111,30 @@ func remainingSecondsIsCeilOfTimeToEnd() {
 func clockRollbackIsClamped() {
     var timer = running()
     #expect(timer.remainingSeconds(at: t0.addingTimeInterval(-3600)) == 1500)
-    #expect(timer.apply(.tick, at: t0.addingTimeInterval(-3600), defaultQuantumMin: 25) == .applied)
+    #expect(timer.apply(.tick, at: t0.addingTimeInterval(-3600), defaultQuantumMin: 25, extendMin: 10) == .applied)
     #expect(timer == running())
 }
 
 @Test("FR-06 R-005: 잠자기로 줄어든 시간은 남은 초에 그대로 반영된다")
 func sleepIsReflected() {
     var timer = running()
-    #expect(timer.apply(.tick, at: t0.addingTimeInterval(600), defaultQuantumMin: 25) == .applied)
+    #expect(timer.apply(.tick, at: t0.addingTimeInterval(600), defaultQuantumMin: 25, extendMin: 10) == .applied)
     #expect(timer.remainingSeconds(at: t0.addingTimeInterval(600)) == 900)
 }
 
-@Test("FR-06 R-008: 끝 시각 이후 tick이면 시간 끝, 칩은 그 순간의 기본값, 남은 초 0", arguments: [0.0, 1, 3600])
+@Test("FR-06 R-008 R-003: 끝 시각 이후 tick이면 시간 끝, 칩은 그 순간의 추가 시간, 남은 초 0", arguments: [0.0, 1, 3600])
 func tickAfterEndExpires(overrun: TimeInterval) {
     var timer = running()
     let now = t0.addingTimeInterval(1500 + overrun)
-    #expect(timer.apply(.tick, at: now, defaultQuantumMin: 45) == .applied)
-    #expect(timer == .expired(title: title, chipMin: 45))
+    #expect(timer.apply(.tick, at: now, defaultQuantumMin: 45, extendMin: 12) == .applied)
+    #expect(timer == .expired(title: title, chipMin: 12))
     #expect(timer.remainingSeconds(at: now) == 0)
 }
 
 @Test("FR-06 R-007: 도는 중 완료하면 빈 상태로 돌아간다")
 func completeWhileRunning() {
     var timer = running()
-    #expect(timer.apply(.complete, at: t0.addingTimeInterval(60), defaultQuantumMin: 25) == .applied)
+    #expect(timer.apply(.complete, at: t0.addingTimeInterval(60), defaultQuantumMin: 25, extendMin: 10) == .applied)
     #expect(timer == .empty(draft: nil))
     #expect(timer.remainingSeconds(at: t0) == nil)
 }
@@ -140,14 +142,16 @@ func completeWhileRunning() {
 @Test("FR-06 R-008: 끝 시각 이후 complete는 암묵 tick 뒤 처리되어 빈 상태가 된다")
 func implicitTickBeforeComplete() {
     var timer = running()
-    #expect(timer.apply(.complete, at: t0.addingTimeInterval(2000), defaultQuantumMin: 25) == .applied)
+    #expect(timer.apply(.complete, at: t0.addingTimeInterval(2000), defaultQuantumMin: 25, extendMin: 10) == .applied)
     #expect(timer == .empty(draft: nil))
 }
 
 @Test("FR-05 R-010: 끝 시각 이후 chooseQuantum은 암묵 tick 뒤 시간 끝 칩을 바꾼다")
 func implicitTickBeforeChooseQuantum() {
     var timer = running()
-    #expect(timer.apply(.chooseQuantum(15), at: t0.addingTimeInterval(1500), defaultQuantumMin: 25) == .applied)
+    #expect(
+        timer.apply(.chooseQuantum(15), at: t0.addingTimeInterval(1500), defaultQuantumMin: 25, extendMin: 10)
+            == .applied)
     #expect(timer == .expired(title: title, chipMin: 15, chipPicked: true))
 }
 
@@ -155,15 +159,15 @@ func implicitTickBeforeChooseQuantum() {
 func implicitTickStaysWhenEventRejected() {
     var timer = running()
     #expect(
-        timer.apply(.enterTitle("가짜 할 일 B"), at: t0.addingTimeInterval(1600), defaultQuantumMin: 25)
+        timer.apply(.enterTitle("가짜 할 일 B"), at: t0.addingTimeInterval(1600), defaultQuantumMin: 25, extendMin: 10)
             == .rejected(.notAllowedInPhase))
-    #expect(timer == .expired(title: title, chipMin: 25))
+    #expect(timer == .expired(title: title, chipMin: 10))
 }
 
 @Test("FR-06 R-008: 시간 끝에서 tick은 변화 없음")
 func tickInExpiredChangesNothing() {
     var timer = NotchTimer.expired(title: title, chipMin: 25)
-    #expect(timer.apply(.tick, at: t0, defaultQuantumMin: 45) == .applied)
+    #expect(timer.apply(.tick, at: t0, defaultQuantumMin: 45, extendMin: 10) == .applied)
     #expect(timer == .expired(title: title, chipMin: 25))
     #expect(timer.remainingSeconds(at: t0) == 0)
 }
@@ -172,30 +176,30 @@ func tickInExpiredChangesNothing() {
 func restartFromExpired() {
     var timer = NotchTimer.expired(title: title, chipMin: 25)
     let t1 = t0.addingTimeInterval(5000)
-    #expect(timer.apply(.chooseQuantum(45), at: t1, defaultQuantumMin: 25) == .applied)
-    #expect(timer.apply(.start, at: t1, defaultQuantumMin: 25) == .applied)
+    #expect(timer.apply(.chooseQuantum(45), at: t1, defaultQuantumMin: 25, extendMin: 10) == .applied)
+    #expect(timer.apply(.start, at: t1, defaultQuantumMin: 25, extendMin: 10) == .applied)
     #expect(timer == .running(title: title, quantumMin: 45, startedAt: t1, endsAt: t1.addingTimeInterval(2700)))
 }
 
 @Test("FR-05 R-010: 시간 끝에서 칩을 바꾸지 않고 시작하면 채워진 칩으로 다시 돈다")
 func restartFromExpiredWithFilledChip() {
     var timer = NotchTimer.expired(title: title, chipMin: 45)
-    #expect(timer.apply(.start, at: t0, defaultQuantumMin: 25) == .applied)
+    #expect(timer.apply(.start, at: t0, defaultQuantumMin: 25, extendMin: 10) == .applied)
     #expect(timer == .running(title: title, quantumMin: 45, startedAt: t0, endsAt: t0.addingTimeInterval(2700)))
 }
 
-@Test("FR-05 R-010: 끝 시각 이후 start는 암묵 tick 뒤 기본값 칩으로 다시 돈다")
+@Test("FR-05 R-010 R-003: 끝 시각 이후 start는 암묵 tick 뒤 추가 시간 칩으로 다시 돈다")
 func implicitTickBeforeStart() {
     var timer = running()
     let t1 = t0.addingTimeInterval(1800)
-    #expect(timer.apply(.start, at: t1, defaultQuantumMin: 15) == .applied)
+    #expect(timer.apply(.start, at: t1, defaultQuantumMin: 25, extendMin: 15) == .applied)
     #expect(timer == .running(title: title, quantumMin: 15, startedAt: t1, endsAt: t1.addingTimeInterval(900)))
 }
 
 @Test("FR-06 R-007: 시간 끝에서 완료하면 빈 상태로 돌아간다")
 func completeWhenExpired() {
     var timer = NotchTimer.expired(title: title, chipMin: 25)
-    #expect(timer.apply(.complete, at: t0, defaultQuantumMin: 25) == .applied)
+    #expect(timer.apply(.complete, at: t0, defaultQuantumMin: 25, extendMin: 10) == .applied)
     #expect(timer == .empty(draft: nil))
 }
 

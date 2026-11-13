@@ -30,7 +30,8 @@ public enum SimRunner {
         var output = ""
         for event in scenario.events {
             let defaultQuantumMin = QuantumSettings.readDefault(from: settings)
-            _ = timer.apply(.tick, at: event.at, defaultQuantumMin: defaultQuantumMin)
+            let extendMin = CoreSettings.readExtendMin(from: settings)
+            _ = timer.apply(.tick, at: event.at, defaultQuantumMin: defaultQuantumMin, extendMin: extendMin)
 
             let timerEvent: TimerEvent?
             switch event.kind {
@@ -48,7 +49,8 @@ public enum SimRunner {
                 throw SimError(kind: .storageOnly, seq: event.seq, message: "\(event.kind.name)는 storage 모드에서만 받는다")
             }
             if let timerEvent,
-                case .rejected(let reason) = timer.apply(timerEvent, at: event.at, defaultQuantumMin: defaultQuantumMin)
+                case .rejected(let reason) = timer.apply(
+                    timerEvent, at: event.at, defaultQuantumMin: defaultQuantumMin, extendMin: extendMin)
             {
                 throw rejection(reason, event: event)
             }

@@ -318,6 +318,79 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertEqual(settings.quantumReads, reads)
     }
 
+    func test_issue151_tickIntoExpiryDoesNotReadExtend() throws {
+        let settings = CountingSettingsStore()
+        let clock = TestClock(Self.noon)
+        let state = makeState(try Self.seeded(1), settings: settings, clock: clock)
+        state.launch()
+        state.start()
+        let reads = settings.extendReads
+
+        clock.advance(minutes: 25)
+        state.tick()
+
+        XCTAssertEqual(state.timer, .expired(title: "가짜 할 일 1", chipMin: 10))
+        XCTAssertEqual(settings.extendReads, reads)
+    }
+
+    func test_issue151_expiryChipIsSavedExtend() throws {
+        let settings = InMemorySettingsStore()
+        try CoreSettings.writeExtendMin(15, to: settings)
+        let clock = TestClock(Self.noon)
+        let state = makeState(try Self.seeded(1), settings: settings, clock: clock)
+        state.launch()
+        state.start()
+
+        clock.advance(minutes: 25)
+        state.tick()
+
+        XCTAssertEqual(state.timer, .expired(title: "가짜 할 일 1", chipMin: 15))
+        guard case .expired(_, let chipMin, _) = state.timer else { return XCTFail("시간 끝이어야 한다") }
+        XCTAssertEqual(QuantumChip.againLabel(chipMin: chipMin, customText: state.customText), "15분 더")
+    }
+
+    func test_issue151_extendChangeIsUsedAtNextExpiryAndUpdatesShownChip() throws {
+        let settings = CountingSettingsStore()
+        let clock = TestClock(Self.noon)
+        let state = makeState(try Self.seeded(1), settings: settings, clock: clock)
+        state.launch()
+        state.start()
+
+        try CoreSettings.writeExtendMin(20, to: settings)
+        let reads = settings.extendReads
+        state.extendChanged()
+        XCTAssertEqual(settings.extendReads, reads + 1)
+
+        clock.advance(minutes: 25)
+        state.tick()
+        XCTAssertEqual(state.timer, .expired(title: "가짜 할 일 1", chipMin: 20))
+
+        try CoreSettings.writeExtendMin(30, to: settings)
+        state.extendChanged()
+        XCTAssertEqual(state.timer, .expired(title: "가짜 할 일 1", chipMin: 30), "고르지 않은 시간 끝 칩은 바로 새 값")
+
+        state.chooseQuantum(15)
+        try CoreSettings.writeExtendMin(40, to: settings)
+        state.extendChanged()
+        XCTAssertEqual(state.timer, .expired(title: "가짜 할 일 1", chipMin: 15, chipPicked: true), "고른 칩은 그대로")
+    }
+
+    func test_issue151_extendChangeKeepsExpiredChipWhileEditingCustom() throws {
+        let settings = InMemorySettingsStore()
+        let clock = TestClock(Self.noon)
+        let state = makeState(try Self.seeded(1), settings: settings, clock: clock)
+        state.launch()
+        state.start()
+        clock.advance(minutes: 25)
+        state.tick()
+        state.beginCustom()
+
+        try CoreSettings.writeExtendMin(30, to: settings)
+        state.extendChanged()
+
+        XCTAssertEqual(state.timer, .expired(title: "가짜 할 일 1", chipMin: 10), "직접 입력 중에는 그대로")
+    }
+
     func test_issue35_defaultQuantumChangeIsReadOnceAndUsed() throws {
         let settings = CountingSettingsStore()
         let state = makeState(try Self.seeded(2), settings: settings)
@@ -810,7 +883,7 @@ final class AppLifecycleTests: XCTestCase {
         clock.advance(minutes: 7)
         state.tick()
 
-        XCTAssertEqual(state.timer, .expired(title: "가짜 할 일 1", chipMin: 25))
+        XCTAssertEqual(state.timer, .expired(title: "가짜 할 일 1", chipMin: 10))
         XCTAssertNil(state.pendingAction, "시간 끝 화면으로 바뀐다(§8)")
         XCTAssertEqual(state.notesDraft, NotesDraft(done: "가짜 한 일", next: ""), "적던 글자는 이어진다")
     }
@@ -855,7 +928,7 @@ final class AppLifecycleTests: XCTestCase {
         let state = runningFor18Minutes(repository, clock: clock)
         clock.advance(minutes: 7)
         state.tick()
-        XCTAssertEqual(state.timer, .expired(title: "가짜 할 일 1", chipMin: 25))
+        XCTAssertEqual(state.timer, .expired(title: "가짜 할 일 1", chipMin: 10))
 
         state.chooseQuantum(15)
         state.start()
@@ -1041,7 +1114,8 @@ final class AppLifecycleTests: XCTestCase {
 
     func test_FR21_R116_finishSavesContextSettingsAndHidesOnboarding() throws {
         let settings = InMemorySettingsStore()
-        let state = makeState(try Self.seeded(1), settings: settings)
+        let clock = TestClock(Self.noon)
+        let state = makeState(try Self.seeded(1), settings: settings, clock: clock)
         state.launch()
 
         let context = NewContext(name: " 가짜 중간고사 ", date: Self.day("2027-01-20"), impact: .high)
@@ -1054,6 +1128,10 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertEqual(CoreSettings.readDayStart(from: settings), DayStart(text: "05:30"))
         state.enterTitle("가짜 새 할 일")
         XCTAssertEqual(state.timer, .empty(draft: Draft(title: "가짜 새 할 일", chipMin: 45)), "새 기본 작업 시간을 쓴다")
+        state.start()
+        clock.advance(minutes: 45)
+        state.tick()
+        XCTAssertEqual(state.timer, .expired(title: "가짜 새 할 일", chipMin: 15), "시간 끝 칩은 새 추가 시간을 쓴다")
     }
 
     func test_FR21_R116_finishWithoutContext() throws {
@@ -1221,10 +1299,14 @@ private struct OpenFailure: Error {}
 private final class CountingSettingsStore: SettingsStore {
     private let inner = InMemorySettingsStore()
     private(set) var quantumReads = 0
+    private(set) var extendReads = 0
 
     func value(for key: String) throws -> String? {
         if key == QuantumSettings.key {
             quantumReads += 1
+        }
+        if key == CoreSettings.extendMinKey {
+            extendReads += 1
         }
         return try inner.value(for: key)
     }

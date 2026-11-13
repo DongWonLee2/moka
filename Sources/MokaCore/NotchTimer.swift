@@ -40,9 +40,12 @@ public enum TransitionResult: Equatable, Sendable {
 
 extension NotchTimer {
     /// 처리 전에 암묵 tick(끝 시각이 지난 running → expired)을 먼저 적용한다. 이벤트가 rejected여도 그 결과는 남는다.
-    public mutating func apply(_ event: TimerEvent, at now: Date, defaultQuantumMin: Int) -> TransitionResult {
+    /// 초안 칩은 `defaultQuantumMin`, 시간 끝 칩은 `extendMin`(추가 시간, #151)으로 채운다.
+    public mutating func apply(_ event: TimerEvent, at now: Date, defaultQuantumMin: Int, extendMin: Int)
+        -> TransitionResult
+    {
         if case .running(let title, _, _, let endsAt) = self, now >= endsAt {
-            self = .expired(title: title, chipMin: defaultQuantumMin)
+            self = .expired(title: title, chipMin: extendMin)
         }
 
         switch (self, event) {
@@ -87,18 +90,18 @@ extension NotchTimer {
     }
 
     /// 기본값이 바뀌었다(R-013). 타이머 이벤트가 아니라 거부되지 않는다. 칩을 직접 고르지 않았고 직접 입력 중이
-    /// 아닌 초안·시간 끝의 칩만 새 기본값으로 바꾼다. 도는 타이머와 빈 상태는 그대로다.
+    /// 아닌 초안의 칩만 새 기본값으로 바꾼다. 도는 타이머, 빈 상태, 추가 시간으로 채운 시간 끝 칩은 그대로다(#151).
     public mutating func applyDefaultQuantumChange(_ defaultQuantumMin: Int, isEditingCustom: Bool) {
-        guard !isEditingCustom else { return }
-        switch self {
-        case .empty(.some(var draft)) where !draft.chipPicked:
-            draft.chipMin = defaultQuantumMin
-            self = .empty(draft: draft)
-        case .expired(let title, _, false):
-            self = .expired(title: title, chipMin: defaultQuantumMin)
-        case .empty, .running, .expired:
-            return
-        }
+        guard !isEditingCustom, case .empty(.some(var draft)) = self, !draft.chipPicked else { return }
+        draft.chipMin = defaultQuantumMin
+        self = .empty(draft: draft)
+    }
+
+    /// 추가 시간이 바뀌었다(R-013과 같은 규칙, #151). 칩을 직접 고르지 않았고 직접 입력 중이 아닌 시간 끝 칩만
+    /// 새 추가 시간으로 바꾼다. 초안, 도는 타이머, 빈 상태는 그대로다.
+    public mutating func applyExtendChange(_ extendMin: Int, isEditingCustom: Bool) {
+        guard !isEditingCustom, case .expired(let title, _, false) = self else { return }
+        self = .expired(title: title, chipMin: extendMin)
     }
 
     public func remainingSeconds(at now: Date) -> Int? {
