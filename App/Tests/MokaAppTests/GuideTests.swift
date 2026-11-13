@@ -221,6 +221,13 @@ final class GuideTests: XCTestCase {
         }
     }
 
+    func test_R713_sheetIndexClampedToThree() {
+        XCTAssertEqual(GuideSheetState(index: 0).index, 1)
+        XCTAssertEqual(GuideSheetState(index: -2).card, .notch)
+        XCTAssertEqual(GuideSheetState(index: 4).index, 3)
+        XCTAssertEqual(GuideSheetState(index: 9).card, .firstAction)
+    }
+
     private static func quotes(_ text: String) -> [String] {
         let parts = text.components(separatedBy: "\"")
         return stride(from: 1, to: parts.count, by: 2).map { parts[$0] }
