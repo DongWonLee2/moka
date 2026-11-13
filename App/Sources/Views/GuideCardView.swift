@@ -17,7 +17,7 @@ enum GuideText {
     static func title(_ card: GuideCard) -> String {
         switch card {
         case .notch: "할 일은 노치에 떠요"
-        case .rank: "무엇부터 할지 노치가 골라요"
+        case .rank: "무엇부터 할지 Moka가 골라요"
         case .firstAction: "막연한 일은 첫 행동부터 적어요"
         }
     }
