@@ -32,6 +32,7 @@ struct ExpandedView: View {
     let onComplete: () -> Void
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.panelPalette) private var palette
+    @Environment(\.isNotchIllustration) private var isIllustration
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -157,7 +158,7 @@ struct ExpandedView: View {
             // 제목 칸이나 게이트 칸이 열려 있으면 Enter는 그 칸의 것이다. 시작까지 함께 부르지 않게 단축키를 뗀다.
             .keyboardShortcut(
                 GateDisplay.detachesStartShortcut(
-                    isEnteringTitle: draftInput.isEnteringTitle, gatePhase: gate?.phase)
+                    isEnteringTitle: draftInput.isEnteringTitle, gatePhase: gate?.phase, isIllustration: isIllustration)
                     ? nil : .defaultAction
             )
             .disabled(!chip.canStart)
@@ -208,6 +209,7 @@ private struct TitleEntryRow: View {
     @FocusState private var focused: Bool
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.panelPalette) private var palette
+    @Environment(\.isNotchIllustration) private var isIllustration
 
     var body: some View {
         HStack(spacing: 6) {
@@ -224,10 +226,14 @@ private struct TitleEntryRow: View {
                 .buttonStyle(NotchButtonStyle(kind: .primary))
                 .disabled(trimmed.isEmpty)
         }
-        .onChange(of: focusRequest) { focused = true }
+        .onChange(of: focusRequest) {
+            if GateDisplay.requestsFocus(true, isIllustration: isIllustration) { focused = true }
+        }
         .onAppear {
             // 나타나는 순간에는 칸이 아직 붙지 않아 포커스 요청이 버려진다. 다음 차례로 미룬다.
-            if focusesOnAppear { Task { @MainActor in focused = true } }
+            if GateDisplay.requestsFocus(focusesOnAppear, isIllustration: isIllustration) {
+                Task { @MainActor in focused = true }
+            }
         }
         .onExitCommand { onCancel?() }
     }

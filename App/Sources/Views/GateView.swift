@@ -35,8 +35,24 @@ enum GateDisplay {
     }
 
     /// 제목 칸이 열렸거나 게이트가 묻는 중이면 Enter는 그 칸의 것이라 시작 버튼 단축키를 뗀다.
-    static func detachesStartShortcut(isEnteringTitle: Bool, gatePhase: GatePhase?) -> Bool {
-        isEnteringTitle || gatePhase == .asking
+    /// 안내 장 그림에서는 Enter가 안내 장 "다음"의 것이라 늘 뗀다(spec 007 research R4).
+    static func detachesStartShortcut(isEnteringTitle: Bool, gatePhase: GatePhase?, isIllustration: Bool = false)
+        -> Bool
+    {
+        isIllustration || isEnteringTitle || gatePhase == .asking
+    }
+
+    static func requestsFocus(phase: GatePhase, isIllustration: Bool) -> Bool {
+        requestsFocus(phase == .asking, isIllustration: isIllustration)
+    }
+
+    static func requestsFocus(_ wanted: Bool, isIllustration: Bool) -> Bool {
+        wanted && !isIllustration
+    }
+
+    /// 안내 장 그림에서는 읽기만 하는 칸을 그려 Tab으로 들어갈 입력 칸을 두지 않는다.
+    static func showsEditableField(phase: GatePhase, isIllustration: Bool) -> Bool {
+        phase == .asking && !isIllustration
     }
 
     /// 묻는 중이면 Enter는 적기라 시작 버튼에서 ↵ 표시를 뺀다(확정 시안 4번).
@@ -91,6 +107,7 @@ struct GateView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.panelPalette) private var palette
+    @Environment(\.isNotchIllustration) private var isIllustration
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -134,17 +151,21 @@ struct GateView: View {
         }
         .onAppear {
             // 나타나는 순간에는 칸이 아직 붙지 않아 포커스 요청이 버려진다. 다음 차례로 미룬다.
-            if input.phase == .asking { Task { @MainActor in focused = true } }
+            if GateDisplay.requestsFocus(phase: input.phase, isIllustration: isIllustration) {
+                Task { @MainActor in focused = true }
+            }
         }
         .onChange(of: input.phase) { _, phase in
             // 확인하는 중에서 다시 묻기로 돌아오면 칸이 새로 생기므로 다시 포커스를 준다(확정 시안 6번).
-            if phase == .asking { Task { @MainActor in focused = true } }
+            if GateDisplay.requestsFocus(phase: phase, isIllustration: isIllustration) {
+                Task { @MainActor in focused = true }
+            }
         }
     }
 
     @ViewBuilder
     private var field: some View {
-        if input.phase == .asking {
+        if GateDisplay.showsEditableField(phase: input.phase, isIllustration: isIllustration) {
             TextField("", text: input.text)
                 .notchField(focused: focused)
                 .focused($focused)

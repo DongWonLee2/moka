@@ -218,7 +218,7 @@ private struct TaskRow: View {
 }
 
 /// 순위 칸(시안 v2 8번). "다음"이 든 배지는 모카색으로 채우고, 순위만이면 모카색 글자다. 없으면 같은 폭을 비운다.
-private struct RankBadge: View {
+struct RankBadge: View {
     let text: String?
     let isNext: Bool
     @Environment(\.colorScheme) private var colorScheme
