@@ -63,31 +63,38 @@ func writeDefaultPropagatesStoreError() {
     }
 }
 
-@Test("FR-16 R-013: 설정 쓰기와 tick만으로는 도는 타이머·채운 칩이 그대로이고, 기본값 변경을 적용하면 고르지 않은 시간 끝 칩이 새 값")
+@Test("FR-16 R-013 R-003: 설정 쓰기와 tick만으로는 도는 타이머가 그대로이고, 시간 끝 칩은 저장된 추가 시간이며 기본값 변경에 그대로")
 func defaultChangeAppliesOnlyThroughApplyDefaultQuantumChange() throws {
     let t0 = Date(timeIntervalSince1970: 1_800_000_000)
     let store = InMemorySettingsStore()
+    func apply(_ event: TimerEvent, at now: Date, to timer: inout NotchTimer) -> TransitionResult {
+        timer.apply(
+            event, at: now, defaultQuantumMin: QuantumSettings.readDefault(from: store),
+            extendMin: CoreSettings.readExtendMin(from: store))
+    }
     var timer = NotchTimer.empty(draft: nil)
-    _ = timer.apply(.enterTitle("가짜 할 일 A"), at: t0, defaultQuantumMin: QuantumSettings.readDefault(from: store))
-    _ = timer.apply(.start, at: t0, defaultQuantumMin: QuantumSettings.readDefault(from: store))
+    _ = apply(.enterTitle("가짜 할 일 A"), at: t0, to: &timer)
+    _ = apply(.start, at: t0, to: &timer)
     let started = timer
 
     try QuantumSettings.writeDefault(45, to: store)
+    try CoreSettings.writeExtendMin(20, to: store)
     let t1 = t0.addingTimeInterval(60)
-    #expect(timer.apply(.tick, at: t1, defaultQuantumMin: QuantumSettings.readDefault(from: store)) == .applied)
+    #expect(apply(.tick, at: t1, to: &timer) == .applied)
     #expect(timer == started)
     #expect(timer == .running(title: "가짜 할 일 A", quantumMin: 25, startedAt: t0, endsAt: t0.addingTimeInterval(1500)))
 
     let t2 = t0.addingTimeInterval(1500)
-    _ = timer.apply(.tick, at: t2, defaultQuantumMin: QuantumSettings.readDefault(from: store))
-    #expect(timer == .expired(title: "가짜 할 일 A", chipMin: 45))
+    _ = apply(.tick, at: t2, to: &timer)
+    #expect(timer == .expired(title: "가짜 할 일 A", chipMin: 20))
 
     try QuantumSettings.writeDefault(15, to: store)
-    _ = timer.apply(.tick, at: t2.addingTimeInterval(60), defaultQuantumMin: QuantumSettings.readDefault(from: store))
-    #expect(timer == .expired(title: "가짜 할 일 A", chipMin: 45))
+    try CoreSettings.writeExtendMin(30, to: store)
+    _ = apply(.tick, at: t2.addingTimeInterval(60), to: &timer)
+    #expect(timer == .expired(title: "가짜 할 일 A", chipMin: 20))
 
     timer.applyDefaultQuantumChange(QuantumSettings.readDefault(from: store), isEditingCustom: false)
-    #expect(timer == .expired(title: "가짜 할 일 A", chipMin: 15))
+    #expect(timer == .expired(title: "가짜 할 일 A", chipMin: 20))
 }
 
 /// 읽기는 되고 쓰기만 실패하는 저장소. 저장 실패 뒤 칸이 이전 값으로 돌아가는지 본다.

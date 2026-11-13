@@ -17,7 +17,9 @@ private func started(_ tasks: [MokaTask], chip: Int? = nil, defaultMin: Int = 25
 ) {
     var drafted = NotchSession.initial.picked(Fake.input(tasks, now: start, defaultQuantumMin: defaultMin))
     if let chip {
-        #expect(drafted.timer.apply(.chooseQuantum(chip), at: start, defaultQuantumMin: defaultMin) == .applied)
+        #expect(
+            drafted.timer.apply(.chooseQuantum(chip), at: start, defaultQuantumMin: defaultMin, extendMin: 10)
+                == .applied)
     }
     let step = try drafted.start(Fake.input(tasks, now: start, defaultQuantumMin: defaultMin))
     return (step.session, applying(step.batch, to: tasks))
@@ -296,8 +298,8 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
     func completeAfterExplicitTick() throws {
         var (running, tasks) = try started([Fake.task(1)], chip: 45, defaultMin: 25)
         let end = t0.addingTimeInterval(45 * 60)
-        _ = running.timer.apply(.tick, at: end, defaultQuantumMin: 25)
-        #expect(running.timer == .expired(title: "가짜 할 일 1", chipMin: 25))
+        _ = running.timer.apply(.tick, at: end, defaultQuantumMin: 25, extendMin: 10)
+        #expect(running.timer == .expired(title: "가짜 할 일 1", chipMin: 10))
         let step = try running.complete(.empty, Fake.input(tasks, now: end + 120))
         #expect(step.batch.newCheckpoints.first?.elapsedMin == 45)
         #expect(step.batch.newCheckpoints.first?.notes == .empty)
@@ -583,7 +585,7 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
     @Test("FR-05 R-104: 시간 끝에서 다른 할 일은 거부(세션 그대로)")
     func chosenDraftRejectedWhenExpired() throws {
         var (expired, tasks) = try started(Fake.todos(1...2))
-        _ = expired.timer.apply(.tick, at: t0.addingTimeInterval(25 * 60), defaultQuantumMin: 25)
+        _ = expired.timer.apply(.tick, at: t0.addingTimeInterval(25 * 60), defaultQuantumMin: 25, extendMin: 10)
         #expect(expired.chosenDraft(2, Fake.input(tasks, now: t0.addingTimeInterval(26 * 60))) == expired)
     }
 
