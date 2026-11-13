@@ -338,6 +338,8 @@ final class AppState {
     @ObservationIgnored private let contextStore: (any ContextStore)?
     /// 기본 작업 시간. 처음에 한 번 읽고 설정에서 바꿨을 때만 다시 읽는다(#35).
     @ObservationIgnored private var defaultQuantumMin: Int
+    /// 추가 시간. 시간 끝 칩을 채운다(#151). 기본 작업 시간처럼 처음과 설정에서 바꿨을 때만 읽는다.
+    @ObservationIgnored private var extendMin: Int
     @ObservationIgnored private var refreshTimer: Timer?
     @ObservationIgnored private var firstActionRedrawTask: Task<Void, Never>?
     @ObservationIgnored private var observations: [NotificationObservation] = []
@@ -374,6 +376,7 @@ final class AppState {
         self.decision = decision
         storageUnavailable = storage.isUnavailable
         defaultQuantumMin = QuantumSettings.readDefault(from: storage.settings)
+        extendMin = CoreSettings.readExtendMin(from: storage.settings)
         observations = [
             NotificationObservation(center: workspaceCenter, name: NSWorkspace.didWakeNotification) { [weak self] in
                 self?.tick()
@@ -504,6 +507,7 @@ final class AppState {
         }
         reloadContexts()
         defaultQuantumChanged()
+        extendChanged()
         return true
     }
 
@@ -690,6 +694,11 @@ final class AppState {
     func defaultQuantumChanged() {
         defaultQuantumMin = QuantumSettings.readDefault(from: settings)
         session.timer.applyDefaultQuantumChange(defaultQuantumMin, isEditingCustom: customText != nil)
+    }
+
+    /// 설정에서 추가 시간을 저장했다. 다음 시간 끝부터 쓴다. 이미 보이는 시간 끝 칩은 그대로다(#151).
+    func extendChanged() {
+        extendMin = CoreSettings.readExtendMin(from: settings)
     }
 
     /// 시작 전이면 시작, 시간 끝이면 같은 할 일을 고른 칩으로 다시 시작(N분 더, R-107).
@@ -1346,14 +1355,15 @@ final class AppState {
                     containing: now, dayStart: CoreSettings.readDayStart(from: settings), calendar: calendar))
         }
         return SessionInput(
-            tasks: tasks, now: now, defaultQuantumMin: defaultQuantumMin, calendar: calendar, scoring: scoring)
+            tasks: tasks, now: now, defaultQuantumMin: defaultQuantumMin, extendMin: extendMin, calendar: calendar,
+            scoring: scoring)
     }
 
     /// 타이머만 바뀌는 이벤트(칩, tick). 저장할 수 없을 때는 빠른 입력·시작·완료도 여기로 온다.
     @discardableResult
     private func send(_ event: TimerEvent) -> TransitionResult {
         transition(event) { session, now in
-            session.timer.apply(event, at: now, defaultQuantumMin: defaultQuantumMin)
+            session.timer.apply(event, at: now, defaultQuantumMin: defaultQuantumMin, extendMin: extendMin)
         }
     }
 
