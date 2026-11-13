@@ -66,10 +66,11 @@
 
 - 결정: `SettingsView`에 `@State private var isShowingGuide = false`와 `.sheet(isPresented:)`를 더하고, 시트 내용은 `GuideSheetView(onClose:)`다. `GuideSheetView`는 `App/Sources/Views/`에 두어 시험 번들이 컴파일한다.
   - 안내 장 셋만, 1/3~3/3, "안내 건너뛰기" 없음, 마지막 장 "다 봤어요".
-  - esc는 숨은 취소 버튼(`.keyboardShortcut(.cancelAction)`)으로 `onClose`를 부른다. 설정 창을 닫으면 SwiftUI가 시트를 함께 닫는다.
+  - esc는 숨은 취소 버튼(`.keyboardShortcut(.cancelAction)`)으로 `onClose`를 부른다. 시트가 열린 동안 설정 창 빨간 버튼은 닫히지 않는다(사람 확인 2026-11-13, PR #161 확인용 빌드).
   - `GuideSheetView`는 저장소, 키 보관함, `AppState`를 인자로 받지 않는다. 쓰기 0건(SC-705)을 타입으로 막는다.
   - 탭 요청(`settingsTabRequest`)이 와도 시트를 닫지 않는다. 지금 `onChange(of: appState.settingsTabRequest)`는 `tab`만 바꾸므로 그대로 둔다. 이 경로는 시험 번들 밖(`SettingsView`)이라 사람이 본다(quickstart 6-2b).
   - 설정 창을 닫을 때(PR #150 리뷰 지적): macOS는 시트가 붙은 창의 닫기 버튼을 막는 것으로 알려져 있으나, 이 앱의 설정 창(SwiftUI `Settings` 장면)에서 직접 확인하지 못했다. 또 `Settings` 장면은 창을 닫아도 뷰를 버리지 않고 숨겨 두는 것으로 보여, `isShowingGuide`가 참으로 남으면 다시 열 때 시트가 다시 뜰 수 있다. 근거는 지금 `SettingsView`가 창 닫힘에 `.onDisappear(perform: commitFields)`로 값을 저장하는 데 기대고 있다는 점이다(창을 닫으면 `onDisappear`가 불림). 확인하지 못한 부분이 있어 대안을 처음부터 쓴다: `.onDisappear`에서 `isShowingGuide = false`로 비운다. 창 닫기가 막히는지, 다시 열 때 시트가 없는지는 사람이 본다(quickstart 6-2). 남는 위험은 plan 위험 8.
+  - 결과(사람 확인 2026-11-13): 시트가 열린 채로는 설정 창 빨간 버튼이 닫히지 않았다. 따로 처리하지 않고 R-714를 닫는 길 둘("다 봤어요", esc)로 고쳤다. `.onDisappear`에서 비우는 코드는 다른 길로 창이 사라질 때를 위해 남긴다.
   - 온보딩 창(`OnboardingWindow`, 별도 `NSWindow`)과는 아무것도 나누지 않는다.
 - 이유: Q9 사용자 결정. 시트는 설정 창에 붙어 "이미 열려 있으면 앞으로 올림"과 빨간 버튼 처리가 필요 없다.
 - 대안: `NSWindow` 별도 창(Q9에서 버림).

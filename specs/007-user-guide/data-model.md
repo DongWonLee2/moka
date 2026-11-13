@@ -91,7 +91,7 @@
 |---|---|---|
 | `GuideSheetState` | `index: Int`(1~3), `mutating func primary() -> Bool`(셋째 장이면 닫으라는 참, 아니면 다음 장으로 가고 거짓), `back()`, `cancel() -> Bool`(늘 참) | 시트 이동 규칙. 시험이 직접 부른다 |
 | `GuideSheetView` | `onClose: () -> Void`. 안쪽 `@State state = GuideSheetState()` | `GuideCardView(presentation: .sheet, total: 3)`. 셋째 장 주 버튼과 esc(숨은 취소 버튼)가 `onClose`. 저장소·키 보관함·`AppState` 인자 없음 |
-| `SettingsView` 연결 | `HelpTabView(onShowGuide: { isShowingGuide = true })`, `.sheet(isPresented: $isShowingGuide) { GuideSheetView(onClose: { isShowingGuide = false }) }` | 탭 요청이 와도 `isShowingGuide`를 건드리지 않는다. `.onDisappear`(창 닫힘)에서 `isShowingGuide = false`(research R6) |
+| `SettingsView` 연결 | `HelpTabView(onShowGuide: { isShowingGuide = true })`, `.sheet(isPresented: $isShowingGuide) { GuideSheetView(onClose: { isShowingGuide = false }) }` | 탭 요청이 와도 `isShowingGuide`를 건드리지 않는다. 시트가 열린 동안 설정 창은 닫히지 않는다(사람 확인 2026-11-13). 그래도 다른 길로 창이 사라질 때를 위해 `.onDisappear`에서 `isShowingGuide = false`(research R6) |
 
 ## 7. 스냅샷 이름
 
