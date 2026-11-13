@@ -166,7 +166,7 @@ private func reason(
         arguments: [
             (DeadlineDistance.none, "마감 없음"), (.today, "D-day"), (.left(3), "D-3"), (.overdue(2), "D+2"),
         ])
-    func R705_reasonDeadlineText(distance: DeadlineDistance, expected: String) {
+    func deadlineTextQuotedByHelp(distance: DeadlineDistance, expected: String) {
         #expect(ReasonText.deadline(distance) == expected)
     }
 }
