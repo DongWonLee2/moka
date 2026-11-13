@@ -1,18 +1,20 @@
 #!/usr/bin/env swift
-// 앱 아이콘 PNG를 만든다(#155). 시안 001 v3.4 "9. 아이콘"의 `.flat.mocha`가 기준이다.
 // 사용: swift scripts/make-app-icon.swift [출력 폴더]
-// 출력 폴더 기본값은 App/Sources/Assets.xcassets/AppIcon.appiconset. 같은 입력이면 같은 PNG가 나온다.
 
 import CoreGraphics
 import Foundation
 import ImageIO
 import UniformTypeIdentifiers
 
-/// macOS 아이콘 격자: 1024 판 안에 824 둥근 사각형(사방 100 여백).
-let plateFraction: CGFloat = 824.0 / 1024.0
-/// 시안 비율: 64px 판에 모서리 15px, 그림 36px.
-let cornerFraction: CGFloat = 15.0 / 64.0
-let glyphFraction: CGFloat = 36.0 / 64.0
+let macIconCanvas: CGFloat = 1024
+let macIconPlate: CGFloat = 824
+let plateFraction = macIconPlate / macIconCanvas
+
+let mockupPlate: CGFloat = 64
+let mockupCorner: CGFloat = 15
+let mockupGlyph: CGFloat = 36
+let cornerFraction = mockupCorner / mockupPlate
+let glyphFraction = mockupGlyph / mockupPlate
 
 let gradientStops: [(location: CGFloat, hex: UInt32)] = [
     (0.0, 0xb68c78), (0.55, 0xa47864), (1.0, 0x8f6656),
@@ -30,8 +32,7 @@ func color(_ hex: UInt32) -> CGColor {
         ])!
 }
 
-/// `#s-drop`(viewBox 24)를 SVG 좌표 그대로 그린다. 호출 전에 y가 아래로 커지게 뒤집어 둔다.
-func drawCup(in context: CGContext) {
+func drawCupInSVGSpace(in context: CGContext) {
     context.setStrokeColor(color(glyphHex))
     context.setFillColor(color(glyphHex))
 
@@ -58,14 +59,19 @@ func drawCup(in context: CGContext) {
     context.fillPath()
 }
 
+extension CGContext {
+    func flipToTopLeftOrigin(height: CGFloat) {
+        translateBy(x: 0, y: height)
+        scaleBy(x: 1, y: -1)
+    }
+}
+
 func renderIcon(pixels: Int) -> CGImage {
     let context = CGContext(
         data: nil, width: pixels, height: pixels, bitsPerComponent: 8, bytesPerRow: 0,
         space: colorSpace, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
     let side = CGFloat(pixels)
-    // 위가 y 0이 되게 뒤집는다(CSS 180deg 그라데이션과 SVG 좌표를 그대로 쓰려고).
-    context.translateBy(x: 0, y: side)
-    context.scaleBy(x: 1, y: -1)
+    context.flipToTopLeftOrigin(height: side)
 
     let plate = side * plateFraction
     let plateRect = CGRect(x: (side - plate) / 2, y: (side - plate) / 2, width: plate, height: plate)
@@ -85,7 +91,7 @@ func renderIcon(pixels: Int) -> CGImage {
     let glyph = plate * glyphFraction
     context.translateBy(x: (side - glyph) / 2, y: (side - glyph) / 2)
     context.scaleBy(x: glyph / 24, y: glyph / 24)
-    drawCup(in: context)
+    drawCupInSVGSpace(in: context)
 
     return context.makeImage()!
 }
