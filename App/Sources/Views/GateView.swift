@@ -50,6 +50,11 @@ enum GateDisplay {
         wanted && !isIllustration
     }
 
+    /// 안내 장 그림에서는 읽기만 하는 칸을 그려 Tab으로 들어갈 입력 칸을 두지 않는다.
+    static func showsEditableField(phase: GatePhase, isIllustration: Bool) -> Bool {
+        phase == .asking && !isIllustration
+    }
+
     /// 묻는 중이면 Enter는 적기라 시작 버튼에서 ↵ 표시를 뺀다(확정 시안 4번).
     static func startShortcutMark(gatePhase: GatePhase?) -> String? {
         gatePhase == .asking ? nil : "↵"
@@ -160,7 +165,7 @@ struct GateView: View {
 
     @ViewBuilder
     private var field: some View {
-        if input.phase == .asking {
+        if GateDisplay.showsEditableField(phase: input.phase, isIllustration: isIllustration) {
             TextField("", text: input.text)
                 .notchField(focused: focused)
                 .focused($focused)

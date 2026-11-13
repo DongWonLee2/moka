@@ -167,6 +167,14 @@ final class GuideTests: XCTestCase {
         XCTAssertFalse(GateDisplay.requestsFocus(false, isIllustration: false))
     }
 
+    /// 그림 속 게이트 칸은 입력 칸을 그리지 않아 Tab으로 들어갈 길이 없다(PR #160 리뷰 중간 1).
+    func test_R710_illustrationGateHasNoEditableField() {
+        XCTAssertFalse(GateDisplay.showsEditableField(phase: .asking, isIllustration: true))
+        XCTAssertTrue(GateDisplay.showsEditableField(phase: .asking, isIllustration: false))
+        XCTAssertFalse(GateDisplay.showsEditableField(phase: .checking, isIllustration: false))
+        XCTAssertFalse(GateDisplay.showsEditableField(phase: .closed, isIllustration: false))
+    }
+
     func test_R713_sheetStartsAtFirstOfThree() {
         let state = GuideSheetState()
         XCTAssertEqual(state.index, 1)
