@@ -32,7 +32,7 @@ struct BasicTabView: View {
                 Text("하루 시작 시각")
                 TimeField(date: $dayStart, locale: Self.twentyFourHour)
                     .accessibilityLabel("하루 시작 시각")
-                    .frame(width: 52)
+                    .frame(width: TimeField.width)
             }
             GridRow {
                 Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])
@@ -171,6 +171,8 @@ private struct HintText: View {
 
 /// 시·분 칸. SwiftUI `DatePicker`는 macOS에서 내용 폭보다 넓어지지 않아 `NSDatePicker`를 감싼다.
 struct TimeField: NSViewRepresentable {
+    static let width: CGFloat = 52
+
     @Binding var date: Date
     let locale: Locale
 
