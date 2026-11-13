@@ -292,7 +292,7 @@ struct OnboardingView: View {
                     label("하루 시작 시각", width: 110)
                     TimeField(date: $dayStart, locale: BasicTabView.twentyFourHour)
                         .accessibilityLabel("하루 시작 시각")
-                        .frame(width: 70)
+                        .frame(width: TimeField.width)
                 }
             }
             if let issue = [quantumText, extendText].lazy.compactMap({ QuantumChip.customIssueMessage(customText: $0) })
