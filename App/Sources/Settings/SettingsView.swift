@@ -26,6 +26,7 @@ struct SettingsView: View {
     @State private var editingContext: ContextEditRequest?
     @State private var isAddingContext = false
     @State private var selectedContextID: ContextID?
+    @State private var isShowingGuide = false
     private let calendar = GregorianCalendar.make(timeZone: .autoupdatingCurrent)
     private static let logger = Logger(subsystem: "dev.dongwon.moka", category: "settings")
 
@@ -79,10 +80,14 @@ struct SettingsView: View {
                     },
                     onDelete: { deletingContexts = contextDeletion() })
             case .help:
-                HelpTabView(expanded: $appState.helpExpanded, onShowGuide: {})
+                HelpTabView(expanded: $appState.helpExpanded, onShowGuide: { isShowingGuide = true })
             }
         }
         .navigationTitle("설정")
+        // 탭 요청(`settingsTabRequest`)은 탭만 바꾸고 이 시트를 닫지 않는다(R-714).
+        .sheet(isPresented: $isShowingGuide) {
+            GuideSheetView(onClose: { isShowingGuide = false })
+        }
         .sheet(isPresented: $isAddingContext) {
             ContextFormView(
                 today: appState.logicalToday, calendar: calendar,
@@ -166,7 +171,11 @@ struct SettingsView: View {
         .onChange(of: tab) { previous, _ in
             if previous == .basic { commitFields() }
         }
-        .onDisappear(perform: commitFields)
+        // 설정 창은 닫아도 뷰가 남을 수 있어, 다시 열 때 시트가 다시 뜨지 않게 비운다(research R6).
+        .onDisappear {
+            commitFields()
+            isShowingGuide = false
+        }
     }
 
     /// 체크한 할 일 가운데 지금 보기에 보이는 것만 지운다. 보기를 바꿔 숨은 할 일이 같이 지워지지 않게 한다.

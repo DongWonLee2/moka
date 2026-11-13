@@ -175,6 +175,59 @@ final class GuideTests: XCTestCase {
         XCTAssertFalse(GateDisplay.showsEditableField(phase: .closed, isIllustration: false))
     }
 
+    func test_R713_sheetStartsAtFirstOfThree() {
+        let state = GuideSheetState()
+        XCTAssertEqual(state.index, 1)
+        XCTAssertEqual(GuideSheetState.total, 3)
+        XCTAssertEqual(state.card, .notch)
+    }
+
+    func test_R713_sheetHasNoSkip() {
+        var state = GuideSheetState()
+        var cards: [GuideCard] = []
+        repeat {
+            cards.append(state.card)
+            let buttons = GuideButtons.make(index: state.index, total: GuideSheetState.total, presentation: .sheet)
+            XCTAssertFalse(buttons.showsSkip, "\(state.index)/3")
+            XCTAssertEqual(buttons.showsBack, state.index > 1, "\(state.index)/3")
+        } while !state.primary()
+        XCTAssertEqual(cards, GuideCard.allCases, "시트에는 안내 장 셋만 보인다")
+    }
+
+    func test_R714_sheetLastPrimaryIsDoneAndCloses() {
+        var state = GuideSheetState()
+        XCTAssertFalse(state.primary())
+        XCTAssertEqual(state.index, 2)
+        XCTAssertFalse(state.primary())
+        XCTAssertEqual(state.index, 3)
+        XCTAssertEqual(state.card, .firstAction)
+        XCTAssertEqual(
+            GuideButtons.make(index: state.index, total: GuideSheetState.total, presentation: .sheet).primary,
+            GuideText.done)
+        XCTAssertTrue(state.primary(), "셋째 장 주 버튼은 시트를 닫는다")
+        XCTAssertEqual(state.index, 3)
+
+        state.back()
+        XCTAssertEqual(state.index, 2)
+        state.back()
+        state.back()
+        XCTAssertEqual(state.index, 1, "첫 장에서 이전은 머문다")
+    }
+
+    func test_R714_sheetCancelCloses() {
+        for index in 1...GuideSheetState.total {
+            let state = GuideSheetState(index: index)
+            XCTAssertTrue(state.cancel(), "\(index)/3에서 esc는 닫는다")
+        }
+    }
+
+    func test_R713_sheetIndexClampedToThree() {
+        XCTAssertEqual(GuideSheetState(index: 0).index, 1)
+        XCTAssertEqual(GuideSheetState(index: -2).card, .notch)
+        XCTAssertEqual(GuideSheetState(index: 4).index, 3)
+        XCTAssertEqual(GuideSheetState(index: 9).card, .firstAction)
+    }
+
     private static func quotes(_ text: String) -> [String] {
         let parts = text.components(separatedBy: "\"")
         return stride(from: 1, to: parts.count, by: 2).map { parts[$0] }

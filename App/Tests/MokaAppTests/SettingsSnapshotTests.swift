@@ -337,6 +337,20 @@ final class SettingsSnapshotTests: XCTestCase {
         try write(name, content: content, size: Self.fittingSize(content, width: 400))
     }
 
+    func test_R713_guideSheetFirst() throws {
+        try writeGuideSheet("g14-guide-sheet-first", index: 1)
+    }
+
+    func test_R714_guideSheetLast() throws {
+        try writeGuideSheet("g15-guide-sheet-last", index: 3)
+    }
+
+    private func writeGuideSheet(_ name: String, index: Int) throws {
+        let content = GuideSheetView(initialIndex: index, onClose: {})
+            .background(MokaColors.settingsWindow)
+        try write(name, content: content, size: Self.fittingSize(content, width: 400))
+    }
+
     func test_R121_editContextSheet() throws {
         let calendar = GregorianCalendar.make(timeZone: try XCTUnwrap(TimeZone(identifier: "Asia/Seoul")))
         let content = ContextFormView(
