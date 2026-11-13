@@ -7,7 +7,7 @@ struct GuideSheetState {
     private(set) var index: Int
 
     init(index: Int = 1) {
-        self.index = index
+        self.index = min(max(index, 1), Self.total)
     }
 
     var card: GuideCard { GuideCard.allCases[index - 1] }
@@ -49,6 +49,8 @@ struct GuideSheetView: View {
         .background {
             Button("") { if state.cancel() { onClose() } }
                 .keyboardShortcut(.cancelAction)
+                .focusable(false)
+                .frame(width: 0, height: 0)
                 .opacity(0)
                 .accessibilityHidden(true)
         }
