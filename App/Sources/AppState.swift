@@ -161,6 +161,8 @@ final class AppState {
     /// 설정 창 할 일 탭의 보기·정렬(R-118). 앱이 켜져 있는 동안만 둔다(data-model §8).
     var taskListScope: TaskListScope = .all
     var taskListOrder: TaskListOrder = .created
+    /// 설정 창 도움말 탭에서 펼친 항목(spec 007 R-707). 보기·정렬처럼 앱이 켜져 있는 동안만 두고 저장하지 않는다.
+    var helpExpanded: Set<HelpTopic> = []
 
     /// 지금이 속한 하루. 하루 시작 시각 기준이다(R-114).
     var logicalToday: LocalDay {

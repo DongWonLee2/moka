@@ -67,9 +67,9 @@ struct ContextFormView: View {
             }
             HStack(spacing: 6) {
                 Spacer()
-                SheetButton(title: "취소", kind: .normal, action: onCancel)
+                SheetButton(title: SheetText.cancel, kind: .normal, action: onCancel)
                     .keyboardShortcut(.cancelAction)
-                SheetButton(title: "저장", kind: .primary, action: save)
+                SheetButton(title: SheetText.save, kind: .primary, action: save)
                     .keyboardShortcut(.defaultAction)
                     .disabled(!canSave)
             }

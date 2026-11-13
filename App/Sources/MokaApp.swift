@@ -13,7 +13,7 @@ struct MokaApp: App {
             OpenSettingsButton()
                 .keyboardShortcut(",")
             Divider()
-            Button("종료") { NSApplication.shared.terminate(nil) }
+            Button(NotchText.quit) { NSApplication.shared.terminate(nil) }
                 .keyboardShortcut("q")
         } label: {
             Image("MenuBarIcon")
@@ -42,7 +42,7 @@ struct OpenSettingsButton: View {
     @Environment(\.openSettings) private var openSettings
 
     var body: some View {
-        Button("설정…") {
+        Button(NotchText.settingsMenu) {
             SettingsWindowRaiser.open(with: openSettings)
         }
     }

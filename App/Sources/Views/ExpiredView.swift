@@ -43,9 +43,9 @@ struct ExpiredView: View {
                 onSubmit: submitCustom)
         }
         HStack(spacing: 6) {
-            Button("미루기") { notes.onBegin(.skip) }
+            Button(NotchText.skip) { notes.onBegin(.skip) }
                 .buttonStyle(NotchButtonStyle(kind: .secondary))
-            Button("바꾸기") { notes.onBegin(.switch) }
+            Button(NotchText.switchTask) { notes.onBegin(.switch) }
                 .buttonStyle(NotchButtonStyle(kind: .secondary))
             Spacer(minLength: 0)
             Button(action: onStart) {
@@ -55,7 +55,7 @@ struct ExpiredView: View {
             .keyboardShortcut(againIsDefault ? .defaultAction : nil)
             .disabled(!chip.canStart)
             Button(action: onComplete) {
-                ButtonLabel(text: "완료", shortcut: completeIsDefault ? "↵" : nil)
+                ButtonLabel(text: NotchText.complete, shortcut: completeIsDefault ? "↵" : nil)
             }
             .buttonStyle(NotchButtonStyle(kind: .primary))
             .keyboardShortcut(completeIsDefault ? .defaultAction : nil)

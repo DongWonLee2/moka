@@ -23,6 +23,8 @@ enum GateDisplay {
     /// 키 확인 한 줄(확정 시안 12~14번).
     static let keyNoticeText = "키가 맞지 않아 판단 모델에 묻지 못하고 있어요."
     static let keyNoticeButton = "키 확인"
+    static let submit = "적기"
+    static let skip = "지금은 넘기기"
     private static let firstSubtitle = "지금 바로 손댈 첫 행동을 한 줄 적어 주세요. 판단 모델이 다시 확인하고, 노치를 펼치면 제목 아래 보여요."
     private static let retrySubtitle = "방금 적은 줄이에요. 고쳐 써도 돼요."
 
@@ -112,10 +114,10 @@ struct GateView: View {
             }
             if input.phase == .asking {
                 HStack(spacing: 6) {
-                    Button("지금은 넘기기", action: input.onSkip)
+                    Button(GateDisplay.skip, action: input.onSkip)
                         .buttonStyle(NotchButtonStyle(kind: .ghost))
                     Spacer(minLength: 0)
-                    Button(action: submit) { ButtonLabel(text: "적기", shortcut: "↵") }
+                    Button(action: submit) { ButtonLabel(text: GateDisplay.submit, shortcut: "↵") }
                         .buttonStyle(NotchButtonStyle(kind: .primary))
                         .disabled(trimmed.isEmpty)
                 }

@@ -1,13 +1,14 @@
 import SwiftUI
 
 enum SettingsTab: CaseIterable {
-    case basic, tasks, contexts
+    case basic, tasks, contexts, help
 
     var title: String {
         switch self {
         case .basic: "기본"
         case .tasks: "할 일"
         case .contexts: "일정"
+        case .help: "도움말"
         }
     }
 }
@@ -82,6 +83,11 @@ private struct TabIcon: View {
                     Path(roundedRect: CGRect(x: 3.5, y: 5, width: 17, height: 15), cornerRadius: 2.5),
                     with: .foreground, style: line)
                 context.stroke(Self.calendarLines, with: .foreground, style: line)
+            case .help:
+                context.stroke(
+                    Path(ellipseIn: CGRect(x: 3.4, y: 3.4, width: 17.2, height: 17.2)), with: .foreground, style: line)
+                context.stroke(Self.questionHook, with: .foreground, style: line)
+                context.fill(Path(ellipseIn: CGRect(x: 11, y: 15.6, width: 2, height: 2)), with: .foreground)
             }
         }
     }
@@ -110,6 +116,15 @@ private struct TabIcon: View {
             path.move(to: CGPoint(x: from.0, y: from.1))
             path.addLine(to: CGPoint(x: to.0, y: to.1))
         }
+    }
+
+    private static let questionHook = Path { path in
+        path.addArc(
+            center: CGPoint(x: 12.1, y: 9.37), radius: 2.5, startAngle: .degrees(180), endAngle: .degrees(68.9),
+            clockwise: false)
+        path.addCurve(
+            to: CGPoint(x: 12, y: 13.2), control1: CGPoint(x: 12.3, y: 12), control2: CGPoint(x: 12, y: 12.5))
+        path.addLine(to: CGPoint(x: 12, y: 13.8))
     }
 
     private static let listLines = Path { path in

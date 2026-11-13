@@ -255,7 +255,7 @@ struct NotchPanelRoot: View {
         .contextMenu {
             OpenSettingsButton()
             Divider()
-            Button("종료") { NSApplication.shared.terminate(nil) }
+            Button(NotchText.quit) { NSApplication.shared.terminate(nil) }
         }
         .fixedSize()
         .onGeometryChange(for: PanelContentLayout.self) {
