@@ -11,7 +11,6 @@ private func draft(defaultQuantumMin: Int = 25) -> NotchTimer {
     return timer
 }
 
-/// 25분으로 돌다가 끝 시각에 tick을 받아 시간 끝이 된 상태. 칩은 그때의 추가 시간 10.
 private func expired() -> NotchTimer {
     var timer = draft()
     _ = timer.apply(.start, at: clock.now(), defaultQuantumMin: 25, extendMin: 10)

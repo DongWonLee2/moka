@@ -338,7 +338,6 @@ final class AppState {
     @ObservationIgnored private let contextStore: (any ContextStore)?
     /// 기본 작업 시간. 처음에 한 번 읽고 설정에서 바꿨을 때만 다시 읽는다(#35).
     @ObservationIgnored private var defaultQuantumMin: Int
-    /// 추가 시간. 시간 끝 칩을 채운다(#151). 기본 작업 시간처럼 처음과 설정에서 바꿨을 때만 읽는다.
     @ObservationIgnored private var extendMin: Int
     @ObservationIgnored private var refreshTimer: Timer?
     @ObservationIgnored private var firstActionRedrawTask: Task<Void, Never>?
@@ -696,7 +695,6 @@ final class AppState {
         session.timer.applyDefaultQuantumChange(defaultQuantumMin, isEditingCustom: customText != nil)
     }
 
-    /// 설정에서 추가 시간을 저장했다. 다음 시간 끝부터 쓴다. 이미 보이는 시간 끝 칩은 그대로다(#151).
     func extendChanged() {
         extendMin = CoreSettings.readExtendMin(from: settings)
     }

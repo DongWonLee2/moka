@@ -130,7 +130,6 @@ private struct StorageEvent {
     let calendar: Calendar
 
     private var defaultQuantumMin: Int { QuantumSettings.readDefault(from: settings) }
-    /// 시나리오 형식에 추가 시간 키가 없어 늘 기본값이다.
     private var extendMin: Int { CoreSettings.readExtendMin(from: settings) }
     private var dayStart: DayStart { CoreSettings.readDayStart(from: settings) }
 
