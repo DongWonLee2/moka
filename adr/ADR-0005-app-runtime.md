@@ -1,6 +1,6 @@
 # ADR-0005: 앱 실행 형태(샌드박스, 서명, 메뉴 막대)
 
-- 상태: Accepted ([ADR-0012](ADR-0012-settings-window-activation.md)가 일부 대체: `LSUIElement` 메뉴 막대 전용)
+- 상태: Accepted
 - 작성일 / 사람 승인일: 2026-10-28 / 2026-10-28
 - 결정 책임자: 저장소 소유자
 - 관련 Spec/R-ID: PRD 1장(macOS 14+, 메뉴바 상주), PRD v2 범위(App Store), 헌법 비밀값 조항(키는 Keychain에만)
@@ -28,7 +28,7 @@ A를 추천한다(추천안 토론 3:0).
 - App Sandbox 끔. v2에서 켤 때 DB 경로 이전과 에이전트 차단 경로 갱신을 함께 한다(미래 결정).
 - 로컬은 개인 팀(Apple Development) 자동 서명. `DEVELOPMENT_TEAM`은 커밋하지 않는 `Config/Signing.local.xcconfig`에 둔다(`.gitignore`가 `*.local.xcconfig`를 제외). CI는 `CODE_SIGNING_ALLOWED=NO`.
 - Hardened Runtime 끔(공증하지 않음).
-- `LSUIElement = YES`(메뉴 막대 전용). 메뉴 막대 항목은 설정과 종료만.
+- `LSUIElement = YES`(메뉴 막대 전용). 메뉴 막대 항목은 설정과 종료만. (정정: 이 줄의 "메뉴 막대 전용"은 [ADR-0012](ADR-0012-settings-window-activation.md)가 일부 대체한다.)
 - API 키는 Keychain에만 둔다.
 
 ## 사람의 최종 결정과 실제 판단 이유

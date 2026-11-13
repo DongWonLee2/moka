@@ -1,11 +1,11 @@
 # ADR-0012: 설정·온보딩 창이 열린 동안만 Dock·Command+Tab에 보인다 (ADR-0005 일부 대체)
 
-- 상태: Proposed (제안)
-- 작성일 / 사람 승인일: 2026-11-13 / 미정. 이 문서는 PR 병합으로 확정한다
+- 상태: Accepted
+- 작성일 / 사람 승인일: 2026-11-13 / 2026-11-13(사용자 결정). 이 문서는 PR 병합으로 확정한다
 - 결정 책임자: 저장소 소유자
 - 관련 Spec/R-ID: spec 001 R-012, spec 002 R-116, spec 004 plan "앱 연결"(노치 키 확인 한 줄이 설정 창을 엶), ADR-0005, ADR-0008, Issue #45·#105
-- 대체 범위: ADR-0005 "Agent의 추천과 근거"의 `LSUIElement = YES`(메뉴 막대 전용) 줄을 일부 대체한다. `LSUIElement = YES`는 그대로 두고, 설정 창이나 온보딩 창이 열려 있는 동안만 실행 중에 Dock·Command+Tab에 보이게 바꾼다. 메뉴 막대 항목은 설정과 종료만이라는 부분(R-012)과 ADR-0005의 나머지(Sandbox, 서명, Keychain)는 그대로다.
-- 사용한 외부 근거: Apple 문서 `NSApplication.activate()`("calling this method doesn't guarantee app activation"), `NSWindow.orderFrontRegardless()`, `NSWindow.CollectionBehavior.moveToActiveSpace`, `NSApplication.setActivationPolicy(_:)`. 실험은 아래 "근거".
+- 대체 범위: ADR-0005 "Agent의 추천과 근거"의 `LSUIElement = YES`(메뉴 막대 전용) 줄을 일부 대체한다. ADR-0005 본문은 그 줄 끝에 포인터만 붙이고 고치지 않는다. `LSUIElement = YES`는 그대로 두고, 설정 창이나 온보딩 창이 열려 있는 동안만 실행 중에 Dock·Command+Tab에 보이게 바꾼다. 메뉴 막대 항목은 설정과 종료만이라는 부분(R-012)과 ADR-0005의 나머지(Sandbox, 서명, Keychain)는 그대로다.
+- 사용한 외부 근거: Apple 문서 `NSApplication.activate()`("calling this method doesn't guarantee app activation"), `NSWindow.orderFrontRegardless()`, `NSWindow.CollectionBehavior.moveToActiveSpace`, `NSApplication.setActivationPolicy(_:)`. 실험은 아래 "원인".
 
 ## 맥락
 
@@ -53,10 +53,11 @@
 ## Agent의 추천과 근거
 
 B를 추천한다. 사용자 결정(2026-11-13, 토론 기록 Q1 뒤 "둘 다")을 따르고, 방법은 오케스트레이터가 준 `setActivationPolicy(.regular/.accessory)` 전환을 그대로 쓴다. 공개 AppKit API이고 `project.yml`과 의존성을 바꾸지 않으며, 규칙을 MokaCore 순수 함수로 시험할 수 있다.
+- 사람이 방법(둘 다)을 직접 정해 debate를 생략했다. 앞선 debate 기록은 `.audit/debate/20261112-small-decisions.md` Q1(3:0 A, 커밋 안 함)이다.
 
 ## 사람의 최종 결정과 실제 판단 이유
 
-미정. PR 병합으로 확정한다.
+사용자 결정(2026-11-13): 두 가지 모두 불편하니 둘 다 고친다. PR 병합으로 확정한다.
 
 ## 포기하는 것·운영 영향
 

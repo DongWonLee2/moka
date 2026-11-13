@@ -213,7 +213,8 @@ enum AppWindowActivation {
         apply()
     }
 
-    /// 빨간 버튼, ⌘W, 코드의 `close()`가 모두 `willClose`를 거친다. 돌려준 관찰자는 창을 쓰는 동안 붙잡아 둔다.
+    /// 빨간 버튼, ⌘W, 코드의 `close()`가 모두 `willClose`를 거친다. 블록 관찰자는 토큰을 놓아도 풀리지 않고
+    /// `removeObserver` 전까지 남는다. 풀지 않으므로 닫힌 창의 관찰자도 남지만, 닫힌 창을 다시 닫는 알림은 규칙이 무시한다.
     static func observeClose(of nsWindow: NSWindow, as window: AppWindowPresence.Window) -> any NSObjectProtocol {
         NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: nsWindow, queue: .main)
         { _ in
