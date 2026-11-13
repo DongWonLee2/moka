@@ -24,7 +24,7 @@
   | "저장", "취소" | `TaskFormView.swift`, `ContextFormView.swift` 글자 | `SheetText.save`, `SheetText.cancel` |
   | "적기", "지금은 넘기기" | `GateView.swift` 글자 | `GateDisplay.submit`, `GateDisplay.skip` |
   | "전체", "오늘", "이번 주", "만든 순", "마감 순" | `TaskListTabView.swift` 글자 | 이미 있는 `TaskListText`(같은 파일 맨 위, 지금 `keyNotice`·`keyNoticeButton`)에 멤버만 더함 |
-  | "+ 새 할 일" | `ExpandedView.swift` 글자 | `NotchText.newTask`(단축 동작 표 esc 줄이 인용) |
+  | "+ 새 할 일", "다른 할 일" | `ExpandedView.swift` 글자(`:145`·`:147`의 버튼) | `NotchText.newTask`, `NotchText.otherTask`(단축 동작 표 esc 줄이 인용) |
   | "D-day", "D+2" | `ReasonText.deadline`(MokaCore, `private`) | 접근 수준만 `public`으로 |
 
 - 이미 상수인 것: `GateDisplay.title`·`keyNoticeText`·`keyNoticeButton`, `DecisionFieldText.destinationPrefix`, `SettingsTab.basic.title`, `ContextText.impact(_:)`, `TaskRowText.rankBadge(rank:isNext:)`, `ReasonText.line(_:)`.

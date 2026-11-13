@@ -54,7 +54,7 @@ description: "spec 007 사용 안내 작업 목록"
 ### Green
 
 - [ ] T006 [US1] `Sources/MokaCore/Decision/ReasonLine.swift`의 `ReasonText.deadline`을 `public`으로. T002 PASS 〔단위 1〕
-- [ ] T007 [US1] 글자 상수 꺼내기(research R2 표): `App/Sources/Views/NotchText.swift`(새, `NotchText`·`SheetText`), `GateDisplay.submit`·`skip`, `NotchText.newTask`, 이미 있는 `TaskListText`에 보기·정렬 멤버 추가. `ExpandedView.swift`, `ExpiredView.swift`, `CheckpointNotesView.swift`, `GateView.swift`, `TaskListTabView.swift`, `TaskFormView.swift`, `ContextFormView.swift`, `App/Sources/Notch/NotchPanelHost.swift`, `App/Sources/MokaApp.swift`가 상수를 쓰게 한다. 화면 글자는 그대로다. 기존 스냅샷·앱 시험 PASS 〔단위 1〕
+- [ ] T007 [US1] 글자 상수 꺼내기(research R2 표): `App/Sources/Views/NotchText.swift`(새, `NotchText`·`SheetText`), `GateDisplay.submit`·`skip`, `NotchText.newTask`·`otherTask`, 이미 있는 `TaskListText`에 보기·정렬 멤버 추가. `ExpandedView.swift`, `ExpiredView.swift`, `CheckpointNotesView.swift`, `GateView.swift`, `TaskListTabView.swift`, `TaskFormView.swift`, `ContextFormView.swift`, `App/Sources/Notch/NotchPanelHost.swift`, `App/Sources/MokaApp.swift`가 상수를 쓰게 한다. 화면 글자는 그대로다. 기존 스냅샷·앱 시험 PASS 〔단위 1〕
 - [ ] T008 [US1] `App/Sources/Views/HelpContent.swift`(`HelpTopic`, `HelpBody`, `ShortcutRow`, `HelpContent`, `HelpText`, data-model §2·§3). T003 PASS 〔단위 1〕
 - [ ] T009 [US1] `App/Sources/AppState.swift`에 `helpExpanded: Set<HelpTopic> = []`. T004 PASS 〔단위 1〕
 - [ ] T010 [US1] `App/Sources/Views/HelpTabView.swift`(맨 위 줄, 접었다 펼치는 목록, 여럿 펼침, `ScrollView`, VoiceOver 펼침 상태), `App/Sources/Views/SettingsTabBar.swift`에 `help` 탭과 물음표 원 아이콘, `App/Sources/Settings/SettingsView.swift`의 `case .help`가 `HelpTabView(expanded: $appState.helpExpanded, onShowGuide: {})`를 그린다(버튼 동작은 단위 3). T005 PASS. 탭 줄이 들어간 기존 설정 창 그림은 넷째 탭만 달라진다 〔단위 1〕

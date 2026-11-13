@@ -32,7 +32,7 @@
   | "적기", "지금은 넘기기" | `GateDisplay.submit`, `GateDisplay.skip`(새) |
   | "어디서 시작할지 막연해 보여요", "키가 맞지 않아 판단 모델에 묻지 못하고 있어요.", "키 확인" | `GateDisplay.title`, `keyNoticeText`, `keyNoticeButton` |
   | "전체", "오늘", "이번 주", "만든 순", "마감 순" | 이미 있는 `TaskListText`에 멤버 추가 |
-  | "+ 새 할 일" | `NotchText.newTask`(새) |
+  | "+ 새 할 일", "다른 할 일" | `NotchText.newTask`, `NotchText.otherTask`(새) |
   | "할 일", "일정", "기본" | `SettingsTab.tasks.title`, `contexts.title`, `basic.title` |
   | "조금", "꽤", "아주" | `ContextText.impact(.normal/.high/.critical)` |
   | "1순위", "2순위", "3순위", "다음" | `TaskRowText.rankBadge(rank: 1...3, isNext: false)`, `rankBadge(rank: nil, isNext: true)` |
