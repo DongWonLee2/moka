@@ -9,7 +9,8 @@ final class TimeFieldSizeTests: XCTestCase {
         let calendar = GregorianCalendar.make(timeZone: try XCTUnwrap(TimeZone(identifier: "Asia/Seoul")))
         let onboarding = OnboardingView(
             today: try XCTUnwrap(LocalDay(text: "2026-11-06")), calendar: calendar, initialQuantum: 25,
-            initialExtend: 10, initialDayStart: Defaults.dayStart, initialStep: 2, onFinish: { _ in })
+            initialExtend: 10, initialDayStart: Defaults.dayStart, showsGuide: false, initialStep: 2,
+            onFinish: { _ in })
         let basic = BasicTabView(
             quantum: Self.input("25", range: Defaults.quantumMinRange),
             extend: Self.input("10", range: Defaults.extendMinRange),
