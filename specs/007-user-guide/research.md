@@ -23,7 +23,8 @@
   | "설정…", "종료" | `MokaApp.swift`(`OpenSettingsButton`, 메뉴), `NotchPanelHost.swift` 우클릭 메뉴 글자 | `NotchText.settingsMenu`, `NotchText.quit`(`Views/`에 두어 시험 번들이 읽음. 메뉴 두 곳이 이것을 씀) |
   | "저장", "취소" | `TaskFormView.swift`, `ContextFormView.swift` 글자 | `SheetText.save`, `SheetText.cancel` |
   | "적기", "지금은 넘기기" | `GateView.swift` 글자 | `GateDisplay.submit`, `GateDisplay.skip` |
-  | "전체", "오늘", "이번 주", "만든 순", "마감 순" | `TaskListTabView.swift` 글자 | `TaskListText`(같은 파일 맨 위 `enum`) |
+  | "전체", "오늘", "이번 주", "만든 순", "마감 순" | `TaskListTabView.swift` 글자 | 이미 있는 `TaskListText`(같은 파일 맨 위, 지금 `keyNotice`·`keyNoticeButton`)에 멤버만 더함 |
+  | "+ 새 할 일" | `ExpandedView.swift` 글자 | `NotchText.newTask`(단축 동작 표 esc 줄이 인용) |
   | "D-day", "D+2" | `ReasonText.deadline`(MokaCore, `private`) | 접근 수준만 `public`으로 |
 
 - 이미 상수인 것: `GateDisplay.title`·`keyNoticeText`·`keyNoticeButton`, `DecisionFieldText.destinationPrefix`, `SettingsTab.basic.title`, `ContextText.impact(_:)`, `TaskRowText.rankBadge(rank:isNext:)`, `ReasonText.line(_:)`.
@@ -47,11 +48,15 @@
 - 근거: `NotchContentView`는 AppState를 모르고 값과 콜백만 받는다(`NotchContentView.swift:6`, ADR-0009). 스냅샷 시험(`ScreenStateSnapshotTests.swift:305`)이 이미 같은 방법으로 그린다. 그래서 도형 그림으로 낮출 필요가 없다.
 - 바꾸는 접근 수준: `TaskListTabView.swift`의 `private struct RankBadge`를 `internal`로. 같은 앱 타깃 안이라 모듈 경계는 바뀌지 않는다.
 - 노치 판 크기: `NotchMetrics(holeWidth: 120, height: 32)`로 줄여 400pt 창 안에 들게 한다(시안 10~12번의 300pt 판). 실제 화면 노치 크기와 다르다는 것은 그림의 한계로 받아들인다.
-- 대안: 그림을 PNG로 넣음(화면이 바뀌어도 그림은 옛 모양, Q8에서 버림), 도형으로 다시 그림(손그림, Q8에서 버림).
+- 그림 쪽 단축키와 포커스 끄기(PR #150 리뷰 지적): `.allowsHitTesting(false)`와 `.focusable(false)`는 마우스와 포커스 이동만 막고 `.keyboardShortcut(.defaultAction)`과 `onAppear`의 자동 포커스는 끄지 않는다. 그대로 두면 노치 장 그림 속 "시작" 버튼이 안내 장 "다음"의 Enter를 가로채고, 첫 행동 칸 장 그림 속 게이트 칸이 나타나자마자 포커스를 가져간다. 그래서 `Views/`에 환경 값 `\.isNotchIllustration: Bool`(기본 거짓)을 두고 `GuideIllustration`이 참으로 넣는다. 이 값이 참이면:
+  - 단축키: `ExpandedView`의 "시작"은 지금 `GateDisplay.detachesStartShortcut(isEnteringTitle:gatePhase:)`로 단축키를 뗀다. 여기에 `isIllustration` 인자를 더해 참이면 늘 뗀다. 시간 끝 화면(`ExpiredView`)은 그림에 쓰지 않지만 같은 값을 읽어 "완료"·이어 가기의 기본 버튼도 뗀다. `ButtonLabel`의 "↵" 표시는 그대로 둔다(시안 10번 그림에 ↵가 보임).
+  - 포커스: `GateView`의 `onAppear`·`onChange(of: phase)` 포커스 요청과 `TitleEntryRow`의 `focusesOnAppear`·`focusRequest`를 건너뛴다. 판단은 순수 함수 `GateDisplay.requestsFocus(phase:isIllustration:)`로 둔다.
+  - 시험: `detachesStartShortcut`과 `requestsFocus`의 `isIllustration` 경우를 단위 시험으로 지키고(tasks T012), 사람이 안내 장에서 Enter로 넘어가는지 본다(quickstart 6-3).
+- 대안: 그림을 PNG로 넣음(화면이 바뀌어도 그림은 옛 모양, Q8에서 버림), 도형으로 다시 그림(손그림, Q8에서 버림), 그림 전체에 `.disabled(true)`(단축키는 꺼지지만 `NotchButtonStyle`이 끈 버튼을 흐리게 그려 시안과 달라짐).
 
 ## R5. 온보딩 단계 확장 (spec R-711·R-712, Q1·Q2·Q4)
 
-- 결정: `OnboardingSteps.Page`에 `.guide(GuideCard)`를 더한다. 쪽 목록은 `hasGuide`이면 안내 장 셋을 맨 앞에 두고, 그 뒤는 지금과 같다(`hasKeyStep`이면 키, 일정, 기본값, 아니면 일정, 기본값). 단계 표시는 이 목록 그대로 세므로 n/6 또는 n/5가 된다. `skipGuide()`는 첫 설정 단계로 간다.
+- 결정: `OnboardingSteps.Page`에 `.guide(GuideCard)`를 더한다. 쪽 목록은 `hasGuide`이면 안내 장 셋을 맨 앞에 두고, 그 뒤는 지금과 같다(`hasKeyStep`이면 키, 일정, 기본값, 아니면 일정, 기본값). 단계 표시는 이 목록 그대로 세므로 n/6 또는 n/5가 된다. `skipGuide()`는 안내 장이 아닌 첫 쪽(첫 설정 단계)으로 간다. `submitKey`는 지금 쪽이 키 단계일 때만 저장을 시도하고, 끝내기(`onFinish`)는 기본값 쪽에서만 부른다. 그래서 안내 장 쪽에서는 `onSave`·`onFinish`가 0건이다(SC-705 온보딩 절반, tasks T012).
 - 초기화: `init(hasGuide: Bool, hasKeyStep: Bool, initialStep: Int)`. 기존 시험은 `hasGuide: false`를 넣어 호출만 고치고 기대값은 그대로 둔다(SC-706). 앱(`MokaApp.swift`의 `OnboardingWindow`)은 늘 `true`다.
 - `OnboardingView`는 `showsGuide: Bool = true`를 받는다. 안내 장 쪽은 `GuideCardView`(R7)를 그리고 단계 표시 `StepBar`는 그대로 쓴다. 기존 온보딩 스냅샷 시험은 `initialStep`을 3 올려 같은 설정 단계를 찍는다. 그림 안 단계 표시가 1/3에서 4/6으로 바뀐다(SC-707).
 - 첫 설정 단계에는 "이전"을 두지 않는다(spec R-712, 지금 코드 그대로).
@@ -63,14 +68,15 @@
   - 안내 장 셋만, 1/3~3/3, "안내 건너뛰기" 없음, 마지막 장 "다 봤어요".
   - esc는 숨은 취소 버튼(`.keyboardShortcut(.cancelAction)`)으로 `onClose`를 부른다. 설정 창을 닫으면 SwiftUI가 시트를 함께 닫는다.
   - `GuideSheetView`는 저장소, 키 보관함, `AppState`를 인자로 받지 않는다. 쓰기 0건(SC-705)을 타입으로 막는다.
-  - 탭 요청(`settingsTabRequest`)이 와도 시트를 닫지 않는다. 지금 `onChange(of: appState.settingsTabRequest)`는 `tab`만 바꾸므로 그대로 둔다.
+  - 탭 요청(`settingsTabRequest`)이 와도 시트를 닫지 않는다. 지금 `onChange(of: appState.settingsTabRequest)`는 `tab`만 바꾸므로 그대로 둔다. 이 경로는 시험 번들 밖(`SettingsView`)이라 사람이 본다(quickstart 6-2b).
+  - 설정 창을 닫을 때(PR #150 리뷰 지적): macOS는 시트가 붙은 창의 닫기 버튼을 막는 것으로 알려져 있으나, 이 앱의 설정 창(SwiftUI `Settings` 장면)에서 직접 확인하지 못했다. 또 `Settings` 장면은 창을 닫아도 뷰를 버리지 않고 숨겨 두는 것으로 보여, `isShowingGuide`가 참으로 남으면 다시 열 때 시트가 다시 뜰 수 있다. 근거는 지금 `SettingsView`가 창 닫힘에 `.onDisappear(perform: commitFields)`로 값을 저장하는 데 기대고 있다는 점이다(창을 닫으면 `onDisappear`가 불림). 확인하지 못한 부분이 있어 대안을 처음부터 쓴다: `.onDisappear`에서 `isShowingGuide = false`로 비운다. 창 닫기가 막히는지, 다시 열 때 시트가 없는지는 사람이 본다(quickstart 6-2). 남는 위험은 plan 위험 8.
   - 온보딩 창(`OnboardingWindow`, 별도 `NSWindow`)과는 아무것도 나누지 않는다.
 - 이유: Q9 사용자 결정. 시트는 설정 창에 붙어 "이미 열려 있으면 앞으로 올림"과 빨간 버튼 처리가 필요 없다.
 - 대안: `NSWindow` 별도 창(Q9에서 버림).
 
 ## R7. 안내 장 뷰 하나를 온보딩과 시트가 함께 쓴다
 
-- 결정: `GuideCardView(card: GuideCard, index: Int, total: Int, presentation: GuidePresentation, onBack:onSkip:onNext:)`. 버튼 규칙은 순수 함수 `GuideButtons.make(index:total:presentation:)`가 정한다(data-model §4). 온보딩은 `onNext`로 `steps.next()`, 시트는 마지막 장에서 `onClose`.
+- 결정: `GuideCardView(card: GuideCard, index: Int, total: Int, presentation: GuidePresentation, onBack:onSkip:onPrimary:)`. 버튼 규칙은 순수 함수 `GuideButtons.make(index:total:presentation:)`가 정한다(data-model §4). 온보딩은 `onPrimary`로 `steps.next()`, 시트는 마지막 장 `onPrimary`로 `onClose`.
 - 이유: 두 곳의 글과 그림이 어긋날 수 없고, 버튼 규칙을 리눅스가 아닌 앱 시험 번들의 단위 시험으로 지킨다.
 
 ## R8. 시험 번들 경계

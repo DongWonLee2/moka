@@ -7,7 +7,7 @@
 | 타입 | 바뀌는 것 |
 |---|---|
 | `SettingsTab`(`SettingsTabBar.swift`) | `case basic, tasks, contexts, help`. `help.title`은 "도움말". 아이콘은 물음표 원(선 굵기 1.6, 다른 탭과 같음) |
-| `SettingsView` | `case .help:`에서 `HelpTabView`를 그린다. 시트 상태 `isShowingGuide: Bool`(§5) |
+| `SettingsView` | `case .help:`에서 `HelpTabView`를 그린다. 시트 상태 `isShowingGuide: Bool`(§6) |
 
 ## 2. 도움말 항목
 
@@ -17,7 +17,7 @@
 | `HelpBody` | `enum { text(String), shortcuts([ShortcutRow]) }` | 단축 동작 항목만 표 |
 | `ShortcutRow` | `action: String`, `place: String`, `effect: String` | spec "단축 동작 목록" 앞 세 열. 근거 열은 넣지 않는다 |
 | `HelpContent` | `static func title(_: HelpTopic) -> String`, `static func summary(_:) -> String`, `static func body(_:) -> HelpBody`, `static let quotes: Set<String>` | 글은 §3 규칙으로 만든다 |
-| `HelpText` | `guideMessage`, `guideButton` | "노치, 순위, 첫 행동 칸 안내를 한 장씩 다시 볼 수 있어요.", "안내 다시 보기" |
+| `HelpText` | `guideMessage`, `guideButton`, `expandedValue`, `collapsedValue` | "노치, 순위, 첫 행동 칸 안내를 한 장씩 다시 볼 수 있어요.", "안내 다시 보기", VoiceOver 값 "펼침"·"접힘"(R-716). 항목 줄은 `accessibilityValue(HelpText.value(expanded:))`로 읽힌다 |
 | `HelpTabView` | `expanded: Binding<Set<HelpTopic>>`, `onShowGuide: () -> Void` | 맨 위 줄(설명, 버튼), 그 아래 항목 여덟. 항목을 누르면 집합에서 넣고 뺀다. 여럿 펼침 가능. 본문은 `ScrollView` |
 | `AppState.helpExpanded` | `Set<HelpTopic>`, 처음 빈 집합 | 메모리만(research R3). 탭을 바꿔도, 설정 창을 닫아도 앱을 켜 둔 동안 남는다 |
 
@@ -28,10 +28,11 @@
 
   | 인용 | 출처 |
   |---|---|
-  | "무엇을 할까요?", "시작", "완료", "미루기", "바꾸기", "이어서 할 일" | `NotchText`(새, research R2) |
+  | "무엇을 할까요?", "시작", "완료", "미루기", "바꾸기", "이어서 할 일" | `NotchText.titlePlaceholder`, `start`, `complete`, `skip`, `switchTask`, `firstActionLabel`(새, research R2) |
   | "적기", "지금은 넘기기" | `GateDisplay.submit`, `GateDisplay.skip`(새) |
   | "어디서 시작할지 막연해 보여요", "키가 맞지 않아 판단 모델에 묻지 못하고 있어요.", "키 확인" | `GateDisplay.title`, `keyNoticeText`, `keyNoticeButton` |
-  | "전체", "오늘", "이번 주", "만든 순", "마감 순" | `TaskListText`(새) |
+  | "전체", "오늘", "이번 주", "만든 순", "마감 순" | 이미 있는 `TaskListText`에 멤버 추가 |
+  | "+ 새 할 일" | `NotchText.newTask`(새) |
   | "할 일", "일정", "기본" | `SettingsTab.tasks.title`, `contexts.title`, `basic.title` |
   | "조금", "꽤", "아주" | `ContextText.impact(.normal/.high/.critical)` |
   | "1순위", "2순위", "3순위", "다음" | `TaskRowText.rankBadge(rank: 1...3, isNext: false)`, `rankBadge(rank: nil, isNext: true)` |
@@ -53,7 +54,10 @@
 | `GuidePresentation` | `enum { onboarding, sheet }` | |
 | `GuideButtons` | `static func make(index: Int, total: Int, presentation: GuidePresentation) -> GuideButtons`. 값: `showsBack: Bool`, `showsSkip: Bool`, `primary: String` | 규칙 아래 |
 | `GuideCardView` | `card`, `index`(1부터), `total`, `presentation`, `onBack`, `onSkip`, `onPrimary` | 단계 표시(`StepBar`), 제목, 설명, `GuideIllustration`, 버튼 줄. 주 버튼은 기본 버튼(Enter) |
-| `GuideIllustration` | `card: GuideCard` | 실제 뷰에 가짜 값(research R4). 누를 수 없음 |
+| `GuideIllustration` | `card: GuideCard` | 실제 뷰에 가짜 값(research R4). 누를 수 없음. 안에 `.environment(\.isNotchIllustration, true)`를 넣는다 |
+| `\.isNotchIllustration` | `EnvironmentValues`의 `Bool`, 기본 거짓 | 참이면 노치 뷰가 기본 버튼 단축키를 떼고 자동 포커스를 하지 않는다(research R4) |
+| `GateDisplay.detachesStartShortcut` | `(isEnteringTitle:gatePhase:isIllustration:) -> Bool` | `isIllustration`이 참이면 늘 참. 기존 호출은 기본값 거짓 |
+| `GateDisplay.requestsFocus` | `(phase: GatePhase, isIllustration: Bool) -> Bool` | `phase == .asking && !isIllustration`. `GateView`와 `TitleEntryRow`(phase 대신 `focusesOnAppear`)가 같은 규칙을 쓴다 |
 
 `GuideButtons` 규칙(`index`는 그 안내 장의 번호, 온보딩에서는 전체 단계 번호와 같다):
 
@@ -74,7 +78,9 @@
 - `init(hasGuide: Bool, hasKeyStep: Bool, initialStep: Int)`. 쪽 목록 = (`hasGuide`이면 `GuideCard.allCases.map(.guide)`) + (`hasKeyStep`이면 `[.key]`) + `[.context, .defaults]`.
 - `total`은 목록 길이다. 앱에서는 6(키 단계 있음) 또는 5(없음).
 - `next()`, `back()`, `submitKey(...)`는 그대로다.
-- `skipGuide()`: 지금 쪽이 안내 장이면 첫 안내 장 아닌 쪽으로 간다. 아니면 아무것도 안 한다.
+- `skipGuide()`: 지금 쪽이 안내 장이면 안내 장이 아닌 첫 쪽(첫 설정 단계)으로 간다. 아니면 아무것도 안 한다.
+- `submitKey(...)`: 지금 쪽이 `.key`일 때만 저장을 시도한다. 다른 쪽에서는 `onSave`를 부르지 않는다. `hasGuide: true`에서도 키 단계(4/6) 저장이 실패하면 4/6에 머물고, 성공하면 5/6으로 간다.
+- `canFinish`: 지금 쪽이 `.defaults`일 때만 참. `OnboardingView`는 이 값이 참일 때만 "시작하기"를 그리고 `onFinish`를 부른다. 그래서 안내 장 쪽에서 `onSave`·`onFinish`는 0건이다(SC-705).
 - `guideIndex`: 지금 쪽이 안내 장이면 1~3, 아니면 `nil`.
 - 첫 설정 단계에서 `back()`을 부르는 버튼은 화면에 없다(spec R-712). `back()` 함수 자체는 바꾸지 않는다.
 - `OnboardingView`: `showsGuide: Bool = true`. `.guide(card)` 쪽은 `GuideCardView(presentation: .onboarding)`를 그린다. 저장(`onFinish`, `onSave`)은 지금 그대로이고 안내 장 쪽에서는 부르지 않는다.
@@ -83,8 +89,9 @@
 
 | 타입 | 모양 | 비고 |
 |---|---|---|
-| `GuideSheetView` | `onClose: () -> Void`. 안쪽 `@State index: Int = 1` | `GuideCardView(presentation: .sheet, total: 3)`. 셋째 장 주 버튼과 esc(숨은 취소 버튼)가 `onClose`. 저장소·키 보관함·`AppState` 인자 없음 |
-| `SettingsView` 연결 | `HelpTabView(onShowGuide: { isShowingGuide = true })`, `.sheet(isPresented: $isShowingGuide) { GuideSheetView(onClose: { isShowingGuide = false }) }` | 탭 요청이 와도 `isShowingGuide`를 건드리지 않는다 |
+| `GuideSheetState` | `index: Int`(1~3), `mutating func primary() -> Bool`(셋째 장이면 닫으라는 참, 아니면 다음 장으로 가고 거짓), `back()`, `cancel() -> Bool`(늘 참) | 시트 이동 규칙. 시험이 직접 부른다 |
+| `GuideSheetView` | `onClose: () -> Void`. 안쪽 `@State state = GuideSheetState()` | `GuideCardView(presentation: .sheet, total: 3)`. 셋째 장 주 버튼과 esc(숨은 취소 버튼)가 `onClose`. 저장소·키 보관함·`AppState` 인자 없음 |
+| `SettingsView` 연결 | `HelpTabView(onShowGuide: { isShowingGuide = true })`, `.sheet(isPresented: $isShowingGuide) { GuideSheetView(onClose: { isShowingGuide = false }) }` | 탭 요청이 와도 `isShowingGuide`를 건드리지 않는다. `.onDisappear`(창 닫힘)에서 `isShowingGuide = false`(research R6) |
 
 ## 7. 스냅샷 이름
 

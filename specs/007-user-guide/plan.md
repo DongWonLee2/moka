@@ -26,7 +26,7 @@
 
 **Constraints**: 실제 판단 API, Keychain, 앱 DB를 시험에서 열지 않는다(헌법 VIII). 화면 글자는 바꾸지 않고 상수로만 꺼낸다(기존 스냅샷 그림 그대로). `@unchecked Sendable` 금지. 시험 번들은 `App/Sources/Views`와 `AppState.swift`만 컴파일한다(`project.yml`)
 
-**Scale/Scope**: 새 파일 다섯 남짓(`NotchText`, `HelpContent`, `HelpTabView`, `GuideCardView`·`GuideButtons`·`GuideIllustration`, `GuideSheetView`), 고치는 파일 아홉 남짓(`SettingsTabBar`, `SettingsView`, `OnboardingView`, `MokaApp`, `AppState`, `ExpandedView`, `ExpiredView`, `GateView`, `TaskListTabView`, `CheckpointNotesView`, `TaskFormView`, `ContextFormView`, `NotchPanelHost`, MokaCore `ReasonLine`), 새 스냅샷 상태 열여섯
+**Scale/Scope**: 새 파일 다섯 남짓(`NotchText`, `HelpContent`, `HelpTabView`, `GuideCardView`·`GuideButtons`·`GuideIllustration`, `GuideSheetView`), 고치는 파일 14개(`SettingsTabBar`, `SettingsView`, `OnboardingView`, `MokaApp`, `AppState`, `ExpandedView`, `ExpiredView`, `GateView`, `TaskListTabView`, `CheckpointNotesView`, `TaskFormView`, `ContextFormView`, `NotchPanelHost`, MokaCore `ReasonLine`), 새 스냅샷 상태 열여섯
 
 ## Constitution Check
 
@@ -114,9 +114,9 @@ App/Tests/MokaAppTests/
 ### 설계 요점
 
 - **도움말 글과 시험(SC-703)**: `HelpContent`가 화면 상수로 글을 보간한다. 시험 셋(따옴표 검사, 글 고정, 문장 수)은 research R1, 인용 출처 표는 data-model §3.
-- **안내 장 그림**: `GuideIllustration`이 `NotchContentView`(그리고 순위 장의 `RankBadge`)에 가짜 값을 넣고 누를 수 없게 그린다. research R4.
-- **시트**: `SettingsView`의 `.sheet`와 `GuideSheetView(onClose:)`. 저장소를 받지 않아 쓰기 0건. research R6, data-model §6.
-- **온보딩 단계**: `OnboardingSteps(hasGuide:hasKeyStep:initialStep:)`, 안내 장 셋이 맨 앞, n/6 또는 n/5, `skipGuide()`. research R5, data-model §5.
+- **안내 장 그림**: `GuideIllustration`이 `NotchContentView`(그리고 순위 장의 `RankBadge`)에 가짜 값을 넣고 누를 수 없게 그린다. `.allowsHitTesting(false)`로는 단축키와 자동 포커스가 꺼지지 않으므로, 환경 값 `\.isNotchIllustration`을 참으로 넣어 그림 속 "시작"의 기본 버튼 단축키를 떼고(`GateDisplay.detachesStartShortcut`에 `isIllustration`) 게이트·제목 칸의 자동 포커스를 건너뛴다(`GateDisplay.requestsFocus`). research R4, data-model §4.
+- **시트**: `SettingsView`의 `.sheet`와 `GuideSheetView(onClose:)`. 저장소를 받지 않아 쓰기 0건. 창이 사라질 때(`.onDisappear`) 시트 상태를 비운다. research R6, data-model §6.
+- **온보딩 단계**: `OnboardingSteps(hasGuide:hasKeyStep:initialStep:)`, 안내 장 셋이 맨 앞, n/6 또는 n/5, `skipGuide()`(안내 장이 아닌 첫 쪽으로), `submitKey`는 키 단계에서만, `canFinish`는 기본값 쪽에서만. research R5, data-model §5.
 - **버튼 규칙**: `GuideButtons.make`의 여섯 경우 표. data-model §4.
 - **스냅샷**: data-model §7. 비교 페이지는 `~/Dev/ai-platform/projects/moka/design/pr-<번호>/index.html`(ADR-0009).
 
@@ -125,7 +125,7 @@ App/Tests/MokaAppTests/
 | # | 단위 | R-ID | 승인 | 시안 | 앞선 단위 |
 |---|---|---|---|---|---|
 | 1 | 도움말 탭: 글자 상수 꺼내기, `HelpContent`와 시험, `HelpTabView`, 넷째 탭, `helpExpanded`, 스냅샷 1~9 | R-701~R-709, R-716(도움말), R-717·R-718 | 없음 | 확정 1~9 | 없음 |
-| 2 | 온보딩 안내 장: `GuideCard`·`GuideButtons`·`GuideCardView`·`GuideIllustration`, `OnboardingSteps` 확장, `showsGuide`, 스냅샷 10~13 | R-710~R-712, R-715, R-716(안내 장), R-717·R-718 | 없음 | 확정 10~13 | 없음. 단위 1과 나란히 가능(겹치는 파일은 `SettingsSnapshotTests.swift`와, `RankBadge`·`ReasonText` 접근 수준. 나중에 병합하는 쪽이 충돌을 푼다) |
+| 2 | 온보딩 안내 장: `GuideCard`·`GuideButtons`·`GuideCardView`·`GuideIllustration`, 그림 쪽 단축키·포커스 끄기, 안내 장 인용 시험, `OnboardingSteps` 확장, `showsGuide`, 스냅샷 10~13 | R-705(안내 장 인용), R-710~R-712, R-715, R-716(안내 장), R-717·R-718 | 없음 | 확정 10~13 | 단위 1의 글자 상수(T007) 병합 뒤. 안내 장 글이 "시작"·"이어서 할 일"·"지금은 넘기기"를 `NotchText`·`GateDisplay` 상수로 인용하기 때문이다. 그 뒤로는 단위 1의 나머지와 나란히 가능(겹치는 파일은 `SettingsSnapshotTests.swift`. 나중에 병합하는 쪽이 충돌을 푼다) |
 | 3 | 안내 다시 보기 시트: `GuideSheetView`, `SettingsView` 시트 연결, 스냅샷 14·15 | R-713·R-714, R-717·R-718 | 없음 | 확정 14·15 | 1(버튼 자리), 2(`GuideCardView`) |
 
 밀리면 단위 3을 먼저 넘긴다(spec 단위 나누기). 접근 수준 조정은 먼저 들어가는 단위가 한다(`ReasonText.deadline`은 단위 1의 인용, `RankBadge`는 단위 2의 그림).
@@ -149,8 +149,10 @@ spec "대안과 위험"의 번호와 같다.
 - 위험 3(스냅샷 변경): 탭 줄과 단계 표시 때문에 기존 그림이 다시 찍힌다. 비교 페이지에서 그 밖이 바뀌지 않았는지 사람이 본다.
 - 위험 4(사람 확인): 새 사용자 첫 실행(quickstart 6-3)과 시트 띄우기(6-2)는 시험 번들 밖이라 사람이 본다.
 - 위험 5(PRD FR-21): 사람이 PRD를 고친다.
-- 위험 6(추가 시간 문구): 이 plan 밖.
+- 위험 6(추가 시간 문구): 이 plan 밖. [Issue #151](https://github.com/DongWonLee2/moka/issues/151).
 - 위험 7(그림 크기): 안내 장 그림의 노치 판은 실제보다 작다(research R4). 사람이 확정 시안 10~12번과 비교 페이지에서 본다.
+- 위험 8(시트와 설정 창 닫기): 시트가 붙은 설정 창의 닫기가 막히는지, `Settings` 장면이 창을 닫아도 `@State`를 남기는지 직접 확인하지 못했다. `.onDisappear`에서 시트 상태를 비우는 대안을 처음부터 쓰고, 사람이 quickstart 6-2에서 본다(research R6).
+- 위험 9(그림 단축키): 환경 값을 읽지 않는 노치 부품이 새로 생기면 그림 속 단축키가 다시 살아날 수 있다. 단위 시험은 `GateDisplay` 함수만 지키므로 사람이 quickstart 6-3에서 Enter로 안내 장을 넘겨 본다.
 
 ## 다음 단계
 
