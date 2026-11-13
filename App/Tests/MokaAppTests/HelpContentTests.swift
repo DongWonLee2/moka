@@ -18,7 +18,6 @@ final class HelpContentTests: XCTestCase {
             ])
     }
 
-    /// 손으로 친 인용이 들어오면 실패한다. 제목, 본문, 단축 동작 표의 모든 칸을 본다.
     func test_R705_quotesComeFromScreenConstants() {
         for text in Self.allTexts {
             for quote in Self.quotes(in: text) {
@@ -27,7 +26,6 @@ final class HelpContentTests: XCTestCase {
         }
     }
 
-    /// `quotes`가 data-model §3 출처 표의 상수·함수 결과와 같은 집합이다. 화면 상수를 바꾸면 기대 글자 시험이 함께 실패한다.
     func test_R705_quotesSetMatchesScreenSymbols() {
         let destination = DecisionFieldText.destinationPrefix
         XCTAssertTrue(destination.hasSuffix(": "))

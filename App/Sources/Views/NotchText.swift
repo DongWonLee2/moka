@@ -14,7 +14,6 @@ enum NotchText {
     static let quit = "종료"
 }
 
-/// 할 일·일정 고치기 시트의 버튼 글자.
 enum SheetText {
     static let save = "저장"
     static let cancel = "취소"

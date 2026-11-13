@@ -118,7 +118,6 @@ private struct TabIcon: View {
         }
     }
 
-    /// 시안 `t-help`의 물음표 갈고리(`M9.6 9.4a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.6`).
     private static let questionHook = Path { path in
         path.addArc(
             center: CGPoint(x: 12.1, y: 9.37), radius: 2.5, startAngle: .degrees(180), endAngle: .degrees(68.9),

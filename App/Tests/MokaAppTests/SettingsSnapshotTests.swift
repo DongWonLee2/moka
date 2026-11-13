@@ -427,7 +427,6 @@ final class SettingsSnapshotTests: XCTestCase {
         try write("s08-deadline-calendar", content: content, size: CGSize(width: 214, height: 230))
     }
 
-    /// 확정 시안(spec 007) 1번: 도움말 탭, 모두 접힘.
     func test_R701_R702_helpTabCollapsed() throws {
         let content = VStack(spacing: 0) {
             SettingsTabBar(selection: .constant(.help))
@@ -483,7 +482,6 @@ final class SettingsSnapshotTests: XCTestCase {
         XCTAssertNil(SnapshotSanity.sizeIssue(in: png, size: size), url.lastPathComponent)
     }
 
-    /// 설정 창 폭 460pt에서 내용이 원하는 높이.
     private static func fittingSize(_ content: some View) -> CGSize {
         let hosting = NSHostingView(rootView: content.frame(width: 460))
         return CGSize(width: 460, height: hosting.fittingSize.height.rounded(.up))

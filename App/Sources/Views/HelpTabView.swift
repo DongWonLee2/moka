@@ -16,7 +16,6 @@ struct HelpTabView: View {
     }
 }
 
-/// 맨 위 줄(설명과 "안내 다시 보기")과 항목 여덟.
 struct HelpTabContent: View {
     @Binding var expanded: Set<HelpTopic>
     let onShowGuide: () -> Void

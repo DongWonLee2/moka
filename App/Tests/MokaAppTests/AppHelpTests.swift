@@ -20,7 +20,6 @@ final class AppHelpTests: XCTestCase {
     }
 }
 
-/// 쓰기 횟수를 센다.
 private final class WriteCountingSettingsStore: SettingsStore {
     private let inner = InMemorySettingsStore()
     private(set) var writes = 0

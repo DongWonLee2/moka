@@ -10,7 +10,6 @@ enum HelpBody: Equatable {
     case shortcuts([ShortcutRow])
 }
 
-/// spec "단축 동작 목록"의 앞 세 열.
 struct ShortcutRow: Equatable {
     let action: String
     let place: String
@@ -100,7 +99,6 @@ enum HelpContent {
         }
     }
 
-    /// 도움말이 인용해도 되는 화면 글자. 모두 화면이 쓰는 상수나 함수 결과다.
     static let quotes = Set(
         [
             NotchText.titlePlaceholder, NotchText.start, NotchText.complete, NotchText.skip, NotchText.switchTask,
@@ -140,7 +138,6 @@ enum HelpContent {
 
     private static let next = TaskRowText.rankBadge(rank: nil, isNext: true) ?? ""
     private static let reasonExample = ReasonText.line(ReasonLine(deadline: .left(3), impact: "보통", skipCount: 2))
-    /// 기본 탭 판단 모델 칸의 "판단을 받으러 보내는 곳: " 앞부분.
     private static let destinationLabel = String(DecisionFieldText.destinationPrefix.dropLast(2))
     private static var contextImpacts: String {
         ContextImpact.allCases.map { q(ContextText.impact($0)) }.joined(separator: ", ")
