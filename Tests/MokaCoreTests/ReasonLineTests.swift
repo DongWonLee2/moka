@@ -160,4 +160,13 @@ private func reason(
         #expect(ReasonText.line(reason(task, usable: [1: judged(impact: 0.6)])) == "D-3 · 중요도 보통 · 미룬 2번")
         #expect(ReasonText.line(reason(task)) == "D-3 · 미룬 2번")
     }
+
+    @Test(
+        "R-705: 마감 칸 표기는 도움말이 인용하는 화면 글자다",
+        arguments: [
+            (DeadlineDistance.none, "마감 없음"), (.today, "D-day"), (.left(3), "D-3"), (.overdue(2), "D+2"),
+        ])
+    func R705_reasonDeadlineText(distance: DeadlineDistance, expected: String) {
+        #expect(ReasonText.deadline(distance) == expected)
+    }
 }
