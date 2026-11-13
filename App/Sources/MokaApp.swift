@@ -24,7 +24,11 @@ struct MokaApp: App {
                 store: AppSettings.store, appState: delegate.appState, onSaved: { delegate.defaultQuantumChanged() }
             )
             // 설정 창 열기도 활성화다(research R11).
-            .onAppear { delegate.activate() }
+            // 앱 메뉴의 "설정…"처럼 `SettingsWindowRaiser.open`을 거치지 않고 열린 경우도 여기서 센다(ADR-0012).
+            .onAppear {
+                AppWindowActivation.opened(.settings)
+                delegate.activate()
+            }
         }
     }
 }
@@ -32,7 +36,8 @@ struct MokaApp: App {
 /// "설정…" 메뉴 항목. 메뉴 막대와 펼친 판 우클릭 메뉴가 같이 쓴다(R-012).
 /// `LSUIElement` 앱은 활성이 아니어서 설정 창이 다른 앱 뒤에 열리므로 앱을 활성화한다.
 /// macOS 14의 `activate()`는 요청이라 바로 활성이 되지 않을 수 있다. 그래서 설정 창을 연 뒤 다음 틱에
-/// 그 창을 직접 앞으로 올린다(#45). 처음 만들어지는 창은 `SettingsWindowRaiser.Anchor`가 붙을 때 올린다.
+/// 그 창을 직접 앞으로 올리고(#45), 활성이 늦게 오면 그때 한 번 더 올린다(#105).
+/// 처음 만들어지는 창은 `SettingsWindowRaiser.Anchor`가 붙을 때 올린다.
 struct OpenSettingsButton: View {
     @Environment(\.openSettings) private var openSettings
 
@@ -55,8 +60,11 @@ enum SettingsWindowRaiser {
     }
 
     /// "설정…"과 노치 키 확인 한 줄이 같은 순서로 설정 창을 연다(spec 004 plan "앱 연결").
+    /// Dock에 보이는 앱(`.regular`)으로 바꾼 뒤 활성화를 요청한다. 메뉴 막대 앱의 활성화 요청은 받아들여지지 않을 때가 있다(#105).
     static func open(with openSettings: OpenSettingsAction) {
         request()
+        AppWindowActivation.opened(.settings)
+        raiseOnActivation()
         NSApp.activate()
         openSettings()
         DispatchQueue.main.async { raise() }
@@ -68,20 +76,46 @@ enum SettingsWindowRaiser {
         window.orderFrontRegardless()
     }
 
+    private static var activationObserver: (any NSObjectProtocol)?
+
+    /// 활성화가 다음 틱보다 늦게 오면 그사이 SwiftUI가 창을 다른 앱 뒤에 둔다. 활성이 된 순간 한 번 더 올린다.
+    private static func raiseOnActivation() {
+        guard !NSApp.isActive, activationObserver == nil else { return }
+        activationObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
+        ) { _ in
+            MainActor.assumeIsolated {
+                if let observer = activationObserver {
+                    NotificationCenter.default.removeObserver(observer)
+                }
+                activationObserver = nil
+                // 활성이 오기 전에 창을 닫았으면 닫힌 창을 다시 띄우지 않는다.
+                if window?.isVisible == true { raise() }
+            }
+        }
+    }
+
     /// 설정 화면 바탕에 깔아 설정 창을 알아낸다. 창에 붙을 때 설정… 요청이 걸려 있으면 다음 틱에 올린다.
     struct Anchor: NSViewRepresentable {
         func makeNSView(context: Context) -> NSView { AnchorView() }
         func updateNSView(_ nsView: NSView, context: Context) {}
     }
 
+    private static var closeObserver: (any NSObjectProtocol)?
+
     private final class AnchorView: NSView {
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             guard let window else { return }
+            if SettingsWindowRaiser.window !== window {
+                closeObserver = AppWindowActivation.observeClose(of: window, as: .settings)
+            }
             SettingsWindowRaiser.window = window
             // 제목줄까지 시안 바탕색이 보이게 한다(macOS 14에는 SwiftUI 창 바탕 지정이 없다).
             window.titlebarAppearsTransparent = true
             window.backgroundColor = MokaColors.settingsWindowNS
+            // 노치는 모든 Space에 있어서, 다른 Space에서 설정을 열면 창이 그 Space로 따라온다(#105).
+            window.collectionBehavior.insert(.moveToActiveSpace)
             guard SettingsWindowRaiser.pending.take() else { return }
             DispatchQueue.main.async { SettingsWindowRaiser.raise() }
         }
@@ -169,6 +203,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
+/// 설정·온보딩 창이 열린 동안만 Dock·Command+Tab에 보이게 한다(ADR-0012, #105). 노치 패널은 세지 않는다.
+@MainActor
+enum AppWindowActivation {
+    private static var presence = AppWindowPresence()
+
+    static func opened(_ window: AppWindowPresence.Window) {
+        presence.opened(window)
+        apply()
+    }
+
+    /// 빨간 버튼, ⌘W, 코드의 `close()`가 모두 `willClose`를 거친다. 블록 관찰자는 토큰을 놓아도 풀리지 않고
+    /// `removeObserver` 전까지 남는다. 풀지 않으므로 닫힌 창의 관찰자도 남지만, 닫힌 창을 다시 닫는 알림은 규칙이 무시한다.
+    static func observeClose(of nsWindow: NSWindow, as window: AppWindowPresence.Window) -> any NSObjectProtocol {
+        NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: nsWindow, queue: .main)
+        { _ in
+            MainActor.assumeIsolated {
+                presence.closed(window)
+                apply()
+            }
+        }
+    }
+
+    private static func apply() {
+        let policy: NSApplication.ActivationPolicy =
+            switch presence.policy {
+            case .regular: .regular
+            case .accessory: .accessory
+            }
+        guard NSApp.activationPolicy() != policy else { return }
+        NSApp.setActivationPolicy(policy)
+    }
+}
+
 /// 첫 실행 온보딩 창(R-116, plan "앱 연결"). `LSUIElement` 앱이라 SwiftUI `Window` 대신 AppKit 창으로 띄운다.
 /// 빨간 버튼으로 닫으면 아무것도 쓰지 않아 다음 실행에 다시 보인다. 온보딩 중에도 노치 패널은 그대로 뜬다.
 @MainActor
@@ -176,6 +243,7 @@ final class OnboardingWindow {
     private let appState: AppState
     private let settings: any SettingsStore
     private var window: NSWindow?
+    private var closeObserver: (any NSObjectProtocol)?
 
     init(appState: AppState, settings: any SettingsStore) {
         self.appState = appState
@@ -201,6 +269,8 @@ final class OnboardingWindow {
         onboarding.backgroundColor = MokaColors.settingsWindowNS
         onboarding.isReleasedWhenClosed = false
         onboarding.center()
+        closeObserver = AppWindowActivation.observeClose(of: onboarding, as: .onboarding)
+        AppWindowActivation.opened(.onboarding)
         NSApp.activate()
         onboarding.makeKeyAndOrderFront(nil)
         // macOS 14의 `activate()`는 요청이라 다른 앱 뒤에 열릴 수 있다. 설정 창(#45)처럼 다음 틱에 한 번 더 올린다.
