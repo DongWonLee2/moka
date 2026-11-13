@@ -3,7 +3,6 @@ import MokaCore
 import SwiftUI
 import XCTest
 
-/// 온보딩 기본값 단계의 하루 시작 시각 칸은 설정 창 기본 탭의 같은 칸과 크기가 같다.
 @MainActor
 final class TimeFieldSizeTests: XCTestCase {
     func test_R116_onboardingDayStartFieldMatchesBasicTab() throws {
