@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -31,9 +31,11 @@
 
 ## Notes
 
-- 1차 검토(2026-11-10): 확인 표시 3개가 남아 있어 "No [NEEDS CLARIFICATION] markers remain"만 미통과다. R-407(시간 끝에서 스케줄러가 하는 일), R-412(이월 대상), R-415("날짜 바꿀래요"의 뜻)다. 답이 오면 spec을 고치고 다시 검토한다.
-- R-404(연속 상한)와 R-405(마무리 규칙)의 쓰이는 곳은 R-407 답에 달려 있다. 요구 문장 자체는 시험할 수 있다.
-- 구현 용어 점검: 코드 이름은 저장 계약 이름(`carry_count`, `carry_today` 등)과 앞 spec R-ID 참조에만 쓴다. 모듈·타입·언어 이름은 쓰지 않았다.
+- 1차 검토(2026-11-10): 확인 표시 3개가 남아 "No [NEEDS CLARIFICATION] markers remain"만 미통과였다. R-407(시간 끝에서 스케줄러가 하는 일), R-412(이월 대상), R-415("날짜 바꿀래요"의 뜻)다.
+- 2차 검토(2026-11-13, 기준 `origin/main` `09ca515`): 세 질문의 답을 반영해 확인 표시가 0개다. R-407은 사람 결정(다수안), R-412는 토론 3:0 사용자 위임, R-415는 사람 결정(소수안 채택)이다.
+- R-404(연속 상한)와 R-405(마무리 규칙)는 앱에 걸리는 경로가 없고 고르기 순수 함수 시험으로만 재현한다(R-407, SC-402). 요구 문장 자체는 시험할 수 있다.
+- 참조 정리: spec 003·004·006·007, ADR-0010·0011·0012, 질문 파일 v3, #151(시간 끝 칩 처음 값 = 추가 시간), 온보딩 6단계(spec 007 R-711)에 맞췄다. R 번호는 R-4xx만 쓰고 다른 spec과 겹치지 않는다.
+- 구현 용어 점검: 코드 이름은 저장 계약 이름(`carry_count`, `carry_today` 등), 기본값 파일(`Defaults.swift`), 앞 spec R-ID 참조에만 쓴다.
 - 성공 기준의 "단위 시험", "스냅샷"은 확인 방법이고 기술 선택이 아니다(spec 003과 같은 서술).
-- 범위: 요구 33개로 크다. Assumptions "범위 나누기 제안"에 spec 005와 다음 spec으로 나누는 안이 있다.
-- Items marked incomplete require spec updates before `/speckit-clarify` or `/speckit-plan`
+- 범위: 요구 34개로 크다. Assumptions "범위 나누기 제안"에 spec 005와 다음 spec으로 나누는 안이 있다.
+- 승인 항목: 스키마(`carry_count`, `due_decision`), 선택 규칙 이름 목록(R-411), 행동 로그 사용자 행동 값, 시뮬레이터 입력 형식, 설정 키, `Defaults.swift` 새 값.
