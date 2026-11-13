@@ -39,13 +39,13 @@ struct CheckpointNotesView: View {
             NotesFields(draft: input.draft, onEdit: input.onEdit, focus: $focus, onSubmitNext: input.onSubmit)
                 .padding(.top, 8)
             HStack(spacing: 6) {
-                Button(action: input.onCancel) { ButtonLabel(text: "돌아가기", shortcut: "esc") }
+                Button(action: input.onCancel) { ButtonLabel(text: NotchText.back, shortcut: "esc") }
                     .buttonStyle(NotchButtonStyle(kind: .ghost))
                     .keyboardShortcut(.cancelAction)
                 Spacer(minLength: 0)
                 Button("안 적기", action: input.onSkipWriting)
                     .buttonStyle(NotchButtonStyle(kind: .ghost))
-                Button(action: input.onSubmit) { ButtonLabel(text: "등록", shortcut: "↵") }
+                Button(action: input.onSubmit) { ButtonLabel(text: NotchText.register, shortcut: "↵") }
                     .buttonStyle(NotchButtonStyle(kind: .primary))
             }
             .padding(.top, 10)

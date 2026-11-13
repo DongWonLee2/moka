@@ -233,11 +233,11 @@ final class SettingsSnapshotTests: XCTestCase {
     }
 
     func test_R116_onboardingStep1() throws {
-        try writeOnboarding("o11-onboarding-1", step: 1)
+        try writeOnboarding("o11-onboarding-1", step: 4)
     }
 
     func test_R116_onboardingStep2() throws {
-        try writeOnboarding("o12-onboarding-2", step: 2)
+        try writeOnboarding("o12-onboarding-2", step: 5)
     }
 
     private func writeOnboarding(_ name: String, step: Int) throws {
@@ -274,11 +274,11 @@ final class SettingsSnapshotTests: XCTestCase {
     }
 
     func test_R624_onboardingThreeStepContext() throws {
-        try writeOnboardingKey("o27-onboarding-3step-2", key: Self.onboardingKey(hasKey: false), step: 2)
+        try writeOnboardingKey("o27-onboarding-3step-2", key: Self.onboardingKey(hasKey: false), step: 5)
     }
 
     func test_R624_onboardingThreeStepDefaults() throws {
-        try writeOnboardingKey("o27-onboarding-3step-3", key: Self.onboardingKey(hasKey: false), step: 3)
+        try writeOnboardingKey("o27-onboarding-3step-3", key: Self.onboardingKey(hasKey: false), step: 6)
     }
 
     private static func onboardingKey(
@@ -288,7 +288,7 @@ final class SettingsSnapshotTests: XCTestCase {
     }
 
     private func writeOnboardingKey(
-        _ name: String, key: OnboardingKeyInput, draft: OnboardingKeyDraft = OnboardingKeyDraft(), step: Int = 1
+        _ name: String, key: OnboardingKeyInput, draft: OnboardingKeyDraft = OnboardingKeyDraft(), step: Int = 4
     ) throws {
         let calendar = GregorianCalendar.make(timeZone: try XCTUnwrap(TimeZone(identifier: "Asia/Seoul")))
         let content = OnboardingView(
@@ -301,6 +301,40 @@ final class SettingsSnapshotTests: XCTestCase {
         .frame(maxHeight: .infinity, alignment: .top)
         .background(MokaColors.settingsWindow)
         try write(name, content: content, size: CGSize(width: 400, height: 250))
+    }
+
+    func test_R710_guideCard1Notch() throws {
+        try writeGuide("g10-guide-notch", step: 1, key: Self.onboardingKey(hasKey: false))
+    }
+
+    func test_R710_guideCard2Rank() throws {
+        try writeGuide("g11-guide-rank", step: 2, key: Self.onboardingKey(hasKey: false))
+    }
+
+    func test_R710_guideCard3FirstAction() throws {
+        try writeGuide("g12-guide-first-action", step: 3, key: Self.onboardingKey(hasKey: false))
+    }
+
+    func test_R711_guideCard1WithoutKeyStep() throws {
+        try writeGuide("g10-guide-notch-5step", step: 1, key: nil)
+    }
+
+    func test_R711_onboardingKeyStep4of6() throws {
+        try writeOnboardingKey(
+            "g13-onboarding-key-4of6",
+            key: Self.onboardingKey(hasKey: false, issueURL: URL(string: "https://example.invalid/keys")), step: 4)
+    }
+
+    private func writeGuide(_ name: String, step: Int, key: OnboardingKeyInput?) throws {
+        let calendar = GregorianCalendar.make(timeZone: try XCTUnwrap(TimeZone(identifier: "Asia/Seoul")))
+        let content = OnboardingView(
+            today: try XCTUnwrap(LocalDay(text: "2026-11-06")), calendar: calendar, initialQuantum: 25,
+            initialExtend: 10, initialDayStart: Defaults.dayStart, initialStep: step, keyStep: key,
+            onFinish: { _ in }
+        )
+        .environment(\.timeZone, calendar.timeZone)
+        .background(MokaColors.settingsWindow)
+        try write(name, content: content, size: Self.fittingSize(content, width: 400))
     }
 
     func test_R121_editContextSheet() throws {
@@ -425,6 +459,66 @@ final class SettingsSnapshotTests: XCTestCase {
             selected: LocalDay(text: "2026-11-11"), today: try XCTUnwrap(LocalDay(text: "2026-11-06")),
             calendar: calendar, onPick: { _ in })
         try write("s08-deadline-calendar", content: content, size: CGSize(width: 214, height: 230))
+    }
+
+    func test_R701_R702_helpTabCollapsed() throws {
+        let content = VStack(spacing: 0) {
+            SettingsTabBar(selection: .constant(.help))
+            HelpTabView(expanded: .constant([]), onShowGuide: {})
+        }
+        .background(MokaColors.settingsWindow)
+        try write("h01-help-collapsed", content: content, size: Self.fittingSize(content))
+    }
+
+    /// 확정 시안 2~9번: 항목 하나씩 펼침(라이트). 시안처럼 탭 내용 전체를 그리려고 스크롤 칸 안의 내용을 그린다.
+    func test_R703_helpTopic1Notch() throws {
+        try writeHelpTopic("h02-help-notch", .notch)
+    }
+
+    func test_R703_helpTopic2TasksAndContexts() throws {
+        try writeHelpTopic("h03-help-tasks", .tasksAndContexts)
+    }
+
+    func test_R703_helpTopic3RankAndNext() throws {
+        try writeHelpTopic("h04-help-rank", .rankAndNext)
+    }
+
+    func test_R703_helpTopic4ReasonLine() throws {
+        try writeHelpTopic("h05-help-reason", .reasonLine)
+    }
+
+    func test_R703_helpTopic5FirstAction() throws {
+        try writeHelpTopic("h06-help-first-action", .firstAction)
+    }
+
+    func test_R703_helpTopic6DecisionModel() throws {
+        try writeHelpTopic("h07-help-decision-model", .decisionModel)
+    }
+
+    func test_R703_helpTopic7Destination() throws {
+        try writeHelpTopic("h08-help-destination", .destination)
+    }
+
+    func test_R703_R708_helpTopic8Shortcuts() throws {
+        try writeHelpTopic("h09-help-shortcuts", .shortcuts)
+    }
+
+    private func writeHelpTopic(_ name: String, _ topic: HelpTopic) throws {
+        let content = VStack(spacing: 0) {
+            SettingsTabBar(selection: .constant(.help))
+            HelpTabContent(expanded: .constant([topic]), onShowGuide: {})
+        }
+        .background(MokaColors.settingsWindow)
+        let size = Self.fittingSize(content)
+        let png = try renderPNG(view: content, size: size, appearance: .aqua)
+        let url = try SnapshotOutput.write(png, name: "\(name)-light")
+        XCTAssertNil(SnapshotSanity.issue(in: png), url.lastPathComponent)
+        XCTAssertNil(SnapshotSanity.sizeIssue(in: png, size: size), url.lastPathComponent)
+    }
+
+    private static func fittingSize(_ content: some View, width: CGFloat = 460) -> CGSize {
+        let hosting = NSHostingView(rootView: content.frame(width: width))
+        return CGSize(width: width, height: hosting.fittingSize.height.rounded(.up))
     }
 
     private func write(_ name: String, content: some View, size: CGSize) throws {

@@ -32,6 +32,7 @@ struct ExpandedView: View {
     let onComplete: () -> Void
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.panelPalette) private var palette
+    @Environment(\.isNotchIllustration) private var isIllustration
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -100,11 +101,11 @@ struct ExpandedView: View {
                 HStack(spacing: 6) {
                     RemainingText(seconds: remainingSeconds, expired: false)
                     Spacer(minLength: 0)
-                    Button("미루기") { notes.onBegin(.skip) }
+                    Button(NotchText.skip) { notes.onBegin(.skip) }
                         .buttonStyle(NotchButtonStyle(kind: .secondary))
-                    Button("바꾸기") { notes.onBegin(.switch) }
+                    Button(NotchText.switchTask) { notes.onBegin(.switch) }
                         .buttonStyle(NotchButtonStyle(kind: .secondary))
-                    Button(action: onComplete) { ButtonLabel(text: "완료") }
+                    Button(action: onComplete) { ButtonLabel(text: NotchText.complete) }
                         .buttonStyle(NotchButtonStyle(kind: .secondary))
                 }
                 keyNoticeLine
@@ -142,22 +143,22 @@ struct ExpandedView: View {
                     if GateDisplay.customEnterStarts(canStart: chip.canStart, gatePhase: gate?.phase) { onStart() }
                 }
             } else {
-                Button("다른 할 일", action: draftInput.onBeginOther)
+                Button(NotchText.otherTask, action: draftInput.onBeginOther)
                     .buttonStyle(NotchButtonStyle(kind: .ghost))
-                Button("+ 새 할 일", action: draftInput.onBeginNewTitle)
+                Button(NotchText.newTask, action: draftInput.onBeginNewTitle)
                     .buttonStyle(NotchButtonStyle(kind: .ghost))
                     .disabled(draftInput.isEnteringTitle)
                     .accessibilityLabel("새 할 일")
             }
             Spacer(minLength: 0)
             Button(action: onStart) {
-                ButtonLabel(text: "시작", shortcut: GateDisplay.startShortcutMark(gatePhase: gate?.phase))
+                ButtonLabel(text: NotchText.start, shortcut: GateDisplay.startShortcutMark(gatePhase: gate?.phase))
             }
             .buttonStyle(NotchButtonStyle(kind: .primary))
             // 제목 칸이나 게이트 칸이 열려 있으면 Enter는 그 칸의 것이다. 시작까지 함께 부르지 않게 단축키를 뗀다.
             .keyboardShortcut(
                 GateDisplay.detachesStartShortcut(
-                    isEnteringTitle: draftInput.isEnteringTitle, gatePhase: gate?.phase)
+                    isEnteringTitle: draftInput.isEnteringTitle, gatePhase: gate?.phase, isIllustration: isIllustration)
                     ? nil : .defaultAction
             )
             .disabled(!chip.canStart)
@@ -208,13 +209,14 @@ private struct TitleEntryRow: View {
     @FocusState private var focused: Bool
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.panelPalette) private var palette
+    @Environment(\.isNotchIllustration) private var isIllustration
 
     var body: some View {
         HStack(spacing: 6) {
             TextField(
                 "",
                 text: $text,
-                prompt: Text("무엇을 할까요?").foregroundStyle(
+                prompt: Text(NotchText.titlePlaceholder).foregroundStyle(
                     contrast == .increased ? palette.placeholderHighContrast : palette.placeholder)
             )
             .notchField(focused: focused)
@@ -224,10 +226,14 @@ private struct TitleEntryRow: View {
                 .buttonStyle(NotchButtonStyle(kind: .primary))
                 .disabled(trimmed.isEmpty)
         }
-        .onChange(of: focusRequest) { focused = true }
+        .onChange(of: focusRequest) {
+            if GateDisplay.requestsFocus(true, isIllustration: isIllustration) { focused = true }
+        }
         .onAppear {
             // 나타나는 순간에는 칸이 아직 붙지 않아 포커스 요청이 버려진다. 다음 차례로 미룬다.
-            if focusesOnAppear { Task { @MainActor in focused = true } }
+            if GateDisplay.requestsFocus(focusesOnAppear, isIllustration: isIllustration) {
+                Task { @MainActor in focused = true }
+            }
         }
         .onExitCommand { onCancel?() }
     }
@@ -306,7 +312,7 @@ private struct FirstActionLine: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Text("이어서 할 일")
+            Text(NotchText.firstActionLabel)
                 .font(.system(size: 10.5))
                 .foregroundStyle(contrast == .increased ? palette.mutedHighContrast : palette.muted)
             Text(text)
@@ -428,7 +434,7 @@ private struct OtherTaskPicker: View {
                 Text("다른 할 일 고르기")
                     .foregroundStyle(palette.muted)
                 Spacer(minLength: 0)
-                Button(action: onCancel) { ButtonLabel(text: "돌아가기", shortcut: "esc") }
+                Button(action: onCancel) { ButtonLabel(text: NotchText.back, shortcut: "esc") }
                     .buttonStyle(NotchButtonStyle(kind: .ghost))
                     .keyboardShortcut(.cancelAction)
             }

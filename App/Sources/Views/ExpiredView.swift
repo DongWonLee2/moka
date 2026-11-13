@@ -25,6 +25,7 @@ struct ExpiredView: View {
     let onComplete: () -> Void
 
     @FocusState private var notesFocus: NotesFields.Field?
+    @Environment(\.isNotchIllustration) private var isIllustration
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -43,22 +44,22 @@ struct ExpiredView: View {
                 onSubmit: submitCustom)
         }
         HStack(spacing: 6) {
-            Button("미루기") { notes.onBegin(.skip) }
+            Button(NotchText.skip) { notes.onBegin(.skip) }
                 .buttonStyle(NotchButtonStyle(kind: .secondary))
-            Button("바꾸기") { notes.onBegin(.switch) }
+            Button(NotchText.switchTask) { notes.onBegin(.switch) }
                 .buttonStyle(NotchButtonStyle(kind: .secondary))
             Spacer(minLength: 0)
             Button(action: onStart) {
                 ButtonLabel(text: againLabel, shortcut: againIsDefault ? "↵" : nil)
             }
             .buttonStyle(NotchButtonStyle(kind: .secondary))
-            .keyboardShortcut(againIsDefault ? .defaultAction : nil)
+            .keyboardShortcut(againIsDefault && !isIllustration ? .defaultAction : nil)
             .disabled(!chip.canStart)
             Button(action: onComplete) {
-                ButtonLabel(text: "완료", shortcut: completeIsDefault ? "↵" : nil)
+                ButtonLabel(text: NotchText.complete, shortcut: completeIsDefault ? "↵" : nil)
             }
             .buttonStyle(NotchButtonStyle(kind: .primary))
-            .keyboardShortcut(completeIsDefault ? .defaultAction : nil)
+            .keyboardShortcut(completeIsDefault && !isIllustration ? .defaultAction : nil)
         }
         if let message = QuantumChip.customIssueMessage(customText: chip.customText) {
             CustomIssueText(message: message)

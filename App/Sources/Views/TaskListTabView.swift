@@ -4,6 +4,11 @@ import SwiftUI
 enum TaskListText {
     static let keyNotice = "키가 맞지 않아 새 할 일은 판단 모델에 묻지 못하고 있어요."
     static let keyNoticeButton = "기본 탭에서 확인"
+    static let scopeAll = "전체"
+    static let scopeToday = "오늘"
+    static let scopeThisWeek = "이번 주"
+    static let orderCreated = "만든 순"
+    static let orderDeadline = "마감 순"
 }
 
 private struct TaskListKeyNotice: View {
@@ -53,7 +58,11 @@ struct TaskListTabView: View {
             }
             HStack {
                 ChoiceChips(
-                    label: "보기", items: [(TaskListScope.all, "전체"), (.today, "오늘"), (.thisWeek, "이번 주")],
+                    label: "보기",
+                    items: [
+                        (TaskListScope.all, TaskListText.scopeAll), (.today, TaskListText.scopeToday),
+                        (.thisWeek, TaskListText.scopeThisWeek),
+                    ],
                     selection: $scope)
                 Spacer()
                 SortPill(selection: $order)
@@ -134,7 +143,9 @@ private struct SortPill: View {
     @Binding var selection: TaskListOrder
     @Environment(\.colorScheme) private var colorScheme
 
-    private static let items: [(TaskListOrder, String)] = [(.created, "만든 순"), (.deadline, "마감 순")]
+    private static let items: [(TaskListOrder, String)] = [
+        (.created, TaskListText.orderCreated), (.deadline, TaskListText.orderDeadline),
+    ]
 
     private var title: String { Self.items.first { $0.0 == selection }?.1 ?? "" }
 
@@ -207,7 +218,7 @@ private struct TaskRow: View {
 }
 
 /// 순위 칸(시안 v2 8번). "다음"이 든 배지는 모카색으로 채우고, 순위만이면 모카색 글자다. 없으면 같은 폭을 비운다.
-private struct RankBadge: View {
+struct RankBadge: View {
     let text: String?
     let isNext: Bool
     @Environment(\.colorScheme) private var colorScheme

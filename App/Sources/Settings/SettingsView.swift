@@ -78,6 +78,8 @@ struct SettingsView: View {
                         editingContext = appState.contexts.first { $0.id == id }.map(ContextEditRequest.init)
                     },
                     onDelete: { deletingContexts = contextDeletion() })
+            case .help:
+                HelpTabView(expanded: $appState.helpExpanded, onShowGuide: {})
             }
         }
         .navigationTitle("설정")

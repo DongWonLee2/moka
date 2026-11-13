@@ -65,7 +65,7 @@ public enum ReasonText {
         return parts.joined(separator: " · ")
     }
 
-    private static func deadline(_ distance: DeadlineDistance) -> String {
+    public static func deadline(_ distance: DeadlineDistance) -> String {
         switch distance {
         case .none: "마감 없음"
         case .today: "D-day"
