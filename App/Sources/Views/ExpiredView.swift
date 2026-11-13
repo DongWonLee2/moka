@@ -25,6 +25,7 @@ struct ExpiredView: View {
     let onComplete: () -> Void
 
     @FocusState private var notesFocus: NotesFields.Field?
+    @Environment(\.isNotchIllustration) private var isIllustration
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -52,13 +53,13 @@ struct ExpiredView: View {
                 ButtonLabel(text: againLabel, shortcut: againIsDefault ? "↵" : nil)
             }
             .buttonStyle(NotchButtonStyle(kind: .secondary))
-            .keyboardShortcut(againIsDefault ? .defaultAction : nil)
+            .keyboardShortcut(againIsDefault && !isIllustration ? .defaultAction : nil)
             .disabled(!chip.canStart)
             Button(action: onComplete) {
                 ButtonLabel(text: NotchText.complete, shortcut: completeIsDefault ? "↵" : nil)
             }
             .buttonStyle(NotchButtonStyle(kind: .primary))
-            .keyboardShortcut(completeIsDefault ? .defaultAction : nil)
+            .keyboardShortcut(completeIsDefault && !isIllustration ? .defaultAction : nil)
         }
         if let message = QuantumChip.customIssueMessage(customText: chip.customText) {
             CustomIssueText(message: message)

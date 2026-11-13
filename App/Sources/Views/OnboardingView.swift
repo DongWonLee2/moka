@@ -49,9 +49,11 @@ struct OnboardingKeyDraft: Equatable {
     }
 }
 
-/// 온보딩 단계 이동(R-116, R-624). 키 단계가 있으면 키, 일정, 기본값이고 없으면 일정, 기본값이다.
+/// 온보딩 단계 이동(R-116, R-624, spec 007 R-711). 안내 장이 있으면 맨 앞에 셋을 두고,
+/// 그 뒤는 키 단계가 있으면 키, 일정, 기본값이고 없으면 일정, 기본값이다(data-model §5).
 struct OnboardingSteps: Equatable {
     enum Page: Equatable {
+        case guide(GuideCard)
         case key
         case context
         case defaults
@@ -60,13 +62,29 @@ struct OnboardingSteps: Equatable {
     private let pages: [Page]
     private(set) var step: Int
 
-    init(hasKeyStep: Bool, initialStep: Int) {
-        pages = hasKeyStep ? [.key, .context, .defaults] : [.context, .defaults]
+    init(hasGuide: Bool, hasKeyStep: Bool, initialStep: Int) {
+        let guides = hasGuide ? GuideCard.allCases.map(Page.guide) : []
+        pages = guides + (hasKeyStep ? [.key] : []) + [.context, .defaults]
         step = initialStep
     }
 
     var total: Int { pages.count }
     var page: Page { pages[step - 1] }
+
+    /// 지금 쪽이 안내 장이면 1~3, 아니면 nil.
+    var guideIndex: Int? {
+        guard case .guide(let card) = page, let index = GuideCard.allCases.firstIndex(of: card) else { return nil }
+        return index + 1
+    }
+
+    /// "시작하기"는 기본값 쪽에서만 그리고 부른다. 안내 장 쪽에서 끝내지 않는다(SC-705).
+    var canFinish: Bool { page == .defaults }
+
+    /// 안내 장에서 "안내 건너뛰기": 안내 장이 아닌 첫 쪽(첫 설정 단계)으로 간다(R-712).
+    mutating func skipGuide() {
+        guard guideIndex != nil, let first = pages.firstIndex(where: { !$0.isGuide }) else { return }
+        step = first + 1
+    }
 
     mutating func next() {
         if step < total { step += 1 }
@@ -76,12 +94,22 @@ struct OnboardingSteps: Equatable {
         if step > 1 { step -= 1 }
     }
 
+    /// 키 쪽에서만 저장을 시도한다. 다른 쪽에서는 `onSave`를 부르지 않는다(SC-705).
     mutating func submitKey(_ draft: inout OnboardingKeyDraft, hasKey: Bool, onSave: (String) -> Bool) {
+        guard page == .key else { return }
         if draft.submit(hasKey: hasKey, onSave: onSave) { next() }
     }
 }
 
-/// 첫 실행 온보딩(R-116, spec 006 R-624). `keyStep`이 있으면 키, 일정, 기본값 세 단계이고 없으면 일정, 기본값 두 단계다.
+extension OnboardingSteps.Page {
+    fileprivate var isGuide: Bool {
+        if case .guide = self { return true }
+        return false
+    }
+}
+
+/// 첫 실행 온보딩(R-116, spec 006 R-624, spec 007 R-711). 맨 앞에 안내 장 셋을 두고(`showsGuide`),
+/// `keyStep`이 있으면 키, 일정, 기본값 세 단계이고 없으면 일정, 기본값 두 단계다. 안내 장 쪽에서는 아무것도 저장하지 않는다.
 /// 일정·기본값 저장은 마지막 "시작하기"에서 한꺼번에 하고, 키는 키 단계 "다음"에서 따로 저장한다. 값과 콜백만 받는다(ADR-0009).
 struct OnboardingView: View {
     let today: LocalDay
@@ -105,14 +133,15 @@ struct OnboardingView: View {
 
     init(
         today: LocalDay, calendar: Calendar, initialQuantum: Int, initialExtend: Int, initialDayStart: DayStart,
-        initialStep: Int = 1, keyStep: OnboardingKeyInput? = nil,
+        showsGuide: Bool = true, initialStep: Int = 1, keyStep: OnboardingKeyInput? = nil,
         initialKeyDraft: OnboardingKeyDraft = OnboardingKeyDraft(), onFinish: @escaping (OnboardingValues) -> Void
     ) {
         self.today = today
         self.calendar = calendar
         self.keyStep = keyStep
         self.onFinish = onFinish
-        _steps = State(initialValue: OnboardingSteps(hasKeyStep: keyStep != nil, initialStep: initialStep))
+        _steps = State(
+            initialValue: OnboardingSteps(hasGuide: showsGuide, hasKeyStep: keyStep != nil, initialStep: initialStep))
         _keyDraft = State(initialValue: initialKeyDraft)
         _date = State(initialValue: today)
         _quantumText = State(initialValue: String(initialQuantum))
@@ -126,13 +155,19 @@ struct OnboardingView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            StepBar(step: steps.step, total: steps.total)
             switch steps.page {
+            case .guide(let card):
+                GuideCardView(
+                    card: card, index: steps.step, total: steps.total, presentation: .onboarding,
+                    onBack: { steps.back() }, onSkip: { steps.skipGuide() }, onPrimary: { steps.next() })
             case .key:
+                StepBar(step: steps.step, total: steps.total)
                 if let keyStep { keyStepView(keyStep) }
             case .context:
+                StepBar(step: steps.step, total: steps.total)
                 contextStep
             case .defaults:
+                StepBar(step: steps.step, total: steps.total)
                 defaultsStep
             }
         }
@@ -281,7 +316,7 @@ struct OnboardingView: View {
     }
 
     private func finish() {
-        guard let quantumMin, let extendMin else { return }
+        guard steps.canFinish, let quantumMin, let extendMin else { return }
         onFinish(
             OnboardingValues(
                 context: includesContext ? NewContext(name: name, date: date, impact: impact) : nil,
@@ -289,16 +324,7 @@ struct OnboardingView: View {
     }
 
     private func heading(_ title: String, _ message: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.system(size: 15, weight: .semibold))
-            Text(message)
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(.top, 6)
-        .padding(.bottom, 12)
+        OnboardingHeading(title: title, message: message)
     }
 
     private func label(_ text: String, width: CGFloat) -> some View {
@@ -325,7 +351,26 @@ struct OnboardingView: View {
     }
 }
 
-private struct StepBar: View {
+/// 온보딩 쪽 제목과 설명. 설정 단계와 안내 장이 함께 쓴다.
+struct OnboardingHeading: View {
+    let title: String
+    let message: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.system(size: 15, weight: .semibold))
+            Text(message)
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.top, 6)
+        .padding(.bottom, 12)
+    }
+}
+
+struct StepBar: View {
     let step: Int
     let total: Int
 
