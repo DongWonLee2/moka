@@ -48,6 +48,8 @@ extension NotchTimer {
     public func invariantViolation(at now: Date) -> String?   // nil이면 정상(moka-sim 종료 코드 1의 근거)
     /// 기본값 변경(R-013). 타이머 이벤트가 아니라 거부가 없다.
     public mutating func applyDefaultQuantumChange(_ defaultQuantumMin: Int, isEditingCustom: Bool)
+    /// 추가 시간 변경(R-013, #151). 고르지 않은 시간 끝 칩만 바꾼다.
+    public mutating func applyExtendChange(_ extendMin: Int, isEditingCustom: Bool)
 }
 ```
 
@@ -73,8 +75,9 @@ extension NotchTimer {
 | `empty(nil)`, `running` | 그대로(도는 타이머의 작업 시간·끝 시각 유지) |
 | `empty(draft)` + `chipPicked` false + 직접 입력 중 아님 | 칩 = 새 기본값 |
 | `empty(draft)` + `chipPicked` true 또는 직접 입력 중 | 그대로 |
-| `expired` | 그대로(시간 끝 칩은 추가 시간으로 채움, #151) |
+| `expired` | 그대로(시간 끝 칩은 추가 시간으로 채움. #151 debate Q1에서 나온 내용이며 같은 사용자 결정 2026-11-13에 함께 들어감) |
 
+- 추가 시간 변경은 `applyExtendChange(새 추가 시간, isEditingCustom:)`다(사용자 결정 2026-11-13, 가이드 자리 안 채택, #151). `expired` + `chipPicked` false + 직접 입력 중 아님이면 칩 = 새 추가 시간, 그 밖의 단계와 경우는 그대로다. `moka-sim`에는 추가 시간 변경 이벤트가 없다.
 - 직접 입력 중(`isEditingCustom`, §6)은 앱 화면 상태라 호출하는 쪽이 넘긴다. `moka-sim`은 직접 입력이 없어 늘 false다.
 
 시각 주입(앱만 씀, 단위 1에서는 정의만):
@@ -134,7 +137,7 @@ CREATE TABLE settings(key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL)
 - seed 행 없음. 처음 저장할 때 행이 생긴다(UPSERT).
 - 쓰기는 1~180 정수만 받고 그 밖은 거부해 이전 값을 유지한다(R-012). 설정 화면은 제출(Enter)이나 포커스를 잃을 때 저장하고, 범위 밖이면 칸을 이전 값으로 되돌린다.
 - 변경은 다음 칩 채움과, 직접 고르지 않은 지금 칩(§2 기본값 변경 표)에 바로 반영되고 도는 타이머와 시간 끝 칩에는 영향이 없다(R-013). 앱은 설정 화면이 저장한 뒤 `AppState.defaultQuantumChanged()`로 알린다.
-- 추가 시간(`default_extend_min`, 읽기 규칙은 spec 002 data-model §6)은 시간 끝 칩을 채운다. 앱은 처음과 설정 화면·온보딩이 저장한 뒤 `AppState.extendChanged()`로만 다시 읽고, 다음 시간 끝부터 쓴다. 이미 보이는 시간 끝 칩은 바꾸지 않는다(사용자 결정 2026-11-13, #151).
+- 추가 시간(`default_extend_min`, 읽기 규칙은 spec 002 data-model §6)은 시간 끝 칩을 채운다. 앱은 처음과 설정 화면·온보딩이 저장한 뒤 `AppState.extendChanged()`로만 다시 읽고, 다음 시간 끝부터 쓴다. 고르지 않은 시간 끝 칩이 보이는 중이면 그 칩도 바로 새 값이 된다(§2 추가 시간 변경, 사용자 결정 2026-11-13, 가이드 자리 안 채택, #151).
 
 MokaStore 공개 이름:
 
