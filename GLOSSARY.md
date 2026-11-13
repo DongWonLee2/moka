@@ -25,7 +25,7 @@ _Avoid_: timeout, 만료 알림
 _Avoid_: 대기 화면, 준비 중
 
 **extension** (연장):
-끊으면 손해가 클 때 quantum 끝에서 한 번 더 붙이는 짧은 시간. 설정 화면 이름은 "추가 시간"(설정 키 `default_extend_min`)이다.
+끊으면 손해가 클 때 quantum 끝에서 한 번 더 붙이는 짧은 시간. 설정 화면 이름은 "추가 시간"(설정 키 `default_extend_min`)이다. 시간 끝 이어 가기("N분 더") 칩의 처음 값으로도 쓴다(코드 이름 `extendMin`, #151).
 _Avoid_: overtime
 
 **pause** (일시 중지):

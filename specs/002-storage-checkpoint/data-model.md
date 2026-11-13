@@ -260,6 +260,7 @@ public struct SessionInput: Sendable {
     public var tasks: [MokaTask]          // 저장소의 지금 목록(`tasks()`)
     public var now: Date
     public var defaultQuantumMin: Int
+    public var extendMin: Int             // 추가 시간. 시간 끝 칩(#151)
     public var calendar: Calendar         // GregorianCalendar.make(timeZone:)
 }
 
@@ -461,7 +462,7 @@ public enum TaskWriteRules {
 | key | value 형식 | 읽기 규칙 | 쓰는 곳 |
 |---|---|---|---|
 | `default_quantum_min` | 10진 정수 | 기존(없거나 1~180 밖이면 25) | 설정 기본 탭, 온보딩 2단계 |
-| `default_extend_min` | 10진 정수 | 없거나 1~180 밖이면 10. 저장만 하고 동작은 마일스톤 3 | 설정 기본 탭, 온보딩 2단계 |
+| `default_extend_min` | 10진 정수 | 없거나 1~180 밖이면 10. 시간 끝 이어 가기 칩의 처음 값(spec 001 R-003, 사용자 결정 2026-11-13, #151). 끊으면 손해 연장은 마일스톤 3 | 설정 기본 탭, 온보딩 2단계 |
 | `day_start` | `HH:MM`(24시간, 두 자리) | 없거나 형식이 틀리면 `06:00` | 설정 기본 탭, 온보딩 2단계 |
 | `onboarding_done` | `true` | 값이 `true`가 아니면 온보딩을 보임 | 온보딩 끝내기에서만 |
 

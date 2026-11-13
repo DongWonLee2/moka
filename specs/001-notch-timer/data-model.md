@@ -42,7 +42,8 @@ public enum TransitionResult: Equatable, Sendable {
 
 extension NotchTimer {
     /// 처리 전에 `tick(at)`을 먼저 적용한다(암묵 tick).
-    public mutating func apply(_ event: TimerEvent, at now: Date, defaultQuantumMin: Int) -> TransitionResult
+    /// 초안 칩은 defaultQuantumMin, 시간 끝 칩은 extendMin(#151).
+    public mutating func apply(_ event: TimerEvent, at now: Date, defaultQuantumMin: Int, extendMin: Int) -> TransitionResult
     public func remainingSeconds(at now: Date) -> Int?   // running: min(ceil(endsAt − now), quantumMin·60), expired: 0, empty: nil
     public func invariantViolation(at now: Date) -> String?   // nil이면 정상(moka-sim 종료 코드 1의 근거)
     /// 기본값 변경(R-013). 타이머 이벤트가 아니라 거부가 없다.
@@ -58,11 +59,11 @@ extension NotchTimer {
 |---|---|---|---|---|---|
 | `empty(nil)` | `empty(Draft(title, default))` | rejected | rejected | 변화 없음 | rejected |
 | `empty(draft)` | 제목만 바꿈, 칩·`chipPicked` 유지 | 칩 = 값, `chipPicked` = true | `running(title, chip, now, now+chip·60초)` | 변화 없음 | rejected |
-| `running` | rejected | rejected | rejected | `now ≥ endsAt`면 `expired(title, default)` | `empty(nil)` |
+| `running` | rejected | rejected | rejected | `now ≥ endsAt`면 `expired(title, extend)` | `empty(nil)` |
 | `expired` | rejected | 칩 = 값, `chipPicked` = true | `running(같은 제목, chip, …)` | 변화 없음 | `empty(nil)` |
 
 - `enterTitle`의 제목이 trim 뒤 비거나, `chooseQuantum` 값이 1…180 밖이면 rejected.
-- 시간 끝의 칩은 그 순간의 `defaultQuantumMin`으로 채우고 `chipPicked`는 false다(할 일별 마지막 선택은 범위 밖). 시작 전에 칩을 골랐어도 시간 끝 칩은 고르지 않은 칩이다.
+- 시간 끝의 칩은 그 순간의 `extendMin`(설정 추가 시간 `default_extend_min`, 사용자 결정 2026-11-13, #151)으로 채우고 `chipPicked`는 false다(할 일별 마지막 선택은 범위 밖). 시작 전에 칩을 골랐어도 시간 끝 칩은 고르지 않은 칩이다.
 - 남은 초는 끝 시각 기준이고 `quantumMin·60`을 넘지 않는다(시계를 되돌린 경우, R-005). `running`에서 항상 1 이상.
 - 불변식: `endsAt > startedAt`, `quantumMin`·`chipMin` ∈ 1…180.
 - 기본값 변경(`set_default_quantum`)은 타이머 이벤트가 아니다(`TimerEvent`에 없고 거부가 없다). 설정에 쓴 뒤 `applyDefaultQuantumChange(새 기본값, isEditingCustom:)`를 부른다(R-013, 사용자 결정 2026-10-29, #43):
@@ -70,8 +71,9 @@ extension NotchTimer {
 | 단계 | 기본값 변경 뒤 |
 |---|---|
 | `empty(nil)`, `running` | 그대로(도는 타이머의 작업 시간·끝 시각 유지) |
-| `empty(draft)`, `expired` + `chipPicked` false + 직접 입력 중 아님 | 칩 = 새 기본값 |
-| `empty(draft)`, `expired` + `chipPicked` true 또는 직접 입력 중 | 그대로 |
+| `empty(draft)` + `chipPicked` false + 직접 입력 중 아님 | 칩 = 새 기본값 |
+| `empty(draft)` + `chipPicked` true 또는 직접 입력 중 | 그대로 |
+| `expired` | 그대로(시간 끝 칩은 추가 시간으로 채움, #151) |
 
 - 직접 입력 중(`isEditingCustom`, §6)은 앱 화면 상태라 호출하는 쪽이 넘긴다. `moka-sim`은 직접 입력이 없어 늘 false다.
 
@@ -102,7 +104,7 @@ public enum RemainingFormat {
 ```
 
 - 직접 입력은 Swift `Int(_:)` 결과를 그대로 쓰고 1…180만 받는다. 빈 값, 숫자 아님, 소수는 nil(R-004).
-- 미리 채움은 제목 입력 직후와 시간 끝에 `default_quantum_min`(R-003). 시간 고르기 화면은 Enter가 칩 값으로 시작이고, 시간 끝 화면은 Enter(기본 버튼)가 완료이며 다시 시작은 버튼으로만 한다(버튼 이름은 고른 시간을 넣은 "N분 더", 직접 입력 값이 틀리면 "— 분 더", #52). 시간 끝 화면에서 직접 입력 칸이 열려 있는 동안만 Enter가 다시 시작이다(사용자 결정 2026-10-29, PR #33).
+- 미리 채움은 제목 입력 직후에 `default_quantum_min`, 시간 끝에 `default_extend_min`(R-003, 사용자 결정 2026-11-13, #151). 시간 고르기 화면은 Enter가 칩 값으로 시작이고, 시간 끝 화면은 Enter(기본 버튼)가 완료이며 다시 시작은 버튼으로만 한다(버튼 이름은 고른 시간을 넣은 "N분 더", 직접 입력 값이 틀리면 "— 분 더", #52). 시간 끝 화면에서 직접 입력 칸이 열려 있는 동안만 Enter가 다시 시작이다(사용자 결정 2026-10-29, PR #33).
 
 ## 4. 기본 작업 시간 설정 (MokaCore 규칙 + MokaStore 저장)
 
@@ -131,7 +133,8 @@ CREATE TABLE settings(key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL)
 
 - seed 행 없음. 처음 저장할 때 행이 생긴다(UPSERT).
 - 쓰기는 1~180 정수만 받고 그 밖은 거부해 이전 값을 유지한다(R-012). 설정 화면은 제출(Enter)이나 포커스를 잃을 때 저장하고, 범위 밖이면 칸을 이전 값으로 되돌린다.
-- 변경은 다음 칩 채움과, 직접 고르지 않은 지금 칩(§2 기본값 변경 표)에 바로 반영되고 도는 타이머에는 영향이 없다(R-013). 앱은 설정 화면이 저장한 뒤 `AppState.defaultQuantumChanged()`로 알린다.
+- 변경은 다음 칩 채움과, 직접 고르지 않은 지금 칩(§2 기본값 변경 표)에 바로 반영되고 도는 타이머와 시간 끝 칩에는 영향이 없다(R-013). 앱은 설정 화면이 저장한 뒤 `AppState.defaultQuantumChanged()`로 알린다.
+- 추가 시간(`default_extend_min`, 읽기 규칙은 spec 002 data-model §6)은 시간 끝 칩을 채운다. 앱은 처음과 설정 화면·온보딩이 저장한 뒤 `AppState.extendChanged()`로만 다시 읽고, 다음 시간 끝부터 쓴다. 이미 보이는 시간 끝 칩은 바꾸지 않는다(사용자 결정 2026-11-13, #151).
 
 MokaStore 공개 이름:
 
