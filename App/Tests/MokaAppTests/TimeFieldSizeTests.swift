@@ -71,7 +71,8 @@ final class TimeFieldSizeTests: XCTestCase {
         let hosting = NSHostingView(rootView: view.frame(width: size.width, height: size.height, alignment: .top))
         hosting.frame = CGRect(origin: .zero, size: size)
         hosting.layoutSubtreeIfNeeded()
-        return editableTextFields(in: hosting).map(\.frame.width)
+        // 분 칸만 센다(기본 탭의 키 칸 같은 다른 입력 칸은 값으로 거른다).
+        return editableTextFields(in: hosting).filter { ["25", "10"].contains($0.stringValue) }.map(\.frame.width)
     }
 
     private static func editableTextFields(in view: NSView) -> [NSTextField] {

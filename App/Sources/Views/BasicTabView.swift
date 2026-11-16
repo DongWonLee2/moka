@@ -41,6 +41,9 @@ struct BasicTabView: View {
         }
     }
 
+    /// 분 칸 폭. 기본 탭과 온보딩이 같이 쓴다(#167).
+    static let minutesFieldWidth: CGFloat = 52
+
     /// 시안 6번처럼 `06:00`(24시간)으로 보인다. 언어·지역은 시스템 설정을 따른다.
     static let twentyFourHour: Locale = {
         var components = Locale.Components(locale: .autoupdatingCurrent)
@@ -74,7 +77,7 @@ private struct MinutesFieldRow: View {
                     .labelsHidden()
                     .accessibilityLabel(label)
                     .multilineTextAlignment(.trailing)
-                    .frame(width: 52)
+                    .frame(width: BasicTabView.minutesFieldWidth)
                     .focused($isFocused)
                     .onSubmit(input.onCommit)
                     .onChange(of: isFocused) { _, focused in
