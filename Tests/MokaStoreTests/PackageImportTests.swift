@@ -76,9 +76,10 @@ func importedModulesSeeAttributedImports() throws {
         "  @testable \(keyword) FakeC",
         "\(keyword) struct FakeD.Thing",
         "@preconcurrency @testable \(keyword) FakeE",
+        "@_spi(Fake) \(keyword) FakeF",
         "// \(keyword) FakeIgnored",
     ].joined(separator: "\n")
-    #expect(try importedModules(in: source).map(\.module) == ["FakeA", "FakeB", "FakeC", "FakeD", "FakeE"])
+    #expect(try importedModules(in: source).map(\.module) == ["FakeA", "FakeB", "FakeC", "FakeD", "FakeE", "FakeF"])
 }
 
 @Test("#66: 의존 선언 없이 import할 수 있는 SDK 모듈에 os·Observation이 있다")
