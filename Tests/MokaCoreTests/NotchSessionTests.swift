@@ -489,12 +489,12 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
         #expect(try repository.tasks().allSatisfy { $0.status == .todo })
     }
 
-    @Test("FR-05 R-104: 시작 전 화면 다른 할 일은 기록 없이 커서만 옮긴다")
+    @Test("FR-05 R-104 R-408: 시작 전 화면 다른 할 일은 기록 없이 초안만 바꾸고 커서는 두지 않는다")
     func chosenDraftWritesNothing() throws {
         let repository = try InMemoryTaskRepository.seeded(3)
         let before = try repository.tasks()
         let session = NotchSession.initial.picked(Fake.input(before)).chosenDraft(3, Fake.input(before))
-        #expect(session.previousTaskID == 1)
+        #expect(session.previousTaskID == nil)
         #expect(session.taskID == 3)
         #expect(try repository.tasks() == before)
         #expect(try repository.checkpoints().isEmpty)

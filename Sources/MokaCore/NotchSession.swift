@@ -121,10 +121,9 @@ extension NotchSession {
         let result = SchedulerPick.pick(pickInput(input, excluded: excludedInNextPick(input)))
         guard let id = result.taskID, let task = input.tasks.first(where: { $0.id == id }) else { return self }
         var next = drafting(task, input)
-        next.previousTaskID = nil
         next.memory = result.memory
         next.memory.pickedBy = result.rule
-        next.memory.cursorDay = nil
+        next.droppingCursor()
         return next
     }
 
@@ -137,25 +136,25 @@ extension NotchSession {
         return next
     }
 
-    /// 이월 카드·가용 시간 질문·오늘 끝이 되면 초안을 비운다(spec 005 data-model §12). 커서와 몫 상태는 그대로다.
+    /// 이월 카드·가용 시간 질문·오늘 끝이 되면 초안을 비운다(spec 005 data-model §12). 몫 상태는 그대로다.
+    /// 초안이 없으면(바꾸기·미루기 뒤 고르기가 미뤄짐) 커서도 그대로 둔다.
     public func clearingDraft() -> NotchSession {
         guard case .empty(.some) = timer else { return self }
         var next = self
         next.timer = .empty(draft: nil)
         next.taskID = nil
         next.memory.pickedBy = nil
+        next.droppingCursor()
         return next
     }
 
-    /// "다른 할 일" 목록에서 고름(초안만, R-104). 커서를 지금 초안으로 두고 고른 대기 할 일로 초안을 바꾼다(칩 유지).
+    /// "다른 할 일" 목록에서 고름(초안만, R-104). 고른 대기 할 일로 초안을 바꾼다(칩 유지). 커서는 두지 않는다(R-408).
     /// 기록하지 않는다. 없는·대기 아닌·지금 할 일이면 그대로.
     public func chosenDraft(_ id: TaskID, _ input: SessionInput) -> NotchSession {
         guard case .empty(.some) = timer, let current = taskID, id != current,
             let chosen = input.tasks.first(where: { $0.id == id && $0.status == .todo })
         else { return self }
-        var moved = self
-        moved.previousTaskID = current
-        return moved.drafting(chosen, input)
+        return drafting(chosen, input)
     }
 
     /// 노치의 할 일을 고쳤을 때 타이머 안 제목 사본만 바꾼다. 칩·시간 값은 그대로.
@@ -182,6 +181,7 @@ extension NotchSession {
             let task = input.tasks.first(where: { $0.id == id }), task.status == .todo
         else { throw .notAllowed }
         var next = self
+        next.droppingCursor()
         guard
             next.timer.apply(
                 .start, at: input.now, defaultQuantumMin: input.defaultQuantumMin, extendMin: input.extendMin)
@@ -243,6 +243,7 @@ extension NotchSession {
         let button = try buttonContext(input)
         guard button.expired else { throw .notAllowed }
         var next = self
+        next.droppingCursor()
         next.timer = ticked(input)
         guard
             next.timer.apply(
@@ -289,10 +290,10 @@ extension NotchSession {
         return BudgetUse(day: day, seconds: -DayBudget.refundSeconds(endsAt: endsAt, now: input.now))
     }
 
-    /// 노치의 할 일이면 empty(nil), run nil. 커서와 몫 상태는 그대로.
+    /// 노치의 할 일이면 empty(nil), run nil, 커서 없음. 몫 상태는 그대로.
     public func taskDropped(_ id: TaskID) -> NotchSession {
         guard id == taskID else { return self }
-        var next = NotchSession(timer: .empty(draft: nil), taskID: nil, previousTaskID: previousTaskID, run: nil)
+        var next = NotchSession(timer: .empty(draft: nil), taskID: nil, previousTaskID: nil, run: nil)
         next.memory = memory
         next.memory.pickedBy = nil
         return next
@@ -359,7 +360,14 @@ extension NotchSession {
         else { return self }
         next.taskID = task.id
         next.run = nil
+        next.droppingCursor()
         return next
+    }
+
+    /// 커서는 바꾸기·미루기(`setAside`)만 두고 다른 전이는 모두 지운다(R-408).
+    private mutating func droppingCursor() {
+        previousTaskID = nil
+        memory.cursorDay = nil
     }
 
     /// 암묵 tick(끝 시각이 지난 running → expired)을 적용한 타이머.
