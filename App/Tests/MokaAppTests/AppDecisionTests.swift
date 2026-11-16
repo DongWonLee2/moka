@@ -657,7 +657,7 @@ final class AppDecisionTests: XCTestCase {
         XCTAssertEqual(none.state.keyFieldState, .noKey)
         XCTAssertEqual(
             none.state.keyFieldState.notice,
-            KeyFieldNotice(text: "키를 넣으면 판단 모델이 할 일 순서를 정해요. 키가 없으면 마감이 가까운 순으로 떠요.", isWarning: false))
+            KeyFieldNotice(text: "키를 넣으면 판단 모델이 할 일 순서를 정해요. 키가 없으면 마감이 가까운 세 할 일을 번갈아 띄워요.", isWarning: false))
 
         let saved = await launched(try harness(count: 1))
         XCTAssertEqual(saved.state.keyFieldState, .saved)

@@ -10,7 +10,7 @@ final class DecisionFieldTextTests: XCTestCase {
 
     func test_ADR0011_R620_R622_fieldTexts() {
         XCTAssertEqual(
-            DecisionFieldText.switchNotice, "공급자를 바꾸면 할 일을 모두 새 판단 모델에 다시 물어요. 그동안은 마감이 가까운 순으로 떠요.")
+            DecisionFieldText.switchNotice, "공급자를 바꾸면 할 일을 모두 새 판단 모델에 다시 물어요. 그동안은 마감이 가까운 세 할 일을 번갈아 띄워요.")
         XCTAssertEqual(DecisionFieldText.closedNote, "아직 연결을 확인하는 중이라 고를 수 없어요.")
         XCTAssertEqual(DecisionFieldText.destinationPrefix, "판단을 받으러 보내는 곳: ")
         XCTAssertEqual(DecisionFieldText.selectFailed, "공급자를 바꾸지 못했어요. 다시 해 주세요.")
@@ -46,12 +46,12 @@ final class DecisionFieldTextTests: XCTestCase {
     }
 
     func test_ADR0011_R623_offNotes() {
-        let needsAddress = "주소와 배포 이름을 넣기 전에는 판단 모델에 묻지 않아요. 할 일은 마감이 가까운 순으로 떠요."
+        let needsAddress = "주소와 배포 이름을 넣기 전에는 판단 모델에 묻지 않아요. 그동안은 마감이 가까운 세 할 일을 번갈아 띄워요."
         XCTAssertEqual(DecisionFieldText.offNote(.needsEndpoint), needsAddress)
         XCTAssertEqual(DecisionFieldText.offNote(.needsDeployment), needsAddress)
         XCTAssertEqual(
             DecisionFieldText.offNote(.closedProvider(.liquid)),
-            "이 판단 모델은 아직 연결을 확인하는 중이라 묻지 않아요. 할 일은 마감이 가까운 순으로 떠요.")
+            "이 판단 모델은 아직 연결을 확인하는 중이라 묻지 않아요. 그동안은 마감이 가까운 세 할 일을 번갈아 띄워요.")
         XCTAssertEqual(DecisionFieldText.offNote(.unknownProvider), "고른 판단 모델을 찾지 못했어요. 공급자를 다시 골라 주세요.")
     }
 
