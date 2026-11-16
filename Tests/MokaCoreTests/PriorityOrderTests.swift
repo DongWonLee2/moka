@@ -123,6 +123,23 @@ private let abc: [TaskID: TaskScore] = [
     }
 }
 
+@Suite struct PriorityOrderCarryTests {
+    @Test("FR-05 R-401 FR-08 R-413: 이월 답 대기 할 일은 점수가 있든 없든 후보 순서에서 빠진다")
+    func dueDecisionLeavesOrder() {
+        let tasks = [
+            Fake.task(1), Fake.task(2, dueDecision: true), Fake.task(3), Fake.task(4, dueDecision: true),
+        ]
+        let usable: [TaskID: TaskScore] = [1: score(1, urgency: 0.5), 2: score(2, urgency: 0.9)]
+        #expect(order(tasks, usable) == [1, 3])
+    }
+
+    @Test("FR-05 R-401: 키가 없어도(판단 결과 없음) 이월 답 대기 할 일은 빠진다")
+    func dueDecisionLeavesUnscoredOrder() {
+        let tasks = [Fake.task(1, dueDecision: true), Fake.task(2), Fake.task(3)]
+        #expect(PriorityOrder.order(Fake.input(tasks)).map(\.id) == [2, 3])
+    }
+}
+
 @Suite struct PriorityRotateRuleTests {
     @Test("FR-05 R-209: 고른 규칙 이름은 priority_rotate_v0")
     func choiceName() {

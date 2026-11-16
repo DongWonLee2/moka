@@ -163,6 +163,31 @@ private func near(_ a: Double, _ b: Double) -> Bool { abs(a - b) < 1e-9 }
         #expect(near(value, 0.8 * 2))
     }
 
+    @Test(
+        "FR-05 R-402: aging = (미룬 횟수 + 0.5 × 이월 횟수) × 배율",
+        arguments: [
+            (1, 0, 0.3, 1.0), (0, 1, 0.3, 0.5), (0, 1, 0.7, 0.75), (2, 3, 0.3, 3.5), (2, 3, 0.8, 5.25),
+        ])
+    func agingWithCarry(skipCount: Int, carryCount: Int, avoiding: Double, aging: Double) {
+        let value = priority(
+            stored(urgency: 0, impact: 0, avoiding: avoiding),
+            Fake.task(1, skipCount: skipCount, carryCount: carryCount))
+        #expect(near(value, 0.8 * aging))
+    }
+
+    @Test("FR-05 R-402: 이월 가중 0.5는 Defaults 한 곳에 있다")
+    func carryAgingWeightDefault() {
+        #expect(Defaults.carryAgingWeight == 0.5)
+    }
+
+    @Test("FR-05 R-402: 판단 입력 해시는 이월 횟수·이월 답 대기와 상관없다")
+    func stateHashIgnoresCarry() {
+        func hash(_ task: MokaTask) -> String {
+            JudgmentState.build(task: task, contexts: [], checkpoints: [], today: today, calendar: Fake.seoul).hash
+        }
+        #expect(hash(Fake.task(1)) == hash(Fake.task(1, carryCount: 3, dueDecision: true)))
+    }
+
     @Test("ADR-0011 R-609: avoiding 판정은 넘긴 기준 모델의 임계값으로 한다")
     func agingUsesGivenThreshold() {
         let other = ModelThresholds(concrete: 0.5, avoiding: 0.4)
