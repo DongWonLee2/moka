@@ -41,7 +41,8 @@ private let nextMorning = Fake.at(2027, 1, 14, 7, 0)
             (Fake.at(2027, 1, 14, 6, 0), true), (Fake.at(2027, 1, 17, 9, 0), true),
         ])
     func boundary(now: Date, runs: Bool) {
-        #expect(CarryJudgment.needsRun(lastJudgedAt: judged, now: now, dayStart: Fake.sixAM, calendar: Fake.seoul) == runs)
+        #expect(
+            CarryJudgment.needsRun(lastJudgedAt: judged, now: now, dayStart: Fake.sixAM, calendar: Fake.seoul) == runs)
     }
 
     @Test("FR-08 R-412: 뉴욕 시간대에서도 그 시간대의 06:00이 경계다")
@@ -58,10 +59,12 @@ private let nextMorning = Fake.at(2027, 1, 14, 7, 0)
     @Test("FR-08 R-412 US2-1: 손댄 A와 마감이 어제인 B만, 손대지 않은 C는 대상이 아니다")
     func scenario1() {
         let tasks = [
-            Fake.task(1), Fake.task(2, deadline: Fake.day("2027-01-13")), Fake.task(3, deadline: Fake.day("2027-01-20")),
+            Fake.task(1), Fake.task(2, deadline: Fake.day("2027-01-13")),
+            Fake.task(3, deadline: Fake.day("2027-01-20")),
         ]
         let targets = CarryJudgment.targets(
-            input(tasks, checkpoints: [checkpoint(1, task: 1, at: Fake.at(2027, 1, 13, 9, 0))], last: judged,
+            input(
+                tasks, checkpoints: [checkpoint(1, task: 1, at: Fake.at(2027, 1, 13, 9, 0))], last: judged,
                 now: nextMorning))
         #expect(targets == [1, 2])
     }
@@ -85,7 +88,8 @@ private let nextMorning = Fake.at(2027, 1, 14, 7, 0)
     func logLines() {
         let at = Fake.at(2027, 1, 13, 9, 0)
         let decisions = [
-            line(1, task: 1, .done, at: at), line(2, task: 2, .carryToday, at: at), line(3, task: 3, .carryMove, at: at),
+            line(1, task: 1, .done, at: at), line(2, task: 2, .carryToday, at: at),
+            line(3, task: 3, .carryMove, at: at),
             line(4, task: 4, .carryDrop, at: at), line(5, task: 5, .switch, at: at),
         ]
         let targets = CarryJudgment.targets(
@@ -97,7 +101,8 @@ private let nextMorning = Fake.at(2027, 1, 14, 7, 0)
     func beforeSinceIgnored() {
         let targets = CarryJudgment.targets(
             input(
-                [Fake.task(1)], checkpoints: [checkpoint(1, task: 1, at: Fake.at(2027, 1, 13, 6, 59, 59))], last: judged,
+                [Fake.task(1)], checkpoints: [checkpoint(1, task: 1, at: Fake.at(2027, 1, 13, 6, 59, 59))],
+                last: judged,
                 now: nextMorning))
         #expect(targets.isEmpty)
     }
@@ -167,7 +172,8 @@ private let nextMorning = Fake.at(2027, 1, 14, 7, 0)
     func firstJudgmentWindow() {
         let tasks = Fake.todos(1...2)
         let checkpoints = [
-            checkpoint(1, task: 1, at: Fake.at(2027, 1, 13, 6, 0)), checkpoint(2, task: 2, at: Fake.at(2027, 1, 13, 5, 59)),
+            checkpoint(1, task: 1, at: Fake.at(2027, 1, 13, 6, 0)),
+            checkpoint(2, task: 2, at: Fake.at(2027, 1, 13, 5, 59)),
         ]
         #expect(CarryJudgment.targets(input(tasks, checkpoints: checkpoints, last: nil, now: nextMorning)) == [1])
     }
@@ -175,7 +181,8 @@ private let nextMorning = Fake.at(2027, 1, 14, 7, 0)
     @Test("FR-08 R-412: 판정 쓰기가 실패해 시각이 남지 않으면 다음 판정이 이전 판정 시각부터 본다")
     func retryUsesPreviousSince() {
         let checkpoints = [checkpoint(1, task: 1, at: Fake.at(2027, 1, 13, 9, 0))]
-        let first = CarryJudgment.targets(input([Fake.task(1)], checkpoints: checkpoints, last: judged, now: nextMorning))
+        let first = CarryJudgment.targets(
+            input([Fake.task(1)], checkpoints: checkpoints, last: judged, now: nextMorning))
         let retry = CarryJudgment.targets(
             input([Fake.task(1)], checkpoints: checkpoints, last: judged, now: nextMorning.addingTimeInterval(600)))
         #expect(first == [1])

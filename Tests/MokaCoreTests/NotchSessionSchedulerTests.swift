@@ -175,7 +175,9 @@ private func switchTask(_ session: NotchSession, _ input: SessionInput) throws(S
     @Test("FR-05 R-406 R-411: 하루 첫 고르기는 워밍업이고, 다른 할 일로 바꿔도 이름은 warmup_v1")
     func warmupKeepsNameThroughOtherTask() throws {
         var caller = Caller(try repository(fakes(3, est: 20)), at: Fake.noon)
-        caller.usable = [1: score(1, urgency: 0.9), 2: score(2, urgency: 0.5, concrete: 0.9), 3: score(3, urgency: 0.1)]
+        caller.usable = [
+            1: score(1, urgency: 0.9), 2: score(2, urgency: 0.5, concrete: 0.9), 3: score(3, urgency: 0.1),
+        ]
         caller.settle()
         #expect(caller.session.taskID == 2)
         #expect(caller.session.memory.pickedBy == .warmupV1)

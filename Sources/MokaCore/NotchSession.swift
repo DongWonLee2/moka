@@ -345,7 +345,8 @@ extension NotchSession {
         var next = self
         let chip = QuantumChip.cap(chipMin: input.defaultQuantumMin, remainingMinutes: input.draftChipCap)
         guard
-            next.timer.apply(.enterTitle(task.title), at: input.now, defaultQuantumMin: chip, extendMin: input.extendMin)
+            next.timer.apply(
+                .enterTitle(task.title), at: input.now, defaultQuantumMin: chip, extendMin: input.extendMin)
                 == .applied
         else { return self }
         next.taskID = task.id

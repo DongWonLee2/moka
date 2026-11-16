@@ -16,7 +16,8 @@ private func scored(_ priorities: [(TaskID, Double)], concrete: [TaskID: Double]
 {
     PickInput(
         order: priorities.map { Fake.task($0.0, estMin: est[$0.0]) },
-        scores: Dictionary(uniqueKeysWithValues: priorities.map { ($0.0, score($0.0, concrete: concrete[$0.0] ?? 0.5)) }),
+        scores: Dictionary(
+            uniqueKeysWithValues: priorities.map { ($0.0, score($0.0, concrete: concrete[$0.0] ?? 0.5)) }),
         priorities: Dictionary(uniqueKeysWithValues: priorities))
 }
 
@@ -25,8 +26,9 @@ private func unscored(_ ids: [TaskID]) -> PickInput {
 }
 
 /// `count`번 고르고 고른 id 목록. 매번 몫 상태를 이어 받는다. `excludeLast`면 방금 고른 할 일을 뺀다(바꾸기·미루기).
-private func run(_ input: PickInput, count: Int, excludeLast: Bool = false) -> (picks: [TaskID], memory: SchedulerMemory)
-{
+private func run(_ input: PickInput, count: Int, excludeLast: Bool = false) -> (
+    picks: [TaskID], memory: SchedulerMemory
+) {
     var input = input
     var picks: [TaskID] = []
     for _ in 0..<count {

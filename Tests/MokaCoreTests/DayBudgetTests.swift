@@ -119,16 +119,23 @@ private func budget(_ minutes: Int, used: Int = 0, extended: Int = 0, more: Bool
 @Suite struct DayBudgetChipTests {
     @Test("FR-05 R-409: 시작 전 칩은 마지막 칩 → 기본 작업 시간 → 남은 예상 시간 → 남은 분 순으로 짧은 값")
     func draftChipOrder() {
-        #expect(QuantumChip.draftChip(lastChip: 45, defaultMin: 25, remainingEstimateMin: nil, remainingMinutes: nil) == 45)
-        #expect(QuantumChip.draftChip(lastChip: nil, defaultMin: 25, remainingEstimateMin: nil, remainingMinutes: nil) == 25)
-        #expect(QuantumChip.draftChip(lastChip: 45, defaultMin: 25, remainingEstimateMin: 20, remainingMinutes: nil) == 20)
-        #expect(QuantumChip.draftChip(lastChip: 45, defaultMin: 25, remainingEstimateMin: 20, remainingMinutes: 10) == 10)
-        #expect(QuantumChip.draftChip(lastChip: nil, defaultMin: 25, remainingEstimateMin: 30, remainingMinutes: 40) == 25)
+        #expect(
+            QuantumChip.draftChip(lastChip: 45, defaultMin: 25, remainingEstimateMin: nil, remainingMinutes: nil) == 45)
+        #expect(
+            QuantumChip.draftChip(lastChip: nil, defaultMin: 25, remainingEstimateMin: nil, remainingMinutes: nil) == 25
+        )
+        #expect(
+            QuantumChip.draftChip(lastChip: 45, defaultMin: 25, remainingEstimateMin: 20, remainingMinutes: nil) == 20)
+        #expect(
+            QuantumChip.draftChip(lastChip: 45, defaultMin: 25, remainingEstimateMin: 20, remainingMinutes: 10) == 10)
+        #expect(
+            QuantumChip.draftChip(lastChip: nil, defaultMin: 25, remainingEstimateMin: 30, remainingMinutes: 40) == 25)
     }
 
     @Test("FR-05 R-409: 남은 예상 시간이 0 이하면 1분")
     func draftChipEstimateFloor() {
-        #expect(QuantumChip.draftChip(lastChip: nil, defaultMin: 25, remainingEstimateMin: -5, remainingMinutes: nil) == 1)
+        #expect(
+            QuantumChip.draftChip(lastChip: nil, defaultMin: 25, remainingEstimateMin: -5, remainingMinutes: nil) == 1)
     }
 
     @Test("FR-05 R-409 US3-3: 시간 끝 칩은 추가 시간, 남은 분이 더 짧으면 그 값")
@@ -165,12 +172,16 @@ private func budget(_ minutes: Int, used: Int = 0, extended: Int = 0, more: Bool
         #expect(QuantumChip.expiredChip(extendMin: 10, remainingMinutes: DayBudget.capMinutes(record)) == 5)
         #expect(started.applying(BudgetUse(day: yesterday, seconds: 300)).usedSeconds == 7200)
         #expect(DayBudget.capMinutes(DayBudget.record(started, for: today)) == nil)
-        #expect(DayBudget.capMinutes(DayBudget.record(budget(120, used: 0, more: true, day: yesterday), for: yesterday)) == nil)
+        #expect(
+            DayBudget.capMinutes(DayBudget.record(budget(120, used: 0, more: true, day: yesterday), for: yesterday))
+                == nil)
     }
 }
 
 @Suite struct BudgetInputTests {
-    @Test("FR-10 R-419: 직접 적은 가용 시간은 0.5 단위 시간을 분으로", arguments: [("1.5", 90), ("0.5", 30), ("16", 960), (" 2 ", 120), ("2.50", 150)])
+    @Test(
+        "FR-10 R-419: 직접 적은 가용 시간은 0.5 단위 시간을 분으로",
+        arguments: [("1.5", 90), ("0.5", 30), ("16", 960), (" 2 ", 120), ("2.50", 150)])
     func accepts(text: String, minutes: Int) {
         #expect(BudgetInput.parse(text) == .success(minutes))
     }

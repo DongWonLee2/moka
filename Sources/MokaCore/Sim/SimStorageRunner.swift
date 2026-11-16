@@ -146,7 +146,8 @@ extension SimRunner {
                 let after = DayBudget.record(state.schedule?.budget, for: today)
             else { return "늘리기 전후의 오늘 기록이 없다" }
             let extra = chip - before.remainingMinutes
-            guard after.minutes == before.minutes + extra, after.extendedMinutes == before.extendedMinutes + extra else {
+            guard after.minutes == before.minutes + extra, after.extendedMinutes == before.extendedMinutes + extra
+            else {
                 return "늘린 가용 시간이 칩 − 남은 분과 다르다"
             }
         default:
@@ -399,7 +400,8 @@ private struct StorageEvent {
     /// 이월 판정(R-412). 표시와 판정 시각을 함께 쓰고, 쓰기가 끝나면 되돌린 할 일 기억을 비운다.
     private mutating func judgeCarry() throws(SimError) {
         guard day.scheduled,
-            CarryJudgment.needsRun(lastJudgedAt: day.carryJudgedAt, now: event.at, dayStart: dayStart, calendar: calendar)
+            CarryJudgment.needsRun(
+                lastJudgedAt: day.carryJudgedAt, now: event.at, dayStart: dayStart, calendar: calendar)
         else { return }
         let tasks = try tasks()
         let targets = CarryJudgment.targets(

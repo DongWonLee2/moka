@@ -31,7 +31,8 @@ private let due = Fake.task(1, deadline: Fake.day("2027-01-10"), skipCount: 2, c
         #expect(
             batch.newDecisions == [
                 NewDecisionLogEntry(
-                    taskID: 1, judgment: Judgment(provider: "fallback", questionVersion: nil, probsJSON: nil, stateHash: nil),
+                    taskID: 1,
+                    judgment: Judgment(provider: "fallback", questionVersion: nil, probsJSON: nil, stateHash: nil),
                     modelSnapshot: nil, schedulerChoice: .carryCardV1, userAction: .carryToday, createdAt: Fake.noon)
             ])
     }
@@ -63,7 +64,9 @@ private let due = Fake.task(1, deadline: Fake.day("2027-01-10"), skipCount: 2, c
         #expect(throws: CarryAnswerError.dateNotAfterToday) {
             try CarryAnswer.apply(.move(Fake.day(day)), task: due, today: today, input: answerInput())
         }
-        #expect((try? CarryAnswer.apply(.move(Fake.day("2027-01-14")), task: due, today: today, input: answerInput())) != nil)
+        #expect(
+            (try? CarryAnswer.apply(.move(Fake.day("2027-01-14")), task: due, today: today, input: answerInput()))
+                != nil)
     }
 
     @Test("FR-08 R-417: 진행 중이거나 표시가 없는 할 일에는 답할 수 없다")
@@ -83,7 +86,8 @@ private let due = Fake.task(1, deadline: Fake.day("2027-01-10"), skipCount: 2, c
         let batch = try CarryAnswer.apply(.today, task: due, today: today, input: answerInput([1: score]))
         #expect(
             batch.newDecisions.first?.judgment
-                == Judgment(provider: "fake", questionVersion: "v3", probsJSON: "{\"a\":1}", stateHash: "0123456789abcdef"))
+                == Judgment(
+                    provider: "fake", questionVersion: "v3", probsJSON: "{\"a\":1}", stateHash: "0123456789abcdef"))
         #expect(batch.newDecisions.first?.modelSnapshot == "가짜-모델-1")
     }
 }
@@ -101,8 +105,10 @@ private let due = Fake.task(1, deadline: Fake.day("2027-01-10"), skipCount: 2, c
 
     @Test("FR-08 R-414: 카드 까닭은 마감이 지났으면 지난 날 수, 아니면 손댐")
     func reason() {
-        #expect(CarryCardReason.of(task: Fake.task(1, deadline: Fake.day("2027-01-10")), today: today) == .overdue(days: 3))
-        #expect(CarryCardReason.of(task: Fake.task(1, deadline: Fake.day("2027-01-12")), today: today) == .overdue(days: 1))
+        #expect(
+            CarryCardReason.of(task: Fake.task(1, deadline: Fake.day("2027-01-10")), today: today) == .overdue(days: 3))
+        #expect(
+            CarryCardReason.of(task: Fake.task(1, deadline: Fake.day("2027-01-12")), today: today) == .overdue(days: 1))
         #expect(CarryCardReason.of(task: Fake.task(1, deadline: today), today: today) == .touched)
         #expect(CarryCardReason.of(task: Fake.task(1), today: today) == .touched)
     }

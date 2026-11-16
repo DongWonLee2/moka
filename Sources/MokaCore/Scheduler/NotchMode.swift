@@ -24,7 +24,8 @@ public enum NotchMode: Equatable, Sendable {
         }
         let cards = CarryAnswer.cards(tasks)
         if let first = cards.first {
-            return .carryCard(taskID: first.id, left: cards.count, reason: CarryCardReason.of(task: first, today: today))
+            return .carryCard(
+                taskID: first.id, left: cards.count, reason: CarryCardReason.of(task: first, today: today))
         }
         guard let record = DayBudget.record(budget, for: today) else { return .askBudget }
         if let cap = DayBudget.capMinutes(record), cap < 1 { return .dayEnd }

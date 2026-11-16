@@ -191,7 +191,11 @@ func validStorageStatesPassInvariant() {
         (state(expired, [task(1, .active)]), blank),
         // 하루 경계를 넘긴 진행 중 할 일은 이월 답 대기가 붙은 채 노치에 남는다(R-417).
         (state(running, [task(1, .active, due: true)], schedule: schedule(.session)), blank),
-        (state(.initial, [task(1, .todo, due: true)], schedule: schedule(.carryCard(taskID: 1, left: 1, reason: .touched))), blank),
+        (
+            state(
+                .initial, [task(1, .todo, due: true)],
+                schedule: schedule(.carryCard(taskID: 1, left: 1, reason: .touched))), blank
+        ),
         (state(.initial, [], schedule: schedule(.session, used: 7200, minutes: 60, more: true)), blank),
         // 꺼짐: 도는 중이던 할 일은 active로 남는다
         (state(nil, [task(1, .active)], checkpoints: [checkpoint(1)]), state(running, [task(1, .active)])),
