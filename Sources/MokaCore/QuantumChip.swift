@@ -6,6 +6,8 @@ public enum CustomQuantumIssue: Equatable, Sendable {
     case belowMin
     /// 정수로 읽을 수 없다(숫자 아님, 소수, 앞뒤 공백).
     case notInteger
+    /// 시간 끝 화면에서 오늘 남은 분(값)보다 크다(spec 005 R-421).
+    case aboveRemaining(Int)
 }
 
 /// 시간 칩의 칸 하나(R-003·R-004). 프리셋 칸 4개 뒤에 직접 입력 칸 하나가 온다.
@@ -20,11 +22,14 @@ public struct QuantumChipSegment: Equatable, Sendable {
     public let kind: Kind
     public let label: String
     public let selected: Bool
+    /// 거짓이면 누를 수 없다(시간 끝 화면에서 남은 분보다 긴 프리셋, spec 005 R-421).
+    public let enabled: Bool
 
-    public init(kind: Kind, label: String, selected: Bool) {
+    public init(kind: Kind, label: String, selected: Bool, enabled: Bool = true) {
         self.kind = kind
         self.label = label
         self.selected = selected
+        self.enabled = enabled
     }
 }
 
@@ -34,11 +39,14 @@ public enum QuantumChip {
     /// 칩에 그릴 칸들. `customText`가 nil이 아니면 직접 입력 중이다.
     /// 칩 값이 프리셋 밖이고 직접 입력 중이 아니면(프리셋 밖 기본값으로 미리 채움) 직접 입력 칸이 그 값을
     /// "30분"처럼 보이며 선택된다(R-003). 직접 입력 중에는 값이 입력 칸에 보이므로 "직접…"으로 둔다.
-    public static func segments(chipMin: Int, customText: String?) -> [QuantumChipSegment] {
+    /// `maxMinutes`가 있으면(시간 끝 화면의 오늘 남은 분) 그보다 긴 프리셋을 끈다.
+    public static func segments(chipMin: Int, customText: String?, maxMinutes: Int? = nil) -> [QuantumChipSegment] {
         let offPreset = !presets.contains(chipMin)
         let isCustom = customText != nil || offPreset
         let presetSegments = presets.map { minutes in
-            QuantumChipSegment(kind: .preset(minutes), label: "\(minutes)분", selected: !isCustom && chipMin == minutes)
+            QuantumChipSegment(
+                kind: .preset(minutes), label: "\(minutes)분", selected: !isCustom && chipMin == minutes,
+                enabled: maxMinutes.map { minutes <= $0 } ?? true)
         }
         let customLabel = customText == nil && offPreset ? "\(chipMin)분" : "직접…"
         return presetSegments + [QuantumChipSegment(kind: .custom, label: customLabel, selected: isCustom)]
@@ -51,8 +59,9 @@ public enum QuantumChip {
     }
 
     /// 직접 입력을 받지 않는 이유. 받는 값과 빈칸은 nil(빈칸은 시작만 막고 이유는 보이지 않는다).
-    /// nil이 아닌 값이 나오는 입력은 `parseCustom`도 nil이다.
-    public static func customIssue(_ text: String) -> CustomQuantumIssue? {
+    /// `aboveRemaining` 밖의 이유가 나오는 입력은 `parseCustom`도 nil이다.
+    /// `remainingMinutes`는 시간 끝 화면의 오늘 남은 분이다(시작 전 화면은 늘리기 확인이라 넘기지 않는다).
+    public static func customIssue(_ text: String, remainingMinutes: Int? = nil) -> CustomQuantumIssue? {
         guard !text.isEmpty else { return nil }
         guard let value = Int(text) else {
             let digitsOnly = text.allSatisfy { $0.isASCII && $0.isNumber }
@@ -60,24 +69,56 @@ public enum QuantumChip {
         }
         if value > Defaults.quantumMinRange.upperBound { return .aboveMax }
         if value < Defaults.quantumMinRange.lowerBound { return .belowMin }
+        if let remainingMinutes, value > remainingMinutes { return .aboveRemaining(remainingMinutes) }
         return nil
     }
 
     /// 직접 입력 칸 아래 줄의 이유 안내(R-004). 직접 입력 중이고 받지 않는 값이면 문장, 아니면 nil.
-    public static func customIssueMessage(customText: String?) -> String? {
-        guard let customText, let issue = customIssue(customText) else { return nil }
+    /// `aboveRemaining` 문장은 시안 초안 글자이고 단위 4에서 확정 시안 글자로 맞춘다.
+    public static func customIssueMessage(customText: String?, remainingMinutes: Int? = nil) -> String? {
+        guard let customText, let issue = customIssue(customText, remainingMinutes: remainingMinutes) else {
+            return nil
+        }
         switch issue {
         case .aboveMax: return "3시간(180분)까지 정할 수 있어요"
         case .belowMin: return "1분부터 정할 수 있어요"
         case .notInteger: return "분은 숫자로만 적어 주세요"
+        case .aboveRemaining(let minutes): return "오늘 남은 시간이 \(minutes)분이라 \(minutes)분까지 이어 갈 수 있어요."
         }
     }
 
     /// 시작할 수 있는가. `customText`가 nil이면 직접 입력을 쓰지 않아 칩 값으로 시작한다(R-003),
-    /// 직접 입력 중이면 `parseCustom`이 값을 낼 때만(R-004).
-    public static func startAllowed(customText: String?) -> Bool {
+    /// 직접 입력 중이면 `parseCustom`이 값을 내고 이유가 없을 때만(R-004, R-421).
+    public static func startAllowed(customText: String?, remainingMinutes: Int? = nil) -> Bool {
         guard let customText else { return true }
-        return parseCustom(customText) != nil
+        return parseCustom(customText) != nil && customIssue(customText, remainingMinutes: remainingMinutes) == nil
+    }
+
+    /// 시작 전 칩 처음 값(R-409): 이번 실행의 마지막 칩 → 기본 작업 시간, 남은 예상 시간(1분 이상)이 더 짧으면 그 값,
+    /// 오늘 남은 분(상한이 걸렸을 때만, 1분 이상)이 더 짧으면 그 값.
+    public static func draftChip(lastChip: Int?, defaultMin: Int, remainingEstimateMin: Int?, remainingMinutes: Int?)
+        -> Int
+    {
+        var chip = lastChip ?? defaultMin
+        if let estimate = remainingEstimateMin { chip = min(chip, max(1, estimate)) }
+        return cap(chipMin: chip, remainingMinutes: remainingMinutes)
+    }
+
+    /// 시간 끝 칩 처음 값(R-409, #151): 추가 시간, 그 작업 시간을 시작한 하루의 남은 분이 더 짧으면 그 값.
+    public static func expiredChip(extendMin: Int, remainingMinutes: Int?) -> Int {
+        cap(chipMin: extendMin, remainingMinutes: remainingMinutes)
+    }
+
+    /// 상한(R-421). `remainingMinutes`가 nil(상한 없음)이거나 1 미만(오늘 끝, 칩을 쓰지 않음)이면 칩 그대로.
+    public static func cap(chipMin: Int, remainingMinutes: Int?) -> Int {
+        guard let remainingMinutes, remainingMinutes >= 1 else { return chipMin }
+        return min(chipMin, remainingMinutes)
+    }
+
+    /// 시작 전 화면 늘리기 확인(R-421): 상한이 걸렸고 남은 분이 1 이상인데 칩이 더 길면 모자란 분.
+    public static func extendNeeded(chipMin: Int, remainingMinutes: Int?) -> Int? {
+        guard let remainingMinutes, remainingMinutes >= 1, chipMin > remainingMinutes else { return nil }
+        return chipMin - remainingMinutes
     }
 
     /// 시간 끝 화면에서 같은 할 일을 한 번 더 하는 버튼 이름(#52). 직접 입력 중이면 입력 값,

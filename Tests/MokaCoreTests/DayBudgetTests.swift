@@ -141,7 +141,7 @@ private func budget(_ minutes: Int, used: Int = 0, extended: Int = 0, more: Bool
     @Test("FR-10 R-421: 시작 전 화면은 남은 분보다 긴 프리셋도 켜 두고, 시간 끝 화면만 끈다")
     func presetsEnabled() {
         let draft = QuantumChip.segments(chipMin: 10, customText: nil)
-        #expect(draft.allSatisfy(\.enabled))
+        #expect(draft.allSatisfy { $0.enabled })
         let expired = QuantumChip.segments(chipMin: 10, customText: nil, maxMinutes: 25)
         #expect(expired.map(\.enabled) == [true, true, false, false, true])
     }
