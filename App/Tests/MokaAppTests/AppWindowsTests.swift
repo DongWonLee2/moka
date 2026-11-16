@@ -31,7 +31,10 @@ final class AppWindowsTests: XCTestCase {
         let recorder = recorder
         return AppWindowActivation(
             currentPolicy: { recorder.current },
-            setPolicy: { recorder.current = $0; recorder.applied.append($0) })
+            setPolicy: {
+                recorder.current = $0
+                recorder.applied.append($0)
+            })
     }
 
     private func makeWindow() -> NSWindow {
