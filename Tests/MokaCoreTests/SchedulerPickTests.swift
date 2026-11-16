@@ -68,6 +68,7 @@ private func counts(_ picks: [TaskID]) -> [TaskID: Int] {
     @Test("FR-05 R-403 R-408: 바꾸기·미루기로 방금 할 일을 건너뛰어도 넷째 후보는 0번이고 방금 할 일은 잇달아 뜨지 않는다")
     func excludedNeverPullsFourth() {
         let (picks, _) = run(scored([(1, 1.5), (2, 0.9), (3, 0.6), (4, 0.3)]), count: 100, excludeLast: true)
+        #expect(counts(Array(picks.prefix(10))) == [1: 5, 2: 3, 3: 2], "US1-1: 10번이면 정확히 5·3·2")
         #expect(counts(picks)[4] == nil)
         #expect(zip(picks, picks.dropFirst()).allSatisfy { $0 != $1 })
         let tally = counts(picks)

@@ -278,6 +278,46 @@ private func switchTask(_ session: NotchSession, _ input: SessionInput) throws(S
         #expect(NotchSession.initial.nextMark(caller.input()) == nil)
     }
 
+    @Test("FR-05 R-408: 커서는 실제로 고른 그 고르기에서만 빠진다 — 미룸 → 초안 → 초안 비움 → 고르기")
+    func cursorUsedOnce() throws {
+        var caller = Caller(try repository(fakes(2)), at: Fake.noon, lastStartDay: day13)
+        caller.settle()
+        try caller.start()
+        caller.advance(minutes: 1)
+        try caller.press(skip)
+        #expect(caller.session.taskID == 2)
+        #expect(caller.session.previousTaskID == nil)
+        caller.session = caller.session.clearingDraft()
+        caller.settle()
+        #expect(caller.session.taskID == 1)
+    }
+
+    @Test("FR-05 R-408: 모드 때문에 미뤄진 고르기는 같은 하루면 방금 할 일을 빼고, 하루가 바뀐 뒤 첫 고르기는 어제 커서를 빼지 않는다")
+    func deferredCursor() throws {
+        func dayEnded() throws -> Caller {
+            var caller = Caller(
+                try repository(fakes(2)), at: Fake.noon, budget: .answered(day: day13, minutes: 30),
+                lastStartDay: day13)
+            caller.settle()
+            caller.choose(30)
+            try caller.start()
+            caller.advance(minutes: 30)
+            try caller.press(skip)
+            #expect(caller.mode == .dayEnd)
+            #expect(caller.session.previousTaskID == 1)
+            return caller
+        }
+        var sameDay = try dayEnded()
+        sameDay.budget = sameDay.budget?.withMore()
+        sameDay.settle()
+        #expect(sameDay.session.taskID == 2)
+        var nextDay = try dayEnded()
+        nextDay.now = Fake.at(2027, 1, 14, 7, 0)
+        nextDay.budget = .answered(day: day14, minutes: 60)
+        nextDay.settle()
+        #expect(nextDay.session.taskID == 1)
+    }
+
     @Test("FR-08 R-413: 초안 비우기는 할 일과 이름을 내리고 커서는 둔다")
     func clearingDraft() {
         var session = NotchSession.initial.picked(Fake.input(Fake.todos(1...2)))

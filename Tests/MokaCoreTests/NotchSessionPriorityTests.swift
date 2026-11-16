@@ -56,7 +56,7 @@ private func switching(_ session: NotchSession, _ input: SessionInput) throws(Se
         #expect(NotchSession.initial.picked(input(Fake.todos(1...3))).taskID == 3)
     }
 
-    @Test("FR-05 R-209 SC-203: 바꾸기 뒤에는 다음 순위, 끝이면 1위(spec US1-3)")
+    @Test("FR-05 R-403 R-408 SC-203: 바꾸기 뒤에는 방금 할 일을 빼고 앞 셋의 몫으로 고른다")
     func switchRotates() throws {
         var tasks = Fake.todos(1...3)
         var session = NotchSession.initial.picked(input(tasks))
@@ -68,7 +68,7 @@ private func switching(_ session: NotchSession, _ input: SessionInput) throws(Se
         #expect(shown == [3, 1, 2, 3])
     }
 
-    @Test("FR-05 R-209 SC-203: 미루기 뒤에는 버튼 처리 뒤 다시 계산한 순서에서 다음(spec US1-4)")
+    @Test("FR-05 R-403 R-408 SC-203: 미루기 뒤에는 버튼 처리 뒤 다시 계산한 순서와 몫으로 고르고 방금 할 일은 뺀다")
     func skipUsesRecomputedOrder() throws {
         // C 뒤 바꾸기로 A가 떠 있다. A를 미루면 A는 2.0이 되어 A, C, B 순이므로 C.
         let tasks = Fake.todos(1...3)

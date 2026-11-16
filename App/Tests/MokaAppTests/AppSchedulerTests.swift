@@ -40,6 +40,20 @@ final class AppSchedulerTests: XCTestCase {
         XCTAssertEqual(tally[3], 4)
     }
 
+    func test_FR05_R403_newDayClearsCredits() throws {
+        let clock = TestClock(AppTestFixture.noon)
+        let state = makeState(try Self.seeded(), clock: clock)
+        state.launch()
+        XCTAssertEqual(state.session.memory.memoryDay, LocalDay(text: "2027-01-13"))
+        state.start()
+        clock.advance(minutes: 19 * 60)
+        state.tick()
+        state.complete()
+        XCTAssertEqual(state.session.memory.memoryDay, LocalDay(text: "2027-01-14"), "하루가 바뀐 뒤 첫 고르기")
+        XCTAssertEqual(state.session.taskID, 2)
+        XCTAssertEqual(state.session.memory.credits, [2: -5, 3: 3, 4: 2], "어제 몫 상태는 비우고 0에서 다시 셈")
+    }
+
     func test_FR05_R408_completeHasNothingToExclude() throws {
         let clock = TestClock(AppTestFixture.noon)
         let state = makeState(try Self.seeded(), clock: clock)
