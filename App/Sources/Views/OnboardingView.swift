@@ -18,7 +18,7 @@ struct OnboardingKeyInput {
 
 enum OnboardingKeyText {
     static let title = "판단 모델 키가 있나요?"
-    static let message = "TypeSafe에서 받은 키를 붙여 넣으면 판단 모델이 할 일 순서를 정해요. 키가 없으면 마감이 가까운 순으로 떠요."
+    static let message = "TypeSafe에서 받은 키를 붙여 넣으면 판단 모델이 할 일 순서를 정해요. 키가 없으면 마감이 가까운 세 할 일을 번갈아 띄워요."
     static let issueLink = DecisionFieldText.issueLink("TypeSafe Jev")
     static let otherProviders = "다른 판단 모델은 시작한 뒤 설정에서 고를 수 있어요."
     static let fieldLabel = "키"

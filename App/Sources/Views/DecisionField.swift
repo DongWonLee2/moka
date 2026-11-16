@@ -48,7 +48,7 @@ struct DecisionFieldStart {
 enum DecisionFieldText {
     static let providerLabel = "공급자"
     static let choosePlaceholder = "골라 주세요"
-    static let switchNotice = "공급자를 바꾸면 할 일을 모두 새 판단 모델에 다시 물어요. 그동안은 마감이 가까운 순으로 떠요."
+    static let switchNotice = "공급자를 바꾸면 할 일을 모두 새 판단 모델에 다시 물어요. 그동안은 마감이 가까운 세 할 일을 번갈아 띄워요."
     static let closedNote = "아직 연결을 확인하는 중이라 고를 수 없어요."
     static let destinationPrefix = "판단을 받으러 보내는 곳: "
     static let provisionalNotice = "이 판단 모델은 순서를 정하는 기준값을 아직 맞추는 중이에요. 순서가 조금 다를 수 있어요."
@@ -85,8 +85,8 @@ enum DecisionFieldText {
 
     static func offNote(_ reason: DecisionSelection.OffReason) -> String {
         switch reason {
-        case .needsEndpoint, .needsDeployment: "주소와 배포 이름을 넣기 전에는 판단 모델에 묻지 않아요. 할 일은 마감이 가까운 순으로 떠요."
-        case .closedProvider: "이 판단 모델은 아직 연결을 확인하는 중이라 묻지 않아요. 할 일은 마감이 가까운 순으로 떠요."
+        case .needsEndpoint, .needsDeployment: "주소와 배포 이름을 넣기 전에는 판단 모델에 묻지 않아요. 그동안은 마감이 가까운 세 할 일을 번갈아 띄워요."
+        case .closedProvider: "이 판단 모델은 아직 연결을 확인하는 중이라 묻지 않아요. 그동안은 마감이 가까운 세 할 일을 번갈아 띄워요."
         case .unknownProvider: "고른 판단 모델을 찾지 못했어요. 공급자를 다시 골라 주세요."
         }
     }

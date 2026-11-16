@@ -64,9 +64,9 @@ enum HelpContent {
         case .rankAndNext:
             .text(
                 "\(q(SettingsTab.tasks.title)) 탭에서 먼저 할 세 할 일에 \(q(rank(1))), \(q(rank(2))), \(q(rank(3)))가 붙어요. "
-                    + "\(q(next)) 표시가 붙은 할 일이 노치에 떠요. "
                     + "키가 있으면 판단 모델이 정한 순서이고, 키가 없으면 마감이 가까운 순이에요. "
-                    + "\(q(NotchText.skip))나 \(q(NotchText.switchTask))를 누르면 그다음 순위의 할 일이 떠요.")
+                    + "노치는 이 세 할 일을 순위가 높을수록 자주 번갈아 띄우고, 하루 첫 할 일은 바로 시작하기 쉬운 짧은 일로 골라요. "
+                    + "\(q(next)) 표시가 붙은 할 일이 다음에 노치에 떠요.")
         case .reasonLine:
             .text(
                 "노치를 펼치면 제목 아래에 이 할 일이 왜 떴는지 한 줄로 보여요. "
@@ -86,7 +86,7 @@ enum HelpContent {
                 "판단 모델은 할 일과 일정을 보고 무엇부터 할지 순서를 정해요. "
                     + "설정의 \(q(SettingsTab.basic.title)) 탭 판단 모델 칸에서 공급자를 고르고 키를 붙여 넣어 주세요. "
                     + "키는 이 Mac의 키체인에만 저장되고 다시 보이지 않아요. "
-                    + "키가 없으면 마감이 가까운 순으로 떠요. "
+                    + "키가 없으면 마감이 가까운 세 할 일을 번갈아 띄워요. "
                     + "\(q(GateDisplay.keyNoticeText))가 보이면 \(q(GateDisplay.keyNoticeButton))을 눌러 키를 지우고 다시 저장해 주세요.")
         case .destination:
             .text(
