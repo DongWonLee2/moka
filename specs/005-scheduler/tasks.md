@@ -79,6 +79,7 @@ description: "spec 005 스케줄러 작업 목록"
 - [ ] T022 [P] [US1] `App/Tests/MokaAppTests/AppSchedulerTests.swift`(새): 키 없음에서 마감일 순 앞 셋을 번갈아 띄움(spec US1-7), 점수 있는 할 일 셋이면 priority 비(US1-1, 가깝다), 하루 첫 고르기 워밍업과 같은 하루 재시작 뒤 워밍업 없음(`last_start_day`), 시간 끝 화면 버튼 그대로이고 다른 할 일이 보이지 않음(US1-8), 버튼 줄 `scheduler_choice`, "다음" 표시(`nextMarkID`)가 다음 고르기 결과, 순위는 이월 답 대기 뺌. `AppTestSupport.swift`에 주입 시계로 하루를 넘기는 도움 함수. 이월 판정·답 `AppState` 함수(`judgeCarryIfNeeded`, `answerCarry`)를 직접 불러 저장 결과를 봄(활성화 연결은 단위 3). 실패를 확인한다(`FR-05 R-403`, `R-406`, `R-407`, `R-408`, `R-434`) 〔단위 2〕
 - [ ] T023 [US1] `App/Sources/AppState.swift`: `input(at:)`에 memory, `pickIfEmpty`는 지금처럼 `session.picked`만 부름(바꾸기·미루기 뒤 방금 할 일은 단위 1부터 `NotchSession`이 `previousTaskID`를 `excluded`로 넘겨 이미 뺌, plan "앱 연결"), 시작 커밋에 `last_start_day`, `ranks`·`nextMarkID`, 판정·답 함수(활성화에서 부르지 않음). T022 PASS, 앱 빌드 PASS, 기존 앱 시험 PASS 〔단위 2〕
 - [ ] T024 [P] 대체 표기 확인: 이 plan PR에서 붙인 "spec 005가 대체" 표기(spec 002 R-104, spec 003 R-204·R-209·R-212·R-215, spec 004 R-315, spec 007 도움말 3·6번과 안내 장 순위 장)가 구현과 맞는지 보고, 다르면 고친다(`R-434`) 〔단위 2〕
+- [ ] R-434 남은 글(단위 5 #177에서 넘김): 도움말 3번에 시안 13번 글 "하루 첫 할 일은 바로 시작하기 쉬운 짧은 일로 골라요"(워밍업)와 "\"다음\" 표시가 붙은 할 일이 다음에 노치에 떠요"(`nextMarkID`)를 넣는다. 셋째 문장 "노치는 이 세 할 일을 순위가 높을수록 자주 번갈아 띄워요."를 시안대로 "…띄우고, 하루 첫 할 일은 …골라요."로 잇는다. T022에서 `HelpContentTests` 기대값과 문장 수(2~5)를 시험하고 T023에서 `HelpContent.swift`를 고친다. 도움말 3번 펼침 스냅샷이 바뀐다 〔단위 2〕
 - [ ] T025 [사람] [US1] quickstart 6-1 〔단위 2〕
 
 **확인 지점**: US1 시나리오 1~8(1·7은 앱 시험, 2·3·4는 순수 함수, 5·6은 저장 포함). 이월 답 대기 할 일은 아직 생기지 않는다.
@@ -95,6 +96,7 @@ description: "spec 005 스케줄러 작업 목록"
 - [ ] T027 [US2] `App/Sources/AppState.swift`: `launch()`·`activate()`에 판정(data-model §15), `notchMode`, 초안 비우기, 카드 답·날짜 고르기 상태. T026 PASS 〔단위 3〕
 - [ ] T028 [P] [US2] [화면 뒤] `App/Tests/MokaAppTests/ScreenStateSnapshotTests.swift`·`SettingsSnapshotTests.swift`: data-model §19의 `test_R414_carryCardTouched`, `test_R414_carryCardOverdueLast`, `test_R415_datePicker`, `test_R414_collapsedCarry`, `test_R413_taskTabDue` 라이트·다크를 확정 시안대로 쓰고 실패를 확인한다. 순위가 바뀌는 기존 할 일 탭 참조 이미지 목록을 PR에 적는다(`FR-08 R-413`, `R-414`, `R-415`, `R-433`) 〔단위 3〕
 - [ ] T029 [US2] [화면 뒤] `App/Sources/Views/CarryCardView.swift`(새, 카드와 날짜 고르기, Enter·esc), `ExpandedView.swift`·`CollapsedView.swift`(모드 분기), `TaskListTabView.swift`(이월 답 대기 상태 글자), `Sources/MokaCore/NotchStatus.swift`·`CarryText`(시안 확정 글자). T028 PASS 〔단위 3〕
+- [ ] R-434 남은 글(단위 5 #177에서 넘김): 기본 탭 하루 시작 시각 안내를 시안 13번 마지막 줄 "이 시각이 지나면 반복 할 일이 다시 대기로 돌아오고, 남은 할 일을 오늘 할지 물어요."로 바꾼다. 화면 상수로 빼서 T026에서 시험하고 T027과 함께 `BasicTabView.swift`를 고친다. 기본 탭 스냅샷(s06·s24·s25·s26)이 모두 바뀐다 〔단위 3〕
 - [ ] T030 [사람] [US2] quickstart 6-2, 6-3. 비교 페이지 `design/pr-<번호>/index.html` 〔단위 3〕
 
 **확인 지점**: US2 시나리오 1~10, SC-403, SC-404.
@@ -119,7 +121,7 @@ description: "spec 005 스케줄러 작업 목록"
 
 ## Phase 6: 단위 5 — R-434 안내 글 [화면 뒤]
 
-- [ ] T036 [P] [화면 뒤] `App/Tests/MokaAppTests/HelpContentTests.swift`·`GuideTests.swift`·`OnboardingKeyStepTests.swift`·`DecisionFieldTextTests.swift`: 확정 시안 13번 오른쪽 글자 여덟 줄, 도움말 3번 문장 수 2~5와 따옴표 안 글자가 화면 상수에 있음(spec 007 R-705). 바뀌는 스냅샷(도움말 3·6번 펼침, 안내 장 순위 장, 기본 탭 키 칸, 온보딩 키 단계, 판단 모델 칸) 목록을 PR에 적는다. 실패를 확인한다(`R-434`, spec 007 R-717) 〔단위 5〕
+- [ ] T036 [P] [화면 뒤] `App/Tests/MokaAppTests/HelpContentTests.swift`·`GuideTests.swift`·`OnboardingKeyStepTests.swift`·`DecisionFieldTextTests.swift`: 확정 시안 13번 오른쪽 글자 여덟 줄, 도움말 3번 문장 수 2~5와 따옴표 안 글자가 화면 상수에 있음(spec 007 R-705). 바뀌는 스냅샷(도움말 3·6번 펼침, 안내 장 순위 장, 기본 탭 키 칸, 온보딩 키 단계, 판단 모델 칸) 목록을 PR에 적는다. 시안 13번 글 가운데 단위 1만으로 참이 아닌 셋(도움말 3번 워밍업·"다음" 문장, 하루 시작 시각 안내)은 단위 2·3의 "R-434 남은 글"로 넘겼다(#177). 실패를 확인한다(`R-434`, spec 007 R-717) 〔단위 5〕
 - [ ] T037 [화면 뒤] `App/Sources/Views/HelpContent.swift`, `GuideCardView.swift`, `KeyFieldState.swift`, `OnboardingView.swift`, `DecisionField.swift`, `BasicTabView.swift`(하루 시작 안내). T036 PASS 〔단위 5〕
 - [ ] T038 [사람] quickstart 6-6 〔단위 5〕
 

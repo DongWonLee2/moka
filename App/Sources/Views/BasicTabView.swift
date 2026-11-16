@@ -36,13 +36,10 @@ struct BasicTabView: View {
             }
             GridRow {
                 Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])
-                HintText(text: Self.dayStartHint, isIssue: false)
+                HintText(text: "이 시각이 지나면 반복 할 일이 다시 대기로 돌아와요.", isIssue: false)
             }
         }
     }
-
-    /// 시안 005 13번 마지막 줄(R-434).
-    static let dayStartHint = "이 시각이 지나면 반복 할 일이 다시 대기로 돌아오고, 남은 할 일을 오늘 할지 물어요."
 
     /// 시안 6번처럼 `06:00`(24시간)으로 보인다. 언어·지역은 시스템 설정을 따른다.
     static let twentyFourHour: Locale = {
