@@ -6,7 +6,7 @@ public struct NotchSession: Equatable, Sendable {
     public var timer: NotchTimer
     /// 초안·도는 중·시간 끝이 가리키는 할 일.
     public var taskID: TaskID?
-    /// 고르기 커서(§5.1). 저장하지 않음.
+    /// 방금 할 일(spec 005 R-408). 바꾸기·미루기만 남기고 그날을 `memory.cursorDay`에 적는다. 저장하지 않음.
     public var previousTaskID: TaskID?
     /// running·expired 동안만 값. 저장하지 않음.
     public var run: RunInfo?
