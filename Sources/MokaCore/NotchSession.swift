@@ -269,12 +269,19 @@ extension NotchSession {
             budgetUse: button.run.budgetDay.map { BudgetUse(day: $0, seconds: quantumMin * 60) })
     }
 
-    /// 잠자기·종료(`.sleep`/`.quit`) 체크포인트. 도는 중일 때만 값이고, 할 일 상태와 타이머는 그대로다.
+    /// 잠자기·종료(`.sleep`/`.quit`) 체크포인트. 도는 중이면 둘 다, 시간 끝이면 종료만 값이다(#173, 경과 분은 고른 분).
+    /// 두 줄은 비우고, 할 일 상태와 타이머는 그대로다.
     public func lifecycleCheckpoint(_ trigger: CheckpointTrigger, _ input: SessionInput) -> StoreBatch? {
-        guard trigger == .sleep || trigger == .quit, let id = taskID, let run, case .running = ticked(input) else {
+        guard trigger == .sleep || trigger == .quit, let id = taskID, let run else { return nil }
+        let elapsed: Int
+        switch ticked(input) {
+        case .running:
+            elapsed = Checkpoint.elapsedMinutes(startedAt: run.startedAt, now: input.now, quantumMin: run.quantumMin)
+        case .expired where trigger == .quit:
+            elapsed = run.quantumMin
+        default:
             return nil
         }
-        let elapsed = Checkpoint.elapsedMinutes(startedAt: run.startedAt, now: input.now, quantumMin: run.quantumMin)
         return StoreBatch(
             newCheckpoints: [
                 NewCheckpoint(taskID: id, notes: .empty, trigger: trigger, elapsedMin: elapsed, createdAt: input.now)

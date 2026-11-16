@@ -587,7 +587,8 @@ final class AppState {
         pickIfEmpty(at: now)
     }
 
-    /// 종료(`.quit`)·잠자기(`.sleep`) 체크포인트(R-110, research R12). 도는 중일 때만 빈 두 줄로 남기고 동기로 저장한다.
+    /// 종료(`.quit`)·잠자기(`.sleep`) 체크포인트(R-110, research R12). 도는 중이면 둘 다, 시간 끝이면 종료만(#173)
+    /// 빈 두 줄로 남기고 동기로 저장한다.
     /// 할 일 상태와 타이머는 바꾸지 않는다. 종료를 미루지 않는다.
     func lifecycleCheckpoint(_ trigger: CheckpointTrigger) {
         guard let repository, let batch = session.lifecycleCheckpoint(trigger, input(at: clock.now())) else { return }

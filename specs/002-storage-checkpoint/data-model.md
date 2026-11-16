@@ -227,6 +227,7 @@ public protocol ContextStore: AnyObject {
 | 시간 끝 | `running` → `expired` | `active` 유지 | — | — | — |
 | 잠자기 | 도는 중 | 유지 | 타이머 그대로 | `sleep`(빈 두 줄) | — |
 | 종료 | 도는 중 | 유지(`active`) | — | `quit`(빈 두 줄) | — |
+| 종료 | 시간 끝(#173) | 유지(`active`) | — | `quit`(빈 두 줄, 경과 분은 고른 분) | — |
 | 재시작(앱 시작) | `active`가 남음 | `active` → `todo` | — | — | — |
 | 지움(설정 창) | 버림 아님 | → `dropped` | 노치의 할 일이면 §4.2 지움 | — | — |
 | 고침(설정 창) | 버림 아님 | 유지 | §5.8 `applyEdit` | — | — |
@@ -281,7 +282,7 @@ extension NotchSession {
     public func skip(_ notes: CheckpointNotes, _ input: SessionInput) throws(SessionError) -> SessionStep
     public func switchTask(_ notes: CheckpointNotes, _ input: SessionInput) throws(SessionError) -> SessionStep
     public func restart(_ notes: CheckpointNotes, quantumMin: Int, _ input: SessionInput) throws(SessionError) -> SessionStep
-    public func lifecycleCheckpoint(_ trigger: CheckpointTrigger, _ input: SessionInput) -> StoreBatch?   // .sleep / .quit. running일 때만
+    public func lifecycleCheckpoint(_ trigger: CheckpointTrigger, _ input: SessionInput) -> StoreBatch?   // .sleep / .quit. running일 때만(#173: .quit은 expired도)
     public func taskDropped(_ id: TaskID) -> NotchSession                       // 노치의 할 일이면 empty(nil), run nil
     public func nextMark(_ input: SessionInput) -> TaskID?                       // 할 일 탭 "다음" 표시(아래)
 }
