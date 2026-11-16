@@ -33,10 +33,16 @@ targets:
       testTargets: [MokaAppTests]
   # 화면 스냅샷 번들(ADR-0009, D4). 앱을 호스트로 쓰지 않고(TEST_HOST 없음) 뷰만 직접 컴파일한다.
   # `AppState.swift`는 앱 수명 연결 시험(#58)을 위해 함께 컴파일한다. GRDB(MokaStore)에는 기대지 않는다.
+  # 창 연결부(#153)와 설정 화면(#137)은 파일 단위로 더한다(사용자 승인 2026-11-16).
   MokaAppTests:
     type: bundle.unit-test
     platform: macOS
-    sources: [App/Sources/Views, App/Sources/AppState.swift, App/Tests/MokaAppTests]
+    sources:
+      - App/Sources/Views
+      - App/Sources/AppState.swift
+      - App/Sources/AppWindows.swift
+      - App/Sources/Settings/SettingsView.swift
+      - App/Tests/MokaAppTests
     dependencies:
       - package: Moka
         product: MokaCore
