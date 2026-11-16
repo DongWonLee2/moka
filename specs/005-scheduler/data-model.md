@@ -176,15 +176,17 @@ R-119(앱 DB를 열 수 없음): `AppStorage.repository == nil`이면 판정을 
 ```swift
 struct DayBudget: Codable, Equatable {   // 설정 키 day_budget의 JSON
     var day: LocalDay
-    var hours: Int        // Defaults.availableHoursChoices 가운데 하나
-    var usedSeconds: Int  // 쓴 시간
-    var more: Bool        // "더 할래요"를 누름
+    var minutes: Int          // 가용 시간(분). 처음 답 + 늘린 분
+    var extendedMinutes: Int  // 시작 전 화면에서 늘린 분의 합(처음 0)
+    var usedSeconds: Int      // 쓴 시간
+    var more: Bool            // "더 할래요"를 누름
 }
 ```
 
-- JSON 글자: `{"day":"2026-11-16","hours":2,"used_s":3600,"more":false}`(키 순서 고정, `JSONEncoder.outputFormatting = .sortedKeys`로 쓰면 `day, hours, more, used_s` 순. 구현 PR에서 하나로 정해 시험에 적는다).
+- JSON 글자: `{"day":"2026-11-16","extended_min":15,"minutes":135,"more":false,"used_s":3600}`(`JSONEncoder.outputFormatting = .sortedKeys`로 키 순서 고정).
+- 처음 답(R-419): 선택지 다섯은 `Defaults.availableHoursChoices`(1·2·4·6·8) × 60분. 직접 적기는 아래 "직접 적은 가용 시간". 답할 때 `minutes = 답`, `extendedMinutes = 0`, `usedSeconds = 0`, `more = false`.
 - 오늘 기록: `day == today`인 값. 아니면 없음(어제 기록은 무시하고 지우지 않는다. 다음 답이 덮어쓴다).
-- `remainingSeconds = hours × 3600 − usedSeconds`. `remainingMinutes = max(0, remainingSeconds) / 60`(내림).
+- `remainingSeconds = minutes × 60 − usedSeconds`. `remainingMinutes = max(0, remainingSeconds) / 60`(내림).
 - **작업 시간의 하루**(`budgetDay`): 작업 시간을 시작(`start`)한 하루. 그 작업 시간에서 이어 누른 "N분 더"(`restart`)는 처음 시작의 `budgetDay`를 물려받는다. `RunInfo.budgetDay`로 메모리에 둔다(진행 중 세션은 재시작에 남지 않으므로, spec 002 R-111).
 - 상한이 걸림(`capActive(day)`) = 그 하루의 기록이 있고 `!more`. 시작 전 칩과 오늘 끝은 `today`로, 시간 끝 칩과 "N분 더"는 그 작업 시간의 `budgetDay`로 본다. 보통은 둘이 같고, 하루 경계를 넘긴 작업 시간에서만 다르다.
 
@@ -192,7 +194,7 @@ struct DayBudget: Codable, Equatable {   // 설정 키 day_budget의 JSON
 - 시작(`NotchSession.start`)과 "N분 더"(`restart`)가 커밋될 때 고른 분 × 60을 `usedSeconds`에 더한다.
 - 작업 시간이 일찍 끝나면 남은 초(`endsAt − 끝난 시각`, 0 이상)를 돌려준다(뺀다): 도는 중 완료·미루기·바꾸기, 도는 중 종료(`lifecycleCheckpoint(.quit)`). 잠자기는 타이머가 계속 도는 것으로 보므로(spec 001 R-005) 돌려주지 않는다. 시간 끝까지 간 작업 시간은 돌려줄 것이 없다.
 - 비정상 종료하면 돌려받지 못해 고른 시간이 다 쓴 시간으로 남는다. 많이 세는 쪽으로 틀리고, 그날 "오늘 끝"이 일찍 올 수 있다(plan 위험 15). 소수 의견(가이드 자리)은 끝날 때 실제 초를 더하는 안이었다.
-- 지키는 성질(SC-405, spec R-421 정정): 어느 하루의 기록이든 `capActive`인 동안 `usedSeconds ≤ hours × 3600`이고, 시작·"N분 더" 때 고르는 칩은 그 작업 시간의 `budgetDay` 기록의 `remainingMinutes` 이하다. "그날 시작한 작업 시간 분 합 ≤ hours × 60"은 성립하지 않는다. 일찍 끝내고 돌려받은 시간으로 다시 시작할 수 있기 때문이다(예: 2시간에서 60분 시작 → 10분에 완료(50분 돌려받음) → 110분 시작이면 시작한 분 합은 170, 쓴 시간은 120).
+- 지키는 성질(SC-405, spec R-421 정정): 어느 하루의 기록이든 `capActive`인 동안 `usedSeconds ≤ minutes × 60`(늘린 분 포함)이고, 시작·"N분 더" 때 고르는 칩은 그 작업 시간의 `budgetDay` 기록의 `remainingMinutes` 이하다. "그날 시작한 작업 시간 분 합 ≤ hours × 60"은 성립하지 않는다. 일찍 끝내고 돌려받은 시간으로 다시 시작할 수 있기 때문이다(예: 2시간에서 60분 시작 → 10분에 완료(50분 돌려받음) → 110분 시작이면 시작한 분 합은 170, 쓴 시간은 120).
 
 하루 경계를 넘는 작업 시간은 시작한 하루(`budgetDay`)의 기록에만 더하고 돌려준다. 그 작업 시간이 하루 경계 뒤 시간 끝이 되어 누르는 "N분 더"(spec 6c)도 같은 기록에 더하고 돌려준다(새 하루에는 아직 가용 시간 기록이 없다). 이때 상한도 그 기록으로 건다: 하루 경계 뒤 시간 끝 화면의 "N분 더" 칩은 시작한 하루의 남은 분 이하로 채우고, 남은 분이 1 미만이면 "N분 더"를 끄고 이유 한 줄을 보인다(R-422의 끈 화면과 같은 모양, 문구는 시안에서 확정). 시작한 하루에 가용 시간 기록이 없거나 "더 할래요"를 눌렀으면 상한이 없다. 이 규칙은 메인 세션 가정이다(PR "가정"). 함께 본 다른 안: (1) R-421을 "같은 하루 안"으로 좁혀 하루 경계 뒤 "N분 더"는 상한 없이 둠, (3) 하루 경계 뒤 "N분 더"는 어느 하루의 쓴 시간에도 넣지 않음. 새 하루의 쓴 시간은 가용 시간 답을 쓸 때 0에서 시작한다(가정, research R10). 새 하루의 질문은 그 작업 시간이 끝나 노치가 빈 뒤에야 뜨므로(R-417) 경계 뒤 몫을 담을 기록이 아직 없기 때문이다.
 
@@ -200,7 +202,24 @@ struct DayBudget: Codable, Equatable {   // 설정 키 day_budget의 JSON
 - `QuantumChip.cap(chipMin:remainingMinutes:)`: `capActive`이면 `min(chipMin, remainingMinutes)`. 1 미만이면 시작할 수 없음(§12 오늘 끝).
 - 시작 전 칩 처음 값 순서: `lastChip[id]` → 설정 기본 작업 시간 → 남은 예상 시간이 더 짧으면 그 값(1분 이상) → 남은 분이 더 짧으면 그 값.
 - 시간 끝 칩 처음 값: 추가 시간(#151) → 남은 분이 더 짧으면 그 값.
-- 남은 분보다 긴 프리셋은 고를 수 없다(`QuantumChipSegment.enabled = false`). 직접 입력이 남은 분보다 크면 `QuantumChip.CustomIssue.aboveRemaining(minutes)`이고 시작이 꺼진다. 문구는 확정 시안 글자(§19).
+- **시작 전 화면**(사용자 결정 2026-11-16): 남은 분보다 긴 프리셋도 누를 수 있다. 남은 분보다 긴 칩(프리셋 또는 직접 입력)이 고른 값이면 `extendNeeded = chipMin − remainingMinutes`(분, 1 이상)이고, 시작 버튼 자리에 늘리기 확인 한 줄을 보인다(아래 "늘리기").
+- **시간 끝 화면**: 늘리기가 없다. 남은 분보다 긴 프리셋은 고를 수 없고(`QuantumChipSegment.enabled = false`), 직접 입력이 남은 분보다 크면 `QuantumChip.CustomIssue.aboveRemaining(minutes)`이고 "N분 더"가 꺼진다. 문구는 확정 시안 7번 글자(§19).
+
+**늘리기**(R-421, 사용자 결정 2026-11-16. 방식은 메인 세션 가정, plan "사람이 볼 결정"):
+- 조건: 시작 전 화면(초안), `capActive(today)`, `remainingMinutes ≥ 1`, 고른 칩 > `remainingMinutes`. 남은 분이 0이면 모드가 오늘 끝(§12-5)이라 초안이 없고 늘리기도 없다. 그때는 "더 할래요"다.
+- 확인 줄: 제목 "오늘 시간을 {extendNeeded}분 늘려서 {chipMin}분 할까요?", 설명 "오늘 남은 시간은 {remainingMinutes}분이에요. 늘리면 오늘 정한 시간이 {새 가용 시간}이 돼요.", 버튼 "{remainingMinutes}분만 할래요"와 "늘리고 시작 ↵"(확정 대기 시안 6번 글자, `BudgetText`).
+- "늘리고 시작": 오늘 기록에 `minutes += extendNeeded`, `extendedMinutes += extendNeeded`를 쓰고, 그 쓰기가 성공하면 그 칩으로 시작한다(시작 커밋이 `usedSeconds`에 칩 × 60을 더함). 늘린 뒤 `remainingMinutes ≥ chipMin`이라 `usedSeconds ≤ minutes × 60`이 지켜진다. 늘리기 쓰기가 실패하면 시작하지 않고 확인 줄에 다시 해 달라는 한 줄을 보인다.
+- "{N}분만 할래요": 칩을 `remainingMinutes`로 되돌리고 확인 줄을 닫는다. 시작하지 않는다.
+- Enter: 확인 줄이 열린 동안 Enter는 "늘리고 시작"이다. 확인 줄이 닫혀 있고 칩이 남은 분 이하이면 지금처럼 시작이다. 3초 뒤 자동 시작(R-410)은 확인 줄이 열린 동안 돌지 않는다(늘리기는 사용자가 눌러야 한다).
+- "더 할래요"와 다른 점: 늘린 분만큼만 커지고 상한(`capActive`)은 그대로라, 늘린 시간을 다 쓰면 다시 오늘 끝이 온다.
+- 시간 끝 화면(시안 7·8번)과 하루 경계 뒤 "N분 더"(`budgetDay`)에는 늘리기를 두지 않는다. 7·8번은 사람이 그대로 확정했고, 오늘 끝과 겹친 화면은 R-422 결정(debate 3:0, "N분 더"만 끔)을 지키며 그 뒤 "오늘 끝"의 "더 할래요"가 이어 가는 길이다.
+- 행동 로그: 늘리기는 `decisions_log`에 줄을 남기지 않는다. 가용 시간 답·"더 할래요"와 같은 규칙이다(R-416: 줄은 할 일 하나에 대한 버튼·카드 입력이고, 늘리기는 오늘 가용 시간을 바꾸는 입력이다). 늘린 양은 `day_budget.extended_min`에 남는다.
+
+**직접 적은 가용 시간**(R-419, 사용자 결정 2026-11-16. 단위·범위·문구는 에이전트 가정):
+- 선택지 다섯 뒤 "직접…" 칸. 누르면 숫자 칸이 열리고 포커스가 간다. 단위는 시간이고 소수 한 자리 0.5 단위만 받는다(예: 1.5 = 90분).
+- 범위: `Defaults.customBudgetMinutesRange` = 30…960분(0.5~16시간), 단위 `Defaults.customBudgetStepMinutes` = 30분.
+- 판정 `BudgetInput.parse(_ text: String) -> Result<Int, BudgetInputIssue>`: 앞뒤 공백 제거, 쉼표 소수점 받지 않음. 오류 넷과 문구(확정 대기 시안 4-3): `.notNumber` "시간은 숫자로 적어 주세요. 예: 1.5", `.notHalfHour` "30분 단위로 적어 주세요. 예: 2 또는 2.5", `.belowMin` "30분(0.5)부터 정할 수 있어요", `.aboveMax` "16시간까지 정할 수 있어요". 오류거나 비면 "정하기"가 꺼지고 Enter도 답하지 않는다.
+- 답은 "정하기" 또는 Enter. 선택지를 누르면 칸은 닫히고 그 선택지로 바로 답한다.
 
 ## §12 노치 모드와 오늘 끝 (R-413, R-414, R-419, R-422)
 
@@ -219,7 +238,7 @@ struct DayBudget: Codable, Equatable {   // 설정 키 day_budget의 JSON
 - 2에서 시간 끝이고 그 작업 시간의 `budgetDay`가 `capActive`이고 그 기록의 `remainingMinutes < 1`이면 "N분 더"를 끄고 이유 한 줄을 보인다(`ExpiredDayEnd`). 직접 입력 칸은 열 수 없다. 이때 완료·미루기·바꾸기의 체크포인트 계기는 `day_end`다(research R11). 버튼 처리 뒤 모드는 `budgetDay == today`면 5, 하루 경계를 넘긴 작업 시간이면 새 하루의 표(보통 3이나 4)다.
 - 오늘 끝 판정은 고르기보다 먼저다. 버튼 처리 순서를 못박는다: (1) 버튼의 `StoreBatch` 커밋 → (2) 남은 초 돌려주기(§11, `day_budget` 쓰기) → (3) 모드 판정(§12 표) → (4) 모드가 6일 때만 `pickIfEmpty`의 고르기. (2)를 (3) 뒤에 하면 일찍 끝내 돌려받을 시간이 있는데도 오늘 끝이 뜰 수 있다(SC-405).
 - "더 할래요": `more = true`를 쓰고 모드 6으로 고른다. 쓰기가 실패하면 모드 5에 머물고 다시 해 달라는 한 줄을 보인다.
-- 가용 시간 답: `DayBudget(day: today, hours: h, usedSeconds: 0, more: false)`를 쓴다. 실패하면 질문에 머문다.
+- 가용 시간 답: `DayBudget(day: today, minutes: m, extendedMinutes: 0, usedSeconds: 0, more: false)`를 쓴다(선택지면 시간 × 60, 직접 적기면 §11의 분). 실패하면 질문에 머문다.
 - 하루 경계를 지난 활성화에서 2이면(도는 중) 판정은 돌고(§9, 진행 중 할 일에 표시) 화면은 그대로다. 버튼으로 빈 상태가 되면 3부터 본다(R-417).
 
 ## §13 설정 키 (승인 항목 5)
@@ -230,7 +249,7 @@ struct DayBudget: Codable, Equatable {   // 설정 키 day_budget의 JSON
 |---|---|---|---|
 | `auto_start` | `"true"` / 없음 | 꺼짐 | 기본 탭(R-410) |
 | `carry_judged_at` | `UTCTimestamp` 글자 | 없음(처음 판정) | 판정 쓰기(§9). `TaskRepository`만 다룸, `SettingsStore`는 거부 |
-| `day_budget` | §11 JSON | 없음 | 가용 시간 답, 쓴 시간, "더 할래요" |
+| `day_budget` | §11 JSON(가용 시간은 분, 늘린 분 따로) | 없음 | 가용 시간 답(직접 적기 포함), 늘리기, 쓴 시간, "더 할래요" |
 | `last_start_day` | `LocalDay` 글자 | 없음 | 시작 커밋(§6) |
 
 `off_days`와 `default_pause_min`은 Issue #171이다.
@@ -247,6 +266,8 @@ struct DayBudget: Codable, Equatable {   // 설정 키 day_budget의 JSON
 | `rotationMinWeight` | 0.05 | priority 0 후보도 굶지 않게(spec Edge Cases). priority 크기(대략 0~3)의 작은 값으로 잡은 에이전트 값 |
 | `consecutiveCap` | 2 | PRD 정책 2 |
 | `availableHoursChoices` | `[1, 2, 4, 6, 8]` | spec R-419 |
+| `customBudgetMinutesRange` | `30...960` | spec R-419 직접 적기(사용자 결정 2026-11-16), 범위는 에이전트 가정 |
+| `customBudgetStepMinutes` | 30 | 같음 |
 | `autoStartDelay` | 3(초) | spec R-410 |
 
 이전 값은 모두 없음(새 값)이다. 질문 임계값은 `questions.json`에 그대로 두고 여기 두지 않는다.
@@ -272,7 +293,7 @@ struct DayBudget: Codable, Equatable {   // 설정 키 day_budget의 JSON
 줄마다 `scheduler_choice`:
 - 완료·미루기·바꾸기: `memory.pickedBy`(그 할 일을 노치에 띄운 규칙). "다른 할 일"로 초안을 바꾸면 바꾸기 전 `pickedBy`를 그대로 둔다(R-411). 빠른 입력으로 넣어 바로 초안이 된 할 일은 그 앞 `pickedBy`, 없으면 `weighted_rotate_v1`(가정, research R12).
 - 이월 답: `carry_card_v1`.
-- 가용 시간 답, "더 할래요": 줄 없음(R-416).
+- 가용 시간 답(직접 적기 포함), "더 할래요", 늘리기: 줄 없음(R-416, §11 늘리기).
 
 `ValueTypeTests`의 `allCases` 단언은 새 값을 끝에 더하는 것으로 고친다(값을 빼지 않는다, 계약 덧붙이기).
 
@@ -288,7 +309,7 @@ struct DayBudget: Codable, Equatable {   // 설정 키 day_budget의 JSON
 
 화면 글자는 확정 시안 `~/Dev/ai-platform/projects/moka/design/005-mockup.html`(저장소 밖)의 글자를 그대로 쓴다. 값을 끼워 넣는 글자(남은 개수, 남은 분, 시간, D+N)는 MokaCore(`NotchStatus.swift` 무늬, #42)에, 고정 글자는 뷰 상수에 둔다.
 
-- MokaCore 글자 함수: `CarryText.reason(_:)`, `CarryText.left(_:)`, `BudgetText.capNote(minutes:expired:)`, `BudgetText.customAbove(minutes:)`, `BudgetText.dayEndOff(hours:)`, `BudgetText.dayEndTitle(hours:)`, `NotchStatus.label`의 새 경우("오늘 정하기", "날짜 바꾸기", "오늘 끝").
+- MokaCore 글자 함수: `CarryText.reason(_:)`, `CarryText.left(_:)`, `BudgetText.capNote(minutes:expired:)`, `BudgetText.customAbove(minutes:)`(시간 끝만), `BudgetText.extendTitle(extra:chip:)`, `BudgetText.extendDetail(remaining:newTotal:)`, `BudgetText.keepRemaining(minutes:)`, `BudgetInputIssue` 문구 넷, `BudgetText.dayEndOff(minutes:)`, `BudgetText.dayEndTitle(minutes:)`, `NotchStatus.label`의 새 경우("오늘 정하기", "날짜 바꾸기", "오늘 끝").
 - 뷰 상수: `CarryText` 버튼 셋, 질문 문구, 오늘 끝 문구, "더 할래요", 접힌 노치 글자, 할 일 탭 "오늘 정할 일"과 "내일", 기본 탭 자동 시작 칸.
 
-스냅샷 이름(라이트·다크): `test_R414_carryCardTouched`, `test_R414_carryCardOverdueLast`, `test_R415_datePicker`, `test_R419_askBudget`, `test_R421_draftCapped`, `test_R421_customAboveRemaining`, `test_R409_expiredCapped`, `test_R422_expiredDayEnd`, `test_R422_dayEnd`, `test_R414_collapsedCarry`, `test_R419_collapsedAskBudget`, `test_R422_collapsedDayEnd`, `test_R413_taskTabDue`, `test_R423_taskTabTomorrow`, `test_R410_basicTabAutoStart`. 확정 시안 번호와 같은 순서다.
+스냅샷 이름(라이트·다크): `test_R414_carryCardTouched`, `test_R414_carryCardOverdueLast`, `test_R415_datePicker`, `test_R419_askBudget`, `test_R419_askBudgetCustom`, `test_R419_askBudgetCustomInvalid`, `test_R421_draftCapped`, `test_R421_extendConfirm`, `test_R409_expiredCapped`, `test_R422_expiredDayEnd`, `test_R422_dayEnd`, `test_R414_collapsedCarry`, `test_R419_collapsedAskBudget`, `test_R422_collapsedDayEnd`, `test_R413_taskTabDue`, `test_R423_taskTabTomorrow`, `test_R410_basicTabAutoStart`. 확정 시안 번호와 같은 순서다.

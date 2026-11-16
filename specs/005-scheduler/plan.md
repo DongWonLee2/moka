@@ -55,9 +55,9 @@ spec 확인 질문 셋과 남은 결정 넷은 2026-11-13 debate와 사람 결�
 | 1 | 스키마: `tasks.carry_count`, `tasks.due_decision`, 마이그레이션 `v4_tasks_carry`, `schema/moka-schema.sql`, pytest 계약 | data-model §2(`due_decision`은 `INTEGER` 0·1, Q6-A) | 2 | [contracts/storage-values-005.md](contracts/storage-values-005.md) §1 |
 | 2 | 행동 로그 사용자 행동 값 `carry_today`·`carry_drop`·`carry_move` | data-model §10·§16 | 1(열거형), 2(저장) | 같은 문서 §2 |
 | 3 | 선택 규칙 이름 `weighted_rotate_v1`·`warmup_v1`·`carry_card_v1` | data-model §16 | 1 | 같은 문서 §3 |
-| 4 | `moka-sim` 입력 이벤트 셋(`carry`, `budget`, `more`)과 출력 키, 새 불변식, 기존 storage golden 갱신 | 새 이벤트가 있을 때만 켬(Q3-C) | 1 | [contracts/moka-sim-v1-additions-005.md](contracts/moka-sim-v1-additions-005.md) |
-| 5 | 설정 키 `auto_start`, `carry_judged_at`, `day_budget`, `last_start_day` | data-model §13 | 2·4·6 | storage-values §5 |
-| 6 | `Defaults.swift` 새 값 아홉(이월 가중 0.5, 워밍업 0.8·30분, 창 3, 순위 몫 5:3:2, 최소 몫 0.05, 연속 상한 2, 가용 시간 1·2·4·6·8, 자동 시작 3초) | data-model §14 | 1(로직 값), 4·6(화면 값) | 없음 |
+| 4 | `moka-sim` 입력 이벤트 셋(`carry`, `budget{minutes}`, `more`)과 기존 `start`의 `extend` 필드(늘리기), 출력 키(`budget`은 분과 늘린 분), 새 불변식, 기존 storage golden 갱신 | 새 이벤트가 있을 때만 켬(Q3-C) | 1 | [contracts/moka-sim-v1-additions-005.md](contracts/moka-sim-v1-additions-005.md) |
+| 5 | 설정 키 `auto_start`, `carry_judged_at`, `day_budget`(가용 시간 분·늘린 분·쓴 초·"더 할래요"), `last_start_day` | data-model §13 | 2·4·6 | storage-values §5 |
+| 6 | `Defaults.swift` 새 값 열하나(이월 가중 0.5, 워밍업 0.8·30분, 창 3, 순위 몫 5:3:2, 최소 몫 0.05, 연속 상한 2, 가용 시간 1·2·4·6·8, 직접 적기 범위 30~960분과 단위 30분, 자동 시작 3초) | data-model §14 | 1(로직 값), 4·6(화면 값) | 없음 |
 | 7 | 모듈 경계: `TaskRepository` 프로토콜에 이월 판정 전용 `lastCarryJudgment()`·`applyCarryJudgment(_:judgedAt:)` 둘을 더함. `carry_judged_at` 키는 `TaskRepository` 구현(GRDB·메모리)만 읽고 쓰고, `SettingsStore` 구현은 이 키를 거부함. `StoreBatch`·`apply`·`SettingsStore` 프로토콜 모양과 새 타깃은 그대로 | Q1-B | 2 | data-model §9 |
 
 바꾸지 않는 것: 의존성, CI, `Package.swift` 타깃, `questions.json`(워밍업 0.8은 `Defaults`, debate 3:0), `DecisionProvider`, `decisions_log`·`checkpoints`·`settings` 표 모양, 판단 입력.
@@ -91,6 +91,8 @@ spec 확인 질문 셋과 남은 결정 넷은 2026-11-13 debate와 사람 결�
 - 카드 순서는 마감 순, 남은 개수는 지금 것 포함(research R13).
 - 빠른 입력 초안의 로그 이름(research R12).
 - `rotationMinWeight` 0.05는 에이전트 값(data-model §14).
+- 가용 시간 직접 적기(사용자 결정 2026-11-16)의 칸 모양·단위·범위·문구: "직접…" 칸, 시간 단위 0.5 단위, 0.5~16시간, 오류 문구 넷(data-model §11, research R19).
+- 시작 전 늘리기(사용자 결정 2026-11-16)의 방식: 확인 한 줄 뒤 모자란 분만큼 오늘 가용 시간을 늘리고 시작, 시간 끝 화면에는 늘리기 없음, 늘리기는 행동 로그 없음(data-model §11, research R18). 메인 세션 가정이고 PR "사람이 볼 결정"에 올림.
 - "내일" 표시는 진행 중 할 일을 쌓지 않음(data-model §18).
 
 ## Project Structure
@@ -174,7 +176,7 @@ App/Tests/MokaAppTests/ AppSchedulerTests(새), AppCarryTests(새), AppBudgetTes
 | 1 | 순수 스케줄러 로직과 `moka-sim`: 후보 거르기, 가중 순환·연속 상한·마무리·워밍업, aging, 남은 예상 시간, 이월 판정·답, 가용 시간·칩 상한·오늘 끝, 노치 모드, 로그 값 열거형, 시뮬레이터 이벤트·출력·불변식, 기존 storage golden 갱신 | R-401~R-409, R-411, R-412(로직), R-415·R-416(로직), R-419~R-422(로직), R-431, R-432 | 2·3·4·6 | 아니오 | 없음 |
 | 2 | 스키마와 이월 판정 저장, 앱 고르기 연결: `v4_tasks_carry`, 스냅샷, pytest, `TaskRepository` 이월 판정 읽기·쓰기와 경계 시험, 두 열 읽기·쓰기, 앱이 새 고르기·워밍업·aging·"다음" 표시를 씀, 판정·답 함수(활성화에는 아직 걸지 않음) | R-402·R-403·R-406·R-408(앱), R-412·R-413(저장), R-415·R-416(저장), R-434("다음" 표시), SC-406 | 1·2·5·7 | 아니오 | 1 |
 | 3 | 이월 카드 화면: 카드, 날짜 고르기, 접힌 노치 표시, 할 일 탭 이월 답 대기, "다른 할 일"·순위에서 뺌, 활성화 연결, 진행 중 할 일 흐름 | R-412(앱), R-413, R-414, R-415, R-417, R-433 | 없음 | 예(005 시안 1~3·10-1·11번) | 2 |
-| 4 | 가용 시간 질문과 오늘 끝: 질문, 쓴 시간, 칩 상한과 막는 문구, 오늘 끝, "더 할래요", 시간 끝 겹침과 `day_end` | R-409(앱), R-419~R-422, R-433 | 5·6 | 예(005 시안 4~9·10-2·10-3번) | 3 |
+| 4 | 가용 시간 질문과 오늘 끝: 질문과 직접 적기, 쓴 시간, 칩 상한, 시작 전 늘리기 확인, 시간 끝 막는 문구, 오늘 끝, "더 할래요", 시간 끝 겹침과 `day_end` | R-409(앱), R-419~R-422, R-433 | 5·6 | 예(005 시안 4~9·10-2·10-3번) | 3 |
 | 5 | R-434 안내 글: 도움말 3·6번, 안내 장 순위 장, 키 칸, 온보딩 키 단계, 판단 모델 칸 셋, 하루 시작 안내 | R-434 | 없음 | 예(005 시안 13번) | 시안 확정. 단위 1과 이어 병합(단위 5가 병합 가능해야 단위 1 병합) |
 | 6 | 자동 시작과 "내일" 표시(밀리면 먼저 뺌) | R-410, R-423 | 5·6 | 예(005 시안 11·12번) | 4 |
 
