@@ -34,7 +34,6 @@ final class SnapshotSanityTests: XCTestCase {
         XCTAssertNil(SnapshotSanity.notchBoardIssue(light: light, dark: dark, board: Self.board))
     }
 
-    /// 그린 것은 판 안에서만 센다(#51). 판 밖에 테마와 무관한 점이 있어도 판 안이 비었으면 걸린다.
     func test_notchBoardIssue_ignoresDrawingOutsideBoard() throws {
         let (light, dark) = try render(
             VStack(spacing: 20) {

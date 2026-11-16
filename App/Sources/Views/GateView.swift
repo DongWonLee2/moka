@@ -50,7 +50,6 @@ enum GateDisplay {
         wanted && !isIllustration
     }
 
-    /// 안내 장 그림에서는 키보드 탐색을 켜도 Tab이 버튼에 닿지 않게 포커스를 뗀다(#162).
     static func removesButtonFocus(isIllustration: Bool) -> Bool {
         isIllustration
     }

@@ -2,8 +2,6 @@ import AppKit
 import MokaCore
 import SwiftUI
 
-// 설정·온보딩 창의 앱 연결부. 앱 시험 번들이 함께 컴파일해 창 열기·닫기 연결을 시험한다(#153).
-
 /// 설정 창을 앞으로 올린다. 노치 패널은 건드리지 않는다(SC-003).
 @MainActor
 enum SettingsWindowRaiser {

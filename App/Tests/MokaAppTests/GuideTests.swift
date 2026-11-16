@@ -175,7 +175,6 @@ final class GuideTests: XCTestCase {
         XCTAssertFalse(GateDisplay.showsEditableField(phase: .closed, isIllustration: false))
     }
 
-    /// 키보드 탐색을 켜도 그림 속 버튼에 Tab이 닿지 않는다(#162). 실제 노치 버튼은 그대로 둔다.
     func test_R710_illustrationButtonsTakeNoKeyboardFocus() {
         XCTAssertTrue(GateDisplay.removesButtonFocus(isIllustration: true))
         XCTAssertFalse(GateDisplay.removesButtonFocus(isIllustration: false))

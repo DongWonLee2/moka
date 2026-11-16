@@ -41,7 +41,6 @@ struct BasicTabView: View {
         }
     }
 
-    /// 분 칸 폭. 기본 탭과 온보딩이 같이 쓴다(#167).
     static let minutesFieldWidth: CGFloat = 52
 
     /// 시안 6번처럼 `06:00`(24시간)으로 보인다. 언어·지역은 시스템 설정을 따른다.

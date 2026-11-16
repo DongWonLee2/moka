@@ -3,7 +3,6 @@ import MokaCore
 import SwiftUI
 import XCTest
 
-/// 창 열기·닫기 연결부(ADR-0012, #153)와 설정 창 탭 요청 연결(#137). 실제 앱 정책은 바꾸지 않고 기록만 한다.
 @MainActor
 final class AppWindowsTests: XCTestCase {
     private final class PolicyRecorder {
