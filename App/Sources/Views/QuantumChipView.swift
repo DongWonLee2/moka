@@ -47,6 +47,7 @@ struct QuantumChipView: View {
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(selected ? .isSelected : [])
+        .illustrationUnfocusable()
     }
 }
 

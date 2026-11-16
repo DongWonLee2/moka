@@ -50,6 +50,11 @@ enum GateDisplay {
         wanted && !isIllustration
     }
 
+    /// 안내 장 그림에서는 키보드 탐색을 켜도 Tab이 버튼에 닿지 않게 포커스를 뗀다(#162).
+    static func removesButtonFocus(isIllustration: Bool) -> Bool {
+        isIllustration
+    }
+
     /// 안내 장 그림에서는 읽기만 하는 칸을 그려 Tab으로 들어갈 입력 칸을 두지 않는다.
     static func showsEditableField(phase: GatePhase, isIllustration: Bool) -> Bool {
         phase == .asking && !isIllustration
@@ -133,10 +138,12 @@ struct GateView: View {
                 HStack(spacing: 6) {
                     Button(GateDisplay.skip, action: input.onSkip)
                         .buttonStyle(NotchButtonStyle(kind: .ghost))
+                        .illustrationUnfocusable()
                     Spacer(minLength: 0)
                     Button(action: submit) { ButtonLabel(text: GateDisplay.submit, shortcut: "↵") }
                         .buttonStyle(NotchButtonStyle(kind: .primary))
                         .disabled(trimmed.isEmpty)
+                        .illustrationUnfocusable()
                 }
                 .padding(.top, 6)
             }
@@ -230,6 +237,25 @@ struct KeyNoticeLine: View {
             Spacer(minLength: 0)
             Button(GateDisplay.keyNoticeButton, action: onOpen)
                 .buttonStyle(NotchButtonStyle(kind: .ghost))
+        }
+    }
+}
+
+extension View {
+    /// 안내 장 그림 안의 버튼이면 키보드 포커스를 뗀다(spec 007 R-710, #162). 실제 노치에서는 바꾸지 않는다.
+    func illustrationUnfocusable() -> some View {
+        modifier(IllustrationUnfocusable())
+    }
+}
+
+private struct IllustrationUnfocusable: ViewModifier {
+    @Environment(\.isNotchIllustration) private var isIllustration
+
+    func body(content: Content) -> some View {
+        if GateDisplay.removesButtonFocus(isIllustration: isIllustration) {
+            content.focusable(false)
+        } else {
+            content
         }
     }
 }
