@@ -143,7 +143,7 @@
 - **Decision**: `tuning/tests/test_schema_contract.py`를 더한다. `schema/moka-schema.sql`을 파이썬 `sqlite3` 메모리 DB에 실행하고, `decisions_log`의 열 이름 집합이 R5 목록과 같은지, 판단 칸이 모두 NULL인 가짜 줄과 공급자만 있는 폴백 줄(`provider = 'fallback'`, 나머지 NULL)을 넣을 수 있는지, 공급자 없이 다른 판단 칸이나 `model_snapshot`이 있는 줄이 거부되는지 본다. 새 파이썬 의존성은 없다(표준 라이브러리).
 - `decisions_log` 밖 표의 CHECK(`tasks.cycle_day` 짝 등)는 Swift 시험이 덮으므로 pytest에 두지 않는다(Q2e, 3:0). ADR-0004가 pytest에 정한 범위는 Swift–Python 공유 계약인 튜닝 표다.
 - **Rationale**: ADR-0004 "pytest는 같은 `schema/moka-schema.sql`로 가짜 SQLite를 만들고 튜닝 스크립트가 읽는 열이 있는지 확인한다". spec 001 research R2가 "튜닝 테이블이 생기는 spec에서"로 미뤘다.
-- 오류 주입: 마이그레이션에서 `decisions_log` 열 하나를 지우면 Swift 스냅샷 시험과 이 pytest가 함께 FAIL해야 한다(ADR-0004 결정 검증, quickstart 3).
+- 오류 주입: 두 검사는 서로 다른 짝을 본다. Swift 스냅샷 시험은 마이그레이션 ↔ `schema/moka-schema.sql`을, 이 pytest는 스냅샷 파일 ↔ 열 계약(R5)을 비교한다. 마이그레이션에서만 `decisions_log` 열 하나를 지우면 Swift 스냅샷 시험이 FAIL하고, 스냅샷 파일까지 같이 고치면 이 pytest가 FAIL한다. 어느 단계에서도 열을 지운 변경이 두 검사를 함께 통과하지 못한다(ADR-0004 결정 검증, quickstart 3).
 - 확인한 것: F2·F5를 반영한 SQL(data-model §7)을 macOS 파이썬 `sqlite3`(SQLite 3.54.0) 메모리 DB에서 실행해 CHECK 21건(허용·거부 기대값)·외래 키 동작과 `trigger` 열 이름이 따옴표 없이 쓰이는지 확인했다(2026-10-30, 버리는 스크립트, 21/21 PASS). 리눅스 CI의 SQLite 버전에서는 미확인이다.
 
 ## R17. 범위 결정과 기각한 안 (범위 토론 2026-10-29, 사용자 2026-10-30)
