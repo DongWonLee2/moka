@@ -1,8 +1,9 @@
 import Foundation
 
-/// storage 모드(contracts/moka-sim-v1-additions.md, spec 003 덧붙임은 moka-sim-v1-additions-003.md). 앱과 같은
-/// MokaCore 함수(`NotchSession`, `PriorityRotateRule`, `RecurrenceReset`, `LaunchRecovery`, `TaskWriteRules`,
-/// `SessionCommit`, `ScoreRules`)만 부르고 저장은 메모리 저장소다.
+/// storage 모드(contracts/moka-sim-v1-additions.md, spec 003 덧붙임은 moka-sim-v1-additions-003.md, spec 005 덧붙임은
+/// moka-sim-v1-additions-005.md). 앱과 같은 MokaCore 함수(`NotchSession`, `SchedulerPick`, `RecurrenceReset`,
+/// `LaunchRecovery`, `CarryJudgment`, `CarryAnswer`, `DayBudget`, `NotchMode`, `TaskWriteRules`, `SessionCommit`,
+/// `ScoreRules`)만 부르고 저장은 메모리 저장소다.
 extension SimRunner {
     /// 가짜 공급자 `fake`의 기준 모델 ID. 질문 파일 `models`를 거치지 않고 직접 받는다(spec 006 research R14).
     public static let fakeBaseModel = "jev-1.13.0"
@@ -28,27 +29,36 @@ extension SimRunner {
         if let dayStart = scenario.dayStart {
             try storing(seq: nil) { try CoreSettings.writeDayStart(dayStart, to: settings) }
         }
+        // 시작 직후의 이월 판정(대상 없음)은 첫 이벤트 시각에 판정 시각만 남긴다(data-model §15).
+        var day = SimDayState(
+            scheduled: scenario.events.contains { $0.kind.turnsOnSchedule },
+            carryJudgedAt: scenario.events.first?.at)
 
-        // 시작 직후: 저장소 비어 있음, 노치 빈 상태, 하루 판정 한 번(대상 없음).
         var previous = SimStorageState(session: .initial, tasks: [], checkpoints: [], decisions: [])
         var output = ""
         for event in scenario.events {
             var step = StorageEvent(
                 event: event, repository: repository, scores: scores, questions: questions, hasKey: hasKey,
-                settings: settings, calendar: calendar)
+                settings: settings, calendar: calendar, day: day)
             let session = try step.run(previous.session)
             hasKey = step.hasKey
+            day = step.day
+            let schedule = day.scheduled ? try step.schedule(session) : nil
             let state = try storing(seq: event.seq) {
                 SimStorageState(
                     session: session, tasks: try repository.tasks(), checkpoints: try repository.checkpoints(),
-                    decisions: try repository.decisions())
+                    decisions: try repository.decisions(), schedule: schedule)
             }
             if let violation = checkStorageInvariant(state, previous: previous, at: event.at, seq: event.seq) {
                 throw violation
             }
+            if let reason = eventViolation(event, state, previous: previous) {
+                throw invariantViolation(reason, seq: event.seq)
+            }
             let judgment =
                 showsJudgment
-                ? SimJudgmentFields(order: PriorityOrder.order(try step.input()).map(\.id), hasKey: hasKey) : nil
+                ? SimJudgmentFields(order: PriorityOrder.order(try step.input(session)).map(\.id), hasKey: hasKey)
+                : nil
             output += SimOutput.storageLine(event, state: state, previous: previous, judgment: judgment)
             previous = state
         }
@@ -93,8 +103,56 @@ extension SimRunner {
                 return "할 일 \(task.id)의 skip_count·streak가 음수다"
             }
         }
-        return appendOnlyViolation("체크포인트", state.checkpoints, previous.checkpoints)
+        return scheduleViolation(state)
+            ?? appendOnlyViolation("체크포인트", state.checkpoints, previous.checkpoints)
             ?? appendOnlyViolation("로그", state.decisions, previous.decisions)
+    }
+
+    /// spec 005 새 불변식(켜짐일 때만).
+    private static func scheduleViolation(_ state: SimStorageState) -> String? {
+        guard let schedule = state.schedule else { return nil }
+        if let session = state.session, case .empty = session.timer,
+            let id = session.taskID, state.tasks.contains(where: { $0.id == id && $0.dueDecision })
+        {
+            return "빈 상태인데 notch_task가 이월 답 대기다"
+        }
+        if schedule.mode.clearsDraft, let session = state.session, session.timer != .empty(draft: nil) {
+            return "이월 카드·가용 시간 질문·오늘 끝인데 타이머가 빈 상태가 아니다"
+        }
+        if let budget = schedule.budget, !budget.more, budget.usedSeconds > budget.minutes * 60 {
+            return "더 할래요 전인데 쓴 시간이 가용 시간보다 크다"
+        }
+        return nil
+    }
+
+    /// 이벤트에 따라 붙는 spec 005 불변식: 이월 답은 로그 한 줄, 가용 시간 답·더 할래요·늘리기는 로그 없음.
+    private static func eventViolation(_ event: SimEvent, _ state: SimStorageState, previous: SimStorageState)
+        -> String?
+    {
+        let newDecisions = state.decisions.dropFirst(previous.decisions.count)
+        let newCheckpoints = state.checkpoints.count - previous.checkpoints.count
+        switch event.kind {
+        case .carry:
+            guard newDecisions.count == 1, let line = newDecisions.first, newCheckpoints == 0,
+                [.carryToday, .carryDrop, .carryMove].contains(line.userAction), line.schedulerChoice == .carryCardV1
+            else { return "carry 이벤트가 이월 답 로그 한 줄만 남기지 않았다" }
+        case .budget, .more:
+            guard newDecisions.isEmpty, newCheckpoints == 0 else { return "\(event.kind.name)가 로그나 체크포인트를 남겼다" }
+        case .start(_, extend: true):
+            guard newDecisions.isEmpty else { return "늘리기가 로그를 남겼다" }
+            guard let today = state.schedule?.today, let chip = state.session?.run?.quantumMin,
+                let before = DayBudget.record(previous.schedule?.budget, for: today),
+                let after = DayBudget.record(state.schedule?.budget, for: today)
+            else { return "늘리기 전후의 오늘 기록이 없다" }
+            let extra = chip - before.remainingMinutes
+            guard after.minutes == before.minutes + extra, after.extendedMinutes == before.extendedMinutes + extra
+            else {
+                return "늘린 가용 시간이 칩 − 남은 분과 다르다"
+            }
+        default:
+            break
+        }
+        return nil
     }
 
     /// 줄 수는 줄지 않고, 이전 줄은 그대로이며, 이벤트 하나는 최대 한 줄을 더한다.
@@ -118,6 +176,17 @@ extension SimRunner {
     }
 }
 
+/// 이벤트 사이에 남는 스케줄러 값. 앱에서는 설정 키(`carry_judged_at`, `day_budget`, `last_start_day`)와
+/// 실행 메모리(`revertedIDs`)다(data-model §9·§13). quit·relaunch를 넘어 남고, `revertedIDs`만 시작마다 새로 채운다.
+private struct SimDayState {
+    /// 새 이벤트(`carry`·`budget`·`more`)가 있어 이월·가용 시간이 켜졌다(Q3-C).
+    let scheduled: Bool
+    var carryJudgedAt: Date?
+    var budget: DayBudget?
+    var lastStartDay: LocalDay?
+    var revertedIDs: Set<TaskID> = []
+}
+
 /// 이벤트 하나를 storage 모드 세션에 적용한다(계약 "단계 × 이벤트").
 private struct StorageEvent {
     let event: SimEvent
@@ -128,6 +197,7 @@ private struct StorageEvent {
     var hasKey: Bool
     let settings: InMemorySettingsStore
     let calendar: Calendar
+    var day: SimDayState
 
     private var defaultQuantumMin: Int { QuantumSettings.readDefault(from: settings) }
     private var extendMin: Int { CoreSettings.readExtendMin(from: settings) }
@@ -139,13 +209,14 @@ private struct StorageEvent {
             guard case .relaunch = event.kind else { throw SimRunner.notAllowed(event) }
             return try launch()
         }
-        // 암묵 tick(꺼짐 단계 제외)
-        _ = session.timer.apply(.tick, at: event.at, defaultQuantumMin: defaultQuantumMin, extendMin: extendMin)
+        // 암묵 tick(꺼짐 단계 제외). 시간 끝 칩은 그 작업 시간을 시작한 하루의 남은 분 이하다.
+        _ = session.timer.apply(
+            .tick, at: event.at, defaultQuantumMin: defaultQuantumMin, extendMin: expiredChip(session))
 
         switch event.kind {
         case .addTask(let new):
             _ = try insert(new)
-            return session.picked(try input())
+            return try settle(session)
 
         case .enterTitle(let title):
             guard case .empty = session.timer else { throw SimRunner.notAllowed(event) }
@@ -153,9 +224,18 @@ private struct StorageEvent {
                 throw SimRunner.rejection(.emptyTitle, event: event)
             }
             let task = try insert(NewTask(title: title, deadline: nil, estMin: nil, recurrence: .none, weekday: nil))
-            return session.addedTask(task, try input())
+            // 카드·질문·오늘 끝 중에는 저장만 하고 초안으로 띄우지 않는다(spec 005 Edge Cases).
+            guard try mode(session) == .session else { return session }
+            return session.addedTask(task, try input(session))
 
         case .chooseQuantum(let minutes):
+            if case .expired = session.timer, day.scheduled {
+                let record = DayBudget.record(day.budget, for: budgetDay(session))
+                if NotchMode.expiredDayEnd(timer: session.timer, budgetDayRecord: record) {
+                    throw SimRunner.notAllowed(event)
+                }
+                if let cap = DayBudget.capMinutes(record), minutes > cap { throw SimRunner.notAllowed(event) }
+            }
             try applyTimer(.chooseQuantum(minutes), to: &session)
             return session
 
@@ -164,36 +244,50 @@ private struct StorageEvent {
 
         case .setDefaultQuantum(let minutes):
             try SimRunner.write(minutes, to: settings, seq: event.seq)
-            session.timer.applyDefaultQuantumChange(defaultQuantumMin, isEditingCustom: false)
+            session.timer.applyDefaultQuantumChange(
+                QuantumChip.cap(chipMin: defaultQuantumMin, remainingMinutes: try input(session).draftChipCap),
+                isEditingCustom: false)
             return session
 
-        case .start(let notes):
-            let input = try input()
+        case .start(let notes, let extend):
+            let input = try input(session)
             if case .expired(_, let chipMin, _) = session.timer {
+                // 시간 끝에는 늘리기가 없고, 오늘 끝과 겹치면 "N분 더"가 꺼져 있다(R-421, R-422).
+                guard !extend, !input.dayEndExpired else { throw SimRunner.notAllowed(event) }
                 return try commit { () throws(SessionError) in
                     try session.restart(notes ?? .empty, quantumMin: chipMin, input)
                 }
             }
-            guard notes == nil else { throw SimRunner.notAllowed(event) }
-            return try commit { () throws(SessionError) in try session.start(input) }
+            guard notes == nil, case .empty(.some(let draft)) = session.timer else { throw SimRunner.notAllowed(event) }
+            if let needed = QuantumChip.extendNeeded(chipMin: draft.chipMin, remainingMinutes: input.draftChipCap) {
+                guard extend else { throw SimRunner.notAllowed(event) }
+                day.budget = day.budget?.extended(by: needed)
+            } else if extend {
+                throw SimRunner.notAllowed(event)
+            }
+            let startDay = today
+            let next = try commit { () throws(SessionError) in try session.start(input) }
+            day.lastStartDay = startDay
+            return next
 
         case .complete(let notes):
-            let input = try input()
-            return try commit { () throws(SessionError) in try session.complete(notes, input) }.picked(try self.input())
+            let input = try input(session)
+            return try settle(try commit { () throws(SessionError) in try session.complete(notes, input) })
 
         case .skip(let notes):
-            let input = try input()
-            return try commit { () throws(SessionError) in try session.skip(notes, input) }.picked(try self.input())
+            let input = try input(session)
+            return try settle(try commit { () throws(SessionError) in try session.skip(notes, input) })
 
         case .switchTask(let notes):
-            let input = try input()
-            return try commit { () throws(SessionError) in try session.switchTask(notes, input) }
-                .picked(try self.input())
+            let input = try input(session)
+            return try settle(try commit { () throws(SessionError) in try session.switchTask(notes, input) })
 
         case .quit:
-            if let batch = session.lifecycleCheckpoint(.quit, try input()) {
+            let input = try input(session)
+            if let batch = session.lifecycleCheckpoint(.quit, input) {
                 try apply(batch)
             }
+            use(session.lifecycleRefund(.quit, input))
             return nil
 
         case .relaunch:
@@ -201,7 +295,8 @@ private struct StorageEvent {
 
         case .activate:
             try judgeDay()
-            return session.picked(try input())
+            try judgeCarry()
+            return try settle(session)
 
         case .judge(let judge):
             try save(judge)
@@ -210,7 +305,41 @@ private struct StorageEvent {
         case .key(let present):
             hasKey = present
             return session
+
+        case .carry(let carry):
+            guard case .carryCard(let front, _, _) = try mode(session), front == carry.taskID,
+                let task = try tasks().first(where: { $0.id == front })
+            else { throw SimRunner.notAllowed(event) }
+            let answerInput = try input(session)
+            let batch: StoreBatch
+            do {
+                batch = try CarryAnswer.apply(carry.answer, task: task, today: today, input: answerInput)
+            } catch {
+                switch error {
+                case .dateNotAfterToday:
+                    throw SimError(kind: .outOfRange, seq: event.seq, message: "date가 오늘보다 뒤가 아니다")
+                case .notOnCard:
+                    throw SimRunner.notAllowed(event)
+                }
+            }
+            try apply(batch)
+            return try settle(session)
+
+        case .budget(let minutes):
+            guard try mode(session) == .askBudget else { throw SimRunner.notAllowed(event) }
+            day.budget = .answered(day: today, minutes: minutes)
+            return try settle(session)
+
+        case .more:
+            guard try mode(session) == .dayEnd else { throw SimRunner.notAllowed(event) }
+            day.budget = day.budget?.withMore()
+            return try settle(session)
         }
+    }
+
+    /// 출력·불변식이 읽는 이월·가용 시간 상태.
+    func schedule(_ session: NotchSession?) throws(SimError) -> SimSchedule {
+        SimSchedule(mode: try mode(session), budget: day.budget, today: today)
     }
 
     /// 앱이 답을 받을 때와 같은 `ScoreRules.score`로 판단 결과를 저장한다. 가짜 답의 확신도·옵션 확률은 고정 값이다.
@@ -251,17 +380,70 @@ private struct StorageEvent {
         DayBoundary.day(containing: event.at, dayStart: dayStart, calendar: calendar)
     }
 
-    /// 앱 시작: 메모리 상태를 버리고 R-111 복구 → 하루 판정 → 고르기.
-    private func launch() throws(SimError) -> NotchSession {
-        try apply(StoreBatch(updatedTasks: LaunchRecovery.revert(try tasks())))
+    /// 앱 시작: 메모리 상태를 버리고 R-111 복구 → 하루 판정 → 이월 판정 → 모드 → 고르기(data-model §15).
+    private mutating func launch() throws(SimError) -> NotchSession {
+        let reverted = LaunchRecovery.revert(try tasks())
+        try apply(StoreBatch(updatedTasks: reverted))
+        day.revertedIDs = Set(reverted.map(\.id))
         try judgeDay()
-        return NotchSession.initial.picked(try input())
+        try judgeCarry()
+        return try settle(.initial)
     }
 
     /// 하루 판정(R-113).
     private func judgeDay() throws(SimError) {
         let reset = RecurrenceReset.reset(try tasks(), now: event.at, dayStart: dayStart, calendar: calendar)
         try apply(StoreBatch(updatedTasks: reset))
+    }
+
+    /// 이월 판정(R-412). 표시와 판정 시각을 함께 쓰고, 쓰기가 끝나면 되돌린 할 일 기억을 비운다.
+    private mutating func judgeCarry() throws(SimError) {
+        guard day.scheduled,
+            CarryJudgment.needsRun(
+                lastJudgedAt: day.carryJudgedAt, now: event.at, dayStart: dayStart, calendar: calendar)
+        else { return }
+        let tasks = try tasks()
+        let targets = CarryJudgment.targets(
+            CarryJudgmentInput(
+                tasks: tasks, checkpoints: try SimRunner.storing(seq: event.seq) { try repository.checkpoints() },
+                decisions: try SimRunner.storing(seq: event.seq) { try repository.decisions() },
+                lastJudgedAt: day.carryJudgedAt, revertedIDs: day.revertedIDs, now: event.at, dayStart: dayStart,
+                calendar: calendar))
+        try apply(CarryJudgment.marking(targets, in: tasks))
+        day.carryJudgedAt = event.at
+        day.revertedIDs = []
+    }
+
+    /// 꺼짐이면 늘 세션. 켜짐이면 data-model §12 표.
+    private func mode(_ session: NotchSession?) throws(SimError) -> NotchMode {
+        guard day.scheduled else { return .session }
+        return NotchMode.of(
+            storageAvailable: true, timer: session?.timer ?? .empty(draft: nil), tasks: try tasks(), budget: day.budget,
+            today: today)
+    }
+
+    /// 버튼 처리 뒤: 모드 판정 → 카드·질문·오늘 끝이면 초안을 비우고, 세션이면 빈 상태에서 고른다(data-model §12).
+    private func settle(_ session: NotchSession) throws(SimError) -> NotchSession {
+        let mode = try mode(session)
+        if mode.clearsDraft { return session.clearingDraft() }
+        return session.picked(try input(session))
+    }
+
+    /// 작업 시간을 시작한 하루. 도는 중·시간 끝이 아니면 오늘.
+    private func budgetDay(_ session: NotchSession) -> LocalDay {
+        session.run?.budgetDay ?? today
+    }
+
+    private func expiredChip(_ session: NotchSession) -> Int {
+        guard day.scheduled else { return extendMin }
+        return QuantumChip.expiredChip(
+            extendMin: extendMin,
+            remainingMinutes: DayBudget.capMinutes(DayBudget.record(day.budget, for: budgetDay(session))))
+    }
+
+    private mutating func use(_ budgetUse: BudgetUse?) {
+        guard let budgetUse else { return }
+        day.budget = day.budget?.applying(budgetUse)
     }
 
     /// data-model §5.8: `prepareNew` → `insertTask`. 디코딩에서 값 검증을 마쳤다.
@@ -281,15 +463,17 @@ private struct StorageEvent {
         }
     }
 
-    /// 버튼 동작. 거부는 종료 코드 2, 쓰기는 `SessionCommit`.
-    private func commit(_ action: () throws(SessionError) -> SessionStep) throws(SimError) -> NotchSession {
+    /// 버튼 동작. 거부는 종료 코드 2, 쓰기는 `SessionCommit`. 커밋한 뒤 쓴 시간을 그 하루 기록에 반영한다.
+    private mutating func commit(_ action: () throws(SessionError) -> SessionStep) throws(SimError) -> NotchSession {
         let step: SessionStep
         do {
             step = try action()
         } catch {
             throw SimRunner.notAllowed(event)
         }
-        return try SimRunner.storing(seq: event.seq) { try SessionCommit.commit(step, to: repository) }
+        let next = try SimRunner.storing(seq: event.seq) { try SessionCommit.commit(step, to: repository) }
+        use(step.budgetUse)
+        return next
     }
 
     private func apply(_ batch: StoreBatch) throws(SimError) {
@@ -300,15 +484,27 @@ private struct StorageEvent {
         try SimRunner.storing(seq: event.seq) { try repository.tasks() }
     }
 
-    /// 앱 `AppState.input(at:)`처럼 키 유무로 거른 판단 결과를 넘긴다.
-    func input() throws(SimError) -> SessionInput {
+    /// 앱 `AppState.input(at:)`처럼 키 유무로 거른 판단 결과를 넘긴다. 하루·워밍업은 늘, 칩 상한과 시간 끝 겹침은
+    /// 켜짐일 때만 채운다.
+    func input(_ session: NotchSession?) throws(SimError) -> SessionInput {
         let stored = try SimRunner.storing(seq: event.seq) { try scores.scores() }
-        return SessionInput(
-            tasks: try tasks(), now: event.at, defaultQuantumMin: defaultQuantumMin, extendMin: extendMin,
-            calendar: calendar,
+        var input = SessionInput(
+            tasks: try tasks(), now: event.at, defaultQuantumMin: defaultQuantumMin,
+            extendMin: session.map(expiredChip) ?? extendMin, calendar: calendar,
             scoring: SessionScoring(
                 usable: ScoreRules.usable(
                     scores: stored, hasKey: hasKey, questionVersion: questions.version, provider: Self.fakeProvider),
-                questions: questions, thresholds: questions.thresholds(for: SimRunner.fakeBaseModel), today: today))
+                questions: questions, thresholds: questions.thresholds(for: SimRunner.fakeBaseModel), today: today),
+            today: today, isWarmup: day.lastStartDay != today)
+        if day.scheduled {
+            input.draftChipCap = DayBudget.capMinutes(DayBudget.record(day.budget, for: today))
+            if let session {
+                var ticked = session.timer
+                _ = ticked.apply(.tick, at: event.at, defaultQuantumMin: defaultQuantumMin, extendMin: extendMin)
+                input.dayEndExpired = NotchMode.expiredDayEnd(
+                    timer: ticked, budgetDayRecord: DayBudget.record(day.budget, for: budgetDay(session)))
+            }
+        }
+        return input
     }
 }

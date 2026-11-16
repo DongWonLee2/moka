@@ -32,12 +32,13 @@ enum Fake {
     static func task(
         _ id: TaskID, status: TaskStatus = .todo, recurrence: Recurrence = .none, weekday: Weekday? = nil,
         cycleDay: LocalDay? = nil, deadline: LocalDay? = nil, estMin: Int? = nil, firstAction: String? = nil,
-        skipCount: Int = 0, streak: Int = 0
+        skipCount: Int = 0, streak: Int = 0, carryCount: Int = 0, dueDecision: Bool = false
     ) -> MokaTask {
         MokaTask(
             id: id, title: "가짜 할 일 \(id)", deadline: deadline, estMin: estMin, recurrence: recurrence,
             weekday: weekday, cycleDay: cycleDay, firstAction: firstAction, status: status, skipCount: skipCount,
-            streak: streak, createdAt: Date(timeIntervalSince1970: 1_800_000_000 + Double(id)))
+            streak: streak, createdAt: Date(timeIntervalSince1970: 1_800_000_000 + Double(id)), carryCount: carryCount,
+            dueDecision: dueDecision)
     }
 
     static func todos(_ ids: ClosedRange<TaskID>) -> [MokaTask] {

@@ -25,12 +25,25 @@ func checkpointTriggerRawValues() {
     #expect(CheckpointTrigger(rawValue: "dayEnd") == nil)
 }
 
-@Test("FR-11 R-112 R-212: 행동 로그의 사용자 행동과 고른 규칙 이름")
+@Test("FR-11 R-411 R-112 R-212: 행동 로그의 사용자 행동과 고른 규칙 이름(spec 005 값을 끝에 더함)")
 func decisionLogRawValues() {
-    #expect(UserAction.allCases.map(\.rawValue) == ["done", "skip", "switch"])
-    #expect(SchedulerChoice.allCases.map(\.rawValue) == ["rotate_by_id_v0", "priority_rotate_v0"])
+    #expect(
+        UserAction.allCases.map(\.rawValue) == ["done", "skip", "switch", "carry_today", "carry_drop", "carry_move"])
+    #expect(
+        SchedulerChoice.allCases.map(\.rawValue) == [
+            "rotate_by_id_v0", "priority_rotate_v0", "weighted_rotate_v1", "warmup_v1", "carry_card_v1",
+        ])
     #expect(SchedulerChoice.rotateByIDV0.rawValue == "rotate_by_id_v0")
     #expect(UserAction(rawValue: "undo") == nil)
+}
+
+@Test("FR-08 R-416: 할 일의 이월 횟수는 0, 이월 답 대기는 거짓으로 시작한다")
+func taskCarryDefaults() {
+    let task = MokaTask(
+        id: 1, title: "가짜 할 일 1", deadline: nil, estMin: nil, recurrence: .none, weekday: nil, cycleDay: nil,
+        firstAction: nil, status: .todo, skipCount: 0, streak: 0, createdAt: Date(timeIntervalSince1970: 0))
+    #expect(task.carryCount == 0)
+    #expect(task.dueDecision == false)
 }
 
 // MARK: - Weekday

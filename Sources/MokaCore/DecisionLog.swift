@@ -1,10 +1,20 @@
 import Foundation
 
-public enum UserAction: String, CaseIterable, Sendable { case done, skip, `switch` }
-/// `rotateByIDV0`은 spec 002 로그 줄을 읽으려고 남긴다. 새 로그 줄은 `priorityRotateV0`(spec 003 R-212).
+/// 이월 답 셋은 spec 005 R-416(이월 카드 답 한 번에 한 줄).
+public enum UserAction: String, CaseIterable, Sendable {
+    case done, skip, `switch`
+    case carryToday = "carry_today"
+    case carryDrop = "carry_drop"
+    case carryMove = "carry_move"
+}
+/// `rotateByIDV0`(spec 002)·`priorityRotateV0`(spec 003)은 이전 로그 줄을 읽으려고 남긴다. 새 로그 줄은 spec 005
+/// R-411의 셋이다.
 public enum SchedulerChoice: String, CaseIterable, Sendable {
     case rotateByIDV0 = "rotate_by_id_v0"
     case priorityRotateV0 = "priority_rotate_v0"
+    case weightedRotateV1 = "weighted_rotate_v1"
+    case warmupV1 = "warmup_v1"
+    case carryCardV1 = "carry_card_v1"
 }
 
 /// 판단 칸(spec 003 R-212). 공급자가 있을 때만 존재하고, 나머지는 폴백 줄에서 비어도 된다(F5).

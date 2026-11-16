@@ -47,3 +47,9 @@ func otherTaskRecurrenceNote() {
     #expect(plain.text == "")
     #expect([daily.tone, weekly.tone, plain.tone] == [.plain, .plain, .plain])
 }
+
+@Test("FR-08 R-413: 다른 할 일 목록에 이월 답 대기 할 일이 없다")
+func otherTaskRowsSkipDueDecision() {
+    let tasks = [Fake.task(1), Fake.task(2, dueDecision: true), Fake.task(3)]
+    #expect(OtherTaskList.rows(tasks, current: 1, today: today, calendar: Fake.seoul).map(\.id) == [3])
+}

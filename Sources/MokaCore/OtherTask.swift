@@ -1,11 +1,11 @@
 import Foundation
 
-/// 시작 전 화면 "다른 할 일" 목록(R-104, 2026-11-04 사용자 결정). 노치가 처음 고르는 규칙(`PriorityRotateRule`)과 무관하다.
+/// 시작 전 화면 "다른 할 일" 목록(R-104, 2026-11-04 사용자 결정). 노치 고르기(`SchedulerPick`)와 무관하다.
 public enum OtherTaskList {
-    /// 지금 할 일을 뺀 대기 할 일. 할 일 탭 마감 순(§5.7)과 같은 순서다.
+    /// 지금 할 일과 이월 답 대기(spec 005 R-413)를 뺀 대기 할 일. 할 일 탭 마감 순(§5.7)과 같은 순서다.
     public static func rows(_ tasks: [MokaTask], current: TaskID?, today: LocalDay, calendar: Calendar) -> [MokaTask] {
         TaskListView.rows(tasks, scope: .all, order: .deadline, today: today, calendar: calendar)
-            .filter { $0.status == .todo && $0.id != current }
+            .filter { PriorityOrder.isCandidate($0) && $0.id != current }
     }
 }
 

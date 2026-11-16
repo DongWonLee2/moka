@@ -1346,16 +1346,16 @@ final class AppState {
     // MARK: - 내부
 
     private func input(at now: Date) -> SessionInput {
+        let today = DayBoundary.day(
+            containing: now, dayStart: CoreSettings.readDayStart(from: settings), calendar: calendar)
         let scoring = judging.map { judging in
             SessionScoring(
                 usable: usableScores(judging), questions: judging.questions,
-                thresholds: judging.questions.thresholds(for: judging.baseModel),
-                today: DayBoundary.day(
-                    containing: now, dayStart: CoreSettings.readDayStart(from: settings), calendar: calendar))
+                thresholds: judging.questions.thresholds(for: judging.baseModel), today: today)
         }
         return SessionInput(
             tasks: tasks, now: now, defaultQuantumMin: defaultQuantumMin, extendMin: extendMin, calendar: calendar,
-            scoring: scoring)
+            scoring: scoring, today: today)
     }
 
     /// 타이머만 바뀌는 이벤트(칩, tick). 저장할 수 없을 때는 빠른 입력·시작·완료도 여기로 온다.

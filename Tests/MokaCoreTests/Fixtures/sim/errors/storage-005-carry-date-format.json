@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "timezone": "Asia/Seoul",
+  "storage": true,
+  "events": [
+    { "at": "2026-11-15T00:00:00Z", "type": "carry", "task": 1, "answer": "move", "date": "2026/11/20" }
+  ]
+}

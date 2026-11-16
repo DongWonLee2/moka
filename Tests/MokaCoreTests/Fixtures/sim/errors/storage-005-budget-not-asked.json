@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "timezone": "Asia/Seoul",
+  "storage": true,
+  "events": [
+    { "at": "2026-11-15T00:00:00Z", "type": "budget", "minutes": 60 },
+    { "at": "2026-11-15T00:00:05Z", "type": "budget", "minutes": 120 }
+  ]
+}

@@ -37,10 +37,15 @@ public struct MokaTask: Equatable, Sendable {
     public var streak: Int
     /// 초 단위로 내린 값(data-model §3).
     public var createdAt: Date
+    /// 0 이상. 이월 카드 "오늘 할래요"에 1씩 오른다(spec 005 R-415).
+    public var carryCount: Int
+    /// 이월 답 대기(spec 005 R-412). 참이면 후보가 아니다.
+    public var dueDecision: Bool
 
     public init(
         id: TaskID, title: String, deadline: LocalDay?, estMin: Int?, recurrence: Recurrence, weekday: Weekday?,
-        cycleDay: LocalDay?, firstAction: String?, status: TaskStatus, skipCount: Int, streak: Int, createdAt: Date
+        cycleDay: LocalDay?, firstAction: String?, status: TaskStatus, skipCount: Int, streak: Int, createdAt: Date,
+        carryCount: Int = 0, dueDecision: Bool = false
     ) {
         self.id = id
         self.title = title
@@ -54,6 +59,8 @@ public struct MokaTask: Equatable, Sendable {
         self.skipCount = skipCount
         self.streak = streak
         self.createdAt = createdAt
+        self.carryCount = carryCount
+        self.dueDecision = dueDecision
     }
 }
 

@@ -56,7 +56,7 @@ private func switching(_ session: NotchSession, _ input: SessionInput) throws(Se
         #expect(NotchSession.initial.picked(input(Fake.todos(1...3))).taskID == 3)
     }
 
-    @Test("FR-05 R-209 SC-203: 바꾸기 뒤에는 다음 순위, 끝이면 1위(spec US1-3)")
+    @Test("FR-05 R-403 R-408 SC-203: 바꾸기 뒤에는 방금 할 일을 빼고 앞 셋의 몫으로 고른다")
     func switchRotates() throws {
         var tasks = Fake.todos(1...3)
         var session = NotchSession.initial.picked(input(tasks))
@@ -68,7 +68,7 @@ private func switching(_ session: NotchSession, _ input: SessionInput) throws(Se
         #expect(shown == [3, 1, 2, 3])
     }
 
-    @Test("FR-05 R-209 SC-203: 미루기 뒤에는 버튼 처리 뒤 다시 계산한 순서에서 다음(spec US1-4)")
+    @Test("FR-05 R-403 R-408 SC-203: 미루기 뒤에는 버튼 처리 뒤 다시 계산한 순서와 몫으로 고르고 방금 할 일은 뺀다")
     func skipUsesRecomputedOrder() throws {
         // C 뒤 바꾸기로 A가 떠 있다. A를 미루면 A는 2.0이 되어 A, C, B 순이므로 C.
         let tasks = Fake.todos(1...3)
@@ -82,16 +82,15 @@ private func switching(_ session: NotchSession, _ input: SessionInput) throws(Se
         #expect(next.taskID == 3)
     }
 
-    @Test("FR-05 R-209 SC-203: 완료 뒤에는 남은 할 일 가운데 1위(spec US1-5)")
+    @Test("FR-05 R-209 R-403: 완료 뒤에는 남은 후보의 몫으로 고른다(C를 끝내면 몫이 큰 A)")
     func completePicksTop() throws {
         let tasks = Fake.todos(1...3)
-        let onB = NotchSession(timer: .empty(draft: nil), taskID: nil, previousTaskID: 1, run: nil).picked(
-            input(tasks))
-        #expect(onB.taskID == 2)
-        let (next, _, _) = try pressed(onB, tasks) { (session, input) throws(SessionError) in
+        let onC = NotchSession.initial.picked(input(tasks))
+        #expect(onC.taskID == 3)
+        let (next, _, _) = try pressed(onC, tasks) { (session, input) throws(SessionError) in
             try session.complete(nil, input)
         }
-        #expect(next.taskID == 3)
+        #expect(next.taskID == 1)
     }
 
     @Test("FR-05 R-209: 커서의 할 일을 버렸으면 1위를 고른다(spec 002의 그다음 큰 id가 아님)")
@@ -123,19 +122,19 @@ private func switching(_ session: NotchSession, _ input: SessionInput) throws(Se
         #expect(start.session.picked(expired) == start.session)
     }
 
-    @Test("FR-01 R-209: 다음 표시는 초안이면 그 할 일, 도는 중이면 같은 노치 순서의 1위")
+    @Test("FR-01 R-209 R-434: 다음 표시는 초안이면 그 할 일, 도는 중이면 지금 할 일을 뺀 다음 고르기")
     func nextMarkFollowsOrder() throws {
         let tasks = Fake.todos(1...3)
         let drafted = NotchSession.initial.picked(input(tasks)).chosenDraft(2, input(tasks))
         #expect(drafted.nextMark(input(tasks)) == 2)
         let start = try drafted.start(input(tasks))
         let running = applying(start.batch, to: tasks)
-        #expect(start.session.nextMark(input(running)) == 3)
+        #expect(start.session.nextMark(input(running)) == 1)
         #expect(start.session.nextMark(input(running, [1: score(1, urgency: 1)])) == 1)
         #expect(start.session.nextMark(input(running, nil)) == 1)
     }
 
-    @Test("FR-11 R-212: 점수 있는 할 일의 로그 줄은 저장된 판단 결과와 응답 모델 이름, priority_rotate_v0")
+    @Test("FR-11 R-212 R-411: 점수 있는 할 일의 로그 줄은 저장된 판단 결과와 응답 모델 이름, weighted_rotate_v1")
     func logLineWithScore() throws {
         let tasks = Fake.todos(1...3)
         let (_, _, step) = try pressed(NotchSession.initial.picked(input(tasks)), tasks) {
@@ -149,7 +148,7 @@ private func switching(_ session: NotchSession, _ input: SessionInput) throws(Se
                     judgment: Judgment(
                         provider: "fake", questionVersion: "v1", probsJSON: stored.probsJSON,
                         stateHash: "00000000000000a3"),
-                    modelSnapshot: "가짜-모델-3", schedulerChoice: .priorityRotateV0, userAction: .done,
+                    modelSnapshot: "가짜-모델-3", schedulerChoice: .weightedRotateV1, userAction: .done,
                     createdAt: t0 + 60)
             ])
     }
@@ -165,7 +164,7 @@ private func switching(_ session: NotchSession, _ input: SessionInput) throws(Se
             #expect(
                 step.batch.newDecisions == [
                     NewDecisionLogEntry(
-                        taskID: 1, judgment: fallback, modelSnapshot: nil, schedulerChoice: .priorityRotateV0,
+                        taskID: 1, judgment: fallback, modelSnapshot: nil, schedulerChoice: .weightedRotateV1,
                         userAction: .skip, createdAt: t0 + 60)
                 ])
         }
@@ -181,6 +180,6 @@ private func switching(_ session: NotchSession, _ input: SessionInput) throws(Se
         #expect(line.taskID == 1)
         #expect(line.judgment?.provider == "fallback")
         #expect(line.modelSnapshot == nil)
-        #expect(line.schedulerChoice.rawValue == "priority_rotate_v0")
+        #expect(line.schedulerChoice.rawValue == "weighted_rotate_v1")
     }
 }

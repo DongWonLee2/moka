@@ -87,7 +87,8 @@ public enum ScoreRules {
             scoredAt: now)
     }
 
-    /// 고를 때마다 계산한다. 마감이 내일까지(지난 마감 포함)면 urgency를 1로 본다.
+    /// 고를 때마다 계산한다. 마감이 내일까지(지난 마감 포함)면 urgency를 1로 본다. aging은 미룬 횟수와 이월 횟수(가중
+    /// `Defaults.carryAgingWeight`)의 합이다(spec 005 R-402).
     /// `thresholds`는 기준 모델의 임계값이고, `nil`이면 avoiding을 임계값 미만(배율 1)으로 본다(spec 006 R-609).
     public static func priority(
         _ score: TaskScore, task: MokaTask, today: LocalDay, thresholds: ModelThresholds?, calendar: Calendar
@@ -96,7 +97,7 @@ public enum ScoreRules {
         let urgency = dueSoon ? 1 : score.urgency
         let avoids = thresholds.map { score.avoiding >= $0.avoiding } ?? false
         let agingFactor = avoids ? Defaults.avoidingAgingFactor : 1
-        let aging = Double(task.skipCount) * agingFactor
+        let aging = (Double(task.skipCount) + Defaults.carryAgingWeight * Double(task.carryCount)) * agingFactor
         return Defaults.weightUrgency * urgency + Defaults.weightImpact * score.impact + Defaults.weightAging * aging
     }
 

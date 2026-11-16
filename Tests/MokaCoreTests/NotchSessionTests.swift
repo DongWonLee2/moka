@@ -29,10 +29,21 @@ private func draft(_ title: String, chip: Int = 25, picked: Bool = false) -> Not
     .empty(draft: Draft(title: title, chipMin: chip, chipPicked: picked))
 }
 
+/// 버튼 뒤 빈 상태: 몫 상태는 남고 띄운 규칙은 내린다(spec 005 data-model §8).
+private func cleared(_ session: NotchSession, cursor: TaskID?) -> NotchSession {
+    NotchSession(timer: .empty(draft: nil), taskID: nil, previousTaskID: cursor, run: nil, memory: unnamed(session))
+}
+
+private func unnamed(_ session: NotchSession) -> SchedulerMemory {
+    var memory = session.memory
+    memory.pickedBy = nil
+    return memory
+}
+
 private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> NewDecisionLogEntry {
     NewDecisionLogEntry(
         taskID: taskID, judgment: Judgment(provider: "fallback", questionVersion: nil, probsJSON: nil, stateHash: nil),
-        modelSnapshot: nil, schedulerChoice: .priorityRotateV0, userAction: action, createdAt: now)
+        modelSnapshot: nil, schedulerChoice: .weightedRotateV1, userAction: action, createdAt: now)
 }
 
 // MARK: - 할 일 연결 몫(T020)
@@ -74,10 +85,10 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
         #expect(running.picked(Fake.input(after)) == running)
     }
 
-    @Test("FR-05 R-104: 고르기는 커서 다음 할 일을 고른다")
+    @Test("FR-05 R-104 R-408: 커서(바꾸기·미루기 직후 방금 할 일)는 그 고르기에서 빠지고 남은 앞 셋에서 몫으로 고른다")
     func pickFollowsCursor() {
         let session = NotchSession(timer: .empty(draft: nil), taskID: nil, previousTaskID: 2, run: nil)
-        #expect(session.picked(Fake.input(Fake.todos(1...3))).taskID == 3)
+        #expect(session.picked(Fake.input(Fake.todos(1...3))).taskID == 1)
     }
 }
 
@@ -91,7 +102,7 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
         #expect(session.previousTaskID == nil)
     }
 
-    @Test("FR-01 R-103: 초안에서 빠른 입력이면 새 할 일이 초안이 되고 고른 칩은 그대로, 커서도 그대로")
+    @Test("FR-01 R-103 FR-05 R-408: 초안에서 빠른 입력이면 새 할 일이 초안이 되고 고른 칩은 그대로, 커서는 없다")
     func addFromDraftKeepsChip() {
         let session = NotchSession(
             timer: draft("가짜 할 일 1", chip: 60, picked: true), taskID: 1, previousTaskID: 4, run: nil)
@@ -99,7 +110,7 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
         let next = session.addedTask(added, Fake.input([Fake.task(1), added]))
         #expect(next.timer == draft("가짜 할 일 9", chip: 60, picked: true))
         #expect(next.taskID == 9)
-        #expect(next.previousTaskID == 4)
+        #expect(next.previousTaskID == nil)
     }
 
     @Test("FR-01 R-103: 도는 중·시간 끝에서는 빠른 입력을 받지 않는다(세션 그대로)")
@@ -112,14 +123,14 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
 }
 
 @Suite struct NotchSessionChosenDraftTests {
-    @Test("FR-05 R-104: 다른 할 일 목록에서 고르면 커서를 지금 초안으로 두고 그 할 일로 초안을 바꾼다(칩 유지)")
+    @Test("FR-05 R-104 R-408: 다른 할 일 목록에서 고르면 그 할 일로 초안을 바꾸고(칩 유지) 커서는 두지 않는다")
     func chosenDraftSwitches() {
         let session = NotchSession(
             timer: draft("가짜 할 일 1", chip: 45, picked: true), taskID: 1, previousTaskID: nil, run: nil)
         let next = session.chosenDraft(3, Fake.input(Fake.todos(1...3)))
         #expect(next.timer == draft("가짜 할 일 3", chip: 45, picked: true))
         #expect(next.taskID == 3)
-        #expect(next.previousTaskID == 1)
+        #expect(next.previousTaskID == nil)
         #expect(next.run == nil)
     }
 
@@ -149,7 +160,7 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
         #expect(
             step.session.timer == .running(title: "가짜 할 일 1", quantumMin: 25, startedAt: t0, endsAt: t0 + 25 * 60))
         #expect(step.session.taskID == 1)
-        #expect(step.session.previousTaskID == 2)
+        #expect(step.session.previousTaskID == nil, "시작은 커서를 두지 않는다(R-408)")
         #expect(step.session.run == RunInfo(startedAt: t0, quantumMin: 25))
     }
 
@@ -170,16 +181,20 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
 }
 
 @Suite struct NotchSessionDropEditTests {
-    @Test("FR-01 R-102: 노치의 할 일을 지우면 빈 상태, 회차 없음, 커서 그대로")
+    @Test("FR-01 R-102 FR-05 R-408: 노치의 할 일을 지우면 빈 상태, 회차 없음, 커서 없음")
     func dropNotchTask() throws {
         var drafted = NotchSession.initial.picked(Fake.input(Fake.todos(1...2)))
         drafted.previousTaskID = 2
         let dropped = drafted.taskDropped(1)
-        #expect(dropped == NotchSession(timer: .empty(draft: nil), taskID: nil, previousTaskID: 2, run: nil))
+        #expect(
+            dropped
+                == NotchSession(
+                    timer: .empty(draft: nil), taskID: nil, previousTaskID: nil, run: nil, memory: unnamed(drafted)))
         let (running, _) = try started(Fake.todos(1...2))
         #expect(
             running.taskDropped(1)
-                == NotchSession(timer: .empty(draft: nil), taskID: nil, previousTaskID: nil, run: nil))
+                == NotchSession(
+                    timer: .empty(draft: nil), taskID: nil, previousTaskID: nil, run: nil, memory: unnamed(running)))
     }
 
     @Test("FR-01 R-102: 노치에 없는 할 일을 지우면 세션 그대로")
@@ -255,15 +270,15 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
         var done = tasks[0]
         done.status = .done
         #expect(step.batch == StoreBatch(updatedTasks: [done], newDecisions: [decision(1, .done, at: now)]))
-        #expect(step.session == .initial)
+        #expect(step.session == cleared(running, cursor: nil))
     }
 
-    @Test("FR-11 R-212: 키 없는 로그 줄은 priority_rotate_v0, 판단 칸은 공급자 fallback만, model_snapshot은 비어 있다")
+    @Test("FR-11 R-212 R-411: 키 없는 로그 줄은 weighted_rotate_v1, 판단 칸은 공급자 fallback만, model_snapshot은 비어 있다")
     func logLineHasNoJudgment() throws {
         let (running, tasks) = try started([Fake.task(1)])
         let step = try running.complete(nil, Fake.input(tasks, now: t0 + 60))
         let line = try #require(step.batch.newDecisions.first)
-        #expect(line.schedulerChoice.rawValue == "priority_rotate_v0")
+        #expect(line.schedulerChoice.rawValue == "weighted_rotate_v1")
         #expect(line.judgment == Judgment(provider: "fallback", questionVersion: nil, probsJSON: nil, stateHash: nil))
         #expect(line.modelSnapshot == nil)
     }
@@ -291,7 +306,7 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
         #expect(step.batch.newDecisions == [decision(1, .done, at: now)])
         #expect(step.batch.updatedTasks.first?.status == .done)
         #expect(step.batch.updatedTasks.first?.firstAction == "가짜 다음 줄")
-        #expect(step.session == .initial)
+        #expect(step.session == cleared(running, cursor: nil))
     }
 
     @Test("FR-07 R-107: 시간 끝 화면(타이머가 이미 expired)에서도 경과 분은 회차의 작업 시간")
@@ -339,7 +354,7 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
                             createdAt: now)
                     ],
                     newDecisions: [decision(1, .skip, at: now)]))
-        #expect(step.session == NotchSession(timer: .empty(draft: nil), taskID: nil, previousTaskID: 1, run: nil))
+        #expect(step.session == cleared(running, cursor: 1))
     }
 
     @Test("FR-07 R-106: 도는 중 바꾸기는 미룬 횟수 그대로, 대기로, 계기 switch, 로그 switch, 커서 = 그 할 일")
@@ -452,7 +467,7 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
 // MARK: - 저장소와 함께(수용 기준)
 
 @Suite struct NotchSessionFlowTests {
-    @Test("FR-05 R-104: 대기 할 일 넷에서 시작·바꾸기를 이어 누르면 1 → 2 → 3 → 4 → 1, 로그는 바꾸기 수만큼")
+    @Test("FR-05 R-104 R-403: 대기 할 일 넷에서 시작·바꾸기를 이어 누르면 앞 셋만 1 → 2 → 3 → 1 → 2, 로그는 바꾸기 수만큼")
     func switchRotationWithRepository() throws {
         let repository = try InMemoryTaskRepository.seeded(4)
         var session = NotchSession.initial.picked(Fake.input(try repository.tasks()))
@@ -468,18 +483,18 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
                 session.switchTask(.empty, Fake.input(try repository.tasks(), now: now)), to: repository)
             session = session.picked(Fake.input(try repository.tasks(), now: now))
         }
-        #expect(seen == [1, 2, 3, 4, 1])
+        #expect(seen == [1, 2, 3, 1, 2])
         #expect(try repository.decisions().count == 5)
         #expect(try repository.checkpoints().count == 5)
         #expect(try repository.tasks().allSatisfy { $0.status == .todo })
     }
 
-    @Test("FR-05 R-104: 시작 전 화면 다른 할 일은 기록 없이 커서만 옮긴다")
+    @Test("FR-05 R-104 R-408: 시작 전 화면 다른 할 일은 기록 없이 초안만 바꾸고 커서는 두지 않는다")
     func chosenDraftWritesNothing() throws {
         let repository = try InMemoryTaskRepository.seeded(3)
         let before = try repository.tasks()
         let session = NotchSession.initial.picked(Fake.input(before)).chosenDraft(3, Fake.input(before))
-        #expect(session.previousTaskID == 1)
+        #expect(session.previousTaskID == nil)
         #expect(session.taskID == 3)
         #expect(try repository.tasks() == before)
         #expect(try repository.checkpoints().isEmpty)
@@ -525,7 +540,7 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
         #expect(try repository.decisions().map(\.userAction) == [.done, .skip, .switch])
     }
 
-    @Test("FR-05 R-104: 완료 뒤 고르기는 처음부터(가장 작은 id), 미루기 뒤는 다음 차례")
+    @Test("FR-05 R-104 R-403 R-408: 완료 뒤에는 몫 상태로, 미루기 뒤에는 방금 할 일을 빼고 고른다")
     func pickAfterButtons() throws {
         let repository = try InMemoryTaskRepository.seeded(3)
         var session = NotchSession.initial.picked(Fake.input(try repository.tasks())).chosenDraft(
@@ -535,12 +550,12 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
         session = try SessionCommit.commit(
             session.complete(nil, Fake.input(try repository.tasks(), now: t0 + 60)), to: repository)
         session = session.picked(Fake.input(try repository.tasks()))
-        #expect(session.taskID == 1)
+        #expect(session.taskID == 3)
         session = try SessionCommit.commit(session.start(Fake.input(try repository.tasks())), to: repository)
         session = try SessionCommit.commit(
             session.skip(.empty, Fake.input(try repository.tasks(), now: t0 + 60)), to: repository)
         session = session.picked(Fake.input(try repository.tasks()))
-        #expect(session.taskID == 3)
+        #expect(session.taskID == 1)
     }
 
     @Test("FR-09 R-113: 하루 시작을 넘겨 끝낸 매일 반복은 그 주기 몫 완료, 다음 판정에서 대기로 연속 기록 유지")
@@ -596,12 +611,12 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
         }
     }
 
-    @Test("FR-05 R-104: 다시 시작 뒤 커서는 그대로")
+    @Test("FR-05 R-104 R-408: 다시 시작(N분 더)은 커서를 두지 않는다")
     func restartKeepsCursor() throws {
         var (running, tasks) = try started(Fake.todos(1...3))
         running.previousTaskID = 3
         let now = t0.addingTimeInterval(30 * 60)
         let step = try running.restart(.empty, quantumMin: 25, Fake.input(tasks, now: now))
-        #expect(step.session.previousTaskID == 3)
+        #expect(step.session.previousTaskID == nil)
     }
 }

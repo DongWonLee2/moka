@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "timezone": "Asia/Seoul",
+  "storage": true,
+  "events": [
+    { "at": "2026-11-15T00:00:00Z", "type": "add_task", "title": "가짜 할 일 A", "deadline": "2026-11-15", "est_min": 50 },
+    { "at": "2026-11-15T00:00:05Z", "type": "add_task", "title": "가짜 할 일 B" },
+    { "at": "2026-11-15T00:00:10Z", "type": "budget", "minutes": 120 },
+    { "at": "2026-11-15T00:00:20Z", "type": "start" },
+    { "at": "2026-11-15T00:05:00Z", "type": "skip" },
+    { "at": "2026-11-15T22:00:00Z", "type": "activate" },
+    { "at": "2026-11-15T22:00:05Z", "type": "carry", "task": 1, "answer": "today" },
+    { "at": "2026-11-15T22:00:10Z", "type": "budget", "minutes": 240 }
+  ]
+}
