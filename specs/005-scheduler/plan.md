@@ -160,9 +160,9 @@ App/Tests/MokaAppTests/ AppSchedulerTests(새), AppCarryTests(새), AppBudgetTes
 ### 앱 연결
 
 - 활성화 순서(data-model §15): R-111 → 반복 리셋 → 이월 판정 → 모드 → 고르기 → 판단 질의.
-- `pickIfEmpty`는 모드를 먼저 본다. `.session`이고 빈 상태일 때만 `SchedulerPick`을 부른다. 바꾸기·미루기 뒤에는 방금 할 일을 `excluded`로 넘긴다.
+- `pickIfEmpty`는 모드를 먼저 본다. `.session`이고 빈 상태일 때만 `session.picked`를 부르고, `NotchSession`이 `SchedulerPick`을 부른다. 바꾸기·미루기 뒤에는 `NotchSession`이 `previousTaskID`를 `excluded`로 넘긴다.
 - `AppState`의 모드 값(`notchMode`)을 뷰가 받아 펼친 화면·접힌 화면을 고른다. 이월 답·가용 시간 답·"더 할래요"는 `AppState` 함수 셋이고 쓰기 실패면 화면을 그대로 두고 해요체 한 줄을 보인다.
-- 쓴 시간은 시작·"N분 더" 커밋에서 고른 분을 더하고, 도는 중 완료·미루기·바꾸기·종료에서 남은 초를 돌려준다. 시간 끝 `tick`이 `capActive && remainingMinutes < 1`을 보면 시간 끝 화면의 "N분 더"를 끈다.
+- 쓴 시간은 시작·"N분 더" 커밋에서 고른 분을 더하고, 도는 중 완료·미루기·바꾸기·종료에서 남은 초를 돌려준다. 더하고 돌려주는 기록과 시간 끝 칩의 상한은 그 작업 시간의 `budgetDay` 기록이다(data-model §11·§12). 시간 끝 `tick`이 `budgetDay` 기록의 `capActive && remainingMinutes < 1`을 보면 시간 끝 화면의 "N분 더"를 끈다. 하루 경계를 넘기지 않은 작업 시간은 `budgetDay == today`라 오늘 기록과 같다.
 - 단위 1이 `NotchSession.picked`의 고르기를 바꾸면 앱 노치 순서도 바뀐다. 바꾸기·미루기 뒤 방금 할 일은 `NotchSession`이 `previousTaskID`를 `excluded`로 넘겨 빼므로 앱 코드는 바꾸지 않는다(아래 줄). 단위 2는 `isWarmup`과 `nextMarkID`만 앱 값으로 넘긴다.
 - R-408(바꾸기·미루기 뒤 방금 할 일 뺌)은 단위 1만 들어간 앱에서도 지켜진다. 확인한 코드(`67b526e`): `setAside`가 버튼 뒤 세션을 `finished(cursor: aside.id)`로 만들어 `previousTaskID`에 방금 할 일을 남기고(`NotchSession.swift:315-320`), 완료는 `cursor: nil`이다. 단위 1의 `NotchSession.picked`는 지금 `PriorityRotateRule.pick(after: previousTaskID)`(`NotchSession.swift:94-99`) 자리에서 `previousTaskID`를 `excluded`로 넘긴다. 앱의 `pickIfEmpty`는 `session.picked`만 부르므로 앱 코드를 바꾸지 않아도 같은 값이 간다. "다른 할 일"(`chosenDraft`, `:114`)도 `previousTaskID`를 바꾸지만, 고르기는 빈 상태에서만 돌고 그 앞의 버튼이 값을 다시 덮으므로 영향이 없다. 단위 1의 앱 시험(T043)이 이 경로를 확인한다.
 - 단위 2는 판정·답 함수를 앱 시험으로만 부르고 활성화에 걸지 않는다(research R17). 단위 3이 카드 화면과 함께 건다.
