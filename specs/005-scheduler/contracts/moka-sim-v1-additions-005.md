@@ -16,7 +16,7 @@ spec 001 `contracts/moka-sim-v1.md`, spec 002 `contracts/moka-sim-v1-additions.m
 |---|---|---|
 | `carry` | `task`(할 일 id), `answer`(`"today"`·`"drop"`·`"move"`), `date`(`"YYYY-MM-DD"`, `move`일 때만 필수, 그 밖에는 있으면 오류) | 지금 카드에 떠 있는 할 일에 답한다(data-model §10). 카드 맨 앞 할 일이 아니면 종료 코드 2 |
 | `budget` | `minutes`(정수, 30~960이고 30의 배수. 선택지 다섯은 60·120·240·360·480) | 가용 시간 답(data-model §11, 직접 적기 포함). 질문 중이 아니면 종료 코드 2 |
-| `start`(기존 이벤트에 필드 하나) | `extend`(불리언, 생략하면 `false`) | 시작 전 화면에서 칩이 오늘 남은 분보다 길 때 `true`면 늘리기 확인을 받아들인 것으로 보고 모자란 분만큼 오늘 가용 시간을 늘린 뒤 시작한다(data-model §11 "늘리기"). 칩이 남은 분보다 긴데 `extend`가 없거나 `false`면 종료 코드 2. 칩이 남은 분 이하인데 `extend: true`면 종료 코드 2. 시간 끝의 `start`("N분 더")에는 받지 않는다(종료 코드 2) |
+| `start`(기존 이벤트에 필드 하나) | `extend`(불리언, 생략하면 `false`) | 시작 전 화면에서 칩이 오늘 남은 분보다 길 때 `true`면 늘리기 확인을 받아들인 것으로 보고 모자란 분만큼 오늘 가용 시간을 늘린 뒤 시작한다(data-model §11 "늘리기"). 칩이 남은 분보다 긴데 `extend`가 없거나 `false`면 종료 코드 2. 칩이 남은 분 이하인데 `extend: true`면 종료 코드 2. 상한이 없을 때(켜짐이 아닌 시나리오, 오늘 기록이 없음, "더 할래요" 뒤) `extend: true`도 종료 코드 2. 시간 끝의 `start`("N분 더")에는 받지 않는다(종료 코드 2) |
 | `more` | 없음 | "더 할래요"(data-model §12). 오늘 끝이 아니면 종료 코드 2 |
 
 - 기존 `activate`·`relaunch`가 활성화 순서(data-model §15)를 따른다. `relaunch`는 R-111이 되돌린 할 일을 같은 시작의 판정에 넘긴다.

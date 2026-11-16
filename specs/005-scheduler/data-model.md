@@ -194,7 +194,7 @@ struct DayBudget: Codable, Equatable {   // 설정 키 day_budget의 JSON
 - 시작(`NotchSession.start`)과 "N분 더"(`restart`)가 커밋될 때 고른 분 × 60을 `usedSeconds`에 더한다.
 - 작업 시간이 일찍 끝나면 남은 초(`endsAt − 끝난 시각`, 0 이상)를 돌려준다(뺀다): 도는 중 완료·미루기·바꾸기, 도는 중 종료(`lifecycleCheckpoint(.quit)`). 잠자기는 타이머가 계속 도는 것으로 보므로(spec 001 R-005) 돌려주지 않는다. 시간 끝까지 간 작업 시간은 돌려줄 것이 없다.
 - 비정상 종료하면 돌려받지 못해 고른 시간이 다 쓴 시간으로 남는다. 많이 세는 쪽으로 틀리고, 그날 "오늘 끝"이 일찍 올 수 있다(plan 위험 15). 소수 의견(가이드 자리)은 끝날 때 실제 초를 더하는 안이었다.
-- 지키는 성질(SC-405, spec R-421 정정): 어느 하루의 기록이든 `capActive`인 동안 `usedSeconds ≤ minutes × 60`(늘린 분 포함)이고, 시작·"N분 더" 때 고르는 칩은 그 작업 시간의 `budgetDay` 기록의 `remainingMinutes` 이하다. "그날 시작한 작업 시간 분 합 ≤ hours × 60"은 성립하지 않는다. 일찍 끝내고 돌려받은 시간으로 다시 시작할 수 있기 때문이다(예: 2시간에서 60분 시작 → 10분에 완료(50분 돌려받음) → 110분 시작이면 시작한 분 합은 170, 쓴 시간은 120).
+- 지키는 성질(SC-405, spec R-421 정정): 어느 하루의 기록이든 `capActive`인 동안 `usedSeconds ≤ minutes × 60`(늘린 분 포함)이고, 시작·"N분 더" 때 고르는 칩은 그 작업 시간의 `budgetDay` 기록의 `remainingMinutes` 이하다. "그날 시작한 작업 시간 분 합 ≤ minutes"는 성립하지 않는다. 일찍 끝내고 돌려받은 시간으로 다시 시작할 수 있기 때문이다(예: 2시간에서 60분 시작 → 10분에 완료(50분 돌려받음) → 110분 시작이면 시작한 분 합은 170, 쓴 시간은 120).
 
 하루 경계를 넘는 작업 시간은 시작한 하루(`budgetDay`)의 기록에만 더하고 돌려준다. 그 작업 시간이 하루 경계 뒤 시간 끝이 되어 누르는 "N분 더"(spec 6c)도 같은 기록에 더하고 돌려준다(새 하루에는 아직 가용 시간 기록이 없다). 이때 상한도 그 기록으로 건다: 하루 경계 뒤 시간 끝 화면의 "N분 더" 칩은 시작한 하루의 남은 분 이하로 채우고, 남은 분이 1 미만이면 "N분 더"를 끄고 이유 한 줄을 보인다(R-422의 끈 화면과 같은 모양, 문구는 시안에서 확정). 시작한 하루에 가용 시간 기록이 없거나 "더 할래요"를 눌렀으면 상한이 없다. 이 규칙은 메인 세션 가정이다(PR "가정"). 함께 본 다른 안: (1) R-421을 "같은 하루 안"으로 좁혀 하루 경계 뒤 "N분 더"는 상한 없이 둠, (3) 하루 경계 뒤 "N분 더"는 어느 하루의 쓴 시간에도 넣지 않음. 새 하루의 쓴 시간은 가용 시간 답을 쓸 때 0에서 시작한다(가정, research R10). 새 하루의 질문은 그 작업 시간이 끝나 노치가 빈 뒤에야 뜨므로(R-417) 경계 뒤 몫을 담을 기록이 아직 없기 때문이다.
 
@@ -209,6 +209,7 @@ struct DayBudget: Codable, Equatable {   // 설정 키 day_budget의 JSON
 - 조건: 시작 전 화면(초안), `capActive(today)`, `remainingMinutes ≥ 1`, 고른 칩 > `remainingMinutes`. 남은 분이 0이면 모드가 오늘 끝(§12-5)이라 초안이 없고 늘리기도 없다. 그때는 "더 할래요"다.
 - 확인 줄: 제목 "오늘 시간을 {extendNeeded}분 늘려서 {chipMin}분 할까요?", 설명 "오늘 남은 시간은 {remainingMinutes}분이에요. 늘리면 오늘 정한 시간이 {새 가용 시간}이 돼요.", 버튼 "{remainingMinutes}분만 할래요"와 "늘리고 시작 ↵"(확정 대기 시안 6번 글자, `BudgetText`).
 - "늘리고 시작": 오늘 기록에 `minutes += extendNeeded`, `extendedMinutes += extendNeeded`를 쓰고, 그 쓰기가 성공하면 그 칩으로 시작한다(시작 커밋이 `usedSeconds`에 칩 × 60을 더함). 늘린 뒤 `remainingMinutes ≥ chipMin`이라 `usedSeconds ≤ minutes × 60`이 지켜진다. 늘리기 쓰기가 실패하면 시작하지 않고 확인 줄에 다시 해 달라는 한 줄을 보인다.
+- 늘리기 쓰기는 성공했는데 시작 커밋이 실패하면(메인 세션 가정): 늘린 가용 시간은 그대로 둔다(되돌리지 않음). 확인 줄 자리에 "시작하지 못했어요. 다시 해 주세요." 한 줄을 보인다. 이제 남은 분이 칩 이상이라 `extendNeeded == nil`이고, 다시 누르면(시작 버튼이나 Enter) 확인 줄 없이 바로 시작한다. 두 번 늘리지 않는다.
 - "{N}분만 할래요": 칩을 `remainingMinutes`로 되돌리고 확인 줄을 닫는다. 시작하지 않는다.
 - Enter: 확인 줄이 열린 동안 Enter는 "늘리고 시작"이다. 확인 줄이 닫혀 있고 칩이 남은 분 이하이면 지금처럼 시작이다. 3초 뒤 자동 시작(R-410)은 확인 줄이 열린 동안 돌지 않는다(늘리기는 사용자가 눌러야 한다).
 - "더 할래요"와 다른 점: 늘린 분만큼만 커지고 상한(`capActive`)은 그대로라, 늘린 시간을 다 쓰면 다시 오늘 끝이 온다.
@@ -299,7 +300,7 @@ struct DayBudget: Codable, Equatable {   // 설정 키 day_budget의 JSON
 
 ## §17 3초 뒤 자동 시작 (R-410)
 
-`AutoStart.shouldStart(enabled:mode:draftShownAt:lastInputAt:gateBusy:now:) -> Bool`: 켜짐 && 모드가 §12-6의 초안 && 게이트가 묻거나 확인하는 중이 아님 && `now - max(draftShownAt, lastInputAt) ≥ Defaults.autoStartDelay`. 앱은 초안이 뜰 때 한 번 일정을 걸고, 입력이 있으면 다시 건다. 시간은 주입한 시계로 시험한다.
+`AutoStart.shouldStart(enabled:mode:draftShownAt:lastInputAt:gateBusy:extendNeeded:now:) -> Bool`: 켜짐 && 모드가 §12-6의 초안 && 게이트가 묻거나 확인하는 중이 아님 && 늘리기 확인 줄이 닫혀 있음(`extendNeeded == nil`, 곧 칩 ≤ 남은 분이거나 상한이 없음, §11 "늘리기") && `now - max(draftShownAt, lastInputAt) ≥ Defaults.autoStartDelay`. 남은 10분에서 25분 칩을 고르면 확인 줄이 열려 자동 시작하지 않는다. 늘리기는 사용자가 눌러야 한다. 앱은 초안이 뜰 때 한 번 일정을 걸고, 입력이 있으면 다시 건다. 시간은 주입한 시계로 시험한다.
 
 ## §18 "내일" 표시 (R-423)
 
