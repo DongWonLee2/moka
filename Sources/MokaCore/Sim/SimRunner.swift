@@ -79,6 +79,8 @@ public enum SimRunner {
             SimError(kind: .outOfRange, seq: event.seq, message: "quantum_min이 1...180 밖이다")
         case .notAllowedInPhase:
             notAllowed(event)
+        case .storageFailed:
+            SimError(kind: .invariantViolation, seq: event.seq, message: "저장소가 쓰기를 거부했다")
         }
     }
 
