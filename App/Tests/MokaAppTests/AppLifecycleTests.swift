@@ -272,6 +272,30 @@ final class AppLifecycleTests: XCTestCase {
         guard case .running = state.timer else { return XCTFail("타이머는 그대로: \(state.timer)") }
     }
 
+    func test_FR07_R110_issue173_quitWhileExpiredSavesCheckpointAndRelaunchReverts() throws {
+        let repository = try Self.seeded(1)
+        let clock = TestClock(Self.noon)
+        let state = makeState(repository, clock: clock)
+        state.launch()
+        state.start()
+        clock.advance(minutes: 40)
+        state.tick()
+        guard case .expired = state.timer else { return XCTFail("시간 끝이어야 한다: \(state.timer)") }
+
+        state.lifecycleCheckpoint(.quit)
+
+        let checkpoints = try repository.checkpoints()
+        XCTAssertEqual(checkpoints.map(\.trigger), [.quit])
+        XCTAssertEqual(checkpoints.map(\.elapsedMin), [25], "고른 분")
+        XCTAssertEqual(checkpoints.map(\.notes), [.empty], "칸 값을 읽지 않는다")
+        XCTAssertEqual(try repository.tasks().map(\.status), [.active], "종료는 상태를 바꾸지 않는다")
+
+        let relaunched = makeState(repository, clock: clock)
+        relaunched.launch()
+        XCTAssertEqual(try repository.tasks().map(\.status), [.todo], "다시 켜면 R-111이 대기로 되돌린다")
+        XCTAssertEqual(try repository.checkpoints().map(\.trigger), [.quit], "체크포인트는 남는다")
+    }
+
     func test_FR07_R110_sleepWhileRunningSavesSleepCheckpoint() throws {
         let repository = try Self.seeded(1)
         let clock = TestClock(Self.noon)
