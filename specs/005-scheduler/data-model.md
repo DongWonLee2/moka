@@ -48,7 +48,7 @@ aging = (skipCount + Defaults.carryAgingWeight × carryCount) × (avoiding ≥ �
 - **후보** = `status == .todo` && `!dueDecision`. 오늘 끝(§12)인 동안은 후보 목록을 쓰지 않는다(고르기 자체를 하지 않는다).
 - `PriorityOrder.order(...)`가 후보만 늘어놓는다. 순서 규칙(점수 있는 할 일 priority 순, 동점은 `TaskListView.deadlineFirst`, 그 뒤 점수 없는 할 일 마감일 순)은 그대로다.
 - 이 순서를 쓰는 곳 셋이 모두 이월 답 대기를 뺀다: 고르기(§5), 할 일 탭 순위(`AppState.ranks`, 앞 셋), "다른 할 일" 목록(`OtherTaskList.rows`에 `!dueDecision` 거르기).
-- "다음" 표시(`nextMark`): 초안이면 그 할 일, 도는 중·시간 끝이면 **지금 상태에서 다음 고르기를 돌렸을 때 고를 할 일**(§5의 `SchedulerPick.pick`을 상태를 바꾸지 않고 부름, 현재 할 일은 `excluded`). 이월 카드·가용 시간 질문·오늘 끝 중에는 없음(nil). 빈 상태는 다음 고르기 결과(R-434).
+- "다음" 표시(`nextMark`): 초안이면 그 할 일, 도는 중·시간 끝이면 **지금 상태에서 다음 고르기를 돌렸을 때 고를 할 일**(§5의 `SchedulerPick.pick`을 상태를 바꾸지 않고 부름, 현재 할 일은 `excluded`). 이월 카드·가용 시간 질문·오늘 끝 중에는 없음(nil). 빈 상태는 다음 고르기 결과(R-434). 알려진 한계: 미루기·바꾸기 직후, 그리고 판단 결과가 바뀐 경우에는 실제 다음 고르기와 다를 수 있다. 완료 뒤에는 같다(도는 중 할 일은 후보가 아니므로, `PriorityOrder.isCandidate`)(#174).
 
 ## §5 고르기 (`SchedulerPick`, R-403~R-406, R-408)
 

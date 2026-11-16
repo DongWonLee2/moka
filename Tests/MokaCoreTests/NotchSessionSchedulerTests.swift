@@ -278,6 +278,31 @@ private func switchTask(_ session: NotchSession, _ input: SessionInput) throws(S
         #expect(NotchSession.initial.nextMark(caller.input()) == nil)
     }
 
+    @Test("FR-01 R-434 research R15 #174: 완료 뒤 실제 고르기는 직전 다음 표시와 같다(도는 중·시간 끝, 창이 당겨져도)")
+    func nextMarkMatchesPickAfterComplete() throws {
+        var caller = Caller(try repository(fakes(6)), at: Fake.noon, lastStartDay: day13)
+        caller.usable = [
+            1: score(1, urgency: 0.9), 2: score(2, urgency: 0.8), 3: score(3, urgency: 0.7), 4: score(4, urgency: 0.6),
+            5: score(5, urgency: 0.5), 6: score(6, urgency: 0.4),
+        ]
+        caller.settle()
+        var compared = 0
+        for round in 0..<9 {
+            guard caller.session.taskID != nil else { break }
+            try caller.start()
+            caller.advance(minutes: round.isMultiple(of: 2) ? 1 : 30)
+            if round % 3 == 2 {
+                try caller.press(skip)
+                continue
+            }
+            let mark = caller.session.nextMark(caller.input())
+            try caller.press(complete)
+            #expect(caller.session.taskID == mark, "round \(round)")
+            compared += 1
+        }
+        #expect(compared >= 5)
+    }
+
     @Test("FR-05 R-408: 커서는 실제로 고른 그 고르기에서만 빠진다 — 미룸 → 초안 → 초안 비움 → 고르기")
     func cursorUsedOnce() throws {
         var caller = Caller(try repository(fakes(2)), at: Fake.noon, lastStartDay: day13)
