@@ -5,7 +5,7 @@ final class OnboardingKeyStepTests: XCTestCase {
     func test_FR21_R624_keyStepTexts() {
         XCTAssertEqual(OnboardingKeyText.title, "판단 모델 키가 있나요?")
         XCTAssertEqual(
-            OnboardingKeyText.message, "TypeSafe에서 받은 키를 붙여 넣으면 판단 모델이 할 일 순서를 정해요. 키가 없으면 마감이 가까운 순으로 떠요.")
+            OnboardingKeyText.message, "TypeSafe에서 받은 키를 붙여 넣으면 판단 모델이 할 일 순서를 정해요. 키가 없으면 마감이 가까운 세 할 일을 번갈아 띄워요.")
         XCTAssertEqual(OnboardingKeyText.issueLink, "TypeSafe에서 키 받기")
         XCTAssertEqual(OnboardingKeyText.otherProviders, "다른 판단 모델은 시작한 뒤 설정에서 고를 수 있어요.")
         XCTAssertEqual(OnboardingKeyText.fieldLabel, "키")
