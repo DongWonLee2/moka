@@ -5,7 +5,7 @@ import Testing
 /// 테스트 타깃 파일의 `import X`마다 `Package.swift`의 그 타깃 의존 선언에 X가 있어야 한다.
 
 /// 의존 선언 없이 import할 수 있는 툴체인 모듈.
-private let toolchainModules: Set<String> = ["Foundation", "Testing", "XCTest", "Dispatch"]
+private let toolchainModules: Set<String> = ["Foundation", "Testing", "XCTest", "Dispatch", "os", "Observation"]
 
 private let packageRoot = URL(fileURLWithPath: #filePath)
     .deletingLastPathComponent()
@@ -32,7 +32,7 @@ private func declaredTestTargets(in manifest: String) throws -> [String: Set<Str
 
 private func importedModules(in source: String) throws -> [(line: Int, module: String)] {
     let kinds = "struct|class|enum|protocol|func|var|let|typealias"
-    let importLine = try Regex(#"^\s*(?:@testable\s+)?import\s+(?:(?:"# + kinds + #")\s+)?(\w+)"#)
+    let importLine = try Regex(#"^\s*(?:@\w+\s+)*import\s+(?:(?:"# + kinds + #")\s+)?(\w+)"#)
     return source.components(separatedBy: .newlines).enumerated().compactMap { index, line in
         guard let match = line.firstMatch(of: importLine), let module = match.output[1].substring else { return nil }
         return (index + 1, String(module))
@@ -48,7 +48,7 @@ func testImportsAreDeclaredDependencies() throws {
 
     // 파싱이 어긋나 아무것도 보지 않고 통과하는 거짓 PASS를 막는다.
     #expect(Set(folders) == Set(targets.keys))
-    #expect(targets["MokaStoreTests"]?.contains("GRDB") == true)
+    #expect(targets.values.allSatisfy { !$0.isEmpty })
 
     for folder in folders {
         let declared = (targets[folder] ?? []).union(toolchainModules)
@@ -68,14 +68,16 @@ func testImportsAreDeclaredDependencies() throws {
 
 @Test("#66: 속성이 붙은 import(@preconcurrency, @_exported, @testable)와 종류 import도 모듈 이름을 꺼낸다")
 func importedModulesSeeAttributedImports() throws {
-    let source = """
-        @preconcurrency import FakeA
-        @_exported import FakeB
-        @testable import FakeC
-        import struct FakeD.Thing
-        @preconcurrency @testable import FakeE
-        // import FakeIgnored
-        """
+    // 이 파일도 검사 대상이라 줄 머리에 import를 두지 않고 글자로 만든다.
+    let keyword = "import"
+    let source = [
+        "@preconcurrency \(keyword) FakeA",
+        "@_exported \(keyword) FakeB",
+        "  @testable \(keyword) FakeC",
+        "\(keyword) struct FakeD.Thing",
+        "@preconcurrency @testable \(keyword) FakeE",
+        "// \(keyword) FakeIgnored",
+    ].joined(separator: "\n")
     #expect(try importedModules(in: source).map(\.module) == ["FakeA", "FakeB", "FakeC", "FakeD", "FakeE"])
 }
 
