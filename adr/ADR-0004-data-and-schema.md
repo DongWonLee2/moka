@@ -47,3 +47,4 @@ Agent 추천안 채택. 판단 이유: 사용자 위임(토론 채택안 "전부
 - 실행할 실험: 마이그레이션에서 열 하나를 지운 뒤 스냅샷 시험과 pytest 계약 시험이 FAIL하는지 확인(커밋하지 않음).
 - 성공 판정: 주입 시 둘 다 FAIL, 원복 시 PASS.
 - 재검토 트리거: 리눅스와 macOS의 `sqlite_master` 텍스트가 달라 거짓 FAIL(그때 PRAGMA 기준으로 바꿈), GRDB 버전 변경.
+- (정정 2026-11-16, [#67](https://github.com/DongWonLee2/moka/issues/67): 두 검사는 서로 다른 짝을 본다. Swift 스냅샷 시험은 마이그레이션 ↔ `schema/moka-schema.sql`, pytest는 스냅샷 파일 ↔ 열 계약이다. 마이그레이션만 고치면 Swift 시험만 FAIL하고, 스냅샷 파일까지 고치면 pytest가 FAIL한다. 어느 단계에서도 열을 지운 변경이 두 검사를 함께 통과하지 못한다. 자세한 문장은 spec 002 research R16.)
