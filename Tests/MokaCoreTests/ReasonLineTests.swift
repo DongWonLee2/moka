@@ -107,6 +107,12 @@ private func reason(
         #expect(reason(Fake.task(1), usable: [1: judged(impact: 0.5)], set: set).impact == nil)
     }
 
+    @Test("FR-04 R-303: 번들 질문 파일의 impact 옵션은 3개라 중요도 칸이 보인다(questions.json 계약)")
+    func bundledImpactHasThreeOptions() {
+        #expect(questions.questions["impact"]?.optionCount == 3)
+        #expect(reason(Fake.task(1), usable: [1: judged(impact: 0.5)]).impact == "보통")
+    }
+
     @Test("FR-04 R-303 SC-302: 키가 없어 쓰는 판단 결과가 비면 중요도가 없다")
     func noKey() {
         let usable = ScoreRules.usable(scores: [1: judged()], hasKey: false, questionVersion: "v1", provider: "fake")

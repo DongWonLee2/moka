@@ -24,6 +24,7 @@
 3. 같은 `version` 문자열을 다른 `models`·`thresholds`로 다시 쓰지 않는다. 값을 바꾸면 `version`을 올린다. 버전별 고정값 시험이 지킨다(아래).
 4. `provisional`의 모든 값이 `models`의 값 가운데 있다. 이 spec이 더한 규칙이다(spec 006 data-model §5).
 5. v1 규칙 그대로: 질문 이름은 넷이고, 타입이 맞고, score `criteria`는 2~10개이고, `blocked`가 없다.
+   - 읽기 규칙은 `criteria` 2~10개를 받지만, 노치 이유 줄의 중요도 칸은 `impact` 옵션이 3개일 때만 보인다(spec 004 R-303). 번들 파일의 `impact` 옵션 수는 MokaCore 시험 `bundledImpactHasThreeOptions`가 3으로 고정한다.
 
 `models`에 없는 공급자 ID를 고르면 판단 기능을 끈다(spec 006 data-model §6). 시험과 `moka-sim`의 가짜 공급자는 `models`를 거치지 않고 기준 모델 ID를 직접 받는다.
 
