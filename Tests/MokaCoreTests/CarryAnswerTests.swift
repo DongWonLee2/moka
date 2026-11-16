@@ -21,7 +21,7 @@ private let due = Fake.task(1, deadline: Fake.day("2027-01-10"), skipCount: 2, c
 
 @Suite struct CarryAnswerTests {
     @Test("FR-08 R-415 R-416: 오늘 할래요는 이월 횟수 +1, 표시를 풀고, carry_today 한 줄(판단 없으면 fallback)")
-    func today() throws {
+    func answerToday() throws {
         let batch = try CarryAnswer.apply(.today, task: due, today: today, input: answerInput())
         var expected = due
         expected.carryCount = 2
@@ -37,7 +37,7 @@ private let due = Fake.task(1, deadline: Fake.day("2027-01-10"), skipCount: 2, c
     }
 
     @Test("FR-08 R-415 R-416: 버릴래요는 버림, 표시를 풀고, carry_drop 한 줄")
-    func drop() throws {
+    func answerDrop() throws {
         let batch = try CarryAnswer.apply(.drop, task: due, today: today, input: answerInput())
         var expected = due
         expected.status = .dropped
@@ -48,7 +48,7 @@ private let due = Fake.task(1, deadline: Fake.day("2027-01-10"), skipCount: 2, c
     }
 
     @Test("FR-08 R-415 R-416: 날짜 바꿀래요는 마감을 고른 날로, 이월 횟수는 그대로, carry_move 한 줄")
-    func move() throws {
+    func answerMove() throws {
         let day = Fake.day("2027-01-16")
         let batch = try CarryAnswer.apply(.move(day), task: due, today: today, input: answerInput())
         var expected = due

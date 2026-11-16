@@ -36,6 +36,11 @@ public struct LocalDay: Comparable, Hashable, Sendable {
         return Weekday(rawValue: index + 1)!
     }
 
+    /// `self`에서 `later`까지 날 수. `later`가 앞이면 음수다.
+    public func days(until later: LocalDay) -> Int {
+        later.daysSinceEpoch - daysSinceEpoch
+    }
+
     public static func < (lhs: LocalDay, rhs: LocalDay) -> Bool {
         (lhs.year, lhs.month, lhs.day) < (rhs.year, rhs.month, rhs.day)
     }

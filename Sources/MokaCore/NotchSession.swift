@@ -320,7 +320,10 @@ extension NotchSession {
     }
 
     /// 로그 한 줄(spec 003 R-212, data-model §8). 쓸 판단 결과가 없으면 공급자 `fallback`만 남긴다.
-    private static func logLine(_ taskID: TaskID, _ action: UserAction, _ input: SessionInput) -> NewDecisionLogEntry {
+    static func logLine(
+        _ taskID: TaskID, _ action: UserAction, _ input: SessionInput,
+        choice: SchedulerChoice = PriorityRotateRule.choice
+    ) -> NewDecisionLogEntry {
         let score = input.scoring?.usable[taskID]
         let judgment =
             score.map {
@@ -330,7 +333,7 @@ extension NotchSession {
             } ?? Judgment(provider: "fallback", questionVersion: nil, probsJSON: nil, stateHash: nil)
         return NewDecisionLogEntry(
             taskID: taskID, judgment: judgment, modelSnapshot: score?.modelSnapshot,
-            schedulerChoice: PriorityRotateRule.choice, userAction: action, createdAt: input.now)
+            schedulerChoice: choice, userAction: action, createdAt: input.now)
     }
 }
 
