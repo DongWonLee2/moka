@@ -37,8 +37,10 @@ private struct Caller {
     var today: LocalDay { DayBoundary.day(containing: now, dayStart: Fake.sixAM, calendar: Fake.seoul) }
     var tasks: [MokaTask] { (try? repository.tasks()) ?? [] }
     var budgetDay: LocalDay { session.run?.budgetDay ?? today }
+    /// 가용 시간 기록을 쓰지 않는 호출자(기록 없음)는 늘 세션이다.
     var mode: NotchMode {
-        NotchMode.of(storageAvailable: true, timer: ticked, tasks: tasks, budget: budget, today: today)
+        guard budget != nil else { return .session }
+        return NotchMode.of(storageAvailable: true, timer: ticked, tasks: tasks, budget: budget, today: today)
     }
     var ticked: NotchTimer {
         var timer = session.timer
@@ -240,11 +242,13 @@ private func switchTask(_ session: NotchSession, _ input: SessionInput) throws(S
         let late = Fake.noon + 26 * 60
         var ended = Fake.input(active, now: late)
         ended.dayEndExpired = true
-        let actions: [(NotchSession, SessionInput) throws(SessionError) -> SessionStep] = [complete, skip, switchTask]
-        for action in actions {
-            #expect(try action(running, ended).batch.newCheckpoints.map(\.trigger) == [.dayEnd])
-            #expect(try action(running, Fake.input(active, now: late)).batch.newCheckpoints.map(\.trigger) == [.quantum])
-        }
+        let plain = Fake.input(active, now: late)
+        #expect(try complete(running, ended).batch.newCheckpoints.map(\.trigger) == [.dayEnd])
+        #expect(try skip(running, ended).batch.newCheckpoints.map(\.trigger) == [.dayEnd])
+        #expect(try switchTask(running, ended).batch.newCheckpoints.map(\.trigger) == [.dayEnd])
+        #expect(try complete(running, plain).batch.newCheckpoints.map(\.trigger) == [.quantum])
+        #expect(try skip(running, plain).batch.newCheckpoints.map(\.trigger) == [.quantum])
+        #expect(try switchTask(running, plain).batch.newCheckpoints.map(\.trigger) == [.quantum])
     }
 
     @Test("FR-05 R-404 R-407: N분 더는 고르기가 아니라 최근 고르기를 바꾸지 않는다")

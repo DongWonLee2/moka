@@ -82,16 +82,15 @@ private func switching(_ session: NotchSession, _ input: SessionInput) throws(Se
         #expect(next.taskID == 3)
     }
 
-    @Test("FR-05 R-209 SC-203: 완료 뒤에는 남은 할 일 가운데 1위(spec US1-5)")
+    @Test("FR-05 R-209 R-403: 완료 뒤에는 남은 후보의 몫으로 고른다(C를 끝내면 몫이 큰 A)")
     func completePicksTop() throws {
         let tasks = Fake.todos(1...3)
-        let onB = NotchSession(timer: .empty(draft: nil), taskID: nil, previousTaskID: 1, run: nil).picked(
-            input(tasks))
-        #expect(onB.taskID == 2)
-        let (next, _, _) = try pressed(onB, tasks) { (session, input) throws(SessionError) in
+        let onC = NotchSession.initial.picked(input(tasks))
+        #expect(onC.taskID == 3)
+        let (next, _, _) = try pressed(onC, tasks) { (session, input) throws(SessionError) in
             try session.complete(nil, input)
         }
-        #expect(next.taskID == 3)
+        #expect(next.taskID == 1)
     }
 
     @Test("FR-05 R-209: 커서의 할 일을 버렸으면 1위를 고른다(spec 002의 그다음 큰 id가 아님)")
@@ -123,14 +122,14 @@ private func switching(_ session: NotchSession, _ input: SessionInput) throws(Se
         #expect(start.session.picked(expired) == start.session)
     }
 
-    @Test("FR-01 R-209: 다음 표시는 초안이면 그 할 일, 도는 중이면 같은 노치 순서의 1위")
+    @Test("FR-01 R-209 R-434: 다음 표시는 초안이면 그 할 일, 도는 중이면 지금 할 일을 뺀 다음 고르기")
     func nextMarkFollowsOrder() throws {
         let tasks = Fake.todos(1...3)
         let drafted = NotchSession.initial.picked(input(tasks)).chosenDraft(2, input(tasks))
         #expect(drafted.nextMark(input(tasks)) == 2)
         let start = try drafted.start(input(tasks))
         let running = applying(start.batch, to: tasks)
-        #expect(start.session.nextMark(input(running)) == 3)
+        #expect(start.session.nextMark(input(running)) == 1)
         #expect(start.session.nextMark(input(running, [1: score(1, urgency: 1)])) == 1)
         #expect(start.session.nextMark(input(running, nil)) == 1)
     }
