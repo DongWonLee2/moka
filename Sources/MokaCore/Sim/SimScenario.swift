@@ -3,8 +3,8 @@ import Foundation
 enum SimEventKind: Equatable {
     case enterTitle(String)
     case chooseQuantum(Int)
-    /// 두 줄은 storage 모드에서만 온다(시간 끝 다시 시작).
-    case start(CheckpointNotes?)
+    /// 두 줄과 `extend`(늘리기, spec 005)는 storage 모드에서만 온다(시간 끝 다시 시작).
+    case start(CheckpointNotes?, extend: Bool)
     case tick
     /// 두 줄은 storage 모드에서만 온다(시간 끝 완료).
     case complete(CheckpointNotes?)
@@ -19,6 +19,10 @@ enum SimEventKind: Equatable {
     // spec 003 storage 모드에서만
     case judge(SimJudge)
     case key(present: Bool)
+    // spec 005 storage 모드에서만. 하나라도 있으면 이월·가용 시간을 켠다(Q3-C).
+    case carry(SimCarry)
+    case budget(minutes: Int)
+    case more
 
     var name: String {
         switch self {
@@ -36,6 +40,17 @@ enum SimEventKind: Equatable {
         case .activate: "activate"
         case .judge: "judge"
         case .key: "key"
+        case .carry: "carry"
+        case .budget: "budget"
+        case .more: "more"
+        }
+    }
+
+    /// 이월·가용 시간을 켜는 이벤트(contracts/moka-sim-v1-additions-005.md "켜는 법").
+    var turnsOnSchedule: Bool {
+        switch self {
+        case .carry, .budget, .more: true
+        default: false
         }
     }
 }
@@ -51,6 +66,12 @@ struct SimJudge: Equatable {
     var concrete: Double
     /// 0~1, noul 답.
     var avoiding: Double
+}
+
+/// `carry` 이벤트의 값. 날짜 형식은 디코딩에서, 그 하루보다 뒤인지는 실행 때 본다.
+struct SimCarry: Equatable {
+    var taskID: TaskID
+    var answer: CarryAnswerKind
 }
 
 struct SimEvent: Equatable {
@@ -89,6 +110,7 @@ extension SimScenario {
         "add_task": ["title", "deadline", "recurrence", "weekday", "est_min"], "skip": noteKeys, "switch": noteKeys,
         "quit": [], "relaunch": [], "activate": [],
         "judge": ["task", "urgency", "impact", "concrete", "avoiding"], "key": ["present"],
+        "carry": ["task", "answer", "date"], "budget": ["minutes"], "more": [],
     ]
 
     static func decode(_ data: Data) throws(SimError) -> SimScenario {
@@ -158,10 +180,11 @@ extension SimScenario {
         if let keys = timerEventKeys[type] {
             extra = keys
             if type == "start" || type == "complete" {
+                let storageKeys = type == "start" ? noteKeys + ["extend"] : noteKeys
                 if storage {
-                    extra += noteKeys
-                } else if let note = noteKeys.first(where: { field(event, $0) != nil }) {
-                    throw storageOnly("\(type)의 \(note)", seq: seq)
+                    extra += storageKeys
+                } else if let key = storageKeys.first(where: { field(event, $0) != nil }) {
+                    throw storageOnly("\(type)의 \(key)", seq: seq)
                 }
             }
         } else if let keys = storageEventKeys[type] {
@@ -185,7 +208,7 @@ extension SimScenario {
             kind = .setDefaultQuantum(
                 try quantum(require(event, "quantum_min", path: "quantum_min", seq: seq), path: "quantum_min", seq: seq)
             )
-        case "start": kind = .start(try optionalNotes(event, seq: seq))
+        case "start": kind = .start(try optionalNotes(event, seq: seq), extend: try extend(event, seq: seq))
         case "tick": kind = .tick
         case "complete": kind = .complete(try optionalNotes(event, seq: seq))
         case "add_task": kind = .addTask(try newTask(event, seq: seq))
@@ -199,6 +222,9 @@ extension SimScenario {
                 throw SimError(kind: .wrongType, seq: seq, message: "present는 JSON 불리언이어야 한다")
             }
             kind = .key(present: present)
+        case "carry": kind = .carry(try carry(event, seq: seq))
+        case "budget": kind = .budget(minutes: try budgetMinutes(event, seq: seq))
+        case "more": kind = .more
         default: kind = .activate
         }
         return SimEvent(seq: seq, epochSeconds: epochSeconds, kind: kind)
@@ -289,6 +315,50 @@ extension SimScenario {
         return SimJudge(
             taskID: TaskID(task), urgency: try answer("urgency", upTo: 3), impact: try answer("impact", upTo: 2),
             concrete: try answer("concrete", upTo: 1), avoiding: try answer("avoiding", upTo: 1))
+    }
+
+    /// `start`의 늘리기. 없으면 거짓.
+    private static func extend(_ event: Object, seq: Int) throws(SimError) -> Bool {
+        guard let value = field(event, "extend") else { return false }
+        guard case .bool(let flag) = value else {
+            throw SimError(kind: .wrongType, seq: seq, message: "extend는 JSON 불리언이어야 한다")
+        }
+        return flag
+    }
+
+    /// `carry`. `date`는 `move`일 때만 받고 그때는 꼭 있어야 한다.
+    private static func carry(_ event: Object, seq: Int) throws(SimError) -> SimCarry {
+        let task = try integer(require(event, "task", path: "task", seq: seq), path: "task", seq: seq)
+        let answer = try string(require(event, "answer", path: "answer", seq: seq), path: "answer", seq: seq)
+        let date = field(event, "date")
+        switch answer {
+        case "today", "drop":
+            guard date == nil else {
+                throw SimError(kind: .unknownKey, seq: seq, message: "carry의 date는 answer가 move일 때만 받는다")
+            }
+            return SimCarry(taskID: TaskID(task), answer: answer == "today" ? .today : .drop)
+        case "move":
+            let text = try string(require(event, "date", path: "date", seq: seq), path: "date", seq: seq)
+            guard let day = LocalDay(text: text) else {
+                throw SimError(
+                    kind: .invalidDate, seq: seq, message: "date \(SimError.quoted(text))는 있는 날짜의 YYYY-MM-DD가 아니다")
+            }
+            return SimCarry(taskID: TaskID(task), answer: .move(day))
+        default:
+            throw SimError(
+                kind: .outOfRange, seq: seq, message: "answer \(SimError.quoted(answer))는 today/drop/move가 아니다")
+        }
+    }
+
+    /// `budget`. 30~960분이고 30분 단위(data-model §11).
+    private static func budgetMinutes(_ event: Object, seq: Int) throws(SimError) -> Int {
+        let minutes = try integer(require(event, "minutes", path: "minutes", seq: seq), path: "minutes", seq: seq)
+        guard Defaults.customBudgetMinutesRange.contains(minutes),
+            minutes.isMultiple(of: Defaults.customBudgetStepMinutes)
+        else {
+            throw SimError(kind: .outOfRange, seq: seq, message: "minutes \(minutes)이 30...960의 30분 단위가 아니다")
+        }
+        return minutes
     }
 
     private static func field(_ object: Object, _ key: String) -> SimJSON? {

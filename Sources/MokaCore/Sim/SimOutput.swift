@@ -8,13 +8,16 @@ enum SimOutput {
 
     /// storage 모드: 원본 여섯 키 뒤에 `notch_task`, `has_first_action`, `tasks`, `checkpoint`, `decision`.
     /// `judgment`가 있으면(시나리오에 `judge`·`key`가 있음) 뒤에 `order`, `has_key`를 붙이고 `decision`에 `provider`를 넣는다.
+    /// `state.schedule`이 있으면(spec 005 켜짐) 뒤에 `notch_rule`, `mode`, `carry_card`, `carry_left`, `budget`을 붙이고
+    /// `tasks` 객체마다 `carry_count`, `due`를 붙인다.
     static func storageLine(
         _ event: SimEvent, state: SimStorageState, previous: SimStorageState, judgment: SimJudgmentFields?
     ) -> String {
         let notchTask = state.session?.taskID
         let hasFirstAction = notchTask.map { id in state.tasks.contains { $0.id == id && $0.firstAction != nil } }
-        let tasks = state.tasks.map {
-            #"{"id":\#($0.id),"status":"\#($0.status.rawValue)","skip_count":\#($0.skipCount),"streak":\#($0.streak)}"#
+        let tasks = state.tasks.map { task in
+            #"{"id":\#(task.id),"status":"\#(task.status.rawValue)","skip_count":\#(task.skipCount),"streak":\#(task.streak)"#
+                + (state.schedule == nil ? "" : #","carry_count":\#(task.carryCount),"due":\#(task.dueDecision)"#) + "}"
         }
         let checkpoint = state.checkpoints.count > previous.checkpoints.count ? state.checkpoints.last : nil
         let decision = state.decisions.count > previous.decisions.count ? state.decisions.last : nil
@@ -23,7 +26,33 @@ enum SimOutput {
             + #""tasks":[\#(tasks.joined(separator: ","))],"#
             + #""checkpoint":\#(checkpoint.map(fields) ?? "null"),"#
             + #""decision":\#(decision.map { fields($0, showsProvider: judgment != nil) } ?? "null")"#
-            + (judgment.map(fields) ?? "") + "}\n"
+            + (judgment.map(fields) ?? "") + (state.schedule.map { fields($0, state: state) } ?? "") + "}\n"
+    }
+
+    private static func fields(_ schedule: SimSchedule, state: SimStorageState) -> String {
+        let rule = state.session?.taskID == nil ? nil : state.session?.memory.pickedBy?.rawValue
+        let card: TaskID?
+        if case .carryCard(let id, _, _) = schedule.mode {
+            card = id
+        } else {
+            card = nil
+        }
+        let budget = DayBudget.record(schedule.budget, for: schedule.today).map {
+            #"{"min":\#($0.minutes),"extended_min":\#($0.extendedMinutes),"used_s":\#($0.usedSeconds),"more":\#($0.more)}"#
+        }
+        return #","notch_rule":\#(rule.map { "\"\($0)\"" } ?? "null"),"mode":"\#(modeName(schedule.mode))","#
+            + #""carry_card":\#(literal(card)),"carry_left":\#(CarryAnswer.cards(state.tasks).count),"#
+            + #""budget":\#(budget ?? "null")"#
+    }
+
+    private static func modeName(_ mode: NotchMode) -> String {
+        switch mode {
+        case .storageUnavailable: "storage_unavailable"
+        case .session: "session"
+        case .carryCard: "carry_card"
+        case .askBudget: "ask_budget"
+        case .dayEnd: "day_end"
+        }
     }
 
     private static func fields(_ judgment: SimJudgmentFields) -> String {

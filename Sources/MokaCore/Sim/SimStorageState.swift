@@ -8,11 +8,31 @@ public struct SimStorageState: Equatable, Sendable {
     public var tasks: [MokaTask]
     public var checkpoints: [Checkpoint]
     public var decisions: [DecisionLogEntry]
+    /// 이월·가용 시간이 켜진 시나리오에서만 값(spec 005 Q3-C).
+    public var schedule: SimSchedule?
 
-    public init(session: NotchSession?, tasks: [MokaTask], checkpoints: [Checkpoint], decisions: [DecisionLogEntry]) {
+    public init(
+        session: NotchSession?, tasks: [MokaTask], checkpoints: [Checkpoint], decisions: [DecisionLogEntry],
+        schedule: SimSchedule? = nil
+    ) {
         self.session = session
         self.tasks = tasks
         self.checkpoints = checkpoints
         self.decisions = decisions
+        self.schedule = schedule
+    }
+}
+
+/// 이월·가용 시간 상태(spec 005 data-model §11·§12). 출력과 불변식이 읽는다.
+public struct SimSchedule: Equatable, Sendable {
+    public var mode: NotchMode
+    /// 저장된 가용 시간 기록(어느 하루든). 출력은 `today`의 기록만 낸다.
+    public var budget: DayBudget?
+    public var today: LocalDay
+
+    public init(mode: NotchMode, budget: DayBudget?, today: LocalDay) {
+        self.mode = mode
+        self.budget = budget
+        self.today = today
     }
 }
