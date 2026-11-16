@@ -189,3 +189,48 @@ func malformedTextFailsToRead(column: String) throws {
     let repo = GRDBTaskRepository(db)
     #expect(throws: StoreError.invalidValue(column: column)) { try repo.tasks() }
 }
+
+@Test("FR-01 R-101 #66: 형식이 틀린 cycle_day가 든 반복 할 일을 읽으면 invalidValue")
+func malformedCycleDayFailsToRead() throws {
+    let db = try TestDatabase.migratedInMemory()
+    try db.write { db in
+        try db.execute(sql: insertParentTask)
+        try db.execute(sql: "UPDATE tasks SET recurrence = 'daily', cycle_day = '2026-02-30 bad'")
+    }
+    #expect(throws: StoreError.invalidValue(column: "cycle_day")) { try GRDBTaskRepository(db).tasks() }
+}
+
+@Test("FR-01 R-101 #66: 형식이 틀린 contexts.date가 든 일정을 읽으면 invalidValue")
+func malformedContextDateFailsToRead() throws {
+    let db = try TestDatabase.migratedInMemory()
+    try db.write {
+        try $0.execute(sql: "INSERT INTO contexts(name, date, impact) VALUES ('가짜 일정', '2026-02-30', 'normal')")
+    }
+    #expect(throws: StoreError.invalidValue(column: "date")) { try GRDBContextStore(db).contexts() }
+}
+
+@Test("FR-01 R-101 #66: 형식이 틀린 created_at이 든 checkpoints·decisions_log 줄을 읽으면 invalidValue")
+func malformedLogCreatedAtFailsToRead() throws {
+    let db = try TestDatabase.migratedInMemory()
+    try db.write { db in
+        try db.execute(sql: insertParentTask)
+        try db.execute(sql: checkpointRows[0].sql.replacingOccurrences(of: createdAt, with: "2026-10-26 07:33:20"))
+        try db.execute(sql: decisionRows[0].sql.replacingOccurrences(of: createdAt, with: "2026-10-26 07:33:20"))
+    }
+    let repo = GRDBTaskRepository(db)
+    #expect(throws: StoreError.invalidValue(column: "created_at")) { try repo.checkpoints() }
+    #expect(throws: StoreError.invalidValue(column: "created_at")) { try repo.decisions() }
+}
+
+@Test("FR-11 R-112 #66: 공급자가 있고 판단 칸이 일부만 찬 decisions_log 줄은 빈 칸을 nil로 읽는다")
+func partialJudgmentReads() throws {
+    let db = try TestDatabase.migratedInMemory()
+    try db.write { db in
+        try db.execute(sql: insertParentTask)
+        try db.execute(
+            sql: decisionRow("공급자 + question_version만", provider: "'fake'", questionVersion: "'v0'", allowed: true).sql)
+    }
+    let entry = try #require(try GRDBTaskRepository(db).decisions().first)
+    #expect(entry.judgment == Judgment(provider: "fake", questionVersion: "v0", probsJSON: nil, stateHash: nil))
+    #expect(entry.modelSnapshot == nil)
+}
