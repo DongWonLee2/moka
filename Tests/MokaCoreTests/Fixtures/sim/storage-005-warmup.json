@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "timezone": "Asia/Seoul",
+  "storage": true,
+  "events": [
+    { "at": "2026-11-16T09:00:00+09:00", "type": "add_task", "title": "가짜 할 일 A", "est_min": 45 },
+    { "at": "2026-11-16T09:00:05+09:00", "type": "add_task", "title": "가짜 할 일 B", "est_min": 20 },
+    { "at": "2026-11-16T09:00:10+09:00", "type": "add_task", "title": "가짜 할 일 C", "est_min": 10 },
+    { "at": "2026-11-16T09:00:20+09:00", "type": "key", "present": true },
+    { "at": "2026-11-16T09:00:30+09:00", "type": "judge", "task": 1, "urgency": 3, "impact": 2, "concrete": 0.9, "avoiding": 0.1 },
+    { "at": "2026-11-16T09:00:31+09:00", "type": "judge", "task": 2, "urgency": 1.5, "impact": 1, "concrete": 0.85, "avoiding": 0.1 },
+    { "at": "2026-11-16T09:00:32+09:00", "type": "judge", "task": 3, "urgency": 0.5, "impact": 0, "concrete": 0.5, "avoiding": 0.1 },
+    { "at": "2026-11-16T09:01:00+09:00", "type": "relaunch" },
+    { "at": "2026-11-16T09:02:00+09:00", "type": "start" },
+    { "at": "2026-11-16T09:05:00+09:00", "type": "skip" },
+    { "at": "2026-11-16T09:06:00+09:00", "type": "quit" },
+    { "at": "2026-11-16T09:07:00+09:00", "type": "relaunch" },
+    { "at": "2026-11-17T07:00:00+09:00", "type": "activate" },
+    { "at": "2026-11-17T07:00:10+09:00", "type": "quit" },
+    { "at": "2026-11-17T07:00:20+09:00", "type": "relaunch" }
+  ]
+}

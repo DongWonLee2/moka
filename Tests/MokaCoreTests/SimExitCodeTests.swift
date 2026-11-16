@@ -60,12 +60,12 @@ private let day = LocalDay(text: "2026-11-02")!
 
 private func task(
     _ id: TaskID, _ status: TaskStatus, recurrence: Recurrence = .none, weekday: Int? = nil, cycleDay: LocalDay? = nil,
-    skipCount: Int = 0, streak: Int = 0
+    skipCount: Int = 0, streak: Int = 0, due: Bool = false
 ) -> MokaTask {
     MokaTask(
         id: id, title: "가짜 할 일 \(id)", deadline: nil, estMin: nil, recurrence: recurrence,
         weekday: weekday.flatMap(Weekday.init(rawValue:)), cycleDay: cycleDay, firstAction: nil, status: status,
-        skipCount: skipCount, streak: streak, createdAt: t0)
+        skipCount: skipCount, streak: streak, createdAt: t0, dueDecision: due)
 }
 
 private func checkpoint(_ id: Int64, elapsed: Int = 3) -> Checkpoint {
@@ -88,9 +88,17 @@ private let draft = NotchSession(
     timer: .empty(draft: Draft(title: title, chipMin: 25)), taskID: 1, previousTaskID: nil, run: nil)
 
 private func state(
-    _ session: NotchSession?, _ tasks: [MokaTask], checkpoints: [Checkpoint] = [], decisions: [DecisionLogEntry] = []
+    _ session: NotchSession?, _ tasks: [MokaTask], checkpoints: [Checkpoint] = [], decisions: [DecisionLogEntry] = [],
+    schedule: SimSchedule? = nil
 ) -> SimStorageState {
-    SimStorageState(session: session, tasks: tasks, checkpoints: checkpoints, decisions: decisions)
+    SimStorageState(
+        session: session, tasks: tasks, checkpoints: checkpoints, decisions: decisions, schedule: schedule)
+}
+
+private func schedule(_ mode: NotchMode, used: Int = 0, minutes: Int = 60, more: Bool = false) -> SimSchedule {
+    SimSchedule(
+        mode: mode,
+        budget: DayBudget(day: day, minutes: minutes, extendedMinutes: 0, usedSeconds: used, more: more), today: day)
 }
 
 private let blank = state(.initial, [])
@@ -143,6 +151,18 @@ let brokenStorageStates: [BrokenStorageState] = [
         previous: state(.initial, [task(1, .todo)], decisions: [decision(1)])),
     BrokenStorageState(
         name: "한 이벤트에 로그 둘", state: state(.initial, [task(1, .todo)], decisions: [decision(1), decision(2)])),
+    // spec 005 새 불변식(contracts/moka-sim-v1-additions-005.md)
+    BrokenStorageState(
+        name: "초안의 notch_task가 이월 답 대기", state: state(draft, [task(1, .todo, due: true)], schedule: schedule(.session))),
+    BrokenStorageState(
+        name: "이월 카드인데 초안이 있음",
+        state: state(
+            draft, [task(1, .todo), task(2, .todo, due: true)],
+            schedule: schedule(.carryCard(taskID: 2, left: 1, reason: .touched)))),
+    BrokenStorageState(
+        name: "가용 시간 질문인데 도는 중", state: state(running, [task(1, .active)], schedule: schedule(.askBudget))),
+    BrokenStorageState(
+        name: "더 할래요 전인데 쓴 시간이 가용 시간보다 큼", state: state(.initial, [], schedule: schedule(.dayEnd, used: 3601))),
     BrokenStorageState(
         name: "타이머 불변식 위반(끝 시각 = 시작 시각)",
         state: state(
@@ -169,6 +189,10 @@ func validStorageStatesPassInvariant() {
         (state(draft, [task(1, .todo), weekly]), blank),
         (state(running, [task(1, .active), weekly]), blank),
         (state(expired, [task(1, .active)]), blank),
+        // 하루 경계를 넘긴 진행 중 할 일은 이월 답 대기가 붙은 채 노치에 남는다(R-417).
+        (state(running, [task(1, .active, due: true)], schedule: schedule(.session)), blank),
+        (state(.initial, [task(1, .todo, due: true)], schedule: schedule(.carryCard(taskID: 1, left: 1, reason: .touched))), blank),
+        (state(.initial, [], schedule: schedule(.session, used: 7200, minutes: 60, more: true)), blank),
         // 꺼짐: 도는 중이던 할 일은 active로 남는다
         (state(nil, [task(1, .active)], checkpoints: [checkpoint(1)]), state(running, [task(1, .active)])),
         (
