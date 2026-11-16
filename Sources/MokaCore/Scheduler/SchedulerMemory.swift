@@ -10,15 +10,18 @@ public struct SchedulerMemory: Equatable, Sendable {
     public var memoryDay: LocalDay?
     /// 지금 노치 할 일을 띄운 규칙. 버튼 로그 줄의 `scheduler_choice`다(§16).
     public var pickedBy: SchedulerChoice?
+    /// 커서(`NotchSession.previousTaskID`)를 남긴 하루. 하루가 바뀐 뒤 첫 고르기는 어제 커서를 빼지 않는다.
+    public var cursorDay: LocalDay?
 
     public init(
         credits: [TaskID: Int] = [:], recentPicks: [TaskID] = [], memoryDay: LocalDay? = nil,
-        pickedBy: SchedulerChoice? = nil
+        pickedBy: SchedulerChoice? = nil, cursorDay: LocalDay? = nil
     ) {
         self.credits = credits
         self.recentPicks = recentPicks
         self.memoryDay = memoryDay
         self.pickedBy = pickedBy
+        self.cursorDay = cursorDay
     }
 
     public static let empty = SchedulerMemory()
@@ -26,6 +29,6 @@ public struct SchedulerMemory: Equatable, Sendable {
     /// `today`에 고르기 전 상태. 하루가 바뀌었으면 몫 상태와 최근 고르기를 비운다. `today`가 nil이면 그대로다.
     public func on(_ today: LocalDay?) -> SchedulerMemory {
         guard let today, memoryDay != today else { return self }
-        return SchedulerMemory(memoryDay: today, pickedBy: pickedBy)
+        return SchedulerMemory(memoryDay: today, pickedBy: pickedBy, cursorDay: cursorDay)
     }
 }
