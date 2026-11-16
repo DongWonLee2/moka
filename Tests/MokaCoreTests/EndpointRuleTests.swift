@@ -33,6 +33,32 @@ import Testing
         #expect(EndpointRule.check(text, allowsPath: false).map(\.absoluteString) == .success(expected))
     }
 
+    @Test("ADR-0011 R-605 R-606 #149: 대문자 IPv6 호스트는 소문자로 받고 보내는 곳도 같은 값이다")
+    func uppercaseIPv6() throws {
+        let url = try EndpointRule.check("https://[FE80::1]:8443/", allowsPath: false).get()
+        #expect(url.absoluteString == "https://[fe80::1]:8443")
+        #expect(EndpointRule.host(of: url) == "fe80::1")
+        #expect(EndpointRule.check("HTTP://[::1]", allowsPath: false).map(\.absoluteString) == .success("http://[::1]"))
+    }
+
+    @Test("ADR-0011 R-605 R-606 #149: 퍼센트 인코딩 호스트는 받고, 16진수를 소문자로 바꿔도 보내는 곳은 같다")
+    func percentEncodedHost() throws {
+        let upper = try EndpointRule.check("https://example%2Dresource.invalid", allowsPath: false).get()
+        let lower = try EndpointRule.check("https://EXAMPLE%2dresource.invalid", allowsPath: false).get()
+        #expect(upper.absoluteString == "https://example%2dresource.invalid")
+        #expect(lower.absoluteString == upper.absoluteString)
+        #expect(EndpointRule.host(of: upper) == "example-resource.invalid")
+    }
+
+    @Test("ADR-0011 R-605 R-606 #149: zone id가 있는 IPv6는 loopback이 아니고, https로는 받아 zone id까지 보내는 곳에 보인다")
+    func ipv6ZoneID() throws {
+        #expect(EndpointRule.check("http://[fe80::1%25en0]:8080", allowsPath: false) == .failure(.scheme))
+        #expect(EndpointRule.check("http://[::1%25lo0]:8080", allowsPath: false) == .failure(.scheme))
+        let url = try EndpointRule.check("https://[FE80::1%25EN0]:8080", allowsPath: false).get()
+        #expect(url.absoluteString == "https://[fe80::1%25en0]:8080")
+        #expect(EndpointRule.host(of: url) == "fe80::1%en0")
+    }
+
     @Test("ADR-0011 R-605 #139: 경로의 대소문자는 바꾸지 않는다")
     func pathCaseKept() {
         #expect(
