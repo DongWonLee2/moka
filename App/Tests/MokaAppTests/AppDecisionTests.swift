@@ -621,7 +621,8 @@ final class AppDecisionTests: XCTestCase {
         h.state.tick()
         h.state.complete()
 
-        XCTAssertEqual(h.state.tasks.map(\.status), [.done, .done, .todo])
+        XCTAssertEqual(
+            h.state.tasks.map(\.status), [.todo, .done, .done], "가중 순환(spec 005 R-403): 2를 끝낸 뒤 몫이 큰 3이 뜬다")
         XCTAssertTrue(try h.scoreStore.scores().isEmpty)
     }
 
