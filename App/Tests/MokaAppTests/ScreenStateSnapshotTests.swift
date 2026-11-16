@@ -189,9 +189,9 @@ final class ScreenStateSnapshotTests: XCTestCase {
     }
 
     /// 시안 2번: 판단 결과가 없으면 중요도 칸 없이 두 칸.
-    func test_R301_draftReasonNoLoss() throws {
+    func test_R301_draftReasonNoImpact() throws {
         try snapshot(
-            "18-reason-draft-no-loss", timer: Self.fakeDraft, remaining: nil, expanded: true, hovering: true,
+            "18-reason-draft-no-impact", timer: Self.fakeDraft, remaining: nil, expanded: true, hovering: true,
             reasonLine: "D-day · 미룬 0번")
     }
 
