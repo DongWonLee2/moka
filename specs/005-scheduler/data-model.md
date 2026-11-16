@@ -80,7 +80,7 @@ struct PickResult { var taskID: TaskID?; var rule: SchedulerChoice?; var memory:
    - **셈**: 창의 모든 할 일(건너뛸 후보 포함)의 `credits`에 몫을 더한다. 고를 수 있는 후보 = 창에서 `excluded`(R-408)와 연속 상한(R-404: `recentPicks`의 마지막 `Defaults.consecutiveCap`(2)개가 같은 할 일 X이면 X)을 뺀 것. 그 가운데 `credits`가 가장 큰 할 일을 고르고, 동점이면 `order` 앞쪽. 고른 할 일의 `credits`에서 창 몫 합을 뺀다. 건너뛴 후보의 몫은 버리지 않고 그대로 둔다(다음 고르기에서 앞선다).
    - 고를 수 있는 후보가 비면: 창에 `excluded`만 남은 경우(후보가 하나) 그 할 일, 연속 상한 때문에 빈 경우 상한을 무시하고 고른다(R-404 "후보가 하나면 예외").
    - 지킬 성질: (a) 무작위 없음, 같은 입력과 같은 `memory`면 같은 결과, (b) 창이 바뀌지 않고 건너뛰기가 없는 동안 10번마다 몫 비 그대로(5:3:2면 5·3·2), 100번이면 50·30·20(SC-401), (c) 창 밖 후보는 0번, (d) 동점은 `order`의 앞쪽.
-   - 근거 시뮬레이션(메인 세션, 기록 `.audit/debate/20261116-spec005-plan.md`): 이 규칙에서 5:3:2가 유지되고, 10번 뒤 급한 새 할 일이 1위(몫 5)로 창에 들면 바로 다음 차례에 뽑히고 이어지는 10번 중 5번 뽑힌다.
+   - 근거 시뮬레이션(메인 세션, 기록 `.audit/debate/20261116-spec005-plan.md`)은 특정 사례 하나다: 몫 5:3:2 창에서 0부터 10번 고른 뒤(그때 몫 상태가 모두 0으로 돌아옴) 급한 새 할 일이 1위(몫 5)로 들고 나머지가 3·2가 되는 경우, 새 할 일이 바로 다음 차례에 뽑히고 이어지는 10번 중 5번 뽑혔다. "새 1위가 바로 다음 차례에 뽑힌다"는 일반 성질이 아니다. 반례: 몫 상태가 A 0, B 1200, C −1200인 때 priority 2.0(몫 2000)인 N이 1위로 들고 A가 창에서 밀려나면, 몫을 더한 뒤 N은 2000, B는 1200 + B의 몫이라 B의 몫이 800보다 크면(예: priority 0.9 → 900) B가 먼저 뽑힌다. 시험은 이 특정 사례만 고정한다.
    - 이름 `weighted_rotate_v1`.
 5. `memory`를 갱신해 돌려준다: 고른 할 일을 `recentPicks` 끝에 붙이고 최근 `consecutiveCap`개만 남김, 갱신한 `credits`.
 
@@ -91,7 +91,7 @@ struct PickResult { var taskID: TaskID?; var rule: SchedulerChoice?; var memory:
 ## §6 아침 워밍업 (R-406)
 
 - `isWarmup` = 그 하루(§15 `today`)에 시작한 작업 시간이 없음. 설정 키 `last_start_day`(§13)가 `today`가 아니면 참.
-- `last_start_day`는 `NotchSession.start`가 성공해 커밋될 때 그 하루로 쓴다. 쓰기 실패는 워밍업이 한 번 더 걸릴 뿐이라 시작을 막지 않는다(로그 한 줄).
+- `last_start_day`는 `NotchSession.start`가 성공해 커밋될 때 그 하루로 쓴다. 시간 끝의 "N분 더"(`restart`)는 시작이 아니라 쓰지 않는다. 하루 경계 뒤 "N분 더"(spec 6c)도 그 하루의 첫 작업 시간으로 치지 않아, 새 하루 첫 고르기는 여전히 워밍업이다. 쓰기 실패는 워밍업이 한 번 더 걸릴 뿐이라 시작을 막지 않는다(로그 한 줄).
 - 워밍업 후보 = 창이 아니라 후보 전체(`order`, `excluded` 뺌) 가운데 판단 결과가 있고 `concrete ≥ Defaults.warmupConcreteMin`(0.8)이고 `estMin != nil && estMin ≤ Defaults.warmupEstMaxMin`(30)인 할 일. 그 가운데 `order`의 첫째(= priority 1위).
 - 없으면 §5-4로 간다. 워밍업으로 고른 할 일도 `recentPicks`에 들어가지만 몫 상태는 바꾸지 않는다.
 - 하루 첫 작업 시간을 시작하기 전에 바꾸기·미루기를 누를 수 없으므로(초안에는 그 버튼이 없다) 워밍업 고르기는 "다른 할 일"로 초안을 바꿔도 다시 돌지 않는다. "다른 할 일"로 바꾼 할 일의 로그 이름은 `warmup_v1`이다(R-411).
@@ -136,12 +136,13 @@ enum CarryJudgment {
 - `needsRun`: `lastJudgedAt == nil`이면 참, 아니면 `DayBoundary.day(containing: lastJudgedAt) < today`.
 - 구간 시작 `since` = `lastJudgedAt`, 없으면 `DayBoundary.start(of: today.adding(days: -1))`(바로 앞 하루 시작).
 - 대상 = `recurrence == .none` && `status ∈ {.todo, .active}` && (손댄 할 일 || 마감 지남).
-  - 손댄 할 일: `since` 이후(`createdAt > since`) 그 할 일의 체크포인트가 하나라도 있음(계기 상관없음), 또는 `since` 이후 `userAction ∉ {carryToday, carryDrop, carryMove}`인 로그 줄이 있음, 또는 `status == .active`, 또는 `revertedIDs`에 있음.
+  - 손댄 할 일: `createdAt >= since`인 그 할 일의 체크포인트가 하나라도 있음(계기 상관없음), 또는 `createdAt >= since`이고 `userAction ∉ {carryToday, carryDrop, carryMove}`인 로그 줄이 있음, 또는 `status == .active`, 또는 `revertedIDs`에 있음.
+  - 같은 초 처리: 저장 시각(`UTCTimestamp`)은 초 아래를 버리므로 `since`와 `createdAt`을 모두 초로 내림한 값으로 비교하고 경계를 포함한다(`>=`). 지난 판정과 같은 초에 남은 줄은 다음 판정에서도 손댄 것으로 센다. 두 번 세어 카드에 한 번 더 오를 수는 있어도 빠지지는 않는 쪽이다(FR-08 "자동 이월 0건").
   - 마감 지남: `deadline != nil && deadline < today`.
 - 이미 `dueDecision`인 할 일은 대상이든 아니든 그대로 둔다(표시를 지우지 않는다). 그래서 여러 번 돌려도 결과가 같다.
 - 결과를 쓰는 것은 §10의 판정 쓰기다. 순수 함수는 쓰지 않는다.
 
-**판정 쓰기**(`CarryJudgmentWrite`): 대상마다 `dueDecision = true`인 할 일 갱신과 `carry_judged_at = now`를 **한 트랜잭션**으로 쓴다. 대상이 없어도 판정 시각은 쓴다. 쓰기가 실패하면 둘 다 남지 않고, 다음 활성화에 같은 `since`로 다시 돈다. 저장 경계는 Q1-B로 정했다(debate 3:0, 사용자 위임 2026-11-16, research Q1).
+**판정 쓰기**(`CarryJudgmentWrite`): 대상마다 `dueDecision = true`인 할 일 갱신과 `carry_judged_at = now`를 **한 트랜잭션**으로 쓴다. 대상이 없어도 판정 시각은 쓴다. 쓰기가 실패하면 둘 다 남지 않고, 다음 활성화에 같은 `since`로 다시 돈다. 저장 경계는 Q1-B로 정했다(debate 3:0, 2026-11-16, research Q1).
 
 - `TaskRepository`에 둘을 더한다: `lastCarryJudgment() throws -> Date?`, `applyCarryJudgment(_ batch: StoreBatch, judgedAt: Date) throws`.
 - `GRDBTaskRepository.applyCarryJudgment`는 `batch`의 할 일 갱신과 `settings` 표의 `carry_judged_at` upsert를 한 `db.write`로 쓴다. `lastCarryJudgment`는 같은 키를 읽는다. `InMemoryTaskRepository`는 자기 사본 안에 판정 시각 하나를 들고 `apply`와 같은 방식(사본에 쓰고 다 되면 바꿔 넣음)으로 쓴다.
@@ -150,7 +151,7 @@ enum CarryJudgment {
 
 R-119(앱 DB를 열 수 없음): `AppStorage.repository == nil`이면 판정을 돌리지 않는다. 설정은 메모리(`InMemorySettingsStore`)로 대체되지만 카드·질문을 띄우지 않으므로 판정 시각도 쓰지 않는다. 그래서 메모리 설정과 DB 사이의 트랜잭션은 생기지 않는다.
 
-**R-111이 되돌린 할 일**(`revertedIDs`): 앱 시작 때 `LaunchRecovery.revert`가 돌려준 할 일 ID. 같은 시작에서 판정이 돌면(하루가 바뀐 뒤의 시작) 그 판정에 넘긴다. 같은 하루 안의 재시작이라 판정이 돌지 않으면 남기지 않는다(Q2-A, debate 3:0, 2026-11-16). 그 할 일은 다음 판정에서 체크포인트나 로그 줄이 없으면 손댄 할 일이 아니고, 마감이 지났을 때만 카드에 오른다(plan 위험 14). 시간 끝 화면에서 정상 종료할 때도 체크포인트를 남기는 변경(Q2-D)은 별도 Issue로 넘겼다.
+**R-111이 되돌린 할 일**(`revertedIDs`): 앱 시작 때 `LaunchRecovery.revert`가 돌려준 할 일 ID. 이번 실행 동안 메모리(`AppState.pendingRevertedIDs`, 시뮬레이터는 러너 상태)에 들고 있다가, 판정 쓰기가 **성공할 때** 비운다. 그래서 (1) 하루가 바뀐 뒤의 시작이면 같은 시작의 판정에 들어가고, (2) 그 판정 쓰기가 실패하면 다음 활성화의 재판정에도 들어가며, (3) 같은 하루 안의 재시작이라 판정이 돌지 않아도 앱을 끄지 않고 하루를 넘기면 그 하루 경계의 판정에 들어간다. 저장하지는 않는다(Q2-A, debate 3:0, 2026-11-16). 그래서 같은 하루 안에 재시작하고 그날 다시 앱을 끈 뒤 다음 날 켜면 그 할 일은 체크포인트나 로그 줄이 없으면 손댄 할 일이 아니고, 마감이 지났을 때만 카드에 오른다(plan 위험 14). 시간 끝 화면에서 정상 종료할 때도 체크포인트를 남기는 변경(Q2-D)은 별도 Issue로 넘겼다.
 
 ## §10 이월 답 (`CarryAnswer`, R-415, R-416, R-417)
 
@@ -190,9 +191,9 @@ struct DayBudget: Codable, Equatable {   // 설정 키 day_budget의 JSON
 - 시작(`NotchSession.start`)과 "N분 더"(`restart`)가 커밋될 때 고른 분 × 60을 `usedSeconds`에 더한다.
 - 작업 시간이 일찍 끝나면 남은 초(`endsAt − 끝난 시각`, 0 이상)를 돌려준다(뺀다): 도는 중 완료·미루기·바꾸기, 도는 중 종료(`lifecycleCheckpoint(.quit)`). 잠자기는 타이머가 계속 도는 것으로 보므로(spec 001 R-005) 돌려주지 않는다. 시간 끝까지 간 작업 시간은 돌려줄 것이 없다.
 - 비정상 종료하면 돌려받지 못해 고른 시간이 다 쓴 시간으로 남는다. 많이 세는 쪽으로 틀리고, 그날 "오늘 끝"이 일찍 올 수 있다(plan 위험 15). 소수 의견(가이드 자리)은 끝날 때 실제 초를 더하는 안이었다.
-- 그래서 `capActive`인 동안 "그날 시작한 작업 시간과 N분 더의 분 합 ≤ hours × 60"이 저장 값으로 바로 보인다(SC-405).
+- 지키는 성질(SC-405, spec R-421 정정): `capActive`인 동안 `usedSeconds ≤ hours × 3600`이고, 시작·"N분 더" 때 고르는 칩은 그 순간 `remainingMinutes` 이하다. "그날 시작한 작업 시간 분 합 ≤ hours × 60"은 성립하지 않는다. 일찍 끝내고 돌려받은 시간으로 다시 시작할 수 있기 때문이다(예: 2시간에서 60분 시작 → 10분에 완료(50분 돌려받음) → 110분 시작이면 시작한 분 합은 170, 쓴 시간은 120).
 
-하루 경계를 넘는 작업 시간은 시작한 하루의 기록에만 더하고 돌려준다. 새 하루의 쓴 시간은 가용 시간 답을 쓸 때 0에서 시작한다(가정, research R10). 새 하루의 질문은 그 작업 시간이 끝나 노치가 빈 뒤에야 뜨므로(R-417) 경계 뒤 몫을 담을 기록이 아직 없기 때문이다.
+하루 경계를 넘는 작업 시간은 시작한 하루의 기록에만 더하고 돌려준다. 그 작업 시간이 하루 경계 뒤 시간 끝이 되어 누른 "N분 더"(spec 6c)도 처음 시작한 하루의 기록에 더하고 돌려준다(새 하루에는 아직 가용 시간 기록이 없다). 새 하루의 쓴 시간은 가용 시간 답을 쓸 때 0에서 시작한다(가정, research R10). 새 하루의 질문은 그 작업 시간이 끝나 노치가 빈 뒤에야 뜨므로(R-417) 경계 뒤 몫을 담을 기록이 아직 없기 때문이다.
 
 칩 상한(R-409, R-421):
 - `QuantumChip.cap(chipMin:remainingMinutes:)`: `capActive`이면 `min(chipMin, remainingMinutes)`. 1 미만이면 시작할 수 없음(§12 오늘 끝).
@@ -215,7 +216,7 @@ struct DayBudget: Codable, Equatable {   // 설정 키 day_budget의 JSON
 
 - 3·4·5가 되면 초안을 비운다(R-413 Edge Case, 잃는 것은 칩 값뿐). 빠른 입력으로 넣은 할 일은 저장만 하고 초안으로 띄우지 않는다(spec Edge Cases).
 - 2에서 시간 끝이고 `capActive && remainingMinutes < 1`이면 "N분 더"를 끄고 이유 한 줄을 보인다(`ExpiredDayEnd`). 직접 입력 칸은 열 수 없다. 이때 완료·미루기·바꾸기의 체크포인트 계기는 `day_end`다(research R11). 버튼 처리 뒤 모드는 5다.
-- 오늘 끝 판정은 고르기보다 먼저다: 완료·미루기·바꾸기 커밋 뒤 `pickIfEmpty`가 모드를 먼저 보고 6일 때만 고른다(SC-405).
+- 오늘 끝 판정은 고르기보다 먼저다. 버튼 처리 순서를 못박는다: (1) 버튼의 `StoreBatch` 커밋 → (2) 남은 초 돌려주기(§11, `day_budget` 쓰기) → (3) 모드 판정(§12 표) → (4) 모드가 6일 때만 `pickIfEmpty`의 고르기. (2)를 (3) 뒤에 하면 일찍 끝내 돌려받을 시간이 있는데도 오늘 끝이 뜰 수 있다(SC-405).
 - "더 할래요": `more = true`를 쓰고 모드 6으로 고른다. 쓰기가 실패하면 모드 5에 머물고 다시 해 달라는 한 줄을 보인다.
 - 가용 시간 답: `DayBudget(day: today, hours: h, usedSeconds: 0, more: false)`를 쓴다. 실패하면 질문에 머문다.
 - 하루 경계를 지난 활성화에서 2이면(도는 중) 판정은 돌고(§9, 진행 중 할 일에 표시) 화면은 그대로다. 버튼으로 빈 상태가 되면 3부터 본다(R-417).

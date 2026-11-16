@@ -40,9 +40,10 @@ spec 001 `contracts/moka-sim-v1.md`, spec 002 `contracts/moka-sim-v1-additions.m
 
 ## 새 불변식 (종료 코드 1)
 
-- `notch_task`가 `due == true`인 할 일이 아니다(R-413).
+- `timer_state`가 `empty`(빈 상태와 초안)이면 `notch_task`가 `due == true`인 할 일이 아니다(R-413). 도는 중·시간 끝에는 걸지 않는다. 하루 경계를 넘긴 진행 중 할 일은 `due`가 붙은 채 노치에 남기 때문이다(R-417).
+  - 손 확인(`storage-005-boundary-running`): 05:50 시작 → 06:00 넘겨 `activate`에서 그 할 일이 `due: true`, `timer_state: running`, `notch_task` 그 할 일(불변식 적용 안 됨) → `skip`이면 대기·`due`, `mode: carry_card`, `timer_state: empty`, `notch_task: null`(통과) → 다른 갈래에서 `complete`이면 `due: false`, 이월 대상이 없으면 `mode: ask_budget`, `notch_task: null`(통과). 시간 끝에서 `start`("N분 더", spec 6c)이면 다시 `running`이고 `due`가 붙은 채 노치에 남는다(불변식 적용 안 됨).
 - `mode`가 `carry_card`·`ask_budget`·`day_end`이면 `timer_state`가 `empty`이고 초안이 없다(R-413, R-419, R-422).
-- 오늘 기록이 있고 `more == false`인 동안 `budget.used_s ≤ hours × 3600`이고, 그 하루에 시작한 작업 시간과 "N분 더"의 분 합이 `hours × 60` 이하다(SC-405). `used_s`는 시작 때 고른 분 × 60을 더하고 일찍 끝나면 남은 초를 돌려준 값이다(data-model §11, Q4-B).
+- 오늘 기록이 있고 `more == false`인 동안 `budget.used_s ≤ hours × 3600`이다(SC-405). `used_s`는 시작 때 고른 분 × 60을 더하고 일찍 끝나면 남은 초를 돌려준 값이다(data-model §11, Q4-B). 시작한 작업 시간의 분 합은 돌려받은 시간 때문에 `hours × 60`을 넘을 수 있어 불변식으로 두지 않는다.
 - `carry` 이벤트 한 번에 `decision` 줄이 정확히 하나이고 `user_action`이 `carry_*`, `scheduler_choice`가 `carry_card_v1`이며 `checkpoint`는 `null`이다(R-416).
 - `budget`·`more` 이벤트의 줄은 `decision`과 `checkpoint`가 `null`이다(R-416).
 

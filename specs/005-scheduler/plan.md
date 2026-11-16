@@ -26,7 +26,7 @@ MokaCore에 스케줄러 순수 로직을 둔다: 후보 거르기(이월 답 �
 
 **Constraints**: 실제 판단 API, Keychain, 앱 DB를 시험·CI·시뮬레이터에서 열지 않는다(R-431, 헌법 VIII). `eraseDatabaseOnSchemaChange` 금지(ADR-0004). `@unchecked Sendable` 금지. spec 001 타이머 golden 바이트 그대로. 앱에서 연속 상한·마무리 규칙이 동작한다고 보고하지 않는다(R-407, SC-402)
 
-**Scale/Scope**: MokaCore 새 파일 아홉 남짓(`Scheduler/`), 고치는 파일 여섯(`ScoreRules`, `PriorityOrder`, `NotchSession`, `DecisionLog`, `Storage`, `QuantumChip`, `Defaults`, `CoreSettings`, 시뮬레이터 넷), MokaStore 둘(마이그레이션, 저장소), 앱 뷰 다섯 남짓(새 노치 화면 넷, 할 일 탭, 기본 탭, 접힌 노치)과 안내 글 상수 여섯 곳
+**Scale/Scope**: MokaCore 새 파일 아홉(`Scheduler/` 아래 `SchedulerPick`, `SchedulerMemory`, `RemainingEstimate`, `CarryJudgment`, `CarryAnswer`, `DayBudget`, `NotchMode`, `AutoStart`, `TomorrowMark`), 고치는 MokaCore 파일 열하나(`ScoreRules`, `PriorityOrder`, `OtherTask`, `TaskModel`, `NotchSession`, `DecisionLog`, `Storage`, `QuantumChip`, `NotchStatus`, `CoreSettings`, `Defaults`)와 시뮬레이터 넷(`SimScenario`, `SimStorageRunner`, `SimOutput`, `SimStorageState`), MokaStore 셋(`Migrations`, `GRDBTaskRepository`, `GRDBSettingsStore`), 앱 새 뷰 둘(`CarryCardView`, `BudgetViews`)과 고치는 뷰 여섯(`ExpandedView`, `ExpiredView`, `CollapsedView`, `QuantumChipView`, `TaskListTabView`, `BasicTabView`), 안내 글 상수 다섯 파일(`HelpContent`, `GuideCardView`, `KeyFieldState`, `OnboardingView`, `DecisionField`)
 
 ## Constitution Check
 
@@ -73,7 +73,7 @@ spec 확인 질문 셋과 남은 결정 넷은 2026-11-13 debate와 사람 결�
 
 | Q | 결정 | 답 | 근거 | 막던 단위 |
 |---|---|---|---|---|
-| Q1 | 이월 표시와 판정 시각을 한 트랜잭션으로 쓰는 저장 경계 | B `TaskRepository`에 이월 판정 전용 읽기·쓰기, 경계 밖 저장소가 `carry_judged_at`을 못 쓰게 막는 시험 | debate 3:0, 사용자 위임 | 2 |
+| Q1 | 이월 표시와 판정 시각을 한 트랜잭션으로 쓰는 저장 경계 | B `TaskRepository`에 이월 판정 전용 읽기·쓰기, 경계 밖 저장소가 `carry_judged_at`을 못 쓰게 막는 시험 | debate 3:0 | 2 |
 | Q2 | R-111이 되돌린 할 일의 저장 표시 | A 두지 않음, 빈틈은 위험 14. 시간 끝 정상 종료 체크포인트(D)는 Issue #173(`ai-found`) | debate 3:0 | 2 |
 | Q3 | 시뮬레이터에서 이월·가용 시간을 켜는 법 | C 새 이벤트가 있을 때만 | debate 3:0 | 1 |
 | Q4 | 쓴 시간을 세는 법 | B 시작 때 고른 분 × 60을 더하고, 도는 중 완료·미루기·바꾸기·종료 때 남은 초를 돌려줌 | 사람 결정, debate 2:1 다수안(소수: 끝날 때 실제 초) | 1·4 |
@@ -163,7 +163,8 @@ App/Tests/MokaAppTests/ AppSchedulerTests(새), AppCarryTests(새), AppBudgetTes
 - `pickIfEmpty`는 모드를 먼저 본다. `.session`이고 빈 상태일 때만 `SchedulerPick`을 부른다. 바꾸기·미루기 뒤에는 방금 할 일을 `excluded`로 넘긴다.
 - `AppState`의 모드 값(`notchMode`)을 뷰가 받아 펼친 화면·접힌 화면을 고른다. 이월 답·가용 시간 답·"더 할래요"는 `AppState` 함수 셋이고 쓰기 실패면 화면을 그대로 두고 해요체 한 줄을 보인다.
 - 쓴 시간은 시작·"N분 더" 커밋에서 고른 분을 더하고, 도는 중 완료·미루기·바꾸기·종료에서 남은 초를 돌려준다. 시간 끝 `tick`이 `capActive && remainingMinutes < 1`을 보면 시간 끝 화면의 "N분 더"를 끈다.
-- 단위 1이 `NotchSession` 고르기를 바꾸면 앱 노치 순서도 바뀐다. 단위 2가 `isWarmup`, `excluded`, `nextMarkID`를 앱 값으로 넘긴다.
+- 단위 1이 `NotchSession` 고르기를 바꾸면 앱 노치 순서도 바뀐다. 단위 2가 `isWarmup`과 `nextMarkID`를 앱 값으로 넘긴다.
+- R-408(바꾸기·미루기 뒤 방금 할 일 뺌)은 단위 1만 들어간 앱에서도 지켜진다. 확인한 코드(`67b526e`): `setAside`가 버튼 뒤 세션을 `finished(cursor: aside.id)`로 만들어 `previousTaskID`에 방금 할 일을 남기고(`NotchSession.swift:315-320`), 완료는 `cursor: nil`이다. 단위 1의 `NotchSession.picked`는 지금 `PriorityRotateRule.pick(after: previousTaskID)`(`NotchSession.swift:94-99`) 자리에서 `previousTaskID`를 `excluded`로 넘긴다. 앱의 `pickIfEmpty`는 `session.picked`만 부르므로 앱 코드를 바꾸지 않아도 같은 값이 간다. "다른 할 일"(`chosenDraft`, `:114`)도 `previousTaskID`를 바꾸지만, 고르기는 빈 상태에서만 돌고 그 앞의 버튼이 값을 다시 덮으므로 영향이 없다. 단위 1의 앱 시험(T043)이 이 경로를 확인한다.
 - 단위 2는 판정·답 함수를 앱 시험으로만 부르고 활성화에 걸지 않는다(research R17). 단위 3이 카드 화면과 함께 건다.
 
 ## 작업 단위 (tasks.md의 뼈대, Issue 후보)
@@ -180,6 +181,10 @@ App/Tests/MokaAppTests/ AppSchedulerTests(새), AppCarryTests(새), AppBudgetTes
 R-431(가짜만)과 R-433(해요체, 시안 뒤)은 모든 단위에 걸친다.
 
 단위 1은 화면을 바꾸지 않지만, 앱도 `NotchSession`으로 고르므로 병합되면 앱 노치 순서가 가중 순환으로 바뀐다. 워밍업은 `isWarmup`을 넘기는 단위 2부터 앱에서 걸린다.
+
+단위 1 병합 조건:
+- 단위 1 PR에 앱 노치 순서 시험(T043)을 넣는다. 키 없음에서 앞 셋 순위 몫, 4위 0번, 바꾸기·미루기 뒤 방금 할 일 뺌을 앱 시험으로 본다.
+- 단위 5(R-434 안내 글) PR이 리뷰를 마쳐 병합할 수 있기 전에는 단위 1을 병합하지 않는다. 둘을 이어 병합한다(위험 11).
 
 순서: 단위 1, 단위 2. 시안 `005-mockup.html` 확정 뒤 단위 3, 4. 단위 5는 시안 확정 뒤 바로 만들어 단위 1과 가깝게 병합한다(단위 1이 병합되면 노치가 가중 순환으로 바뀌어 지금 안내 글이 틀리므로). 단위 6은 마지막이다.
 
@@ -206,6 +211,7 @@ spec "대안과 위험"의 번호를 따르고, plan에서 생긴 것을 더한�
 - 위험 12(판정 없는 표시, plan): 단위 2만 병합된 앱에서 판정이 활성화에 걸리면 이월 답 대기 할 일이 화면 없이 숨는다. 그래서 단위 2는 판정을 걸지 않고, 단위 3 시험이 "카드 없이 숨은 할 일 0건"(SC-403)을 확인한다.
 - 위험 13(업그레이드, plan): 기존 앱 DB에 `v4_tasks_carry`가 돈다. 메모리 DB 시험과 v3 DB 사본 업그레이드 시험(`MigrationTests`)으로 보고, 실제 기기 업그레이드는 사람이 확인한다(quickstart 6-1).
 - 위험 14(R-111 빈틈, Q2-A): 시간 끝 화면에서 정상 종료하거나 도는 중·시간 끝에서 비정상 종료한 뒤 같은 날 다시 켠 할 일은, 체크포인트나 로그 줄이 없으면 다음 날 판정에서 손댄 할 일이 아니다. 마감이 지났을 때만 카드에 오른다. 정상 종료 쪽은 Issue #173이 다룬다.
+- 위험 16("다음" 예측, plan): 도는 중 "다음" 표시는 미리 돌린 고르기라 미루기·완료 뒤 실제와 다를 수 있다(Issue #174).
 - 위험 15(쓴 시간을 많이 셈, Q4-B): 쓴 시간은 시작 때 고른 분을 미리 더하므로, 도는 중 비정상 종료하면 남은 초를 돌려받지 못해 그날 "오늘 끝"이 일찍 올 수 있다. 설정 쓰기가 실패해도 쓴 시간이 틀릴 수 있다(data-model §9 끝).
 
 ## 다음 단계
