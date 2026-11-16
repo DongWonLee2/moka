@@ -7,7 +7,7 @@
 | 열 | 타입 | 기본 | 제약 |
 |---|---|---|---|
 | `carry_count` | `INTEGER NOT NULL` | 0 | `CHECK(carry_count >= 0)` |
-| `due_decision` | Q6-A `INTEGER NOT NULL`, Q6-B `TEXT` | Q6-A 0, Q6-B NULL | Q6-A `CHECK(due_decision IN (0, 1))` |
+| `due_decision` | `INTEGER NOT NULL` | 0 | `CHECK(due_decision IN (0, 1))` (Q6-A, debate 3:0) |
 
 마이그레이션 이름 `v4_tasks_carry`. `schema/moka-schema.sql`과 `tuning/tests/test_schema_contract.py`가 같은 내용을 본다.
 
@@ -42,4 +42,4 @@ DB에는 값 CHECK가 없다(지금 그대로). 앱은 `UserAction` 열거형으
 
 ## 5. `settings` 키 (승인 항목 5)
 
-data-model §13 표가 원본이다. 키 이름: `auto_start`, `carry_judged_at`, `day_budget`, `last_start_day`, (Q2-B일 때) `carry_reverted`. 튜닝 스크립트는 `settings`를 읽지 않는다.
+data-model §13 표가 원본이다. 키 이름: `auto_start`, `carry_judged_at`, `day_budget`, `last_start_day`. `carry_judged_at`은 `TaskRepository`만 읽고 쓰고 `SettingsStore`는 이 키를 거부한다(Q1-B). 튜닝 스크립트는 `settings`를 읽지 않는다.

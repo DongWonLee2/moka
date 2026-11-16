@@ -32,7 +32,7 @@ MokaCore에 스케줄러 순수 로직을 둔다: 후보 거르기(이월 답 �
 
 *GATE: Phase 0 전 확인, Phase 1 설계 뒤 다시 확인함.*
 
-spec 확인 질문 셋과 남은 결정 넷은 2026-11-13 debate와 사람 결정으로 정했다(spec 결정 이력). 이 plan에서 새로 생긴 갈림 여섯은 아래 "확정할 것"에 선택지로만 두었다. 그 밖은 에이전트 판단이며 research R7~R17과 PR "가정"에 있다.
+spec 확인 질문 셋과 남은 결정 넷은 2026-11-13 debate와 사람 결정으로 정했다(spec 결정 이력). 이 plan에서 새로 생긴 갈림 여섯(Q1~Q6)은 선택지로만 올렸고 2026-11-16 메인 세션 debate와 사람 결정으로 정했다(아래 "정한 것", 기록 저장소 밖 `.audit/debate/20261116-spec005-plan.md`). 그 밖은 에이전트 판단이며 research R7~R17과 PR "가정"에 있다.
 
 | 원칙 | 판정 | 근거 |
 |---|---|---|
@@ -52,13 +52,13 @@ spec 확인 질문 셋과 남은 결정 넷은 2026-11-13 debate와 사람 결�
 
 | # | 항목 | 이 plan | 단위 | 계약 문서 |
 |---|---|---|---|---|
-| 1 | 스키마: `tasks.carry_count`, `tasks.due_decision`, 마이그레이션 `v4_tasks_carry`, `schema/moka-schema.sql`, pytest 계약 | data-model §2(칸 모양은 확정할 것 Q6) | 2 | [contracts/storage-values-005.md](contracts/storage-values-005.md) §1 |
+| 1 | 스키마: `tasks.carry_count`, `tasks.due_decision`, 마이그레이션 `v4_tasks_carry`, `schema/moka-schema.sql`, pytest 계약 | data-model §2(`due_decision`은 `INTEGER` 0·1, Q6-A) | 2 | [contracts/storage-values-005.md](contracts/storage-values-005.md) §1 |
 | 2 | 행동 로그 사용자 행동 값 `carry_today`·`carry_drop`·`carry_move` | data-model §10·§16 | 1(열거형), 2(저장) | 같은 문서 §2 |
 | 3 | 선택 규칙 이름 `weighted_rotate_v1`·`warmup_v1`·`carry_card_v1` | data-model §16 | 1 | 같은 문서 §3 |
-| 4 | `moka-sim` 입력 이벤트 셋(`carry`, `budget`, `more`)과 출력 키, 새 불변식, 기존 storage golden 갱신 | 켜는 법은 확정할 것 Q3 | 1 | [contracts/moka-sim-v1-additions-005.md](contracts/moka-sim-v1-additions-005.md) |
-| 5 | 설정 키 `auto_start`, `carry_judged_at`, `day_budget`, `last_start_day`(Q2-B면 `carry_reverted`) | data-model §13 | 2·4·6 | storage-values §5 |
+| 4 | `moka-sim` 입력 이벤트 셋(`carry`, `budget`, `more`)과 출력 키, 새 불변식, 기존 storage golden 갱신 | 새 이벤트가 있을 때만 켬(Q3-C) | 1 | [contracts/moka-sim-v1-additions-005.md](contracts/moka-sim-v1-additions-005.md) |
+| 5 | 설정 키 `auto_start`, `carry_judged_at`, `day_budget`, `last_start_day` | data-model §13 | 2·4·6 | storage-values §5 |
 | 6 | `Defaults.swift` 새 값 아홉(이월 가중 0.5, 워밍업 0.8·30분, 창 3, 순위 몫 5:3:2, 최소 몫 0.05, 연속 상한 2, 가용 시간 1·2·4·6·8, 자동 시작 3초) | data-model §14 | 1(로직 값), 4·6(화면 값) | 없음 |
-| 7 | 모듈 경계: 이월 판정 원자 쓰기를 위한 `MokaCore`↔`MokaStore` 저장 프로토콜 변경 | 확정할 것 Q1 | 2 | data-model §9 |
+| 7 | 모듈 경계: `TaskRepository` 프로토콜에 이월 판정 전용 `lastCarryJudgment()`·`applyCarryJudgment(_:judgedAt:)` 둘을 더함. `carry_judged_at` 키는 `TaskRepository` 구현(GRDB·메모리)만 읽고 쓰고, `SettingsStore` 구현은 이 키를 거부함. `StoreBatch`·`apply`·`SettingsStore` 프로토콜 모양과 새 타깃은 그대로 | Q1-B | 2 | data-model §9 |
 
 바꾸지 않는 것: 의존성, CI, `Package.swift` 타깃, `questions.json`(워밍업 0.8은 `Defaults`, debate 3:0), `DecisionProvider`, `decisions_log`·`checkpoints`·`settings` 표 모양, 판단 입력.
 
@@ -69,18 +69,18 @@ spec 확인 질문 셋과 남은 결정 넷은 2026-11-13 debate와 사람 결�
 | 할 일별 마지막 칩 값 `tasks.quantum_min` | 메모리 | spec 가정, Non-Goals |
 | 새 `MokaScheduler` 타깃 | 두지 않음 | research R7 |
 
-### 확정할 것 (메인 세션이 debate로 정함, 추천 없음)
+### 정한 것 (처음 "확정할 것", 2026-11-16)
 
-| Q | 결정 | 선택지 | 막는 단위 |
-|---|---|---|---|
-| Q1 | 이월 표시와 판정 시각을 한 트랜잭션으로 쓰는 저장 경계(R-412, SC-406). R-119는 할 일 저장소가 없어 판정을 돌리지 않으므로 메모리 설정과 묶을 일은 없음 | A `StoreBatch`에 설정 덮어쓰기 칸 / B `TaskRepository`에 이월 판정 전용 읽기·쓰기 둘, 키는 저장소만 다룸 / C 두 저장소를 묶는 새 작업 단위 프로토콜 | 2 |
-| Q2 | R-111이 되돌린 할 일을 같은 하루 안 재시작 뒤에도 손댄 할 일로 세는 저장 표시. 시간 끝 화면에서 정상 종료해도 빈틈이 생김(research Q2) | A 두지 않음(위험으로 적음) / B 설정 키 `carry_reverted`, 판정이 같은 트랜잭션에서 지움 / C 되돌릴 때 `quit` 체크포인트 한 줄 / D 시간 끝 정상 종료에도 `quit` 체크포인트(spec 002 규칙 넓힘) | 2 |
-| Q3 | 시뮬레이터에서 이월·가용 시간을 켜는 법(R-432) | A `version: 2`만 / B storage 모드면 늘(기존 golden 다시 만듦) / C 새 이벤트가 있을 때만(spec 003 무늬) | 1 |
-| Q4 | 쓴 시간을 세는 법(R-420, R-421, SC-405) | A 끝날 때 실제 초 / B 시작할 때 고른 분, 일찍 끝나면 돌려줌 / C 체크포인트·로그에서 셈(도는 중 완료 경과 새 저장) | 1(로직), 4(앱) |
-| Q5 | 가중 순환 몫 셈 방식(R-403) | A 매끄러운 가중 순환 / B 뒤처진 후보 먼저(횟수 기반) / C 고정 순서 표 | 1 |
-| Q6 | `due_decision` 칸 모양(승인 항목 1) | A `INTEGER` 0·1 / B `TEXT` 표시 시각 또는 NULL | 2 |
+| Q | 결정 | 답 | 근거 | 막던 단위 |
+|---|---|---|---|---|
+| Q1 | 이월 표시와 판정 시각을 한 트랜잭션으로 쓰는 저장 경계 | B `TaskRepository`에 이월 판정 전용 읽기·쓰기, 경계 밖 저장소가 `carry_judged_at`을 못 쓰게 막는 시험 | debate 3:0, 사용자 위임 | 2 |
+| Q2 | R-111이 되돌린 할 일의 저장 표시 | A 두지 않음, 빈틈은 위험 14. 시간 끝 정상 종료 체크포인트(D)는 Issue #173(`ai-found`) | debate 3:0 | 2 |
+| Q3 | 시뮬레이터에서 이월·가용 시간을 켜는 법 | C 새 이벤트가 있을 때만 | debate 3:0 | 1 |
+| Q4 | 쓴 시간을 세는 법 | B 시작 때 고른 분 × 60을 더하고, 도는 중 완료·미루기·바꾸기·종료 때 남은 초를 돌려줌 | 사람 결정, debate 2:1 다수안(소수: 끝날 때 실제 초) | 1·4 |
+| Q5 | 가중 순환 몫 셈 | A 매끄러운 가중 순환. 창은 앞 셋을 먼저 정하고 방금 할 일은 그 고르기에서만 건너뜀(몫은 그대로), 정수 몫 | 사람 결정, debate 2:1 다수안(소수: 횟수 기반). 창 정의 수정은 두 자리 지적. 메인 세션 시뮬레이션 | 1 |
+| Q6 | `due_decision` 칸 모양 | A `INTEGER NOT NULL DEFAULT 0 CHECK(due_decision IN (0,1))` | debate 3:0 | 2 |
 
-각 선택지의 대가는 research Q1~Q6에 있다. 답이 나오면 data-model·contracts·tasks의 해당 절을 고친다.
+선택지와 대가, 표결은 research Q1~Q6에 있다. data-model §2·§5·§9·§11·§13과 contracts 둘, tasks에 반영했다.
 
 ### 가정 (PR "가정")
 
@@ -120,7 +120,7 @@ Sources/MokaCore/
 ├── Scheduler/RemainingEstimate.swift  # 새: 남은 예상 시간
 ├── Scheduler/CarryJudgment.swift      # 새: 판정 필요 여부, 대상
 ├── Scheduler/CarryAnswer.swift        # 새: 답 셋의 StoreBatch, 카드 순서와 까닭
-├── Scheduler/DayBudget.swift          # 새: 가용 시간 기록, 남은 분, 쓴 시간 셈(Q4)
+├── Scheduler/DayBudget.swift          # 새: 가용 시간 기록, 남은 분, 쓴 시간 셈(시작 때 더하고 돌려줌)
 ├── Scheduler/NotchMode.swift          # 새: 모드 우선순위(data-model §12)
 ├── Scheduler/AutoStart.swift          # 새(단위 6)
 ├── Scheduler/TomorrowMark.swift       # 새(단위 6)
@@ -130,7 +130,7 @@ Sources/MokaCore/
 ├── TaskModel.swift                    # carryCount, dueDecision
 ├── NotchSession.swift                 # SchedulerPick 호출, memory, 완료 때 표시 지움, day_end 계기
 ├── DecisionLog.swift                  # UserAction 셋, SchedulerChoice 셋
-├── Storage.swift                      # 저장 경계(Q1), InMemory 구현
+├── Storage.swift                      # TaskRepository 이월 판정 읽기·쓰기, InMemory 구현
 ├── QuantumChip.swift                  # 칩 상한, aboveRemaining
 ├── NotchStatus.swift                  # 새 상태 글자
 ├── CoreSettings.swift                 # 설정 키
@@ -138,7 +138,8 @@ Sources/MokaCore/
 └── Sim/SimScenario·SimStorageRunner·SimOutput·SimStorageState  # 이벤트 셋, 출력 키, 불변식
 Sources/MokaStore/
 ├── Migrations.swift                   # v4_tasks_carry
-└── GRDBTaskRepository.swift           # 두 열, 저장 경계(Q1)
+├── GRDBTaskRepository.swift           # 두 열, 이월 판정 읽기·쓰기
+└── GRDBSettingsStore.swift            # carry_judged_at 거부
 schema/moka-schema.sql
 tuning/tests/test_schema_contract.py
 App/Sources/
@@ -154,14 +155,14 @@ Tests/MokaStoreTests/ MigrationTests, StorageContractTests, StoreConstraintTests
 App/Tests/MokaAppTests/ AppSchedulerTests(새), AppCarryTests(새), AppBudgetTests(새), ScreenStateSnapshotTests, SettingsSnapshotTests, HelpContentTests, GuideTests
 ```
 
-**Structure Decision**: ADR-0001 구조 그대로다. 새 타깃과 의존성은 없다. 스케줄러 로직은 MokaCore `Scheduler/`에 두어 리눅스에서 시험한다. 뷰는 `AppState`를 모르게 값과 콜백만 받는다(ADR-0009). 저장 프로토콜 변경 모양은 Q1의 답을 따른다.
+**Structure Decision**: ADR-0001 구조 그대로다. 새 타깃과 의존성은 없다. 스케줄러 로직은 MokaCore `Scheduler/`에 두어 리눅스에서 시험한다. 뷰는 `AppState`를 모르게 값과 콜백만 받는다(ADR-0009). 저장 프로토콜은 `TaskRepository`에 메서드 둘만 더한다(Q1-B).
 
 ### 앱 연결
 
 - 활성화 순서(data-model §15): R-111 → 반복 리셋 → 이월 판정 → 모드 → 고르기 → 판단 질의.
 - `pickIfEmpty`는 모드를 먼저 본다. `.session`이고 빈 상태일 때만 `SchedulerPick`을 부른다. 바꾸기·미루기 뒤에는 방금 할 일을 `excluded`로 넘긴다.
 - `AppState`의 모드 값(`notchMode`)을 뷰가 받아 펼친 화면·접힌 화면을 고른다. 이월 답·가용 시간 답·"더 할래요"는 `AppState` 함수 셋이고 쓰기 실패면 화면을 그대로 두고 해요체 한 줄을 보인다.
-- 쓴 시간은 Q4의 답대로 버튼 커밋·시간 끝·종료에서 갱신한다. 시간 끝 `tick`이 `capActive && remainingMinutes < 1`을 보면 시간 끝 화면의 "N분 더"를 끈다.
+- 쓴 시간은 시작·"N분 더" 커밋에서 고른 분을 더하고, 도는 중 완료·미루기·바꾸기·종료에서 남은 초를 돌려준다. 시간 끝 `tick`이 `capActive && remainingMinutes < 1`을 보면 시간 끝 화면의 "N분 더"를 끈다.
 - 단위 1이 `NotchSession` 고르기를 바꾸면 앱 노치 순서도 바뀐다. 단위 2가 `isWarmup`, `excluded`, `nextMarkID`를 앱 값으로 넘긴다.
 - 단위 2는 판정·답 함수를 앱 시험으로만 부르고 활성화에 걸지 않는다(research R17). 단위 3이 카드 화면과 함께 건다.
 
@@ -169,8 +170,8 @@ App/Tests/MokaAppTests/ AppSchedulerTests(새), AppCarryTests(새), AppBudgetTes
 
 | # | 단위 | R-ID | 승인 | 시안 확정 | 앞선 단위 |
 |---|---|---|---|---|---|
-| 1 | 순수 스케줄러 로직과 `moka-sim`: 후보 거르기, 가중 순환·연속 상한·마무리·워밍업, aging, 남은 예상 시간, 이월 판정·답, 가용 시간·칩 상한·오늘 끝, 노치 모드, 로그 값 열거형, 시뮬레이터 이벤트·출력·불변식, 기존 storage golden 갱신 | R-401~R-409, R-411, R-412(로직), R-415·R-416(로직), R-419~R-422(로직), R-431, R-432 | 2·3·4·6 | 아니오 | Q3·Q4·Q5 |
-| 2 | 스키마와 이월 판정 저장, 앱 고르기 연결: `v4_tasks_carry`, 스냅샷, pytest, 저장 경계, R-111 표시, 두 열 읽기·쓰기, 앱이 새 고르기·워밍업·aging·"다음" 표시를 씀, 판정·답 함수(활성화에는 아직 걸지 않음) | R-402·R-403·R-406·R-408(앱), R-412·R-413(저장), R-415·R-416(저장), R-434("다음" 표시), SC-406 | 1·2·5·7 | 아니오 | 1, Q1·Q2·Q6 |
+| 1 | 순수 스케줄러 로직과 `moka-sim`: 후보 거르기, 가중 순환·연속 상한·마무리·워밍업, aging, 남은 예상 시간, 이월 판정·답, 가용 시간·칩 상한·오늘 끝, 노치 모드, 로그 값 열거형, 시뮬레이터 이벤트·출력·불변식, 기존 storage golden 갱신 | R-401~R-409, R-411, R-412(로직), R-415·R-416(로직), R-419~R-422(로직), R-431, R-432 | 2·3·4·6 | 아니오 | 없음 |
+| 2 | 스키마와 이월 판정 저장, 앱 고르기 연결: `v4_tasks_carry`, 스냅샷, pytest, `TaskRepository` 이월 판정 읽기·쓰기와 경계 시험, 두 열 읽기·쓰기, 앱이 새 고르기·워밍업·aging·"다음" 표시를 씀, 판정·답 함수(활성화에는 아직 걸지 않음) | R-402·R-403·R-406·R-408(앱), R-412·R-413(저장), R-415·R-416(저장), R-434("다음" 표시), SC-406 | 1·2·5·7 | 아니오 | 1 |
 | 3 | 이월 카드 화면: 카드, 날짜 고르기, 접힌 노치 표시, 할 일 탭 이월 답 대기, "다른 할 일"·순위에서 뺌, 활성화 연결, 진행 중 할 일 흐름 | R-412(앱), R-413, R-414, R-415, R-417, R-433 | 없음 | 예(005 시안 1~3·10-1·11번) | 2 |
 | 4 | 가용 시간 질문과 오늘 끝: 질문, 쓴 시간, 칩 상한과 막는 문구, 오늘 끝, "더 할래요", 시간 끝 겹침과 `day_end` | R-409(앱), R-419~R-422, R-433 | 5·6 | 예(005 시안 4~9·10-2·10-3번) | 3 |
 | 5 | R-434 안내 글: 도움말 3·6번, 안내 장 순위 장, 키 칸, 온보딩 키 단계, 판단 모델 칸 셋, 하루 시작 안내 | R-434 | 없음 | 예(005 시안 13번) | 1(병합은 1 가까이) |
@@ -180,7 +181,7 @@ R-431(가짜만)과 R-433(해요체, 시안 뒤)은 모든 단위에 걸친다.
 
 단위 1은 화면을 바꾸지 않지만, 앱도 `NotchSession`으로 고르므로 병합되면 앱 노치 순서가 가중 순환으로 바뀐다. 워밍업은 `isWarmup`을 넘기는 단위 2부터 앱에서 걸린다.
 
-순서: Q3·Q4·Q5가 정해지면 단위 1, Q1·Q2·Q6이 정해지면 단위 2. 시안 `005-mockup.html` 확정 뒤 단위 3, 4. 단위 5는 시안 확정 뒤 바로 만들어 단위 1과 가깝게 병합한다(단위 1이 병합되면 노치가 가중 순환으로 바뀌어 지금 안내 글이 틀리므로). 단위 6은 마지막이다.
+순서: 단위 1, 단위 2. 시안 `005-mockup.html` 확정 뒤 단위 3, 4. 단위 5는 시안 확정 뒤 바로 만들어 단위 1과 가깝게 병합한다(단위 1이 병합되면 노치가 가중 순환으로 바뀌어 지금 안내 글이 틀리므로). 단위 6은 마지막이다.
 
 ## 앞 spec 대조 (R-434 대체 표기는 이 PR에서 붙임)
 
@@ -204,10 +205,11 @@ spec "대안과 위험"의 번호를 따르고, plan에서 생긴 것을 더한�
 - 위험 11(안내 글 공백, plan): 단위 1과 5 사이에는 앱이 가중 순환으로 고르는데 안내 글은 "마감이 가까운 순으로 떠요"다. 단위 5를 시안 확정 직후 만들어 그 사이를 줄인다.
 - 위험 12(판정 없는 표시, plan): 단위 2만 병합된 앱에서 판정이 활성화에 걸리면 이월 답 대기 할 일이 화면 없이 숨는다. 그래서 단위 2는 판정을 걸지 않고, 단위 3 시험이 "카드 없이 숨은 할 일 0건"(SC-403)을 확인한다.
 - 위험 13(업그레이드, plan): 기존 앱 DB에 `v4_tasks_carry`가 돈다. 메모리 DB 시험과 v3 DB 사본 업그레이드 시험(`MigrationTests`)으로 보고, 실제 기기 업그레이드는 사람이 확인한다(quickstart 6-1).
-- 위험 14(Q2 빈틈): Q2-A를 고르면 시간 끝 화면에서 정상 종료한 뒤 같은 날 다시 켠 할 일이 다음 날 카드에 오르지 않을 수 있다.
+- 위험 14(R-111 빈틈, Q2-A): 시간 끝 화면에서 정상 종료하거나 도는 중·시간 끝에서 비정상 종료한 뒤 같은 날 다시 켠 할 일은, 체크포인트나 로그 줄이 없으면 다음 날 판정에서 손댄 할 일이 아니다. 마감이 지났을 때만 카드에 오른다. 정상 종료 쪽은 Issue #173이 다룬다.
+- 위험 15(쓴 시간을 많이 셈, Q4-B): 쓴 시간은 시작 때 고른 분을 미리 더하므로, 도는 중 비정상 종료하면 남은 초를 돌려받지 못해 그날 "오늘 끝"이 일찍 올 수 있다. 설정 쓰기가 실패해도 쓴 시간이 틀릴 수 있다(data-model §9 끝).
 
 ## 다음 단계
 
-1. 메인 세션이 확정할 것 Q1~Q6을 debate로 정하고 data-model·contracts·tasks를 고친다.
+1. (끝남) 확정할 것 Q1~Q6을 정하고 data-model·contracts·tasks에 반영했다.
 2. 시안 `005-mockup.html` 사람 확정.
 3. 이 PR 병합 뒤 Issue 큐(단위 1, 2, 3, 4와 5, 6).

@@ -19,7 +19,6 @@ description: "spec 005 스케줄러 작업 목록"
 - **[Story]**: US1~US3(spec.md)
 - **[사람]**: 화면 확정이나 실제 앱 확인을 사람이 해야 끝난다
 - **[화면 뒤]**: T003(시안 확정) 뒤에만 시작한다
-- **[Qn]**: plan "확정할 것" Qn의 답이 나온 뒤에만 시작한다
 - **[승인 N]**: plan "승인 항목" N번. 그 단위 PR "사람이 볼 결정"에 올리고 병합이 승인이다
 
 ## 공통 규칙 (모든 태스크)
@@ -38,7 +37,7 @@ description: "spec 005 스케줄러 작업 목록"
 ## Phase 1: Setup
 
 - [ ] T001 기준 상태 확인: `swift test`, `cd tuning && python3 -m pytest`, 앱 빌드, quickstart 4의 앱 시험을 돌려 기존 시험이 PASS인지 기록한다. 기존 storage golden 일곱의 파일 해시와 스냅샷 참조 이미지 해시 목록을 PR "완료 증거"에 적는다(위험 5 비교 기준) 〔단위 1〕
-- [ ] T002 [사람] 메인 세션이 plan "확정할 것" Q1~Q6을 debate로 정하고, 답에 맞춰 data-model §5·§9·§11·§2와 contracts 둘의 선택지 문단을 하나로 고친다. 답이 나오기 전에는 그 [Qn] 태스크를 시작하지 않는다 〔단위 1〕
+- [x] T002 [사람] 메인 세션이 plan "확정할 것" Q1~Q6을 debate로 정하고(2026-11-16, Q1-B, Q2-A, Q3-C, Q4-B, Q5-A, Q6-A), data-model §2·§5·§9·§11·§13과 contracts 둘, plan, research의 선택지 문단을 하나로 고친다. Q2-D는 Issue #173 〔단위 1〕
 - [ ] T003 [사람] 시안 `005-mockup.html`을 사용자에게 보이고 "확정할 것" 열둘을 확정받는다. 확정 전에는 [화면 뒤] 태스크를 시작하지 않는다 〔단위 3〕
 
 ---
@@ -51,16 +50,16 @@ description: "spec 005 스케줄러 작업 목록"
 - [ ] T005 `Sources/MokaCore/DecisionLog.swift` 값 셋씩, `Sources/MokaCore/TaskModel.swift` 두 값(data-model §1), `Sources/MokaCore/Defaults.swift` 새 값(§14). T004 PASS, 기존 시험 PASS 〔단위 1〕
 - [ ] T006 [P] `Tests/MokaCoreTests/ScoreRulesTests.swift`: data-model §3 aging 식(미룬 1 → 1, 오늘 할래요 1 → 0.5, avoiding 배율, 둘이 섞임), 판단 입력 해시가 `carryCount`와 상관없음. `PriorityOrderTests.swift`: §4 후보에서 이월 답 대기 뺌, `OtherTaskTests.swift`: "다른 할 일"에서 뺌. 실패를 확인한다(`FR-05 R-402`, `FR-05 R-401`, `FR-08 R-413`) 〔단위 1〕
 - [ ] T007 `Sources/MokaCore/Decision/ScoreRules.swift`, `Sources/MokaCore/PriorityOrder.swift`, `Sources/MokaCore/OtherTask.swift`. T006 PASS 〔단위 1〕
-- [ ] T008 [P] [US1] [Q5] `Tests/MokaCoreTests/SchedulerPickTests.swift`: data-model §5 판정 순서 다섯과 §5-4 공통 성질 넷(SC-401 100번 50·30·20 ±2와 4위 0번, 같은 입력 같은 결과), 순위 몫(점수 없는 할 일 섞임, 모두 점수 없음), 후보 둘·하나, priority 0 최소 몫, `excluded`(후보 하나면 예외), 연속 상한(순수 함수만), 마무리 규칙이 연속 상한보다 앞섬·`estMin` 없으면 없음·남은 시간 0 이하, 워밍업(§6 후보 조건, 없으면 가중 순환, 이름 둘), `memoryDay`가 바뀌면 몫 상태 비움. `RemainingEstimate` 시험. 실패를 확인한다(`FR-05 R-403`, `R-404`, `R-405`, `R-406`, SC-401, SC-402) 〔단위 1〕
-- [ ] T009 [US1] `Sources/MokaCore/Scheduler/SchedulerPick.swift`, `SchedulerMemory.swift`, `RemainingEstimate.swift`(Q5 답의 몫 셈). T008 PASS 〔단위 1〕
+- [ ] T008 [P] [US1] `Tests/MokaCoreTests/SchedulerPickTests.swift`: data-model §5 판정 순서 다섯과 §5-4 공통 성질 넷(SC-401 100번 50·30·20 ±2와 4위 0번, 같은 입력 같은 결과), 순위 몫(점수 없는 할 일 섞임, 모두 점수 없음), 후보 둘·하나, priority 0 최소 몫, 창 규칙(data-model §5-4: 창은 `order` 앞 셋을 먼저 정함, `excluded`·연속 상한 후보는 그 고르기에서만 건너뛰고 몫을 버리지 않음, 넷째 후보는 `excluded`가 있어도 0번, 창에서 실제로 빠진 후보의 몫만 버림, 새로 든 후보는 0에서 시작, 몫은 `Int`), `excluded`(후보 하나면 예외), 연속 상한(순수 함수만, 상한 때문에 비면 무시), 급한 새 1위가 창에 들면 바로 다음 차례에 뽑힘(메인 세션 시뮬레이션 사례), 마무리 규칙이 연속 상한보다 앞섬·`estMin` 없으면 없음·남은 시간 0 이하, 워밍업(§6 후보 조건, 없으면 가중 순환, 이름 둘), `memoryDay`가 바뀌면 몫 상태 비움. `RemainingEstimate` 시험. 실패를 확인한다(`FR-05 R-403`, `R-404`, `R-405`, `R-406`, SC-401, SC-402) 〔단위 1〕
+- [ ] T009 [US1] `Sources/MokaCore/Scheduler/SchedulerPick.swift`, `SchedulerMemory.swift`, `RemainingEstimate.swift`(매끄러운 가중 순환, 정수 몫). T008 PASS 〔단위 1〕
 - [ ] T010 [P] [US2] `Tests/MokaCoreTests/CarryJudgmentTests.swift`: data-model §9 `needsRun`·구간 시작·대상 규칙 전부, spec US2 시나리오 1·5·6·6a·6b·6d·9, 이월 답 로그 줄 뺌, 체크포인트 계기 상관없음, 이미 대기인 표시 유지, 여러 번 돌려도 같음, 05:59·06:00, 며칠 건너뜀, 반복 할 일 제외. `CarryAnswerTests.swift`: §10 답 셋의 갱신과 로그 줄(판단 칸 있음·`fallback`), 날짜 오류, 진행 중 할 일에 답 거부, 카드 순서와 까닭. 실패를 확인한다(`FR-08 R-412`, `R-415`, `R-416`, `R-417`, SC-403, SC-404) 〔단위 1〕
 - [ ] T011 [US2] `Sources/MokaCore/Scheduler/CarryJudgment.swift`, `CarryAnswer.swift`. T010 PASS 〔단위 1〕
-- [ ] T012 [P] [US3] [Q4] `Tests/MokaCoreTests/DayBudgetTests.swift`: data-model §11 기록 읽기(어제 기록 무시), 남은 분 내림, 칩 처음 값 순서(시작 전·시간 끝), 프리셋 꺼짐, `aboveRemaining`, 쓴 시간 셈(Q4 답), 하루 경계를 넘는 작업 시간(research R10). `NotchModeTests.swift`: §12 표 여섯 줄과 초안 비움, 시간 끝 겹침의 "N분 더" 꺼짐. `QuantumChipTests.swift`에 상한 경우. 실패를 확인한다(`FR-10 R-409`, `R-419`, `R-420`, `R-421`, `R-422`) 〔단위 1〕
+- [ ] T012 [P] [US3] `Tests/MokaCoreTests/DayBudgetTests.swift`: data-model §11 기록 읽기(어제 기록 무시), 남은 분 내림, 칩 처음 값 순서(시작 전·시간 끝), 프리셋 꺼짐, `aboveRemaining`, 쓴 시간 셈(data-model §11: 시작·"N분 더" 때 고른 분 × 60을 더함, 도는 중 완료·미루기·바꾸기·종료 때 남은 초를 돌려줌, 잠자기는 돌려주지 않음, 시간 끝까지 가면 돌려줄 것 없음), 하루 경계를 넘는 작업 시간(research R10). `NotchModeTests.swift`: §12 표 여섯 줄과 초안 비움, 시간 끝 겹침의 "N분 더" 꺼짐. `QuantumChipTests.swift`에 상한 경우. 실패를 확인한다(`FR-10 R-409`, `R-419`, `R-420`, `R-421`, `R-422`) 〔단위 1〕
 - [ ] T013 [US3] `Sources/MokaCore/Scheduler/DayBudget.swift`, `NotchMode.swift`, `Sources/MokaCore/QuantumChip.swift`(상한과 `aboveRemaining`, 글자는 T003 전까지 시안 초안 글자로 두고 단위 4에서 확정 글자로 맞춤). T012 PASS 〔단위 1〕
 - [ ] T014 [P] [US1] [US2] [US3] `Tests/MokaCoreTests/NotchSessionSchedulerTests.swift`: `NotchSession`이 `SchedulerPick`으로 고르고 `pickedBy`를 로그 줄에 씀(가중 순환, 워밍업, "다른 할 일"은 이름 유지, 빠른 입력 초안, research R12), 바꾸기·미루기 뒤 `excluded`, 완료가 `dueDecision`을 지움, 오늘 끝과 겹친 시간 끝의 세 버튼 계기 `day_end`(research R11), 가용 2시간에서 "더 할래요" 전 시작 분 합 120 이하·120분이면 고르기 없음(SC-405), "N분 더"는 `recentPicks`를 바꾸지 않음, `nextMark`(research R15). 기존 `NotchSessionTests`·`NotchSessionPriorityTests`의 `priority_rotate_v0` 기대는 새 이름으로 바꾸고 PR에 적는다. 실패를 확인한다(`FR-05 R-403`, `R-406`, `R-408`, `R-411`, `FR-10 R-422`) 〔단위 1〕
 - [ ] T015 [US1] `Sources/MokaCore/NotchSession.swift`(memory 칸, 고르기 교체, 완료 때 표시 지움, `day_end` 계기, `nextMark`). `PriorityRotateRule`은 남기고 호출만 바꾼다. T014 PASS 〔단위 1〕
-- [ ] T016 [P] [Q3] 시뮬레이터 Red: `Tests/MokaCoreTests/Fixtures/sim/`에 새 golden 다섯(`storage-005-rotate`, `storage-005-warmup`, `storage-005-carry`(contracts 예), `storage-005-budget`(오늘 끝과 "더 할래요", 시간 끝 겹침), `storage-005-boundary-running`(하루 경계에 도는 할 일, spec 6b·6c))과 기대 출력, `errors/`에 contracts "종료 코드 2" 경우마다 하나와 불변식 위반 경우, `SimGoldenTests` 필수 이름 집합과 `SimScenarioTests` 표. 기존 storage golden 일곱의 기대 출력을 새 규칙으로 다시 쓰고 바뀐 줄 표를 만든다. 실패를 확인한다(`R-432`, SC-402~SC-406) 〔단위 1〕
-- [ ] T017 [Q3] `Sources/MokaCore/Sim/SimScenario.swift`(이벤트 셋, Q3 켜는 법), `SimStorageRunner.swift`(활성화 순서 data-model §15, 이월 답·가용 시간·"더 할래요", 설정 메모리), `SimOutput.swift`(키 순서), `SimStorageState.swift`(불변식). `contracts/moka-sim-v1-additions-005.md`의 Q3 문단을 답 하나로 고친다. T016 PASS, spec 001 golden 바이트 그대로 〔단위 1〕
+- [ ] T016 [P] 시뮬레이터 Red: `Tests/MokaCoreTests/Fixtures/sim/`에 새 golden 다섯(`storage-005-rotate`, `storage-005-warmup`, `storage-005-carry`(contracts 예, 새 이벤트가 있어 켜짐), `storage-005-budget`(오늘 끝과 "더 할래요", 시간 끝 겹침), `storage-005-boundary-running`(하루 경계에 도는 할 일, spec 6b·6c))과 기대 출력, `errors/`에 contracts "종료 코드 2" 경우마다 하나와 불변식 위반 경우, `SimGoldenTests` 필수 이름 집합과 `SimScenarioTests` 표. 기존 storage golden 일곱의 기대 출력을 새 규칙으로 다시 쓰고 바뀐 줄 표를 만든다. 실패를 확인한다(`R-432`, SC-402~SC-406) 〔단위 1〕
+- [ ] T017 `Sources/MokaCore/Sim/SimScenario.swift`(이벤트 셋, 새 이벤트가 있을 때만 켬), `SimStorageRunner.swift`(활성화 순서 data-model §15, 이월 답·가용 시간·"더 할래요", 설정 메모리), `SimOutput.swift`(키 순서), `SimStorageState.swift`(불변식). T016 PASS, spec 001 golden 바이트 그대로 〔단위 1〕
 
 **확인 지점**: `swift test` PASS(새 시험, 기존 시험, 바뀐 storage golden), pytest PASS. 앱 빌드 PASS, 기존 앱 시험 PASS(고르기 순서를 1위·다음 순위로 고정한 앱 시험이 있으면 새 규칙 기대로 고치고 PR에 적는다). PR "사람이 볼 결정"에 승인 2·3·4·6과 바뀐 golden 줄 표.
 
@@ -70,10 +69,10 @@ description: "spec 005 스케줄러 작업 목록"
 
 **목적**: 두 열을 저장하고, 이월 판정을 한 트랜잭션으로 쓰는 경계를 만들고, 앱 노치를 새 고르기로 바꾼다. 이월 판정은 활성화에 아직 걸지 않는다(plan 위험 12).
 
-- [ ] T018 [P] [Q6] `Tests/MokaStoreTests/MigrationTests.swift`: 이름 목록 끝 `v4_tasks_carry`, 스냅샷 비교(새 `schema/moka-schema.sql`), v3까지 마이그레이션한 DB에 가짜 할 일을 넣고 v4를 돌리면 두 값이 처음 값. `StorageContractTests.swift`·`StoreConstraintTests.swift`: 두 열 읽기·쓰기, `carry_count < 0` 거부, `carry_*`·`carry_card_v1` 줄 왕복과 모르는 값 거부. `tuning/tests/test_schema_contract.py`: contracts storage-values §1~§3. 실패를 확인한다(`FR-08 R-412`, `R-416`, ADR-0004) 〔단위 2〕
-- [ ] T019 [Q6] `Sources/MokaStore/Migrations.swift`(`v4_tasks_carry`, 한 줄 SQL), `Sources/MokaStore/GRDBTaskRepository.swift`(두 열), `schema/moka-schema.sql`(시험 출력 그대로). T018 PASS, pytest PASS 〔단위 2〕
-- [ ] T020 [P] [Q1] [Q2] `Tests/MokaStoreTests/StorageContractTests.swift`와 `Tests/MokaCoreTests/` 메모리 구현 시험: Q1 답의 경계로 이월 판정 쓰기(표시 여럿 + `carry_judged_at`)가 한 트랜잭션, 중간 실패를 주입하면 표시와 판정 시각이 둘 다 없음, 다음 판정이 이전 판정 시각부터 다시 봄(SC-406). Q2 답에 따른 R-111 표시(B면 `carry_reverted` 쓰기·지우기, C면 되돌릴 때 체크포인트 한 줄, D면 시간 끝 종료 체크포인트). 메모리 구현과 GRDB 구현이 같은 시험을 통과. 실패를 확인한다(`FR-08 R-412`, SC-406) 〔단위 2〕
-- [ ] T021 [Q1] [Q2] `Sources/MokaCore/Storage.swift`, `Sources/MokaStore/GRDBTaskRepository.swift`(또는 Q1-C의 새 파일), `Sources/MokaCore/CoreSettings.swift`(키 `carry_judged_at`, `last_start_day`, Q2-B면 `carry_reverted`), `Sources/MokaCore/Sim/SimStorageRunner.swift`가 같은 경계를 씀. data-model §9의 Q1·Q2 문단을 답 하나로 고친다. T020 PASS 〔단위 2〕
+- [ ] T018 [P] `Tests/MokaStoreTests/MigrationTests.swift`: 이름 목록 끝 `v4_tasks_carry`, 스냅샷 비교(새 `schema/moka-schema.sql`), v3까지 마이그레이션한 DB에 가짜 할 일을 넣고 v4를 돌리면 두 값이 처음 값. `StorageContractTests.swift`·`StoreConstraintTests.swift`: 두 열 읽기·쓰기, `carry_count < 0` 거부, `carry_*`·`carry_card_v1` 줄 왕복과 모르는 값 거부. `tuning/tests/test_schema_contract.py`: contracts storage-values §1~§3. 실패를 확인한다(`FR-08 R-412`, `R-416`, ADR-0004) 〔단위 2〕
+- [ ] T019 `Sources/MokaStore/Migrations.swift`(`v4_tasks_carry`, 한 줄 SQL), `Sources/MokaStore/GRDBTaskRepository.swift`(두 열), `schema/moka-schema.sql`(시험 출력 그대로). T018 PASS, pytest PASS 〔단위 2〕
+- [ ] T020 [P] `Tests/MokaStoreTests/StorageContractTests.swift`와 `Tests/MokaCoreTests/` 메모리 구현 시험: `TaskRepository.applyCarryJudgment(_:judgedAt:)`가 표시 여럿과 `carry_judged_at`을 한 트랜잭션으로 씀, 중간 실패를 주입하면 표시와 판정 시각이 둘 다 없음, `lastCarryJudgment()`가 다음 판정의 이전 판정 시각을 돌려줌(SC-406). 경계 시험(data-model §9): `GRDBSettingsStore`·`InMemorySettingsStore`가 `carry_judged_at` 읽기·쓰기를 `StoreError.invalidValue(column: "key")`로 거부하고 아무것도 쓰지 않음, `CoreSettings`에 이 키 상수가 없음, 소스에서 이 키 글자가 두 `TaskRepository` 구현 밖에 없음. R-111 표시는 두지 않는다(Q2-A). 메모리 구현과 GRDB 구현이 같은 시험을 통과. 실패를 확인한다(`FR-08 R-412`, SC-406) 〔단위 2〕
+- [ ] T021 `Sources/MokaCore/Storage.swift`, `Sources/MokaStore/GRDBTaskRepository.swift`(이월 판정 읽기·쓰기), `Sources/MokaStore/GRDBSettingsStore.swift`와 `InMemorySettingsStore`(키 거부), `Sources/MokaCore/CoreSettings.swift`(키 `last_start_day`), `Sources/MokaCore/Sim/SimStorageRunner.swift`가 같은 경계를 씀. T020 PASS 〔단위 2〕
 - [ ] T022 [P] [US1] `App/Tests/MokaAppTests/AppSchedulerTests.swift`(새): 키 없음에서 마감일 순 앞 셋을 번갈아 띄움(spec US1-7), 점수 있는 할 일 셋이면 priority 비(US1-1, 가깝다), 하루 첫 고르기 워밍업과 같은 하루 재시작 뒤 워밍업 없음(`last_start_day`), 시간 끝 화면 버튼 그대로이고 다른 할 일이 보이지 않음(US1-8), 버튼 줄 `scheduler_choice`, "다음" 표시(`nextMarkID`)가 다음 고르기 결과, 순위는 이월 답 대기 뺌. `AppTestSupport.swift`에 주입 시계로 하루를 넘기는 도움 함수. 이월 판정·답 `AppState` 함수(`judgeCarryIfNeeded`, `answerCarry`)를 직접 불러 저장 결과를 봄(활성화 연결은 단위 3). 실패를 확인한다(`FR-05 R-403`, `R-406`, `R-407`, `R-408`, `R-434`) 〔단위 2〕
 - [ ] T023 [US1] `App/Sources/AppState.swift`: `input(at:)`에 memory, `pickIfEmpty`가 `NotchSession`의 새 고르기, 바꾸기·미루기 뒤 `excluded`, 시작 커밋에 `last_start_day`, `ranks`·`nextMarkID`, 판정·답 함수(활성화에서 부르지 않음). T022 PASS, 앱 빌드 PASS, 기존 앱 시험 PASS 〔단위 2〕
 - [ ] T024 [P] 대체 표기 확인: 이 plan PR에서 붙인 "spec 005가 대체" 표기(spec 002 R-104, spec 003 R-204·R-209·R-212·R-215, spec 004 R-315, spec 007 도움말 3·6번과 안내 장 순위 장)가 구현과 맞는지 보고, 다르면 고친다(`R-434`) 〔단위 2〕
@@ -105,8 +104,8 @@ description: "spec 005 스케줄러 작업 목록"
 
 **Independent Test**: 주입 시계로 작업 시간을 이어 돌리는 앱 시험과 시안 4~9·10-2·10-3번 스냅샷.
 
-- [ ] T031 [P] [US3] `App/Tests/MokaAppTests/AppBudgetTests.swift`(새): spec US3 시나리오 1~6(7은 단위 6), 질문 전 빠른 입력은 저장만, 질문 답 쓰기 실패면 질문 그대로, 같은 하루 재시작에 다시 묻지 않고 쓴 시간 이어 셈(Q4 답), 칩 상한과 프리셋 꺼짐, 직접 입력이 남은 분보다 크면 시작 꺼짐, 시간 끝 겹침에서 "N분 더"·직접 입력 Enter 막음과 세 버튼 계기 `day_end`, 그 뒤 고르기 0번(SC-405), "더 할래요" 뒤 그날 상한 없음, 오늘 끝에서 재시작해도 오늘 끝, 일시 중지가 없어 도는 타이머 시간은 쓴 시간에 듦·시간 끝 화면에서 기다린 시간은 들지 않음(spec Edge Cases). 실패를 확인한다(`FR-10 R-409`, `R-419`~`R-422`, SC-405, SC-406) 〔단위 4〕
-- [ ] T032 [US3] `App/Sources/AppState.swift`: 가용 시간 답, `day_budget` 쓰기, 쓴 시간 갱신(Q4 답), 모드 판정을 고르기 앞에, "더 할래요". `Sources/MokaCore/CoreSettings.swift` 키 `day_budget`. T031 PASS 〔단위 4〕
+- [ ] T031 [P] [US3] `App/Tests/MokaAppTests/AppBudgetTests.swift`(새): spec US3 시나리오 1~6(7은 단위 6), 질문 전 빠른 입력은 저장만, 질문 답 쓰기 실패면 질문 그대로, 같은 하루 재시작에 다시 묻지 않고 쓴 시간 이어 셈, 도는 중 일찍 끝내면 남은 초를 돌려받음, 칩 상한과 프리셋 꺼짐, 직접 입력이 남은 분보다 크면 시작 꺼짐, 시간 끝 겹침에서 "N분 더"·직접 입력 Enter 막음과 세 버튼 계기 `day_end`, 그 뒤 고르기 0번(SC-405), "더 할래요" 뒤 그날 상한 없음, 오늘 끝에서 재시작해도 오늘 끝, 일시 중지가 없어 도는 타이머 시간은 쓴 시간에 듦·시간 끝 화면에서 기다린 시간은 들지 않음(spec Edge Cases). 실패를 확인한다(`FR-10 R-409`, `R-419`~`R-422`, SC-405, SC-406) 〔단위 4〕
+- [ ] T032 [US3] `App/Sources/AppState.swift`: 가용 시간 답, `day_budget` 쓰기, 쓴 시간 갱신(시작 때 더함, 일찍 끝나면 돌려줌), 모드 판정을 고르기 앞에, "더 할래요". `Sources/MokaCore/CoreSettings.swift` 키 `day_budget`. T031 PASS 〔단위 4〕
 - [ ] T033 [P] [US3] [화면 뒤] 스냅샷: `test_R419_askBudget`, `test_R421_draftCapped`, `test_R421_customAboveRemaining`, `test_R409_expiredCapped`, `test_R422_expiredDayEnd`, `test_R422_dayEnd`, `test_R419_collapsedAskBudget`, `test_R422_collapsedDayEnd` 라이트·다크. 기존 시간 끝 화면 참조 이미지는 바뀌지 않아야 한다. 실패를 확인한다(`FR-10 R-419`, `R-421`, `R-422`, `R-433`) 〔단위 4〕
 - [ ] T034 [US3] [화면 뒤] `App/Sources/Views/BudgetViews.swift`(새, 질문과 오늘 끝), `ExpiredView.swift`(꺼진 "N분 더"와 이유 한 줄), `QuantumChipView.swift`(꺼진 프리셋), `CollapsedView.swift`, `Sources/MokaCore/QuantumChip.swift`·`BudgetText`(시안 확정 글자). T033 PASS 〔단위 4〕
 - [ ] T035 [사람] [US3] quickstart 6-4, 6-5(실제 타이머 1시간. 못 하면 NOT_RUN) 〔단위 4〕
@@ -134,7 +133,7 @@ description: "spec 005 스케줄러 작업 목록"
 
 ## 의존과 순서
 
-- T002(Q 답) → 단위 1의 [Q3]·[Q4]·[Q5] 태스크, 단위 2의 [Q1]·[Q2]·[Q6] 태스크.
+- T002는 끝났다(2026-11-16).
 - 단위 1 → 단위 2 → 단위 3 → 단위 4 → 단위 6. 단위 5는 시안 확정 뒤 언제든, 병합은 단위 1 가까이(plan 위험 11).
 - T003(시안 확정) → [화면 뒤] 태스크.
 - 같은 단위 안에서 [P] Red 태스크는 나란히 쓸 수 있고, 각 Green은 짝 Red 뒤다.
