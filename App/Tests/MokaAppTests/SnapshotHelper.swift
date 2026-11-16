@@ -94,6 +94,7 @@ enum SnapshotSanity {
     }
 
     /// 노치 판: 판 안(`board` 지점, pt) 색이 테마와 무관하고 판 밖 바탕과 다르며, 판 안에 바탕 말고 그린 것이 있는지.
+    /// `board`는 판 안 바탕이 보이는 한 점이다. 화면 스냅샷은 가로 가운데·귀 줄 높이 절반을 넘긴다(노치 구멍 자리라 내용이 없다).
     /// 노치 판은 테마와 상관없이 같은 색이라, 라이트·다크가 같은 픽셀만 모으면 판 안만 남는다
     /// (판 밖 바탕과 판 가장자리 안티앨리어싱은 테마마다 다르다). 거기에 판 바탕색 말고 다른 색이 있어야 한다.
     static func notchBoardIssue(light: Data, dark: Data, board: CGPoint) -> String? {
@@ -109,16 +110,27 @@ enum SnapshotSanity {
         if let issue = boardOutsideIssue(light: light, dark: dark, lightBoard: lightBoard, darkBoard: darkBoard) {
             return issue
         }
-        var drawn = 0
-        for y in 0..<light.height {
-            for x in 0..<light.width {
-                let color = light[x, y]
-                if color == dark[x, y], color != lightBoard { drawn += 1 }
-            }
-        }
-        // 점 하나(약 6pt 지름)도 2배 배율에서 수십 픽셀이다.
+        let drawn = boardMask(light: light, dark: dark, board: board).filter { light[$0.x, $0.y] != lightBoard }.count
         guard drawn >= minimumDrawnPixels else { return "노치 판 안에 바탕 말고 그린 것이 없다(\(drawn)px)" }
         return nil
+    }
+
+    /// 판 마스크: `board` 지점에서 이어진, 라이트·다크가 같은 픽셀. 판 밖 바탕과 판 가장자리 안티앨리어싱은
+    /// 테마마다 달라 마스크가 거기서 끊기므로, 판 밖에 테마와 무관한 그림이 있어도 세지 않는다(#51).
+    private static func boardMask(light: SnapshotPixels, dark: SnapshotPixels, board: CGPoint) -> [(x: Int, y: Int)] {
+        let start = (x: Int(board.x) * snapshotScale, y: Int(board.y) * snapshotScale)
+        guard start.x < light.width, start.y < light.height else { return [] }
+        var seen = [Bool](repeating: false, count: light.width * light.height)
+        var stack = [start]
+        var mask: [(x: Int, y: Int)] = []
+        while let (x, y) = stack.popLast() {
+            guard x >= 0, y >= 0, x < light.width, y < light.height, !seen[y * light.width + x] else { continue }
+            seen[y * light.width + x] = true
+            guard light[x, y] == dark[x, y] else { continue }
+            mask.append((x, y))
+            stack.append(contentsOf: [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)])
+        }
+        return mask
     }
 
     /// 떠 있는 창: 판 안(`board` 지점, pt) 색이 판 밖 바탕과 다르고, 라이트 판이 다크 판보다 확실히 밝은지.
@@ -142,6 +154,8 @@ enum SnapshotSanity {
     /// 같은 반투명 판이 바탕만 달리 비치면 0.1 안쪽이다.
     private static let minimumThemeLuminanceGap = 0.3
 
+    /// 판 안에서 바탕 말고 그린 픽셀의 하한(2배 배율). 2026-11-16 측정(#51): 화면 스냅샷 가운데 가장 적은 것이
+    /// 빈 접힌 판(`01-empty`, 컵 아이콘) 132px, 시험용 8pt 점 224px, 빈 판 0px. 빈 판만 걸리도록 그 사이 낮은 쪽에 둔다.
     private static let minimumDrawnPixels = 20
 
     /// 판 안 색이 판 밖 바탕(왼쪽 위 모서리, 어느 상태든 판 밖)과 같으면 판이 그려지지 않은 것이다.

@@ -349,7 +349,8 @@ struct ButtonLabel: View {
 
     var body: some View {
         HStack(spacing: 5) {
-            Text(text)
+            // "N분 더"처럼 숫자가 든 이름이 숫자마다 폭이 달라지지 않게 한다(PR #60 리뷰).
+            Text(text).monospacedDigit()
             if let shortcut {
                 Text(shortcut).font(.system(size: 10)).opacity(0.7)
             }
