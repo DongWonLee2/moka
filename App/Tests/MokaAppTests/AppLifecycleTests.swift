@@ -156,6 +156,39 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertEqual(state.session.taskID, 1, "되돌린 뒤 고른다")
     }
 
+    // MARK: - #71 저장 실패 로그 이유
+
+    func test_issue71_failedCommitIsLoggedAsStorageFailure() throws {
+        let repository = ApplyFailingRepository()
+        _ = try repository.inner.insertTask(
+            NewTask(title: "가짜 할 일 1", deadline: nil, estMin: nil, recurrence: .none, weekday: nil), cycleDay: nil,
+            at: Self.noon)
+        let state = makeState(repository)
+        state.launch()
+
+        state.start()
+
+        XCTAssertEqual(state.lastRejectReason, .storageFailed)
+    }
+
+    func test_issue71_failedQuickEntryInsertIsLoggedAsStorageFailure() {
+        let state = makeState(InsertFailingRepository())
+        state.launch()
+
+        state.enterTitle("가짜 할 일 A")
+
+        XCTAssertEqual(state.lastRejectReason, .storageFailed)
+    }
+
+    func test_issue71_phaseRejectionStaysNotAllowedInPhase() {
+        let state = makeState(InMemoryTaskRepository())
+        state.launch()
+
+        state.start()
+
+        XCTAssertEqual(state.lastRejectReason, .notAllowedInPhase, "초안이 없을 때 시작은 단계 거부다")
+    }
+
     // MARK: - R-113 활성화 판정
 
     func test_FR09_R113_launchActivationResetsDailyTaskDoneYesterday() throws {
