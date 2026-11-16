@@ -318,16 +318,87 @@ private func switchTask(_ session: NotchSession, _ input: SessionInput) throws(S
         #expect(nextDay.session.taskID == 1)
     }
 
-    @Test("FR-08 R-413: 초안 비우기는 할 일과 이름을 내리고 커서는 둔다")
+    @Test("FR-08 R-413 FR-05 R-408: 초안 비우기는 할 일·이름·커서를 내리고 몫 상태는 둔다")
     func clearingDraft() {
         var session = NotchSession.initial.picked(Fake.input(Fake.todos(1...2)))
         session.previousTaskID = 2
         let cleared = session.clearingDraft()
         #expect(cleared.timer == .empty(draft: nil))
         #expect(cleared.taskID == nil)
-        #expect(cleared.previousTaskID == 2)
+        #expect(cleared.previousTaskID == nil)
         #expect(cleared.memory.pickedBy == nil)
         #expect(cleared.memory.credits == session.memory.credits)
+    }
+}
+
+/// 커서 규칙(R-408, data-model §5-4): 커서는 바꾸기·미루기만 두고, 그 하루의 다음 고르기 한 번에만 쓴다.
+@Suite struct NotchSessionCursorTests {
+    private static func input(_ tasks: [MokaTask], at now: Date = Fake.noon, today: LocalDay = day13) -> SessionInput {
+        var input = Fake.input(tasks, now: now)
+        input.today = today
+        return input
+    }
+
+    /// 초안 1에 다른 데서 남은 커서 2가 붙은 상태(커서가 남으면 안 되는 경로를 시험하려고 일부러 둠).
+    private static let staleDraft: NotchSession = {
+        var session = NotchSession.initial.picked(input(Fake.todos(1...3)))
+        session.previousTaskID = 2
+        session.memory.cursorDay = day13
+        return session
+    }()
+
+    private static func running() throws -> (NotchSession, [MokaTask]) {
+        var tasks = Fake.todos(1...3)
+        let step = try staleDraft.start(input(tasks))
+        tasks[0].status = .active
+        return (step.session, tasks)
+    }
+
+    @Test("FR-05 R-408: 바꾸기·미루기 직후 그 하루의 다음 고르기가 아니면 뺄 할 일이 없다(세션 전이 표)")
+    func excludedOnlyRightAfterSetAside() throws {
+        let todos = Fake.todos(1...3)
+        let (running, active) = try Self.running()
+        let later = Self.input(active, at: Fake.noon + 60)
+        let expired = Self.input(active, at: Fake.noon + 26 * 60)
+        let skipped = try running.skip(.empty, later).session
+        let switched = try running.switchTask(.empty, later).session
+        let cases: [(String, NotchSession, SessionInput)] = [
+            ("시작", running, later),
+            ("도는 중 완료", try running.complete(nil, later).session, later),
+            ("시간 끝 완료", try running.complete(nil, expired).session, expired),
+            ("N분 더", try running.restart(.empty, quantumMin: 10, expired).session, expired),
+            ("다른 할 일", Self.staleDraft.chosenDraft(3, Self.input(todos)), Self.input(todos)),
+            ("초안 지우기", Self.staleDraft.taskDropped(1), Self.input(todos)),
+            ("초안 비움", Self.staleDraft.clearingDraft(), Self.input(todos)),
+            ("빠른 입력", Self.staleDraft.addedTask(Fake.task(9), Self.input(todos + [Fake.task(9)])), Self.input(todos)),
+            ("고른 뒤", skipped.picked(later), later),
+            ("미루기 뒤 하루가 바뀜", skipped, Self.input(todos, at: Fake.at(2027, 1, 14, 7, 0), today: day14)),
+            ("바꾸기 뒤 하루가 바뀜", switched, Self.input(todos, at: Fake.at(2027, 1, 14, 7, 0), today: day14)),
+        ]
+        for (name, session, input) in cases {
+            #expect(session.excludedInNextPick(input) == nil, "\(name)")
+        }
+        #expect(skipped.excludedInNextPick(later) == 1, "미루기 직후 같은 하루")
+        #expect(switched.excludedInNextPick(later) == 1, "바꾸기 직후 같은 하루")
+        #expect(skipped.memory.cursorDay == day13)
+    }
+
+    @Test("FR-05 R-408: 초안 A → 다른 할 일 B → B 지움 → 고르기에서 A가 후보로 뽑힌다")
+    func otherTaskThenDropKeepsA() {
+        let tasks = Fake.todos(1...3)
+        var input = Self.input(tasks)
+        input.scoring = SessionScoring(
+            usable: [1: score(1, urgency: 1), 2: score(2, urgency: 0.1), 3: score(3, urgency: 0.1)],
+            questions: questions, thresholds: jev, today: day13)
+        let onA = NotchSession.initial.picked(input)
+        #expect(onA.taskID == 1)
+        let onB = onA.chosenDraft(2, input)
+        #expect(onB.taskID == 2)
+        let dropped = onB.taskDropped(2)
+        var afterDrop = input
+        afterDrop.tasks = [tasks[0], tasks[2]]
+        #expect(dropped.excludedInNextPick(afterDrop) == nil)
+        #expect(dropped.picked(afterDrop).taskID == 1)
     }
 }
 

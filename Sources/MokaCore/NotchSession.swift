@@ -118,7 +118,7 @@ extension NotchSession {
     /// 그 고르기에서 뺀다. 초안의 칩은 그 순간의 기본값이고 `draftChipCap`이 있으면 그 이하다.
     public func picked(_ input: SessionInput) -> NotchSession {
         guard timer == .empty(draft: nil) else { return self }
-        let result = SchedulerPick.pick(pickInput(input, excluded: cursor(input)))
+        let result = SchedulerPick.pick(pickInput(input, excluded: excludedInNextPick(input)))
         guard let id = result.taskID, let task = input.tasks.first(where: { $0.id == id }) else { return self }
         var next = drafting(task, input)
         next.previousTaskID = nil
@@ -328,9 +328,8 @@ extension NotchSession {
             isWarmup: input.isWarmup, memory: memory.on(input.today))
     }
 
-    /// 이번 고르기에서 뺄 방금 할 일(R-408). 커서는 그것을 쓴 고르기에서 지우므로, 남아 있는 것은 모드(카드·질문·
-    /// 오늘 끝) 때문에 미뤄진 고르기뿐이다. 하루가 바뀐 뒤에는 어제 커서를 쓰지 않는다.
-    private func cursor(_ input: SessionInput) -> TaskID? {
+    /// 다음 고르기에서 뺄 방금 할 일(R-408). 바꾸기·미루기 직후 그 하루의 다음 고르기에만 값이 있다.
+    public func excludedInNextPick(_ input: SessionInput) -> TaskID? {
         guard let today = input.today, let day = memory.cursorDay, day != today else { return previousTaskID }
         return nil
     }
