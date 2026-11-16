@@ -65,3 +65,21 @@ func testImportsAreDeclaredDependencies() throws {
         #expect(scanned > 0, "\(folder)에서 Swift 파일을 찾지 못했다")
     }
 }
+
+@Test("#66: 속성이 붙은 import(@preconcurrency, @_exported, @testable)와 종류 import도 모듈 이름을 꺼낸다")
+func importedModulesSeeAttributedImports() throws {
+    let source = """
+        @preconcurrency import FakeA
+        @_exported import FakeB
+        @testable import FakeC
+        import struct FakeD.Thing
+        @preconcurrency @testable import FakeE
+        // import FakeIgnored
+        """
+    #expect(try importedModules(in: source).map(\.module) == ["FakeA", "FakeB", "FakeC", "FakeD", "FakeE"])
+}
+
+@Test("#66: 의존 선언 없이 import할 수 있는 SDK 모듈에 os·Observation이 있다")
+func toolchainModulesIncludeSDKModules() {
+    #expect(toolchainModules.isSuperset(of: ["os", "Observation"]))
+}
