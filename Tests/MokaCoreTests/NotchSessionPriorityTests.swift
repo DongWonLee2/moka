@@ -135,7 +135,7 @@ private func switching(_ session: NotchSession, _ input: SessionInput) throws(Se
         #expect(start.session.nextMark(input(running, nil)) == 1)
     }
 
-    @Test("FR-11 R-212: 점수 있는 할 일의 로그 줄은 저장된 판단 결과와 응답 모델 이름, priority_rotate_v0")
+    @Test("FR-11 R-212 R-411: 점수 있는 할 일의 로그 줄은 저장된 판단 결과와 응답 모델 이름, weighted_rotate_v1")
     func logLineWithScore() throws {
         let tasks = Fake.todos(1...3)
         let (_, _, step) = try pressed(NotchSession.initial.picked(input(tasks)), tasks) {
@@ -149,7 +149,7 @@ private func switching(_ session: NotchSession, _ input: SessionInput) throws(Se
                     judgment: Judgment(
                         provider: "fake", questionVersion: "v1", probsJSON: stored.probsJSON,
                         stateHash: "00000000000000a3"),
-                    modelSnapshot: "가짜-모델-3", schedulerChoice: .priorityRotateV0, userAction: .done,
+                    modelSnapshot: "가짜-모델-3", schedulerChoice: .weightedRotateV1, userAction: .done,
                     createdAt: t0 + 60)
             ])
     }
@@ -165,7 +165,7 @@ private func switching(_ session: NotchSession, _ input: SessionInput) throws(Se
             #expect(
                 step.batch.newDecisions == [
                     NewDecisionLogEntry(
-                        taskID: 1, judgment: fallback, modelSnapshot: nil, schedulerChoice: .priorityRotateV0,
+                        taskID: 1, judgment: fallback, modelSnapshot: nil, schedulerChoice: .weightedRotateV1,
                         userAction: .skip, createdAt: t0 + 60)
                 ])
         }
@@ -181,6 +181,6 @@ private func switching(_ session: NotchSession, _ input: SessionInput) throws(Se
         #expect(line.taskID == 1)
         #expect(line.judgment?.provider == "fallback")
         #expect(line.modelSnapshot == nil)
-        #expect(line.schedulerChoice.rawValue == "priority_rotate_v0")
+        #expect(line.schedulerChoice.rawValue == "weighted_rotate_v1")
     }
 }

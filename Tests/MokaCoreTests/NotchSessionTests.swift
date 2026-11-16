@@ -32,7 +32,7 @@ private func draft(_ title: String, chip: Int = 25, picked: Bool = false) -> Not
 private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> NewDecisionLogEntry {
     NewDecisionLogEntry(
         taskID: taskID, judgment: Judgment(provider: "fallback", questionVersion: nil, probsJSON: nil, stateHash: nil),
-        modelSnapshot: nil, schedulerChoice: .priorityRotateV0, userAction: action, createdAt: now)
+        modelSnapshot: nil, schedulerChoice: .weightedRotateV1, userAction: action, createdAt: now)
 }
 
 // MARK: - 할 일 연결 몫(T020)
@@ -258,12 +258,12 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
         #expect(step.session == .initial)
     }
 
-    @Test("FR-11 R-212: 키 없는 로그 줄은 priority_rotate_v0, 판단 칸은 공급자 fallback만, model_snapshot은 비어 있다")
+    @Test("FR-11 R-212 R-411: 키 없는 로그 줄은 weighted_rotate_v1, 판단 칸은 공급자 fallback만, model_snapshot은 비어 있다")
     func logLineHasNoJudgment() throws {
         let (running, tasks) = try started([Fake.task(1)])
         let step = try running.complete(nil, Fake.input(tasks, now: t0 + 60))
         let line = try #require(step.batch.newDecisions.first)
-        #expect(line.schedulerChoice.rawValue == "priority_rotate_v0")
+        #expect(line.schedulerChoice.rawValue == "weighted_rotate_v1")
         #expect(line.judgment == Judgment(provider: "fallback", questionVersion: nil, probsJSON: nil, stateHash: nil))
         #expect(line.modelSnapshot == nil)
     }
