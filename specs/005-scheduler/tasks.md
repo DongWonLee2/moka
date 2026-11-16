@@ -127,9 +127,9 @@ description: "spec 005 스케줄러 작업 목록"
 
 ## Phase 7: 단위 6 — 자동 시작과 "내일" 표시 (밀리면 먼저 뺌) [화면 뒤] [승인 5·6]
 
-- [ ] T039 [P] `Tests/MokaCoreTests/AutoStartTests.swift`·`TomorrowMarkTests.swift`: data-model §17·§18(3초 경계, 입력이 다시 걸기, 모드·게이트에서 거짓, 늘리기 확인 줄이 열림(남은 10분에서 25분 칩)이면 거짓·칩 ≤ 남은 분이거나 상한 없음이면 참, 상한 없으면 빈 집합, `estMin` 없으면 기본 작업 시간). 실패를 확인한다(`FR-05 R-410`, `FR-10 R-423`) 〔단위 6〕
+- [ ] T039 [P] `Tests/MokaCoreTests/AutoStartTests.swift`·`TomorrowMarkTests.swift`: data-model §17·§18(3초 경계, 입력이 다시 걸기, 모드·게이트에서 거짓, 늘리기 확인 줄이 열림(남은 10분에서 25분 칩)이면 거짓·칩 ≤ 남은 분이거나 상한 없음이면 참, `startFailed`면 거짓, 상한 없으면 빈 집합, `estMin` 없으면 기본 작업 시간). 실패를 확인한다(`FR-05 R-410`, `FR-10 R-423`) 〔단위 6〕
 - [ ] T040 `Sources/MokaCore/Scheduler/AutoStart.swift`, `TomorrowMark.swift`. T039 PASS 〔단위 6〕
-- [ ] T041 [P] [화면 뒤] 앱 시험(자동 시작이 주입 시계로 3초 뒤 한 번, 남은 10분에서 25분 칩을 고르면 3초가 지나도 시작하지 않고 확인 줄이 남음, "10분만 할래요" 뒤에는 3초 뒤 10분으로 시작, 설정 키 `auto_start`, spec US3-7 "내일")과 스냅샷 `test_R423_taskTabTomorrow`, `test_R410_basicTabAutoStart`. 실패를 확인한다 〔단위 6〕
+- [ ] T041 [P] [화면 뒤] 앱 시험(자동 시작이 주입 시계로 3초 뒤 한 번, 남은 10분에서 25분 칩을 고르면 3초가 지나도 시작하지 않고 확인 줄이 남음, 시작 커밋 실패 문구("시작하지 못했어요. 다시 해 주세요.")가 떠 있는 동안 3초가 지나도 다시 시작하지 않음과 사용자가 누르면 문구가 사라짐, "10분만 할래요" 뒤에는 3초 뒤 10분으로 시작, 설정 키 `auto_start`, spec US3-7 "내일")과 스냅샷 `test_R423_taskTabTomorrow`, `test_R410_basicTabAutoStart`. 실패를 확인한다 〔단위 6〕
 - [ ] T042 [화면 뒤] `App/Sources/AppState.swift`(자동 시작 일정), `BasicTabView.swift`, `TaskListTabView.swift`, `CoreSettings.swift` 키 `auto_start`. T041 PASS 〔단위 6〕
 
 ---
