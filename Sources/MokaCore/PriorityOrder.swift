@@ -38,7 +38,7 @@ public enum PriorityOrder {
     }
 }
 
-/// 노치 고르기(spec 003 R-209, data-model §7). spec 002 `RotateByIDRule`을 대신한다.
+/// spec 003 노치 고르기(R-209). spec 005부터 노치는 `SchedulerPick`으로 고르고, 이 규칙은 이전 로그 줄의 이름으로만 남는다.
 public enum PriorityRotateRule {
     public static let choice = SchedulerChoice.priorityRotateV0
 

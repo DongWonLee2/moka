@@ -74,7 +74,6 @@ public enum QuantumChip {
     }
 
     /// 직접 입력 칸 아래 줄의 이유 안내(R-004). 직접 입력 중이고 받지 않는 값이면 문장, 아니면 nil.
-    /// `aboveRemaining` 문장은 시안 초안 글자이고 단위 4에서 확정 시안 글자로 맞춘다.
     public static func customIssueMessage(customText: String?, remainingMinutes: Int? = nil) -> String? {
         guard let customText, let issue = customIssue(customText, remainingMinutes: remainingMinutes) else {
             return nil

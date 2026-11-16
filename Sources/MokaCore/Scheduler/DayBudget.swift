@@ -56,7 +56,7 @@ public struct DayBudget: Decodable, Equatable, Sendable {
         return next
     }
 
-    /// 시작 전 화면의 늘리기.
+    /// 시작 전 화면의 늘리기(R-421). 가용 시간과 늘린 분을 함께 늘린다.
     public func extended(by extra: Int) -> DayBudget {
         var next = self
         next.minutes += extra
@@ -64,7 +64,7 @@ public struct DayBudget: Decodable, Equatable, Sendable {
         return next
     }
 
-    /// "더 할래요".
+    /// "더 할래요"(R-422). 그날 상한을 푼다.
     public func withMore() -> DayBudget {
         var next = self
         next.more = true

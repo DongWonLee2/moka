@@ -49,7 +49,7 @@ public struct PickResult: Equatable, Sendable {
 
 /// 고르기(spec 005 data-model §5). 순수 함수이고 시계를 받지 않는다.
 public enum SchedulerPick {
-    /// priority를 정수 몫으로 키우는 배율. 조정 값이 아니다.
+    /// priority를 정수 몫으로 키우는 배율.
     static let shareScale = 1000.0
 
     public static func pick(_ input: PickInput) -> PickResult {
@@ -63,7 +63,7 @@ public enum SchedulerPick {
         return rotate(input)
     }
 
-    /// 창(`order` 앞 `rotationWidth`개)의 몫. 모두 점수 있으면 priority × 1000(최소 몫 이상), 아니면 순위 몫.
+    /// 창(`order` 앞 `rotationWidth`개)의 몫. 모두 점수 있으면 priority × `shareScale`(최소 몫 이상), 아니면 순위 몫.
     public static func shares(_ input: PickInput) -> [Int] {
         let window = input.order.prefix(Defaults.rotationWidth)
         let priorities = window.map { input.scores[$0.id] == nil ? nil : input.priorities[$0.id] }

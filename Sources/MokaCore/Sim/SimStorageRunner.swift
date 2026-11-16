@@ -34,7 +34,6 @@ extension SimRunner {
             scheduled: scenario.events.contains { $0.kind.turnsOnSchedule },
             carryJudgedAt: scenario.events.first?.at)
 
-        // 시작 직후: 저장소 비어 있음, 노치 빈 상태, 하루 판정 한 번(대상 없음).
         var previous = SimStorageState(session: .initial, tasks: [], checkpoints: [], decisions: [])
         var output = ""
         for event in scenario.events {
