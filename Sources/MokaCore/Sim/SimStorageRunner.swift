@@ -384,7 +384,7 @@ private struct StorageEvent {
         let input = try input(session)
         let activated = try SimRunner.storing(seq: event.seq) {
             try SessionAssembly.activate(
-                session, input, dayStart: dayStart, schedule: try schedule(), in: repository,
+                session, input, dayStart: dayStart, schedule: schedule(), in: repository,
                 reload: repository.tasks)
         }
         if let schedule = activated.schedule {
@@ -393,23 +393,20 @@ private struct StorageEvent {
         return activated.session
     }
 
-    private func schedule() throws(SimError) -> SessionAssembly.Schedule? {
+    private func schedule() -> SessionAssembly.Schedule? {
         guard day.scheduled else { return nil }
-        return SessionAssembly.Schedule(
-            today: today, budget: day.budget,
-            carryJudgedAt: try SimRunner.storing(seq: event.seq) { try repository.lastCarryJudgment() },
-            revertedIDs: day.revertedIDs)
+        return SessionAssembly.Schedule(today: today, budget: day.budget, revertedIDs: day.revertedIDs)
     }
 
     /// 꺼짐이면 늘 세션. 켜짐이면 data-model §12 표.
     private func mode(_ session: NotchSession?) throws(SimError) -> NotchMode {
-        guard let schedule = try schedule() else { return .session }
+        guard let schedule = schedule() else { return .session }
         return SessionAssembly.mode(session?.timer ?? .empty(draft: nil), tasks: try tasks(), schedule: schedule)
     }
 
     /// 버튼 처리 뒤: 모드 판정 → 카드·질문·오늘 끝이면 초안을 비우고, 세션이면 빈 상태에서 고른다(data-model §12).
     private func settle(_ session: NotchSession) throws(SimError) -> NotchSession {
-        SessionAssembly.settle(session, try input(session), schedule: try schedule())
+        SessionAssembly.settle(session, try input(session), schedule: schedule())
     }
 
     /// 작업 시간을 시작한 하루. 도는 중·시간 끝이 아니면 오늘.

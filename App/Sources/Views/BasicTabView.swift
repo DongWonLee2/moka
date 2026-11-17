@@ -36,7 +36,7 @@ struct BasicTabView: View {
             }
             GridRow {
                 Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])
-                HintText(text: "이 시각이 지나면 반복 할 일이 다시 대기로 돌아와요.", isIssue: false)
+                HintText(text: BasicTabText.dayStartHint, isIssue: false)
             }
         }
     }
@@ -215,4 +215,9 @@ struct TimeField: NSViewRepresentable {
             date.wrappedValue = sender.dateValue
         }
     }
+}
+
+/// 기본 탭 고정 안내(확정 시안 005 13번 마지막 줄, R-434).
+enum BasicTabText {
+    static let dayStartHint = "이 시각이 지나면 반복 할 일이 다시 대기로 돌아오고, 남은 할 일을 오늘 할지 물어요."
 }

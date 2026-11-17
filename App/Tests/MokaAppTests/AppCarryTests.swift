@@ -68,7 +68,7 @@ final class AppCarryTests: XCTestCase {
             state.notchMode, .carryCard(taskID: 2, left: 2, reason: .overdue(days: 1)), "마감 지난 B가 먼저, 남은 개수는 지금 것 포함")
         XCTAssertEqual(state.timer, .empty(draft: nil), "카드가 있으면 초안을 비운다(R-413)")
         XCTAssertEqual(state.ranks, [3: 1], "순위는 이월 답 대기를 뺀 후보로 다시 센다")
-        XCTAssertEqual(state.nextMarkID, 3)
+        XCTAssertNil(state.nextMarkID, "카드가 떠 있는 동안은 노치에 할 일이 없어 \"다음\"도 없다")
         XCTAssertEqual(state.otherTaskItems.map(\.id), [3], "다른 할 일 목록에 이월 대상이 없다")
 
         XCTAssertTrue(state.answerCarry(.today, for: 2))
@@ -80,7 +80,8 @@ final class AppCarryTests: XCTestCase {
     func test_FR08_R413_SC403_dueTaskIsNotPickedWhileCardWaits() throws {
         let morning = try Self.judgedNextMorning()
         let state = morning.state
-        XCTAssertTrue(state.addTask(NewTask(title: "가짜 할 일 D", deadline: nil, estMin: nil, recurrence: .none, weekday: nil)))
+        XCTAssertTrue(
+            state.addTask(NewTask(title: "가짜 할 일 D", deadline: nil, estMin: nil, recurrence: .none, weekday: nil)))
         XCTAssertEqual(state.timer, .empty(draft: nil), "카드가 떠 있는 동안 새 할 일이 들어와도 고르지 않는다")
         XCTAssertTrue(state.answerCarry(.today, for: 2))
         XCTAssertEqual(state.timer, .empty(draft: nil), "카드가 남아 있으면 고르지 않는다")
@@ -146,6 +147,7 @@ final class AppCarryTests: XCTestCase {
         XCTAssertEqual(state.notchMode, .session)
         XCTAssertNotNil(state.session.taskID, "카드를 다 답하면 고른다")
         XCTAssertNotEqual(state.session.taskID, 1)
+        XCTAssertEqual(state.nextMarkID, state.session.taskID)
         XCTAssertEqual(state.carryAnswered, 0, "카드가 끝나면 답한 수를 비운다")
     }
 
