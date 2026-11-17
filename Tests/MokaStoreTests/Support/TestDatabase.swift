@@ -14,6 +14,12 @@ enum TestDatabase {
         return db
     }
 
+    static func migratedInMemory(upTo last: String) throws -> DatabaseQueue {
+        let db = try MokaDatabase.inMemory()
+        try MokaMigrations.migrator.migrate(db, upTo: last)
+        return db
+    }
+
     /// 아직 없는 하위 폴더 아래의 DB 파일 경로. 폴더는 만들지 않는다.
     static func freshFileURL() -> URL {
         FileManager.default.temporaryDirectory

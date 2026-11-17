@@ -71,6 +71,11 @@ final class FailingTaskRepository: TaskRepository {
     func checkpoints() throws -> [Checkpoint] { try inner.checkpoints() }
     func decisions() throws -> [DecisionLogEntry] { try inner.decisions() }
     func apply(_ batch: StoreBatch) throws { throw Failure() }
+    func lastCarryJudgment() throws -> Date? { try inner.lastCarryJudgment() }
+    func applyCarryJudgment(_ batch: StoreBatch, judgedAt: Date) throws {
+        if batch != .empty { try apply(batch) }
+        try inner.applyCarryJudgment(batch, judgedAt: judgedAt)
+    }
 }
 
 extension InMemoryTaskRepository {

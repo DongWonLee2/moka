@@ -62,16 +62,19 @@ public struct FieldCommit: Sendable {
     }
 }
 
+/// 이월 판정 시각 키는 `TaskRepository`만 다루므로 거부한다(spec 005 data-model §9).
 public final class InMemorySettingsStore: SettingsStore {
     private var values: [String: String] = [:]
 
     public init() {}
 
     public func value(for key: String) throws -> String? {
-        values[key]
+        guard key != CarryJudgmentStorage.settingsKey else { throw StoreError.invalidValue(column: "key") }
+        return values[key]
     }
 
     public func setValue(_ value: String, for key: String) throws {
+        guard key != CarryJudgmentStorage.settingsKey else { throw StoreError.invalidValue(column: "key") }
         values[key] = value
     }
 }

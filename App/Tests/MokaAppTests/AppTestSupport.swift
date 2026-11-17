@@ -47,6 +47,14 @@ final class TestClock: Sendable {
     func advance(seconds: TimeInterval) {
         current.withLock { $0 += seconds }
     }
+
+    func advanceToNextDay(hour: Int, minute: Int = 0) {
+        let calendar = AppTestFixture.seoul
+        current.withLock { now in
+            let nextDay = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now))!
+            now = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: nextDay)!
+        }
+    }
 }
 
 /// `apply`가 늘 throw하는 가짜 저장소. 읽기와 넣기는 안쪽 메모리 저장소를 쓴다.
@@ -62,6 +70,8 @@ final class ApplyFailingRepository: TaskRepository {
     func checkpoints() throws -> [Checkpoint] { try inner.checkpoints() }
     func decisions() throws -> [DecisionLogEntry] { try inner.decisions() }
     func apply(_ batch: StoreBatch) throws { throw Failure() }
+    func lastCarryJudgment() throws -> Date? { try inner.lastCarryJudgment() }
+    func applyCarryJudgment(_ batch: StoreBatch, judgedAt: Date) throws { throw Failure() }
 }
 
 final class FailingAfterStartRepository: TaskRepository {
@@ -79,6 +89,11 @@ final class FailingAfterStartRepository: TaskRepository {
     func apply(_ batch: StoreBatch) throws {
         if failsApply { throw Failure() }
         try inner.apply(batch)
+    }
+    func lastCarryJudgment() throws -> Date? { try inner.lastCarryJudgment() }
+    func applyCarryJudgment(_ batch: StoreBatch, judgedAt: Date) throws {
+        if failsApply { throw Failure() }
+        try inner.applyCarryJudgment(batch, judgedAt: judgedAt)
     }
 }
 
@@ -99,4 +114,6 @@ final class InsertFailingRepository: TaskRepository {
     func checkpoints() throws -> [Checkpoint] { [] }
     func decisions() throws -> [DecisionLogEntry] { [] }
     func apply(_ batch: StoreBatch) throws {}
+    func lastCarryJudgment() throws -> Date? { nil }
+    func applyCarryJudgment(_ batch: StoreBatch, judgedAt: Date) throws {}
 }

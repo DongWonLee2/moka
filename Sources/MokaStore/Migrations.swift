@@ -32,6 +32,15 @@ public enum MokaMigrations {
                     "CREATE TABLE scores(task_id INTEGER PRIMARY KEY NOT NULL REFERENCES tasks(id) ON DELETE RESTRICT, question_version TEXT NOT NULL, provider TEXT NOT NULL, model_snapshot TEXT, urgency REAL NOT NULL, impact REAL NOT NULL, concrete REAL NOT NULL, avoiding REAL NOT NULL, probs_json TEXT NOT NULL, state_hash TEXT NOT NULL, scored_at TEXT NOT NULL)"
             )
         }
+        // spec 005 data-model §2(Q6-A). SQLite가 CREATE TABLE 글자 끝에 열 정의를 붙인다.
+        migrator.registerMigration("v4_tasks_carry") { db in
+            try db.execute(
+                sql: "ALTER TABLE tasks ADD COLUMN carry_count INTEGER NOT NULL DEFAULT 0 CHECK(carry_count >= 0)")
+            try db.execute(
+                sql:
+                    "ALTER TABLE tasks ADD COLUMN due_decision INTEGER NOT NULL DEFAULT 0 CHECK(due_decision IN (0, 1))"
+            )
+        }
         return migrator
     }()
 }

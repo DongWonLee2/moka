@@ -4,7 +4,8 @@ public enum CoreSettingsError: Error, Equatable {
     case outOfRange
 }
 
-/// `default_extend_min`·`day_start`·`onboarding_done` 읽기·쓰기 규칙(data-model §6). `default_quantum_min`은 `QuantumSettings`.
+/// `default_extend_min`·`day_start`·`onboarding_done` 읽기·쓰기 규칙(data-model §6)과 spec 005 `last_start_day`.
+/// `default_quantum_min`은 `QuantumSettings`.
 public enum CoreSettings {
     public static let extendMinKey = "default_extend_min"
     public static let dayStartKey = "day_start"
@@ -12,6 +13,7 @@ public enum CoreSettings {
     public static let decisionProviderKey = "decision_provider"
     public static let microsoftEndpointKey = "microsoft_endpoint"
     public static let microsoftDeploymentKey = "microsoft_deployment"
+    public static let lastStartDayKey = "last_start_day"
 
     /// 없거나 읽기 실패·정수 아님·1~180 밖이면 10.
     public static func readExtendMin(from store: some SettingsStore) -> Int {
@@ -80,6 +82,16 @@ public enum CoreSettings {
 
     public static func readMicrosoftDeployment(from store: some SettingsStore) -> String? {
         (try? store.value(for: microsoftDeploymentKey)) ?? nil
+    }
+
+    /// 작업 시간을 마지막으로 시작한 하루(spec 005 data-model §6). 없거나 읽기 실패·날짜 글자가 아니면 nil(워밍업).
+    public static func readLastStartDay(from store: some SettingsStore) -> LocalDay? {
+        guard let text = try? store.value(for: lastStartDayKey) else { return nil }
+        return LocalDay(text: text)
+    }
+
+    public static func writeLastStartDay(_ day: LocalDay, to store: some SettingsStore) throws {
+        try store.setValue(day.text, for: lastStartDayKey)
     }
 
     /// 앞뒤 공백·줄바꿈을 지워 쓴다.

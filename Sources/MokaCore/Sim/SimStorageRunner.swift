@@ -28,10 +28,11 @@ extension SimRunner {
         if let dayStart = scenario.dayStart {
             try storing(seq: nil) { try CoreSettings.writeDayStart(dayStart, to: settings) }
         }
+        var day = SimDayState(scheduled: scenario.events.contains { $0.kind.turnsOnSchedule })
         // 시작 직후의 이월 판정(대상 없음)은 첫 이벤트 시각에 판정 시각만 남긴다(data-model §15).
-        var day = SimDayState(
-            scheduled: scenario.events.contains { $0.kind.turnsOnSchedule },
-            carryJudgedAt: scenario.events.first?.at)
+        if day.scheduled, let first = scenario.events.first?.at {
+            try storing(seq: nil) { try repository.applyCarryJudgment(.empty, judgedAt: first) }
+        }
 
         var previous = SimStorageState(session: .initial, tasks: [], checkpoints: [], decisions: [])
         var output = ""
@@ -175,14 +176,11 @@ extension SimRunner {
     }
 }
 
-/// 이벤트 사이에 남는 스케줄러 값. 앱에서는 설정 키(`carry_judged_at`, `day_budget`, `last_start_day`)와
-/// 실행 메모리(`revertedIDs`)다(data-model §9·§13). quit·relaunch를 넘어 남고, `revertedIDs`만 시작마다 새로 채운다.
+/// 이벤트 사이에 남는 스케줄러 값.
 private struct SimDayState {
     /// 새 이벤트(`carry`·`budget`·`more`)가 있어 이월·가용 시간이 켜졌다(Q3-C).
     let scheduled: Bool
-    var carryJudgedAt: Date?
     var budget: DayBudget?
-    var lastStartDay: LocalDay?
     var revertedIDs: Set<TaskID> = []
 }
 
@@ -264,10 +262,7 @@ private struct StorageEvent {
             } else if extend {
                 throw SimRunner.notAllowed(event)
             }
-            let startDay = today
-            let next = try commit { () throws(SessionError) in try session.start(input) }
-            day.lastStartDay = startDay
-            return next
+            return try commit { () throws(SessionError) in try session.start(input) }
 
         case .complete(let notes):
             let input = try input(session)
@@ -389,30 +384,32 @@ private struct StorageEvent {
         let input = try input(session)
         let activated = try SimRunner.storing(seq: event.seq) {
             try SessionAssembly.activate(
-                session, input, dayStart: dayStart, schedule: schedule, in: repository, reload: repository.tasks)
+                session, input, dayStart: dayStart, schedule: try schedule(), in: repository,
+                reload: repository.tasks)
         }
         if let schedule = activated.schedule {
-            day.carryJudgedAt = schedule.carryJudgedAt
             day.revertedIDs = schedule.revertedIDs
         }
         return activated.session
     }
 
-    private var schedule: SessionAssembly.Schedule? {
+    private func schedule() throws(SimError) -> SessionAssembly.Schedule? {
         guard day.scheduled else { return nil }
         return SessionAssembly.Schedule(
-            today: today, budget: day.budget, carryJudgedAt: day.carryJudgedAt, revertedIDs: day.revertedIDs)
+            today: today, budget: day.budget,
+            carryJudgedAt: try SimRunner.storing(seq: event.seq) { try repository.lastCarryJudgment() },
+            revertedIDs: day.revertedIDs)
     }
 
     /// 꺼짐이면 늘 세션. 켜짐이면 data-model §12 표.
     private func mode(_ session: NotchSession?) throws(SimError) -> NotchMode {
-        guard let schedule else { return .session }
+        guard let schedule = try schedule() else { return .session }
         return SessionAssembly.mode(session?.timer ?? .empty(draft: nil), tasks: try tasks(), schedule: schedule)
     }
 
     /// 버튼 처리 뒤: 모드 판정 → 카드·질문·오늘 끝이면 초안을 비우고, 세션이면 빈 상태에서 고른다(data-model §12).
     private func settle(_ session: NotchSession) throws(SimError) -> NotchSession {
-        SessionAssembly.settle(session, try input(session), schedule: schedule)
+        SessionAssembly.settle(session, try input(session), schedule: try schedule())
     }
 
     /// 작업 시간을 시작한 하루. 도는 중·시간 끝이 아니면 오늘.
@@ -458,7 +455,7 @@ private struct StorageEvent {
             throw SimRunner.notAllowed(event)
         }
         let next = try SimRunner.storing(seq: event.seq) {
-            try SessionAssembly.commit(step, in: repository, reload: repository.tasks)
+            try SessionAssembly.commit(step, in: repository, settings: settings, reload: repository.tasks)
         }
         use(step.budgetUse)
         return next
@@ -483,7 +480,7 @@ private struct StorageEvent {
                 usable: ScoreRules.usable(
                     scores: stored, hasKey: hasKey, questionVersion: questions.version, provider: Self.fakeProvider),
                 questions: questions, thresholds: questions.thresholds(for: SimRunner.fakeBaseModel), today: today),
-            today: today, isWarmup: day.lastStartDay != today)
+            today: today, isWarmup: CoreSettings.readLastStartDay(from: settings) != today)
         if day.scheduled {
             input.draftChipCap = DayBudget.capMinutes(DayBudget.record(day.budget, for: today))
             if let session {

@@ -99,11 +99,14 @@ public struct SessionStep: Equatable, Sendable {
     public var batch: StoreBatch
     /// 커밋한 뒤 그 하루의 가용 시간 기록에 반영할 쓴 시간(spec 005 data-model §11, Q4-B). 하루를 모르면 nil.
     public var budgetUse: BudgetUse?
+    /// 시작(`start`)이면 그 하루. 커밋한 뒤 마지막 시작 하루로 쓴다(spec 005 data-model §6). "N분 더"와 버튼은 nil.
+    public var startDay: LocalDay?
 
-    public init(session: NotchSession, batch: StoreBatch, budgetUse: BudgetUse? = nil) {
+    public init(session: NotchSession, batch: StoreBatch, budgetUse: BudgetUse? = nil, startDay: LocalDay? = nil) {
         self.session = session
         self.batch = batch
         self.budgetUse = budgetUse
+        self.startDay = startDay
     }
 }
 
@@ -193,7 +196,7 @@ extension NotchSession {
         active.status = .active
         return SessionStep(
             session: next, batch: StoreBatch(updatedTasks: [active]),
-            budgetUse: input.today.map { BudgetUse(day: $0, seconds: quantumMin * 60) })
+            budgetUse: input.today.map { BudgetUse(day: $0, seconds: quantumMin * 60) }, startDay: input.today)
     }
 
     /// 완료. 도는 중이면 `notes`는 nil이어야 하고 체크포인트가 없다. 시간 끝이면 두 줄(nil이면 빈 두 줄)을 계기

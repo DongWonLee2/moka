@@ -357,6 +357,7 @@ final class AppState {
     @ObservationIgnored private(set) var lastRejectReason: RejectReason?
     /// 켤 때 복구(R-111)를 아직 끝내지 못함. 읽기나 쓰기가 실패하면 다음 활성화에서 다시 한다(#71).
     @ObservationIgnored private var recoveryPending = false
+    @ObservationIgnored private var pendingRevertedIDs: Set<TaskID> = []
 
     private static let logger = Logger(subsystem: "dev.dongwon.moka", category: "timer")
     private static let storageLogger = Logger(subsystem: "dev.dongwon.moka", category: "storage")
@@ -418,7 +419,8 @@ final class AppState {
         guard recoveryPending else { return true }
         guard reloadTasks() else { return true }
         do {
-            _ = try SessionAssembly.recover(tasks, keeping: session.taskID, in: repository, reload: reloadedTasks)
+            pendingRevertedIDs.formUnion(
+                try SessionAssembly.recover(tasks, keeping: session.taskID, in: repository, reload: reloadedTasks))
         } catch {
             Self.logStorageFailure(error)
             return false
@@ -603,6 +605,41 @@ final class AppState {
             return
         }
         adoptPick(activated.session, at: now)
+    }
+
+    /// 이월 판정(spec 005 R-412, data-model §9). 하루에 한 번 표시와 판정 시각을 함께 쓴다. 단위 2는 활성화에 걸지 않는다
+    /// (plan 위험 12, 단위 3이 카드 화면과 함께 건다). 저장할 수 없거나 읽기·쓰기가 실패하면 false.
+    @discardableResult
+    func judgeCarryIfNeeded() -> Bool {
+        guard let repository, reloadTasks() else { return false }
+        do {
+            if try SessionAssembly.judgeCarry(
+                tasks, revertedIDs: pendingRevertedIDs, now: clock.now(),
+                dayStart: CoreSettings.readDayStart(from: settings), calendar: calendar, in: repository,
+                reload: reloadedTasks)
+            {
+                pendingRevertedIDs = []
+            }
+        } catch {
+            Self.logStorageFailure(error)
+            return false
+        }
+        return true
+    }
+
+    /// 이월 카드 답 하나(spec 005 R-415·R-416, data-model §10). 카드에 오르지 않은 할 일, 오늘이나 지난 날, 쓰기 실패면
+    /// 아무것도 바꾸지 않고 false. 쓴 뒤 빈 상태면 고른다.
+    @discardableResult
+    func answerCarry(_ answer: CarryAnswerKind, for id: TaskID) -> Bool {
+        let now = clock.now()
+        let input = input(at: now)
+        guard let repository, let today = input.today, let task = tasks.first(where: { $0.id == id }),
+            let batch = try? CarryAnswer.apply(answer, task: task, today: today, input: input),
+            write(batch, to: repository)
+        else { return false }
+        reloadTasks()
+        pickIfEmpty(at: now)
+        return true
     }
 
     /// 종료(`.quit`)·잠자기(`.sleep`) 체크포인트(R-110, research R12). 도는 중이면 둘 다, 시간 끝이면 종료만(#173)
@@ -1374,7 +1411,7 @@ final class AppState {
         }
         return SessionInput(
             tasks: tasks, now: now, defaultQuantumMin: defaultQuantumMin, extendMin: extendMin, calendar: calendar,
-            scoring: scoring, today: today)
+            scoring: scoring, today: today, isWarmup: CoreSettings.readLastStartDay(from: settings) != today)
     }
 
     /// 타이머만 바뀌는 이벤트(칩, tick). 저장할 수 없을 때는 빠른 입력·시작·완료도 여기로 온다.
@@ -1403,7 +1440,9 @@ final class AppState {
                 return .rejected(.notAllowedInPhase)
             }
             do {
-                session = try SessionAssembly.commit(next, in: repository, reload: reloadedTasks)
+                session = try SessionAssembly.commit(
+                    next, in: repository, settings: settings, reload: reloadedTasks,
+                    settingsFailed: Self.logStorageFailure)
             } catch {
                 Self.logStorageFailure(error)
                 return .rejected(.storageFailed)

@@ -236,3 +236,21 @@ func decisionProviderWriteFailureThrows() throws {
     #expect(throws: (any Error).self) { try CoreSettings.writeMicrosoftEndpoint(endpoint, to: failing) }
     #expect(throws: (any Error).self) { try CoreSettings.writeMicrosoftDeployment("fake-deploy", to: failing) }
 }
+
+@Test("FR-05 R-406: 마지막 시작 하루 키 이름은 last_start_day이고, 쓴 하루를 그대로 읽는다")
+func lastStartDayRoundTrip() throws {
+    #expect(CoreSettings.lastStartDayKey == "last_start_day")
+    let store = InMemorySettingsStore()
+    #expect(CoreSettings.readLastStartDay(from: store) == nil)
+    try CoreSettings.writeLastStartDay(LocalDay(text: "2027-01-13")!, to: store)
+    #expect(try store.value(for: CoreSettings.lastStartDayKey) == "2027-01-13")
+    #expect(CoreSettings.readLastStartDay(from: store) == LocalDay(text: "2027-01-13"))
+}
+
+@Test("FR-05 R-406: 마지막 시작 하루가 날짜 글자가 아니거나 읽기에 실패하면 없음", arguments: ["", "2027-02-30", "어제"])
+func lastStartDayMalformedIsNil(stored: String) throws {
+    let store = InMemorySettingsStore()
+    try store.setValue(stored, for: CoreSettings.lastStartDayKey)
+    #expect(CoreSettings.readLastStartDay(from: store) == nil)
+    #expect(CoreSettings.readLastStartDay(from: ThrowingSettingsStore()) == nil)
+}

@@ -244,7 +244,7 @@ struct DayBudget: Codable, Equatable {   // 설정 키 day_budget의 JSON
 
 ## §13 설정 키 (승인 항목 5)
 
-기존 `settings(key, value)` 표에 더한다. 읽기 실패와 형식 오류는 기본값으로 본다(`CoreSettings` 무늬).
+기존 `settings(key, value)` 표에 더한다. 읽기 실패와 형식 오류는 기본값으로 본다(`CoreSettings` 무늬). 예외: `carry_judged_at` 읽기 오류(DB 읽기 실패)는 기본값으로 보지 않고 판정을 미룬다(R-412). 형식 오류만 없음(처음 판정)으로 본다.
 
 | 키 | 값 | 기본 | 쓰는 곳 |
 |---|---|---|---|

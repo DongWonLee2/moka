@@ -300,6 +300,126 @@ func judgmentColumnsNeedProvider(kind: StoreKind) throws {
     #expect(try repo.decisions().map(\.judgment) == [fallback])
 }
 
+@Test("FR-08 R-412 R-415: 이월 횟수와 이월 답 대기를 덮어쓰면 그대로 돌아오고, 새 할 일은 0과 거짓이다", arguments: StoreKind.allCases)
+func carryColumnsRoundTrip(kind: StoreKind) throws {
+    let repo = try kind.makeStores().tasks
+    let original = try repo.insertTask(newTask("가짜 할 일 A"), cycleDay: nil, at: base)
+    #expect(original.carryCount == 0 && original.dueDecision == false)
+    #expect(try repo.tasks() == [original])
+
+    var carried = original
+    carried.carryCount = 2
+    carried.dueDecision = true
+    try repo.apply(StoreBatch(updatedTasks: [carried]))
+    #expect(try repo.tasks() == [carried])
+
+    carried.dueDecision = false
+    try repo.apply(StoreBatch(updatedTasks: [carried]))
+    #expect(try repo.tasks().map(\.dueDecision) == [false])
+    #expect(try repo.tasks().map(\.carryCount) == [2])
+}
+
+@Test("FR-08 R-415: 이월 횟수가 0보다 작은 할 일은 invalidValue로 막고 아무것도 남기지 않는다", arguments: StoreKind.allCases)
+func negativeCarryCountIsRejected(kind: StoreKind) throws {
+    let repo = try kind.makeStores().tasks
+    let original = try repo.insertTask(newTask("가짜 할 일 A"), cycleDay: nil, at: base)
+    var broken = original
+    broken.carryCount = -1
+    broken.title = "가짜 할 일 A 고침"
+    #expect(throws: StoreError.invalidValue(column: "carry_count")) {
+        try repo.apply(StoreBatch(updatedTasks: [broken], newDecisions: [decision(original.id, .done, at: base)]))
+    }
+    #expect(try repo.tasks() == [original])
+    #expect(try repo.decisions().isEmpty)
+}
+
+@Test(
+    "FR-08 R-416: 이월 답 줄 셋(carry_today·carry_drop·carry_move, carry_card_v1)은 모든 칸이 돌아온다", arguments: StoreKind.allCases
+)
+func carryAnswerRowsRoundTrip(kind: StoreKind) throws {
+    let repo = try kind.makeStores().tasks
+    let task = try repo.insertTask(newTask("가짜 할 일 A"), cycleDay: nil, at: base)
+    let fallback = Judgment(provider: "fallback", questionVersion: nil, probsJSON: nil, stateHash: nil)
+    let actions: [UserAction] = [.carryToday, .carryDrop, .carryMove]
+    try repo.apply(
+        StoreBatch(
+            newDecisions: actions.map {
+                NewDecisionLogEntry(
+                    taskID: task.id, judgment: fallback, modelSnapshot: nil, schedulerChoice: .carryCardV1,
+                    userAction: $0, createdAt: base)
+            }))
+    let rows = try repo.decisions()
+    #expect(rows.map(\.userAction) == actions)
+    #expect(rows.map(\.schedulerChoice) == [.carryCardV1, .carryCardV1, .carryCardV1])
+    #expect(rows.map(\.judgment) == [fallback, fallback, fallback])
+}
+
+private func marked(_ task: MokaTask) -> MokaTask {
+    var marked = task
+    marked.dueDecision = true
+    return marked
+}
+
+@Test("FR-08 R-412 SC-406: 이월 판정 쓰기는 표시 여럿과 판정 시각을 함께 쓰고, 판정 시각은 초 아래를 버린다", arguments: StoreKind.allCases)
+func carryJudgmentWritesMarksAndTime(kind: StoreKind) throws {
+    let repo = try kind.makeStores().tasks
+    let a = try repo.insertTask(newTask("가짜 할 일 A"), cycleDay: nil, at: base)
+    let b = try repo.insertTask(newTask("가짜 할 일 B"), cycleDay: nil, at: base)
+    let c = try repo.insertTask(newTask("가짜 할 일 C"), cycleDay: nil, at: base)
+    #expect(try repo.lastCarryJudgment() == nil, "처음에는 판정 시각이 없다")
+
+    try repo.applyCarryJudgment(
+        StoreBatch(updatedTasks: [marked(a), marked(c)]), judgedAt: base.addingTimeInterval(0.7))
+
+    #expect(try repo.tasks().map(\.dueDecision) == [true, false, true])
+    #expect(try repo.tasks()[1] == b)
+    #expect(try repo.lastCarryJudgment() == base)
+}
+
+@Test("FR-08 R-412: 이월 대상이 없어도 판정 시각은 쓴다", arguments: StoreKind.allCases)
+func carryJudgmentWithoutTargetsWritesTime(kind: StoreKind) throws {
+    let repo = try kind.makeStores().tasks
+    let a = try repo.insertTask(newTask("가짜 할 일 A"), cycleDay: nil, at: base)
+    try repo.applyCarryJudgment(.empty, judgedAt: base)
+    #expect(try repo.tasks() == [a])
+    #expect(try repo.lastCarryJudgment() == base)
+}
+
+@Test("FR-08 R-412 SC-406: 이월 판정 쓰기 도중 실패하면 표시와 판정 시각이 둘 다 남지 않는다", arguments: StoreKind.allCases)
+func carryJudgmentFailureLeavesNothing(kind: StoreKind) throws {
+    let repo = try kind.makeStores().tasks
+    let a = try repo.insertTask(newTask("가짜 할 일 A"), cycleDay: nil, at: base)
+    let earlier = base.addingTimeInterval(-86_400)
+    try repo.applyCarryJudgment(.empty, judgedAt: earlier)
+
+    var ghost = marked(a)
+    ghost.id = 99
+    #expect(throws: StoreError.taskNotFound(99)) {
+        try repo.applyCarryJudgment(StoreBatch(updatedTasks: [marked(a), ghost]), judgedAt: base)
+    }
+    #expect(try repo.tasks() == [a])
+    #expect(try repo.lastCarryJudgment() == earlier, "실패한 판정은 이전 판정 시각을 바꾸지 않는다")
+
+    var broken = marked(a)
+    broken.carryCount = -1
+    #expect(throws: StoreError.invalidValue(column: "carry_count")) {
+        try repo.applyCarryJudgment(StoreBatch(updatedTasks: [broken]), judgedAt: base)
+    }
+    #expect(try repo.tasks() == [a])
+    #expect(try repo.lastCarryJudgment() == earlier)
+}
+
+@Test("FR-08 R-412 SC-406: 다음 판정의 이전 판정 시각은 마지막으로 성공한 판정 시각이다", arguments: StoreKind.allCases)
+func lastCarryJudgmentIsLatestSuccess(kind: StoreKind) throws {
+    let repo = try kind.makeStores().tasks
+    let a = try repo.insertTask(newTask("가짜 할 일 A"), cycleDay: nil, at: base)
+    let next = base.addingTimeInterval(86_400)
+    try repo.applyCarryJudgment(.empty, judgedAt: base)
+    try repo.applyCarryJudgment(StoreBatch(updatedTasks: [marked(a)]), judgedAt: next)
+    #expect(try repo.lastCarryJudgment() == next)
+    #expect(try repo.tasks().map(\.dueDecision) == [true])
+}
+
 // MARK: - 컨텍스트
 
 @Test("FR-02 R-115: 컨텍스트는 모든 칸이 돌아오고 날짜 오름차순, 같으면 id 순", arguments: StoreKind.allCases)
