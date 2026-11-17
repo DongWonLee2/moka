@@ -1,9 +1,8 @@
 import Foundation
 
 /// storage 모드(contracts/moka-sim-v1-additions.md, spec 003 덧붙임은 moka-sim-v1-additions-003.md, spec 005 덧붙임은
-/// moka-sim-v1-additions-005.md). 앱과 같은 MokaCore 함수(`NotchSession`, `SchedulerPick`, `RecurrenceReset`,
-/// `LaunchRecovery`, `CarryJudgment`, `CarryAnswer`, `DayBudget`, `NotchMode`, `TaskWriteRules`, `SessionCommit`,
-/// `ScoreRules`)만 부르고 저장은 메모리 저장소다.
+/// moka-sim-v1-additions-005.md). 앱과 같은 MokaCore 함수(`NotchSession`, `SessionAssembly`, `SchedulerPick`,
+/// `CarryAnswer`, `DayBudget`, `NotchMode`, `TaskWriteRules`, `ScoreRules`)만 부르고 저장은 메모리 저장소다.
 extension SimRunner {
     /// 가짜 공급자 `fake`의 기준 모델 ID. 질문 파일 `models`를 거치지 않고 직접 받는다(spec 006 research R14).
     public static let fakeBaseModel = "jev-1.13.0"
@@ -410,17 +409,13 @@ private struct StorageEvent {
 
     /// 꺼짐이면 늘 세션. 켜짐이면 data-model §12 표.
     private func mode(_ session: NotchSession?) throws(SimError) -> NotchMode {
-        guard day.scheduled else { return .session }
-        return NotchMode.of(
-            storageAvailable: true, timer: session?.timer ?? .empty(draft: nil), tasks: try tasks(), budget: day.budget,
-            today: today)
+        guard let schedule else { return .session }
+        return SessionAssembly.mode(session?.timer ?? .empty(draft: nil), tasks: try tasks(), schedule: schedule)
     }
 
     /// 버튼 처리 뒤: 모드 판정 → 카드·질문·오늘 끝이면 초안을 비우고, 세션이면 빈 상태에서 고른다(data-model §12).
     private func settle(_ session: NotchSession) throws(SimError) -> NotchSession {
-        let mode = try mode(session)
-        if mode.clearsDraft { return session.clearingDraft() }
-        return session.picked(try input(session))
+        SessionAssembly.settle(session, try input(session), schedule: schedule)
     }
 
     /// 작업 시간을 시작한 하루. 도는 중·시간 끝이 아니면 오늘.
@@ -465,7 +460,9 @@ private struct StorageEvent {
         } catch {
             throw SimRunner.notAllowed(event)
         }
-        let next = try SimRunner.storing(seq: event.seq) { try SessionCommit.commit(step, to: repository) }
+        let next = try SimRunner.storing(seq: event.seq) {
+            try SessionAssembly.commit(step, in: repository, reload: repository.tasks).session
+        }
         use(step.budgetUse)
         return next
     }

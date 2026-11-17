@@ -1403,12 +1403,11 @@ final class AppState {
                 return .rejected(.notAllowedInPhase)
             }
             do {
-                session = try SessionCommit.commit(next, to: repository)
+                session = try SessionAssembly.commit(next, in: repository, reload: reloadedTasks).session
             } catch {
                 Self.logStorageFailure(error)
                 return .rejected(.storageFailed)
             }
-            reloadTasks()
             picked = true
             return .applied
         }
@@ -1488,9 +1487,9 @@ final class AppState {
         return false
     }
 
-    /// 빈 상태(초안 없음)면 고른다(R-104).
+    /// 빈 상태(초안 없음)면 고른다(R-104). 앱은 이월·가용 시간을 아직 걸지 않아 모드는 늘 세션이다.
     private func pickIfEmpty(at now: Date) {
-        adoptPick(session.picked(input(at: now)), at: now)
+        adoptPick(SessionAssembly.settle(session, input(at: now), schedule: nil), at: now)
     }
 
     /// 고른 세션을 받는다. 새로 고르면 `pickedAt`을 그 시각으로 둔다.
