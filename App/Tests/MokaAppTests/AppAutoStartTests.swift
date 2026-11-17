@@ -14,6 +14,7 @@ final class AppAutoStartTests: XCTestCase {
         let repository: FailingAfterStartRepository
         let settings: BudgetWriteFailingSettings
         let clock: TestClock
+        let budget: DayBudget?
 
         /// 같은 저장소로 앱을 다시 켠다.
         @MainActor func relaunched() -> AppState {
@@ -21,8 +22,6 @@ final class AppAutoStartTests: XCTestCase {
             state.launch()
             return state
         }
-
-        let budget: DayBudget?
     }
 
     /// 가짜 할 일을 넣고 켠다. `budget`이 nil이면 그날 상한 없는 하루다. `autoStart`면 켜기 전에 설정을 켜 둔다.

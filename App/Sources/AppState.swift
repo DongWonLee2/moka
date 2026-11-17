@@ -970,7 +970,7 @@ final class AppState {
 
     /// 자동 시작 일정이 부른다. 시험은 주입한 시계를 돌린 뒤 직접 부른다. 때가 아니면 남은 시간만큼 다시 건다.
     func autoStartIfDue() {
-        guard !autoStartTried, let due = autoStartDue else { return }
+        guard let due = autoStartDue else { return }
         guard
             AutoStart.shouldStart(
                 enabled: autoStartOn, mode: notchMode, draftShownAt: draftShownAt, lastInputAt: lastInputAt,
