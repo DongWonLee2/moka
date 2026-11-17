@@ -62,6 +62,8 @@ final class ApplyFailingRepository: TaskRepository {
     func checkpoints() throws -> [Checkpoint] { try inner.checkpoints() }
     func decisions() throws -> [DecisionLogEntry] { try inner.decisions() }
     func apply(_ batch: StoreBatch) throws { throw Failure() }
+    func lastCarryJudgment() throws -> Date? { try inner.lastCarryJudgment() }
+    func applyCarryJudgment(_ batch: StoreBatch, judgedAt: Date) throws { throw Failure() }
 }
 
 final class FailingAfterStartRepository: TaskRepository {
@@ -79,6 +81,11 @@ final class FailingAfterStartRepository: TaskRepository {
     func apply(_ batch: StoreBatch) throws {
         if failsApply { throw Failure() }
         try inner.apply(batch)
+    }
+    func lastCarryJudgment() throws -> Date? { try inner.lastCarryJudgment() }
+    func applyCarryJudgment(_ batch: StoreBatch, judgedAt: Date) throws {
+        if failsApply { throw Failure() }
+        try inner.applyCarryJudgment(batch, judgedAt: judgedAt)
     }
 }
 
@@ -99,4 +106,6 @@ final class InsertFailingRepository: TaskRepository {
     func checkpoints() throws -> [Checkpoint] { [] }
     func decisions() throws -> [DecisionLogEntry] { [] }
     func apply(_ batch: StoreBatch) throws {}
+    func lastCarryJudgment() throws -> Date? { nil }
+    func applyCarryJudgment(_ batch: StoreBatch, judgedAt: Date) throws {}
 }

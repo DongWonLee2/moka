@@ -1463,4 +1463,8 @@ private final class FlakyReadRepository: TaskRepository {
     func checkpoints() throws -> [Checkpoint] { try inner.checkpoints() }
     func decisions() throws -> [DecisionLogEntry] { try inner.decisions() }
     func apply(_ batch: StoreBatch) throws { try inner.apply(batch) }
+    func lastCarryJudgment() throws -> Date? { try inner.lastCarryJudgment() }
+    func applyCarryJudgment(_ batch: StoreBatch, judgedAt: Date) throws {
+        try inner.applyCarryJudgment(batch, judgedAt: judgedAt)
+    }
 }

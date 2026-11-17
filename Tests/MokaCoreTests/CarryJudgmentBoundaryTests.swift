@@ -58,12 +58,13 @@ struct CarryJudgmentBoundaryTests {
         #expect(try Self.files(containing: Self.keyLiteral) == ["Sources/MokaCore/Storage.swift"])
     }
 
-    @Test("FR-08 R-412: 키 상수는 할 일 저장소 두 구현과 키를 거부하는 설정 저장소 두 구현만 쓴다")
+    /// 메모리 할 일 저장소는 판정 시각을 키 없이 들고, 키 글자는 정의한 `Storage.swift`에만 있다.
+    @Test("FR-08 R-412: 키 상수는 GRDB 할 일 저장소와 키를 거부하는 설정 저장소 두 구현만 쓴다")
     func keyConstantUsedOnlyAtBoundary() throws {
         #expect(
             try Self.files(containing: Self.keyConstant) == [
-                "Sources/MokaCore/Storage.swift", "Sources/MokaStore/GRDBTaskRepository.swift",
-                "Sources/MokaCore/QuantumSettings.swift", "Sources/MokaStore/GRDBSettingsStore.swift",
+                "Sources/MokaStore/GRDBTaskRepository.swift", "Sources/MokaCore/QuantumSettings.swift",
+                "Sources/MokaStore/GRDBSettingsStore.swift",
             ])
     }
 }

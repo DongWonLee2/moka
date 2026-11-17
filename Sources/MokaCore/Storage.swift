@@ -36,6 +36,17 @@ public protocol TaskRepository: AnyObject {
     /// id 오름차순.
     func decisions() throws -> [DecisionLogEntry]
     func apply(_ batch: StoreBatch) throws
+    /// 마지막으로 성공한 이월 판정 시각(spec 005 data-model §9). 없으면 nil(처음 판정).
+    func lastCarryJudgment() throws -> Date?
+    /// 이월 표시 묶음과 판정 시각을 한 트랜잭션으로 쓴다. 대상이 없어도(빈 묶음) 판정 시각은 쓴다.
+    /// 하나라도 실패하면 표시와 판정 시각이 둘 다 남지 않는다(Q1-B).
+    func applyCarryJudgment(_ batch: StoreBatch, judgedAt: Date) throws
+}
+
+/// 이월 판정 시각을 두는 `settings` 표의 키(data-model §13). `TaskRepository` 구현만 읽고 쓰고,
+/// `SettingsStore` 구현은 이 키를 `StoreError.invalidValue(column: "key")`로 거부한다.
+public enum CarryJudgmentStorage {
+    public static let settingsKey = "carry_judged_at"
 }
 
 public protocol ContextStore: AnyObject {
@@ -61,6 +72,7 @@ public final class InMemoryTaskRepository: TaskRepository {
     private var storedTasks: [MokaTask] = []
     private var storedCheckpoints: [Checkpoint] = []
     private var storedDecisions: [DecisionLogEntry] = []
+    private var storedCarryJudgment: Date?
 
     public init() {}
 
@@ -88,6 +100,20 @@ public final class InMemoryTaskRepository: TaskRepository {
 
     /// 사본에 모두 적용한 뒤 끝까지 성공했을 때만 바꾼다(되돌림).
     public func apply(_ batch: StoreBatch) throws {
+        try applyToCopies(batch)
+    }
+
+    public func lastCarryJudgment() throws -> Date? {
+        storedCarryJudgment
+    }
+
+    /// `apply`와 같이 사본에 쓰고, 다 되면 판정 시각을 초 단위로 함께 바꾼다.
+    public func applyCarryJudgment(_ batch: StoreBatch, judgedAt: Date) throws {
+        try applyToCopies(batch)
+        storedCarryJudgment = UTCTimestamp.floorToSecond(judgedAt)
+    }
+
+    private func applyToCopies(_ batch: StoreBatch) throws {
         var tasks = storedTasks
         var checkpoints = storedCheckpoints
         var decisions = storedDecisions

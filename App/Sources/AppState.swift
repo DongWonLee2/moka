@@ -1403,7 +1403,9 @@ final class AppState {
                 return .rejected(.notAllowedInPhase)
             }
             do {
-                session = try SessionAssembly.commit(next, in: repository, reload: reloadedTasks)
+                session = try SessionAssembly.commit(
+                    next, in: repository, settings: settings, reload: reloadedTasks,
+                    settingsFailed: Self.logStorageFailure)
             } catch {
                 Self.logStorageFailure(error)
                 return .rejected(.storageFailed)

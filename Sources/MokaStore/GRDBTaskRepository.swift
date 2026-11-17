@@ -43,7 +43,34 @@ public final class GRDBTaskRepository: TaskRepository {
 
     /// 묶음 전체를 `write` 한 트랜잭션으로 적용한다. 도중에 던지면 GRDB가 되돌린다.
     public func apply(_ batch: StoreBatch) throws {
+        try db.write { try Self.write(batch, $0) }
+    }
+
+    /// 형식이 틀린 판정 시각은 없음(처음 판정)으로 본다(data-model §13).
+    public func lastCarryJudgment() throws -> Date? {
+        let text = try db.read {
+            try String.fetchOne(
+                $0, sql: "SELECT value FROM settings WHERE key = ?", arguments: [CarryJudgmentStorage.settingsKey])
+        }
+        return text.flatMap(UTCTimestamp.parse)
+    }
+
+    /// 표시 묶음과 `settings` 표의 판정 시각을 한 `write`로 쓴다.
+    public func applyCarryJudgment(_ batch: StoreBatch, judgedAt: Date) throws {
         try db.write { db in
+            try Self.write(batch, db)
+            try db.execute(
+                sql: """
+                    INSERT INTO settings(key, value) VALUES (?, ?) \
+                    ON CONFLICT(key) DO UPDATE SET value = excluded.value
+                    """,
+                arguments: [CarryJudgmentStorage.settingsKey, UTCTimestamp.format(judgedAt)])
+        }
+    }
+
+    // MARK: - 쓰기
+
+    private static func write(_ batch: StoreBatch, _ db: Database) throws {
             for task in batch.updatedTasks {
                 guard try Self.taskExists(task.id, db) else { throw StoreError.taskNotFound(task.id) }
                 try Self.check(task)
@@ -83,10 +110,7 @@ public final class GRDBTaskRepository: TaskRepository {
                         new.userAction.rawValue, UTCTimestamp.format(new.createdAt),
                     ])
             }
-        }
     }
-
-    // MARK: - 쓰기
 
     /// `created_at`을 뺀 `tasks` 열(INSERT와 UPDATE가 같은 순서로 쓴다).
     private static func columns(of task: MokaTask) -> StatementArguments {

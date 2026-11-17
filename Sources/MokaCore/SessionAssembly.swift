@@ -1,6 +1,7 @@
 import Foundation
 
 /// 조립 순서(#72). 켤 때 복구 → 활성화(하루 판정 → 이월 판정 → 모드 → 고르기), 버튼 뒤 커밋 → 다시 읽기 → 모드 → 고르기.
+/// 이월 판정은 `TaskRepository.applyCarryJudgment`로, 시작 커밋의 `last_start_day`는 `SettingsStore`로 여기서만 쓴다.
 /// 앱 `AppState`와 `moka-sim`이 같이 쓴다. 상태를 들지 않는다. 쓰기가 실패하면 같은 오류를 던지고, 호출자가 세션을
 /// 그대로 둔다(R-119). 빈 묶음은 쓰지 않는다. `reload`는 쓴 뒤 `tasks()`를 다시 읽는 호출자의 길이다.
 public enum SessionAssembly {
@@ -49,13 +50,9 @@ public enum SessionAssembly {
             CarryJudgment.needsRun(
                 lastJudgedAt: day.carryJudgedAt, now: input.now, dayStart: dayStart, calendar: input.calendar)
         {
-            let targets = CarryJudgment.targets(
-                CarryJudgmentInput(
-                    tasks: input.tasks, checkpoints: try repository.checkpoints(),
-                    decisions: try repository.decisions(), lastJudgedAt: day.carryJudgedAt,
-                    revertedIDs: day.revertedIDs, now: input.now, dayStart: dayStart, calendar: input.calendar))
-            input.tasks = try write(
-                CarryJudgment.marking(targets, in: input.tasks), over: input.tasks, in: repository, reload: reload)
+            input.tasks = try judge(
+                input.tasks, lastJudgedAt: day.carryJudgedAt, revertedIDs: day.revertedIDs, now: input.now,
+                dayStart: dayStart, calendar: input.calendar, in: repository, reload: reload)
             day.carryJudgedAt = input.now
             day.revertedIDs = []
             schedule = day
@@ -63,12 +60,37 @@ public enum SessionAssembly {
         return Activated(session: settle(session, input, schedule: schedule), schedule: schedule)
     }
 
-    /// 버튼 뒤 쓰기: `SessionCommit` → `tasks()` 다시 읽기. 고르기(`settle`)는 호출자가 화면 전이를 맞춘 뒤 부른다.
+    /// 이월 판정만(data-model §9). 지난 판정 시각은 할 일 저장소에서 읽는다. 판정이 돌았으면 true이고, 호출자는 그때
+    /// 되돌린 할 일 기억을 비운다. 쓰기가 실패하면 같은 오류를 던지고 표시와 판정 시각이 둘 다 남지 않는다.
+    public static func judgeCarry(
+        _ tasks: [MokaTask], revertedIDs: Set<TaskID>, now: Date, dayStart: DayStart, calendar: Calendar,
+        in repository: any TaskRepository, reload: () throws -> [MokaTask]
+    ) throws -> Bool {
+        let lastJudgedAt = try repository.lastCarryJudgment()
+        guard CarryJudgment.needsRun(lastJudgedAt: lastJudgedAt, now: now, dayStart: dayStart, calendar: calendar)
+        else { return false }
+        _ = try judge(
+            tasks, lastJudgedAt: lastJudgedAt, revertedIDs: revertedIDs, now: now, dayStart: dayStart,
+            calendar: calendar, in: repository, reload: reload)
+        return true
+    }
+
+    /// 버튼 뒤 쓰기: `SessionCommit` → `tasks()` 다시 읽기 → 시작이면 그 하루를 `last_start_day`로 쓴다(data-model §6).
+    /// 설정 쓰기가 실패해도 워밍업이 한 번 더 걸릴 뿐이라 던지지 않고 `settingsFailed`로 알린다.
+    /// 고르기(`settle`)는 호출자가 화면 전이를 맞춘 뒤 부른다.
     public static func commit(
-        _ step: SessionStep, in repository: any TaskRepository, reload: () throws -> [MokaTask]
+        _ step: SessionStep, in repository: any TaskRepository, settings: any SettingsStore,
+        reload: () throws -> [MokaTask], settingsFailed: (any Error) -> Void = { _ in }
     ) throws -> NotchSession {
         let session = try SessionCommit.commit(step, to: repository)
         _ = try reload()
+        if let day = step.startDay {
+            do {
+                try CoreSettings.writeLastStartDay(day, to: settings)
+            } catch {
+                settingsFailed(error)
+            }
+        }
         return session
     }
 
@@ -83,6 +105,21 @@ public enum SessionAssembly {
         guard let schedule else { return .session }
         return NotchMode.of(
             storageAvailable: true, timer: timer, tasks: tasks, budget: schedule.budget, today: schedule.today)
+    }
+
+    /// 대상을 계산해 표시와 판정 시각을 한 번에 쓰고(Q1-B) 다시 읽는다. 대상이 없어도 판정 시각은 쓴다.
+    private static func judge(
+        _ tasks: [MokaTask], lastJudgedAt: Date?, revertedIDs: Set<TaskID>, now: Date, dayStart: DayStart,
+        calendar: Calendar, in repository: any TaskRepository, reload: () throws -> [MokaTask]
+    ) throws -> [MokaTask] {
+        let targets = CarryJudgment.targets(
+            CarryJudgmentInput(
+                tasks: tasks, checkpoints: try repository.checkpoints(), decisions: try repository.decisions(),
+                lastJudgedAt: lastJudgedAt, revertedIDs: revertedIDs, now: now, dayStart: dayStart,
+                calendar: calendar))
+        let batch = CarryJudgment.marking(targets, in: tasks)
+        try repository.applyCarryJudgment(batch, judgedAt: now)
+        return batch == .empty ? tasks : try reload()
     }
 
     private static func write(
