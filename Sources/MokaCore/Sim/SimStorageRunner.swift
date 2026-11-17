@@ -294,9 +294,7 @@ private struct StorageEvent {
             return try launch()
 
         case .activate:
-            try judgeDay()
-            try judgeCarry()
-            return try settle(session)
+            return try activate(session)
 
         case .judge(let judge):
             try save(judge)
@@ -380,38 +378,34 @@ private struct StorageEvent {
         DayBoundary.day(containing: event.at, dayStart: dayStart, calendar: calendar)
     }
 
-    /// 앱 시작: 메모리 상태를 버리고 R-111 복구 → 하루 판정 → 이월 판정 → 모드 → 고르기(data-model §15).
+    /// 앱 시작: 메모리 상태를 버리고 R-111 복구 → 활성화(하루 판정 → 이월 판정 → 모드 → 고르기, data-model §15).
     private mutating func launch() throws(SimError) -> NotchSession {
-        let reverted = LaunchRecovery.revert(try tasks())
-        try apply(StoreBatch(updatedTasks: reverted))
-        day.revertedIDs = Set(reverted.map(\.id))
-        try judgeDay()
-        try judgeCarry()
-        return try settle(.initial)
+        let recovered = try SimRunner.storing(seq: event.seq) {
+            try SessionAssembly.recover(try repository.tasks(), keeping: nil, in: repository, reload: repository.tasks)
+        }
+        day.revertedIDs = recovered.revertedIDs
+        return try activate(.initial)
     }
 
-    /// 하루 판정(R-113).
-    private func judgeDay() throws(SimError) {
-        let reset = RecurrenceReset.reset(try tasks(), now: event.at, dayStart: dayStart, calendar: calendar)
-        try apply(StoreBatch(updatedTasks: reset))
+    /// 활성화(`SessionAssembly.activate`). 이월 판정이 돌면 판정 시각과 되돌린 할 일 기억을 받아 둔다.
+    private mutating func activate(_ session: NotchSession) throws(SimError) -> NotchSession {
+        let input = try input(session)
+        let activated = try SimRunner.storing(seq: event.seq) {
+            try SessionAssembly.activate(
+                session, input, dayStart: dayStart, schedule: schedule, in: repository, reload: repository.tasks)
+        }
+        if let schedule = activated.schedule {
+            day.carryJudgedAt = schedule.carryJudgedAt
+            day.revertedIDs = schedule.revertedIDs
+        }
+        return activated.session
     }
 
-    /// 이월 판정(R-412). 표시와 판정 시각을 함께 쓰고, 쓰기가 끝나면 되돌린 할 일 기억을 비운다.
-    private mutating func judgeCarry() throws(SimError) {
-        guard day.scheduled,
-            CarryJudgment.needsRun(
-                lastJudgedAt: day.carryJudgedAt, now: event.at, dayStart: dayStart, calendar: calendar)
-        else { return }
-        let tasks = try tasks()
-        let targets = CarryJudgment.targets(
-            CarryJudgmentInput(
-                tasks: tasks, checkpoints: try SimRunner.storing(seq: event.seq) { try repository.checkpoints() },
-                decisions: try SimRunner.storing(seq: event.seq) { try repository.decisions() },
-                lastJudgedAt: day.carryJudgedAt, revertedIDs: day.revertedIDs, now: event.at, dayStart: dayStart,
-                calendar: calendar))
-        try apply(CarryJudgment.marking(targets, in: tasks))
-        day.carryJudgedAt = event.at
-        day.revertedIDs = []
+    /// 켜짐일 때만 하루 값을 넘긴다.
+    private var schedule: SessionAssembly.Schedule? {
+        guard day.scheduled else { return nil }
+        return SessionAssembly.Schedule(
+            today: today, budget: day.budget, carryJudgedAt: day.carryJudgedAt, revertedIDs: day.revertedIDs)
     }
 
     /// 꺼짐이면 늘 세션. 켜짐이면 data-model §12 표.

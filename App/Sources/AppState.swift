@@ -417,10 +417,11 @@ final class AppState {
     private func recoverIfPending(_ repository: any TaskRepository) -> Bool {
         guard recoveryPending else { return true }
         guard reloadTasks() else { return true }
-        let reverted = LaunchRecovery.revert(tasks.filter { $0.id != session.taskID })
-        if !reverted.isEmpty {
-            guard write(StoreBatch(updatedTasks: reverted), to: repository) else { return false }
-            reloadTasks()
+        do {
+            _ = try SessionAssembly.recover(tasks, keeping: session.taskID, in: repository, reload: reloadedTasks)
+        } catch {
+            Self.logStorageFailure(error)
+            return false
         }
         recoveryPending = false
         return true
@@ -592,13 +593,16 @@ final class AppState {
         defer { requestScores() }
         _ = recoverIfPending(repository)
         let now = clock.now()
-        let changed = RecurrenceReset.reset(
-            tasks, now: now, dayStart: CoreSettings.readDayStart(from: settings), calendar: calendar)
-        if !changed.isEmpty {
-            guard write(StoreBatch(updatedTasks: changed), to: repository) else { return }
-            reloadTasks()
+        let activated: SessionAssembly.Activated
+        do {
+            activated = try SessionAssembly.activate(
+                session, input(at: now), dayStart: CoreSettings.readDayStart(from: settings), schedule: nil,
+                in: repository, reload: reloadedTasks)
+        } catch {
+            Self.logStorageFailure(error)
+            return
         }
-        pickIfEmpty(at: now)
+        adoptPick(activated.session, at: now)
     }
 
     /// 종료(`.quit`)·잠자기(`.sleep`) 체크포인트(R-110, research R12). 도는 중이면 둘 다, 시간 끝이면 종료만(#173)
@@ -1484,9 +1488,13 @@ final class AppState {
         return false
     }
 
-    /// 빈 상태(초안 없음)면 고른다(R-104). 새로 고르면 `pickedAt`을 그 시각으로 둔다.
+    /// 빈 상태(초안 없음)면 고른다(R-104).
     private func pickIfEmpty(at now: Date) {
-        let next = session.picked(input(at: now))
+        adoptPick(session.picked(input(at: now)), at: now)
+    }
+
+    /// 고른 세션을 받는다. 새로 고르면 `pickedAt`을 그 시각으로 둔다.
+    private func adoptPick(_ next: NotchSession, at now: Date) {
         guard next != session else { return }
         session = next
         pickedAt = now
@@ -1501,6 +1509,12 @@ final class AppState {
             Self.logStorageFailure(error)
         }
         requestScores()
+    }
+
+    /// `SessionAssembly`가 쓴 뒤 다시 읽는 길. 읽기가 실패하면 로그만 남기고 이전 목록을 쓴다.
+    private func reloadedTasks() -> [MokaTask] {
+        reloadTasks()
+        return tasks
     }
 
     @discardableResult
