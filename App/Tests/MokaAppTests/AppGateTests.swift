@@ -598,12 +598,16 @@ final class AppGateTests: XCTestCase {
         h.clock.advance(seconds: 60)
         h.state.autoStartIfDue()
         guard case .empty(.some) = h.state.timer else { return XCTFail("판단 결과를 기다리는 동안 시작하지 않는다") }
+        // 일정이 시험 시계로 앞에 있게 입력을 하나 둔다(지난 시각이면 실제 Timer가 바로 돈다).
+        h.state.chooseQuantum(25)
+        XCTAssertNil(h.state.autoStartFireDate, "기다리는 동안은 입력이 있어도 걸지 않는다")
 
         await h.provider.releaseAll()
         await runner.value
         XCTAssertFalse(h.state.awaitingFirstJudgment)
-        XCTAssertNotNil(h.state.autoStartDue)
+        XCTAssertEqual(h.state.autoStartDue, AppTestFixture.noon.addingTimeInterval(63))
         XCTAssertEqual(h.state.autoStartFireDate, h.state.autoStartDue, "결과가 오면 일정이 다시 걸린다")
+        h.clock.advance(seconds: 3)
         h.state.autoStartIfDue()
         guard case .running = h.state.timer else { return XCTFail("결과가 오면 시작한다: \(h.state.timer)") }
     }
@@ -629,9 +633,12 @@ final class AppGateTests: XCTestCase {
         h.state.autoStartIfDue()
         guard case .empty(.some) = h.state.timer else { return XCTFail("초안 답이 오기 전에는 시작하지 않는다") }
 
+        h.state.chooseQuantum(25)
         await h.provider.releaseAll()
         await runner.value
+        XCTAssertEqual(h.state.autoStartDue, AppTestFixture.noon.addingTimeInterval(63))
         XCTAssertEqual(h.state.autoStartFireDate, h.state.autoStartDue)
+        h.clock.advance(seconds: 3)
         h.state.autoStartIfDue()
         guard case .running = h.state.timer else { return XCTFail("초안 답이 오면 시작한다: \(h.state.timer)") }
     }

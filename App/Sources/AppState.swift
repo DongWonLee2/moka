@@ -325,6 +325,7 @@ final class AppState {
     /// 이번 초안·입력에서 자동 시작을 이미 시도했다. 시작 커밋이 실패해도 입력이 있을 때까지 다시 시도하지 않는다.
     @ObservationIgnored private var autoStartTried = false
     @ObservationIgnored private var autoStartTimer: Timer?
+    @ObservationIgnored private var scheduledAutoStart: Date?
     /// 자동 시작이 시작한 뒤 부른다. 노치 패널이 key를 내려놓는다(손으로 시작할 때와 같게).
     @ObservationIgnored var onAutoStart: (() -> Void)?
 
@@ -447,6 +448,10 @@ final class AppState {
     /// 노치에 보일 게이트 단계. `refreshGate()`만 판정 시점에 바꾼다.
     private(set) var gatePhase: GatePhase = .closed {
         didSet { rearmAutoStart() }
+    }
+    /// 노치 초안 할 일의 첫 판단 결과를 기다리는 중(`ConcreteGate.awaitsJudgment`). `refreshGate()`에서만 바꾼다.
+    private(set) var awaitingFirstJudgment = false {
+        didSet { if awaitingFirstJudgment != oldValue { rearmAutoStart() } }
     }
     /// 게이트 입력 칸의 글자. 제출하면 그 줄이 남아 다시 묻는 중으로 돌아올 때 보인다.
     var gateDraftText = ""
@@ -995,14 +1000,11 @@ final class AppState {
             gateBusy: autoStartGateBusy, extendNeeded: extendNeeded, startFailed: startFailed)
     }
 
-    /// 게이트가 묻거나 확인하는 중, 또는 초안 할 일의 판단 질의가 나가 있고 결과가 없어 게이트를 열지 아직 모름(R-306).
-    private var autoStartGateBusy: Bool {
-        if gatePhase != .closed { return true }
-        guard let queryable, let id = session.taskID, Self.isDraft(timer), let attempt = attempted[id],
-            !attempt.failed, attempt.hash == currentJudgmentHash(id)
-        else { return false }
-        return usableScores(queryable)[id] == nil
-    }
+    /// 게이트가 묻거나 확인하는 중, 또는 첫 판단 결과를 기다려 게이트를 열지 아직 모름(R-306).
+    private var autoStartGateBusy: Bool { gatePhase != .closed || awaitingFirstJudgment }
+
+    /// 걸어 둔 일정의 시각(주입한 시계 기준). 일정이 없으면 nil. 시험이 일정이 실제로 걸렸는지 본다.
+    var autoStartFireDate: Date? { autoStartTimer?.isValid == true ? scheduledAutoStart : nil }
 
     private func draftShown(_ isDraft: Bool) {
         draftShownAt = isDraft ? clock.now() : nil
@@ -1024,12 +1026,14 @@ final class AppState {
     private func rearmAutoStart(at due: Date?) {
         autoStartTimer?.invalidate()
         autoStartTimer = nil
+        scheduledAutoStart = nil
         guard let due else { return }
         let timer = Timer(timeInterval: max(0, due.timeIntervalSince(clock.now())), repeats: false) { [weak self] _ in
             MainActor.assumeIsolated { self?.autoStartIfDue() }
         }
         RunLoop.main.add(timer, forMode: .common)
         autoStartTimer = timer
+        scheduledAutoStart = due
     }
 
     // MARK: - 가용 시간(spec 005 R-419·R-421·R-422)
@@ -1430,6 +1434,7 @@ final class AppState {
     func retryScores() -> Task<Void, Never>? {
         guard canRetryScores else { return nil }
         attempted = [:]
+        refreshGate()
         return requestScores()
     }
 
@@ -1483,6 +1488,7 @@ final class AppState {
             let currentHash = currentJudgmentHash(id)
         else {
             setGate(.closed)
+            awaitingFirstJudgment = false
             return
         }
         let record = gateRecords[id] ?? GateRecord()
@@ -1505,6 +1511,9 @@ final class AppState {
             gateDraftTaskID = id
         }
         setGate(phase)
+        var afterAnswer = facts
+        afterAnswer.record = updated
+        awaitingFirstJudgment = ConcreteGate.awaitsJudgment(afterAnswer)
     }
 
     /// 기다림은 `checking`일 때만 이어진다.
@@ -1663,7 +1672,6 @@ final class AppState {
     /// 공급자를 바꾸기 전에 떠난 답은 성공이든 실패든 아무것도 바꾸지 않는다(spec 006 research R6).
     private func receive(_ outcome: QueryOutcome) {
         guard outcome.generation == providerGeneration else { return }
-        defer { rearmAutoStart() }
         let response: DecisionResponse
         switch outcome.result {
         case .success(let value):
