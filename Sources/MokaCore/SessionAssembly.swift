@@ -20,31 +20,19 @@ public enum SessionAssembly {
         }
     }
 
-    public struct Recovered: Equatable, Sendable {
-        public var tasks: [MokaTask]
-        public var revertedIDs: Set<TaskID>
-    }
-
     public struct Activated: Equatable, Sendable {
         public var session: NotchSession
-        public var tasks: [MokaTask]
         public var schedule: Schedule?
     }
 
-    public struct Committed: Equatable, Sendable {
-        public var session: NotchSession
-        public var tasks: [MokaTask]
-    }
-
-    /// 켤 때 복구(R-111). 노치에 띄운 할 일(`keeping`)은 빼고 진행 중을 대기로 되돌린다.
+    /// 켤 때 복구(R-111). 노치에 띄운 할 일(`keeping`)은 빼고 진행 중을 대기로 되돌리고, 되돌린 할 일을 돌려준다.
     public static func recover(
         _ tasks: [MokaTask], keeping notchTaskID: TaskID?, in repository: any TaskRepository,
         reload: () throws -> [MokaTask]
-    ) throws -> Recovered {
+    ) throws -> Set<TaskID> {
         let reverted = LaunchRecovery.revert(tasks.filter { $0.id != notchTaskID })
-        return Recovered(
-            tasks: try write(StoreBatch(updatedTasks: reverted), over: tasks, in: repository, reload: reload),
-            revertedIDs: Set(reverted.map(\.id)))
+        _ = try write(StoreBatch(updatedTasks: reverted), over: tasks, in: repository, reload: reload)
+        return Set(reverted.map(\.id))
     }
 
     /// 활성화(research R11): 하루 판정(R-113) → 하루 값이 있으면 이월 판정(R-412) → 모드 → 빈 상태면 고르기.
@@ -72,15 +60,16 @@ public enum SessionAssembly {
             day.revertedIDs = []
             schedule = day
         }
-        return Activated(session: settle(session, input, schedule: schedule), tasks: input.tasks, schedule: schedule)
+        return Activated(session: settle(session, input, schedule: schedule), schedule: schedule)
     }
 
     /// 버튼 뒤 쓰기: `SessionCommit` → `tasks()` 다시 읽기. 고르기(`settle`)는 호출자가 화면 전이를 맞춘 뒤 부른다.
     public static func commit(
         _ step: SessionStep, in repository: any TaskRepository, reload: () throws -> [MokaTask]
-    ) throws -> Committed {
+    ) throws -> NotchSession {
         let session = try SessionCommit.commit(step, to: repository)
-        return Committed(session: session, tasks: try reload())
+        _ = try reload()
+        return session
     }
 
     /// 모드 판정 → 카드·질문·오늘 끝이면 초안을 비우고, 세션이면 빈 상태에서 고른다(data-model §12).

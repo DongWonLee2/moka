@@ -379,10 +379,9 @@ private struct StorageEvent {
 
     /// 앱 시작: 메모리 상태를 버리고 R-111 복구 → 활성화(하루 판정 → 이월 판정 → 모드 → 고르기, data-model §15).
     private mutating func launch() throws(SimError) -> NotchSession {
-        let recovered = try SimRunner.storing(seq: event.seq) {
+        day.revertedIDs = try SimRunner.storing(seq: event.seq) {
             try SessionAssembly.recover(try repository.tasks(), keeping: nil, in: repository, reload: repository.tasks)
         }
-        day.revertedIDs = recovered.revertedIDs
         return try activate(.initial)
     }
 
@@ -459,7 +458,7 @@ private struct StorageEvent {
             throw SimRunner.notAllowed(event)
         }
         let next = try SimRunner.storing(seq: event.seq) {
-            try SessionAssembly.commit(step, in: repository, reload: repository.tasks).session
+            try SessionAssembly.commit(step, in: repository, reload: repository.tasks)
         }
         use(step.budgetUse)
         return next

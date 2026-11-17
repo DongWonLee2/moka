@@ -37,17 +37,16 @@ private final class ReloadCounter {
 
     // MARK: - 켤 때 복구(R-111)
 
-    @Test("FR-07 R-111: 노치의 할 일은 빼고 진행 중을 대기로 되돌려 쓰고, 다시 읽은 목록과 되돌린 id를 돌려준다")
+    @Test("FR-07 R-111: 노치의 할 일은 빼고 진행 중을 대기로 되돌려 쓰고 다시 읽은 뒤 되돌린 id를 돌려준다")
     func recoverRevertsExceptNotch() throws {
         let repository = try Self.repository([Fake.task(1, status: .active), Fake.task(2, status: .active)])
         let counter = ReloadCounter(repository)
 
-        let recovered = try SessionAssembly.recover(
+        let revertedIDs = try SessionAssembly.recover(
             try repository.tasks(), keeping: 2, in: repository, reload: counter.reload)
 
         #expect(try repository.tasks().map(\.status) == [.todo, .active])
-        #expect(recovered.tasks == (try repository.tasks()))
-        #expect(recovered.revertedIDs == [1])
+        #expect(revertedIDs == [1])
         #expect(counter.count == 1)
     }
 
@@ -60,10 +59,9 @@ private final class ReloadCounter {
         let counter = ReloadCounter(repository)
         let tasks = try repository.tasks()
 
-        let recovered = try SessionAssembly.recover(tasks, keeping: nil, in: repository, reload: counter.reload)
+        let revertedIDs = try SessionAssembly.recover(tasks, keeping: nil, in: repository, reload: counter.reload)
 
-        #expect(recovered.tasks == tasks)
-        #expect(recovered.revertedIDs.isEmpty)
+        #expect(revertedIDs.isEmpty)
         #expect(counter.count == 0)
     }
 
@@ -97,7 +95,6 @@ private final class ReloadCounter {
             in: repository, reload: counter.reload)
 
         #expect(try repository.tasks().map(\.status) == [.todo])
-        #expect(activated.tasks == (try repository.tasks()))
         #expect(activated.session.taskID == 1)
         #expect(activated.schedule == nil)
         #expect(counter.count == 1)
@@ -146,7 +143,6 @@ private final class ReloadCounter {
             reload: repository.tasks)
 
         #expect(try repository.tasks().map(\.dueDecision) == [true, false, true])
-        #expect(activated.tasks == (try repository.tasks()))
         #expect(activated.schedule?.carryJudgedAt == Self.noon)
         #expect(activated.schedule?.revertedIDs == [])
         #expect(activated.session == .initial, "이월 카드가 뜨면 초안을 띄우지 않는다")
@@ -168,19 +164,56 @@ private final class ReloadCounter {
         #expect(activated.session.taskID == 1)
     }
 
+    @Test("R-412: 이월 대상이 없으면 표시 묶음을 쓰지 않고 판정 시각만 남긴다")
+    func activateWritesNoCarryMarkingWhenNoTargets() throws {
+        let repository = FailingTaskRepository()
+        _ = try repository.inner.insertTask(
+            NewTask(title: "가짜 할 일 1", deadline: nil, estMin: nil, recurrence: .none, weekday: nil), cycleDay: nil,
+            at: Self.noon)
+        let schedule = SessionAssembly.Schedule(
+            today: Fake.day("2027-01-13"), budget: .answered(day: Fake.day("2027-01-13"), minutes: 120),
+            carryJudgedAt: nil, revertedIDs: [])
+
+        let activated = try SessionAssembly.activate(
+            .initial, Fake.input(try repository.tasks(), now: Self.nextMorning), dayStart: Fake.sixAM,
+            schedule: schedule, in: repository, reload: repository.tasks)
+
+        #expect(try repository.tasks().map(\.dueDecision) == [false])
+        #expect(activated.schedule?.carryJudgedAt == Self.nextMorning)
+    }
+
+    @Test("FR-11 R-119: 이월 표시 쓰기가 실패하면 같은 오류를 던진다")
+    func activateRethrowsCarryMarkingFailure() throws {
+        let repository = FailingTaskRepository()
+        _ = try repository.inner.insertTask(
+            NewTask(
+                title: "가짜 마감 지난 할 일", deadline: Fake.day("2027-01-10"), estMin: nil, recurrence: .none, weekday: nil),
+            cycleDay: nil, at: Self.noon)
+        let before = try repository.tasks()
+        let schedule = SessionAssembly.Schedule(
+            today: Fake.day("2027-01-13"), budget: nil, carryJudgedAt: nil, revertedIDs: [])
+
+        #expect(throws: FailingTaskRepository.Failure()) {
+            try SessionAssembly.activate(
+                .initial, Fake.input(before), dayStart: Fake.sixAM, schedule: schedule, in: repository,
+                reload: repository.tasks)
+        }
+        #expect(try repository.tasks() == before)
+    }
+
     // MARK: - 버튼 뒤(커밋 → 다시 읽기), 모드 → 고르기
 
-    @Test("FR-05 R-104: 커밋한 뒤 다시 읽은 목록과 step의 세션을 돌려준다")
+    @Test("FR-05 R-104: 커밋하고 다시 읽은 뒤 step의 세션을 돌려준다")
     func commitAppliesThenRereads() throws {
         let repository = try InMemoryTaskRepository.seeded(2)
         let counter = ReloadCounter(repository)
         let drafted = NotchSession.initial.picked(Fake.input(try repository.tasks()))
         let step = try drafted.start(Fake.input(try repository.tasks()))
 
-        let committed = try SessionAssembly.commit(step, in: repository, reload: counter.reload)
+        let session = try SessionAssembly.commit(step, in: repository, reload: counter.reload)
 
-        #expect(committed.session == step.session)
-        #expect(committed.tasks.map(\.status) == [.active, .todo])
+        #expect(session == step.session)
+        #expect(try repository.tasks().map(\.status) == [.active, .todo])
         #expect(counter.count == 1)
     }
 
