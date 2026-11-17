@@ -151,7 +151,7 @@ description: "spec 006 판단 공급자 고르기와 키 넣기 작업 목록"
 ## Phase 8: Polish & Cross-Cutting
 
 - [ ] T039 [P] 대체 표기: `specs/003-decision-model/spec.md` R-210·R-213·R-214와 Key Entities 질문 파일·키 보관함 줄, 하지 않음의 두 번째 공급자, 대안 표 공급자 줄에 "spec 006이 대체", `specs/002-storage-checkpoint/research.md` R8의 OpenRouter 줄에 "ADR-0011 결정 4로 대체"(`ADR-0011 R-630`) 〔단위 3〕
-- [ ] T040 [P] 대체 표기: `specs/004-decision-screens/spec.md` Goals·Assumptions의 공급자 하나 문장과 R-313~R-315·R-317, `specs/004-decision-screens/tasks.md` T017~T021·T026~T028에 "spec 006 단위 4·5가 담음"(`ADR-0011 R-630`) 〔단위 5〕
+- [ ] T040 [P] 대체 표기: `specs/004-decision-screens/spec.md` Goals·Assumptions의 공급자 하나 문장에 "spec 006 단위 1~3이 대체", R-313~R-315·R-317과 `specs/004-decision-screens/tasks.md` T017~T021·T026~T028에 "spec 006 단위 4·5가 담음"(`ADR-0011 R-630`) 〔단위 5〕
 - [ ] T041 [사람] quickstart 1~6 전체를 돌려 결과 표를 마지막 PR에 붙인다 〔단위 5〕
 - [ ] T042 공급자를 여는 작업 넷(Liquid, Perplexity, OpenAI, Microsoft)을 quickstart 7 절차로 Issue 후보로 적어 단위 3 PR "사람이 볼 결정"에 올린다. Microsoft 줄에는 research R3 남는 조건(응답 `model`이 배포마다 실제 버전을 주는지)을 적는다 〔단위 3〕
 

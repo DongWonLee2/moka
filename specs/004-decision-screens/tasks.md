@@ -62,7 +62,7 @@ description: "spec 004 판단 결과 화면 연결 작업 목록"
 
 - [ ] T003 [P] [US1] `Tests/MokaCoreTests/ReasonLineTests.swift`: data-model §2 전체(남은 날 넷, 하루 시작 시각 전후의 오늘, `America/New_York` 일광절약시간 전환일을 사이에 둔 마감에서도 남은 날이 `LocalDay` 날짜 차와 같음(시각 차를 86400으로 나누지 않음), 손해 반올림 경계 0.24·0.25·0.74·0.75, 손해 없음 셋(키 없음으로 `usable` 빔, 판단 결과 없음, 질문 버전 다름), 미룬 횟수 0, 손해 없을 때 구분자 빠짐)를 쓰고 실패를 확인한다(`FR-04 R-302`, `FR-04 R-303`, `FR-04 R-304`, SC-301, SC-302) 〔단위 1〕
 - [ ] T005 [US1] `App/Tests/MokaAppTests/AppDecisionTests.swift`: `reasonLine`이 시작 전·도는 중에만 값이 있고, 빈 상태와 시간 끝에는 `nil`, 답이 저장되면 손해가 바뀌고 노치 할 일(`session.taskID`)은 그대로(spec US1-5), 키를 지우면 손해가 빠짐. 실패를 확인한다(`FR-04 R-305`) 〔단위 2〕
-- [x] T007 [US1] [화면 뒤] `App/Tests/MokaAppTests/ScreenStateSnapshotTests.swift`에 `test_R301_draftReason`, `test_R301_draftReasonNoLoss`, `test_R301_runningReason`(라이트·다크, 이어서 할 일 줄이 있는 경우 하나 포함)을 확정 시안대로 쓰고 실패를 확인한다(`FR-04 R-301`) 〔단위 3〕
+- [x] T007 [US1] [화면 뒤] `App/Tests/MokaAppTests/ScreenStateSnapshotTests.swift`에 `test_R301_draftReason`, `test_R301_draftReasonNoImpact`, `test_R301_runningReason`(라이트·다크, 이어서 할 일 줄이 있는 경우 하나 포함)을 확정 시안대로 쓰고 실패를 확인한다(`FR-04 R-301`) 〔단위 3〕
 
 ### Implementation (Green)
 

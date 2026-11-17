@@ -612,11 +612,13 @@ private func decision(_ taskID: TaskID, _ action: UserAction, at now: Date) -> N
     }
 
     @Test("FR-05 R-104 R-408: 다시 시작(N분 더)은 커서를 두지 않는다")
-    func restartKeepsCursor() throws {
+    func restartClearsCursor() throws {
         var (running, tasks) = try started(Fake.todos(1...3))
         running.previousTaskID = 3
+        running.memory.cursorDay = Fake.day("2027-01-13")
         let now = t0.addingTimeInterval(30 * 60)
         let step = try running.restart(.empty, quantumMin: 25, Fake.input(tasks, now: now))
         #expect(step.session.previousTaskID == nil)
+        #expect(step.session.memory.cursorDay == nil)
     }
 }

@@ -53,7 +53,7 @@ swift run moka-sim run Tests/MokaCoreTests/Fixtures/sim/<시나리오>.json
 
 커밋하지 않는다. 각각 FAIL과 종료 코드 0 아님을 확인하고 되돌린다.
 - 기대 출력 한 줄의 `elapsed_min`을 바꿈 → golden FAIL
-- 마이그레이션에서 `decisions_log.model_snapshot`을 지움 → 스냅샷 시험 FAIL, pytest 계약 시험 FAIL(ADR-0004)
+- 마이그레이션에서 `decisions_log.model_snapshot`을 지움 → 스냅샷 시험 FAIL. 스냅샷 파일에서도 같은 열을 지워 스냅샷 시험을 맞추면 → pytest 계약 시험 FAIL(ADR-0004, research R16)
 - 가짜 마이그레이션 하나를 더 등록 → 이름 시험 FAIL(ADR-0007)
 - `RecurrenceReset`의 `<`를 `!=`로 바꿈 → 하루 시작 시각 변경 시험 FAIL
 - 고르기에서 `dropped` 제외를 뺌 → R-104 시험 FAIL
