@@ -160,7 +160,7 @@ final class SettingsSnapshotTests: XCTestCase {
         try snapshot("s30-basic-auto-start")
     }
 
-    /// 켠 모습. 시안 12번은 꺼짐만 그리므로 켠 스위치는 시스템 모양이다.
+    /// 켠 모습. 시안 12번은 꺼짐만 그리고, 켠 색은 시안 `.tg.on`의 모카색이다.
     func test_R410_basicTabAutoStartOn() throws {
         try snapshot("s30-basic-auto-start-on", autoStart: true)
     }

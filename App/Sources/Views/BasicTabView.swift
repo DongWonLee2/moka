@@ -46,6 +46,7 @@ struct BasicTabView: View {
                 Toggle(BasicTabText.autoStart, isOn: autoStart)
                     .toggleStyle(.switch)
                     .controlSize(.mini)
+                    .tint(MokaColors.mocha)
                     .labelsHidden()
             }
             GridRow {
