@@ -8,6 +8,10 @@ struct QuantumChipView: View {
     let chipMin: Int
     /// 직접 입력 칸 글자. nil이면 직접 입력을 쓰지 않는 중.
     let customText: String?
+    /// 시간 끝 화면의 남은 분. 이보다 긴 프리셋을 끈다(spec 005 R-421).
+    var maxMinutes: Int?
+    /// 시간 끝과 오늘 끝이 겹쳐 칸을 모두 끈다(spec 005 R-422).
+    var off = false
     let onChoose: (Int) -> Void
     let onBeginCustom: () -> Void
     let onEditCustom: (String) -> Void
@@ -16,8 +20,8 @@ struct QuantumChipView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            ForEach(QuantumChip.segments(chipMin: chipMin, customText: customText), id: \.kind) { item in
-                segment(item.label, selected: item.selected) {
+            ForEach(segments, id: \.kind) { item in
+                segment(item.label, selected: item.selected, enabled: item.enabled) {
                     switch item.kind {
                     case .preset(let minutes): onChoose(minutes)
                     case .custom: if customText == nil { onBeginCustom() }
@@ -29,13 +33,21 @@ struct QuantumChipView: View {
         .background(palette.control, in: .rect(cornerRadius: 7))
     }
 
-    private func segment(_ label: String, selected: Bool, action: @escaping () -> Void) -> some View {
+    private var segments: [QuantumChipSegment] {
+        off
+            ? QuantumChip.offSegments()
+            : QuantumChip.segments(chipMin: chipMin, customText: customText, maxMinutes: maxMinutes)
+    }
+
+    private func segment(_ label: String, selected: Bool, enabled: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(label)
                 .font(.system(size: 11.5, weight: selected ? .semibold : .regular))
                 .monospacedDigit()
                 .lineLimit(1)
-                .foregroundStyle(selected ? MokaColors.textOnPrimary : palette.segmentText)
+                .foregroundStyle(
+                    selected ? MokaColors.textOnPrimary : (enabled ? palette.segmentText : palette.textDisabled)
+                )
                 .frame(maxWidth: .infinity)
                 .frame(height: 22)
                 .background {
@@ -46,6 +58,7 @@ struct QuantumChipView: View {
                 .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        .disabled(!enabled)
         .accessibilityAddTraits(selected ? .isSelected : [])
         .illustrationUnfocusable()
     }

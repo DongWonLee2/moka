@@ -369,6 +369,158 @@ final class ScreenStateSnapshotTests: XCTestCase {
             carry: Self.carry(title: "가짜 할 일 A", reason: .touched, left: 3, answered: 0))
     }
 
+    // MARK: - 가용 시간 질문과 오늘 끝(spec 005 R-409·R-419·R-421·R-422, 확정 시안 005 4~9·10-2·10-3번)
+
+    private static func ask(customText: String? = nil, failed: Bool = false) -> BudgetScreenInput {
+        .ask(
+            AskBudgetInput(
+                customText: customText, issue: customText.flatMap(BudgetInput.issue), failed: failed))
+    }
+
+    private static let budgetDraft = NotchTimer.empty(draft: Draft(title: "가짜 할 일 C", chipMin: 10))
+    private static let budgetReason = "D-3 · 중요도 보통 · 미룬 0번"
+
+    /// 시안 4-1번: 질문 처음 모습.
+    func test_R419_askBudget() throws {
+        try snapshot(
+            "24-ask-budget", timer: .empty(draft: nil), remaining: nil, expanded: true, hovering: true,
+            budget: Self.ask())
+    }
+
+    /// 시안 4-2번: "직접…"을 누르고 적는 중.
+    func test_R419_askBudgetCustom() throws {
+        try snapshot(
+            "24-ask-budget-custom", timer: .empty(draft: nil), remaining: nil, expanded: true, hovering: true,
+            budget: Self.ask(customText: "2.5"))
+    }
+
+    /// 시안 4-3번: 30분 단위가 아님.
+    func test_R419_askBudgetCustomInvalid() throws {
+        try snapshot(
+            "24-ask-budget-custom-invalid", timer: .empty(draft: nil), remaining: nil, expanded: true, hovering: true,
+            budget: Self.ask(customText: "2.3"))
+    }
+
+    /// 답 쓰기 실패 한 줄(시안 밖 문구, 사용자 결정 2026-11-17).
+    func test_R419_askBudgetFailed() throws {
+        try snapshot(
+            "24-ask-budget-failed", timer: .empty(draft: nil), remaining: nil, expanded: true, hovering: true,
+            budget: Self.ask(failed: true))
+    }
+
+    /// 시안 5번: 시작 전, 칩을 남은 10분으로 줄여 채움.
+    func test_R421_draftCapped() throws {
+        try snapshot(
+            "25-draft-capped", timer: Self.budgetDraft, remaining: nil, expanded: true, hovering: true,
+            reasonLine: Self.budgetReason,
+            draftBudget: DraftBudgetInput(capNote: BudgetText.capNote(minutes: 10, expired: false)))
+    }
+
+    private static func extend(failed: Bool = false) -> ExtendInput {
+        ExtendInput(
+            title: BudgetText.extendTitle(extra: 15, chip: 25),
+            detail: BudgetText.extendDetail(remaining: 10, newTotal: 135),
+            keep: BudgetText.keepRemaining(minutes: 10), failed: failed)
+    }
+
+    /// 시안 6번: 남은 시간보다 길게 고름, 늘리기 확인.
+    func test_R421_extendConfirm() throws {
+        try snapshot(
+            "25-extend-confirm", timer: .empty(draft: Draft(title: "가짜 할 일 C", chipMin: 25, chipPicked: true)),
+            remaining: nil, expanded: true, hovering: true, reasonLine: Self.budgetReason,
+            draftBudget: DraftBudgetInput(extend: Self.extend()))
+    }
+
+    /// 늘리기 쓰기 실패 한 줄(시안 밖 문구, 사용자 결정 2026-11-17).
+    func test_R421_extendFailed() throws {
+        try snapshot(
+            "25-extend-failed", timer: .empty(draft: Draft(title: "가짜 할 일 C", chipMin: 25, chipPicked: true)),
+            remaining: nil, expanded: true, hovering: true, reasonLine: Self.budgetReason,
+            draftBudget: DraftBudgetInput(extend: Self.extend(failed: true)))
+    }
+
+    /// 늘린 뒤 시작 커밋 실패 한 줄(data-model §11 글자).
+    func test_R421_startFailed() throws {
+        try snapshot(
+            "25-start-failed", timer: .empty(draft: Draft(title: "가짜 할 일 C", chipMin: 25, chipPicked: true)),
+            remaining: nil, expanded: true, hovering: true, reasonLine: Self.budgetReason,
+            draftBudget: DraftBudgetInput(startFailed: true))
+    }
+
+    /// 시안 7번: 시간 끝, 오늘 남은 시간 5분.
+    func test_R409_expiredCapped() throws {
+        try snapshot(
+            "26-expired-capped", timer: .expired(title: "가짜 할 일 C", chipMin: 5), remaining: 0, expanded: true,
+            expiredBudget: ExpiredBudgetInput(maxMinutes: 5, note: BudgetText.capNote(minutes: 5, expired: true)))
+    }
+
+    /// 시안 8번: 시간 끝과 오늘 끝이 겹침.
+    func test_R422_expiredDayEnd() throws {
+        try snapshot(
+            "26-expired-day-end", timer: .expired(title: "가짜 할 일 C", chipMin: 10), remaining: 0, expanded: true,
+            expiredBudget: ExpiredBudgetInput(offReason: BudgetText.dayEndOff(minutes: 120)))
+    }
+
+    /// 하루 경계를 넘긴 시간 끝, 시작한 날 남은 시간 0(시안 밖 문구, 사용자 결정 2026-11-17).
+    func test_R422_expiredCrossDayEnd() throws {
+        try snapshot(
+            "26-expired-cross-day-end", timer: .expired(title: "가짜 할 일 C", chipMin: 10), remaining: 0,
+            expanded: true, expiredBudget: ExpiredBudgetInput(offReason: BudgetText.crossDayOff(minutes: 120)))
+    }
+
+    /// 시안 9번: 오늘 끝과 "더 할래요".
+    func test_R422_dayEnd() throws {
+        try snapshot(
+            "27-day-end", timer: .empty(draft: nil), remaining: nil, expanded: true, hovering: true,
+            budget: .dayEnd(DayEndInput(minutes: 120, usedSeconds: 7200, fraction: 1)))
+    }
+
+    /// "더 할래요" 쓰기 실패 한 줄(시안 밖 문구, 사용자 결정 2026-11-17).
+    func test_R422_dayEndMoreFailed() throws {
+        try snapshot(
+            "27-day-end-more-failed", timer: .empty(draft: nil), remaining: nil, expanded: true, hovering: true,
+            budget: .dayEnd(DayEndInput(minutes: 120, usedSeconds: 7200, fraction: 1, failed: true)))
+    }
+
+    /// 판 높이(노치 아래 340pt) 안에 새 화면이 들어가는지. 펼친 판의 맞춤 높이를 잰다.
+    func test_R433_budgetScreensFitPanelHeight() {
+        let size = NotchLayout.panelSize(metrics: Self.notchMetrics)
+        let screens: [(String, NotchContentView)] = [
+            ("ask-custom-invalid", Self.content(
+                timer: .empty(draft: nil), remaining: nil, expanded: true, metrics: Self.notchMetrics,
+                budget: Self.ask(customText: "2.3", failed: true))),
+            ("extend-failed", Self.content(
+                timer: .empty(draft: Draft(title: "가짜 할 일 C, 제목이 길면 두 줄까지 보이고 나머지는 줄여요", chipMin: 25)),
+                remaining: nil, expanded: true, metrics: Self.notchMetrics, reasonLine: Self.budgetReason,
+                draftBudget: DraftBudgetInput(extend: Self.extend(failed: true), startFailed: true))),
+            ("expired-day-end", Self.content(
+                timer: .expired(title: "가짜 할 일 C", chipMin: 10), remaining: 0, expanded: true,
+                metrics: Self.notchMetrics,
+                expiredBudget: ExpiredBudgetInput(offReason: BudgetText.dayEndOff(minutes: 135)))),
+            ("day-end-more-failed", Self.content(
+                timer: .empty(draft: nil), remaining: nil, expanded: true, metrics: Self.notchMetrics,
+                budget: .dayEnd(DayEndInput(minutes: 135, usedSeconds: 8100, fraction: 1, failed: true)))),
+        ]
+        for (name, view) in screens {
+            let height = NSHostingView(rootView: view.fixedSize()).fittingSize.height
+            print("판 높이 \(name): \(height)pt / 패널 \(size.height)pt")
+            XCTAssertLessThanOrEqual(height, size.height, name)
+        }
+    }
+
+    /// 시안 10-2번: 접힌 노치, 가용 시간 질문을 기다림.
+    func test_R419_collapsedAskBudget() throws {
+        try snapshot(
+            "28-ask-budget-collapsed", timer: .empty(draft: nil), remaining: nil, expanded: false, budget: Self.ask())
+    }
+
+    /// 시안 10-3번: 접힌 노치, 오늘 끝.
+    func test_R422_collapsedDayEnd() throws {
+        try snapshot(
+            "28-day-end-collapsed", timer: .empty(draft: nil), remaining: nil, expanded: false,
+            budget: .dayEnd(DayEndInput(minutes: 120, usedSeconds: 7200, fraction: 1)))
+    }
+
     private static func gate(
         _ phase: GatePhase, text: String, submissions: Int = 0, saveFailed: Bool = false
     ) -> GateInput {
@@ -380,13 +532,16 @@ final class ScreenStateSnapshotTests: XCTestCase {
         style: PanelStyle = .notch, draftInput: DraftInput = DraftInput(), firstAction: String? = nil,
         showsFirstActionCollapsed: Bool = false, collapsedFirstAction: String? = nil, notes: NotesInput = NotesInput(),
         customText: String? = nil, storageUnavailable: Bool = false, reasonLine: String? = nil,
-        gate: GateInput? = nil, keyNotice: Bool = false, carry: CarryCardInput? = nil
+        gate: GateInput? = nil, keyNotice: Bool = false, carry: CarryCardInput? = nil,
+        budget: BudgetScreenInput? = nil, draftBudget: DraftBudgetInput = DraftBudgetInput(),
+        expiredBudget: ExpiredBudgetInput = ExpiredBudgetInput()
     ) -> NotchContentView {
         NotchContentView(
             timer: timer, remainingSeconds: remaining, isExpanded: expanded, isHovering: hovering, metrics: metrics,
             style: style, storageUnavailable: storageUnavailable, firstAction: firstAction,
             showsFirstActionCollapsed: showsFirstActionCollapsed, collapsedFirstAction: collapsedFirstAction,
-            reasonLine: reasonLine, gate: gate, keyNotice: keyNotice, carry: carry,
+            reasonLine: reasonLine, gate: gate, keyNotice: keyNotice, carry: carry, budget: budget,
+            draftBudget: draftBudget, expiredBudget: expiredBudget,
             titleFocusRequest: 0,
             chip: QuantumChipInput(
                 customText: customText, canStart: QuantumChip.startAllowed(customText: customText), onChoose: { _ in },
@@ -402,7 +557,9 @@ final class ScreenStateSnapshotTests: XCTestCase {
         style: PanelStyle = .notch, draftInput: DraftInput = DraftInput(), firstAction: String? = nil,
         showsFirstActionCollapsed: Bool = false, collapsedFirstAction: String? = nil, notes: NotesInput = NotesInput(),
         customText: String? = nil, storageUnavailable: Bool = false, reasonLine: String? = nil,
-        gate: GateInput? = nil, keyNotice: Bool = false, carry: CarryCardInput? = nil
+        gate: GateInput? = nil, keyNotice: Bool = false, carry: CarryCardInput? = nil,
+        budget: BudgetScreenInput? = nil, draftBudget: DraftBudgetInput = DraftBudgetInput(),
+        expiredBudget: ExpiredBudgetInput = ExpiredBudgetInput()
     ) throws {
         let metrics = style == .notch ? Self.notchMetrics : Self.floatingMetrics
         let size = NotchLayout.panelSize(metrics: metrics)
@@ -411,7 +568,7 @@ final class ScreenStateSnapshotTests: XCTestCase {
             draftInput: draftInput, firstAction: firstAction, showsFirstActionCollapsed: showsFirstActionCollapsed,
             collapsedFirstAction: collapsedFirstAction, notes: notes, customText: customText,
             storageUnavailable: storageUnavailable, reasonLine: reasonLine, gate: gate, keyNotice: keyNotice,
-            carry: carry)
+            carry: carry, budget: budget, draftBudget: draftBudget, expiredBudget: expiredBudget)
 
         let light = try renderPNG(view: content, size: size, appearance: .aqua)
         let dark = try renderPNG(view: content, size: size, appearance: .darkAqua)

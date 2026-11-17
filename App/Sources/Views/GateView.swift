@@ -74,6 +74,11 @@ enum GateDisplay {
         gatePhase == .asking || gatePhase == .checking
     }
 
+    /// 게이트 칸 색. 시안 `.light .gate`(#8C5A3A)와 `.dark .gate`(#D9A774). 늘리기 확인(spec 005 시안 6번)도 같다.
+    static func tint(colorScheme: ColorScheme) -> Color {
+        colorScheme == .light ? Color(hex: 0x8C5A3A) : Color(hex: 0xD9A774)
+    }
+
     static func subtitle(phase: GatePhase, submissions: Int) -> String {
         phase == .asking && submissions > 0 ? retrySubtitle : firstSubtitle
     }
@@ -151,9 +156,10 @@ struct GateView: View {
         .padding(.horizontal, 9)
         .padding(.bottom, 9)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(tint.opacity(0.08), in: .rect(cornerRadius: 7))
+        .background(GateDisplay.tint(colorScheme: colorScheme).opacity(0.08), in: .rect(cornerRadius: 7))
         .overlay {
-            RoundedRectangle(cornerRadius: 7).strokeBorder(tint.opacity(0.35), lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: 7).strokeBorder(
+                GateDisplay.tint(colorScheme: colorScheme).opacity(0.35), lineWidth: 0.5)
         }
         .onAppear {
             // 나타나는 순간에는 칸이 아직 붙지 않아 포커스 요청이 버려진다. 다음 차례로 미룬다.
@@ -194,11 +200,6 @@ struct GateView: View {
     private func submit() {
         guard input.phase == .asking, !trimmed.isEmpty else { return }
         input.onSubmit()
-    }
-
-    /// 시안 `.light .gate`(#8C5A3A)와 `.dark .gate`(#D9A774).
-    private var tint: Color {
-        colorScheme == .light ? Color(hex: 0x8C5A3A) : Color(hex: 0xD9A774)
     }
 
     private var mutedColor: Color {

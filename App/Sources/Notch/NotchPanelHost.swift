@@ -81,6 +81,10 @@ final class NotchPanelHost: NSObject, NSWindowDelegate {
                     self?.appState.complete()
                     self?.giveUpKey()
                 },
+                onExtendStart: { [weak self] in
+                    // 쓰기가 실패하면 확인 줄에 남아 다시 누를 수 있게 key를 둔다.
+                    if self?.appState.extendAndStart() == true { self?.giveUpKey() }
+                },
                 onBeginSetAside: { [weak self] action in
                     guard let self else { return }
                     appState.beginSetAside(action)
@@ -197,6 +201,7 @@ struct NotchPanelRoot: View {
     var style: PanelStyle = .notch
     var onStart: () -> Void = {}
     var onComplete: () -> Void = {}
+    var onExtendStart: () -> Void = {}
     var onBeginSetAside: (PendingAction) -> Void = { _ in }
     var onSetAside: (_ withNotes: Bool) -> Void = { _ in }
     var onLayoutChange: (PanelContentLayout) -> Void = { _ in }
@@ -206,9 +211,10 @@ struct NotchPanelRoot: View {
 
     var body: some View {
         let carry = carryInput
+        let budget = budgetInput
         let offsetX = NotchLayout.horizontalOffset(
             timer: appState.timer, remainingSeconds: appState.remainingSeconds, isExpanded: appState.isExpanded,
-            style: style, showsCarry: carry != nil)
+            style: style, showsCarry: carry != nil || budget != nil)
         NotchContentView(
             timer: appState.timer,
             remainingSeconds: appState.remainingSeconds,
@@ -226,6 +232,11 @@ struct NotchPanelRoot: View {
             gate: gateInput,
             keyNotice: appState.showsKeyNotice,
             carry: carry,
+            budget: budget,
+            draftBudget: draftBudgetInput,
+            expiredBudget: ExpiredBudgetInput(
+                maxMinutes: appState.expiredCap, note: appState.expiredCapNote,
+                offReason: appState.expiredOffReason),
             onOpenKeySettings: {
                 appState.requestKeySettings()
                 SettingsWindowRaiser.open(with: openSettings)
@@ -285,6 +296,44 @@ struct NotchPanelRoot: View {
             answered: appState.carryAnswered, failed: appState.carryAnswerFailed, move: move,
             onToday: { appState.answerCarry(.today, for: task.id) },
             onDrop: { appState.answerCarry(.drop, for: task.id) }, onBeginMove: { appState.beginCarryMove() })
+    }
+
+    /// 가용 시간 질문·오늘 끝 모드일 때만(spec 005 data-model §12 4·5).
+    private var budgetInput: BudgetScreenInput? {
+        switch appState.notchMode {
+        case .askBudget:
+            return .ask(
+                AskBudgetInput(
+                    customText: appState.budgetCustomText, issue: appState.budgetCustomIssue,
+                    failed: appState.budgetAnswerFailed, onChoose: { appState.answerBudget($0) },
+                    onBeginCustom: { appState.beginBudgetCustom() }, onEditCustom: { appState.editBudgetCustom($0) },
+                    onSubmitCustom: { appState.submitBudgetCustom() },
+                    onCancelCustom: { appState.cancelBudgetCustom() },
+                    takeFocusRequest: { appState.takeBudgetFocusRequest() }))
+        case .dayEnd:
+            guard let record = appState.todayBudget else { return nil }
+            return .dayEnd(
+                DayEndInput(
+                    minutes: record.minutes, usedSeconds: record.usedSeconds,
+                    fraction: BudgetText.usedFraction(record), failed: appState.moreFailed,
+                    onMore: { appState.more() }))
+        case .storageUnavailable, .session, .carryCard:
+            return nil
+        }
+    }
+
+    /// 시작 전 화면의 남은 시간 안내 줄과 늘리기 확인(spec 005 시안 5·6번).
+    private var draftBudgetInput: DraftBudgetInput {
+        let extend = appState.extendNeeded.flatMap { needed -> ExtendInput? in
+            guard case .empty(.some(let draft)) = appState.timer, let record = appState.todayBudget else { return nil }
+            let remaining = record.remainingMinutes
+            return ExtendInput(
+                title: BudgetText.extendTitle(extra: needed, chip: draft.chipMin),
+                detail: BudgetText.extendDetail(remaining: remaining, newTotal: record.minutes + needed),
+                keep: BudgetText.keepRemaining(minutes: remaining), failed: appState.extendFailed,
+                canStart: appState.canStart, onKeep: { appState.keepRemaining() }, onExtend: onExtendStart)
+        }
+        return DraftBudgetInput(capNote: appState.draftCapNote, extend: extend, startFailed: appState.startFailed)
     }
 
     /// 게이트가 닫혀 있으면 넘기지 않는다.

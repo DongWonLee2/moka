@@ -28,6 +28,10 @@ public enum NotchStatus {
         pickingDate ? "날짜 바꾸기" : "오늘 정하기"
     }
 
+    /// 가용 시간 질문과 오늘 끝의 오른쪽 귀(확정 시안 005 4·9번).
+    public static let askBudgetLabel = "오늘 정하기"
+    public static let dayEndLabel = "오늘 끝"
+
     public static func elapsed(minutes: Int) -> String {
         "\(minutes)분 했어요"
     }

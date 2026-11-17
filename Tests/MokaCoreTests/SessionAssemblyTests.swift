@@ -240,12 +240,14 @@ private final class ReloadCounter {
         #expect(try repository.inner.lastCarryJudgment() == nil)
     }
 
-    @Test("spec 005 plan 단위 3: 가용 시간을 묻지 않는 하루 값이면 카드가 없을 때 세션 모드로 고른다")
-    func settleWithoutBudgetQuestionPicksAfterCards() throws {
+    @Test("spec 005 R-419 R-422: 오늘 가용 시간을 상한 없이 답한 하루 값이면 카드가 없을 때 세션 모드로 고른다")
+    func settleWithUnlimitedBudgetPicksAfterCards() throws {
         let tasks = [Fake.task(1), Fake.task(2)]
         let input = Fake.input(tasks)
+        let today = Fake.day("2027-01-13")
         let schedule = SessionAssembly.Schedule(
-            today: Fake.day("2027-01-13"), budget: nil, revertedIDs: [], asksBudget: false)
+            today: today, budget: DayBudget(day: today, minutes: 0, extendedMinutes: 0, usedSeconds: 0, more: true),
+            revertedIDs: [])
 
         #expect(SessionAssembly.mode(.empty(draft: nil), tasks: tasks, schedule: schedule) == .session)
         #expect(SessionAssembly.settle(.initial, input, schedule: schedule).taskID == 1)

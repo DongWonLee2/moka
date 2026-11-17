@@ -113,6 +113,8 @@ final class AppState {
                 notesFocus.cancel()
             }
             if session.taskID != oldValue.taskID {
+                extendFailed = false
+                startFailed = false
                 gateWaitingTaskID = nil
                 gateDraftText = ""
                 gateDraftTaskID = nil
@@ -152,8 +154,14 @@ final class AppState {
     private(set) var titleFocusRequest = 0
     /// 직접 입력 칸에 쓴 글자. nil이면 직접 입력을 쓰지 않는 중이다(data-model §6 `isEditingCustom`).
     private(set) var customText: String?
-    /// 직접 입력 값이 1~180 정수가 아니면 시작을 막는다(R-004).
-    var canStart: Bool { QuantumChip.startAllowed(customText: customText) }
+    /// 직접 입력 값이 1~180 정수가 아니면 시작을 막는다(R-004). 시간 끝 화면은 가용 시간의 남은 분보다 긴 값과
+    /// 오늘 끝과 겹친 "N분 더"도 막는다(spec 005 R-421·R-422).
+    var canStart: Bool {
+        guard case .expired(_, let chipMin, _) = timer else { return QuantumChip.startAllowed(customText: customText) }
+        if expiredDayEnd { return false }
+        if let cap = expiredCap, chipMin > cap { return false }
+        return QuantumChip.startAllowed(customText: customText, remainingMinutes: expiredCap)
+    }
 
     /// 펼침 여부. 바뀔 때는 `updateExpansion()` 한 곳에서 `withAnimation`으로 바꾼다.
     private(set) var isExpanded = false
@@ -204,8 +212,9 @@ final class AppState {
 
     // MARK: 이월 카드(spec 005 R-413~R-417, data-model §10·§12)
 
-    /// 노치 모드(data-model §12). 앱은 아직 가용 시간을 묻지 않아 카드 뒤 바로 세션이다(plan 단위 4).
+    /// 노치 모드(data-model §12).
     var notchMode: NotchMode {
+        _ = budgetRevision
         guard repository != nil else { return .storageUnavailable }
         return SessionAssembly.mode(timer, tasks: tasks, schedule: schedule(at: clock.now()))
     }
@@ -226,6 +235,67 @@ final class AppState {
     /// 카드 답 쓰기가 실패했다. 다음 답이 되거나, 달력을 열고 닫거나, 카드의 할 일이 바뀌면 꺼진다.
     var carryAnswerFailed: Bool { carryFailedTaskID != nil && carryFailedTaskID == carryCardTask?.id }
     private var carryFailedTaskID: TaskID?
+
+    // MARK: 가용 시간(spec 005 R-409·R-419~R-422, data-model §11·§12)
+
+    /// `day_budget`을 쓸 때마다 올린다. 설정 저장소는 관찰되지 않아 화면이 이 값으로 다시 읽는다.
+    private(set) var budgetRevision = 0
+    /// 직접 적기 칸 글자(R-419). nil이면 칸이 닫혀 있다.
+    private(set) var budgetCustomText: String?
+    /// 답 쓰기가 실패한 하루. 질문 화면이 아니거나 하루가 바뀌면 실패 줄을 보이지 않는다.
+    private var budgetAnswerFailedDay: LocalDay?
+    /// 늘리기 쓰기가 실패했다. 칩·버튼을 누르거나 노치 할 일이 바뀌면 꺼진다.
+    private(set) var extendFailed = false
+    /// 늘린 뒤 시작 커밋이 실패했다(data-model §11). 칩·버튼을 누르거나 노치 할 일이 바뀌면 꺼진다.
+    private(set) var startFailed = false
+    /// "더 할래요" 쓰기가 실패한 하루. 오늘 끝 화면이 아니거나 하루가 바뀌면 실패 줄을 보이지 않는다.
+    private var moreFailedDay: LocalDay?
+
+    var budgetAnswerFailed: Bool { budgetAnswerFailedDay == logicalToday && notchMode == .askBudget }
+    var moreFailed: Bool { moreFailedDay == logicalToday && notchMode == .dayEnd }
+
+    var budgetCustomIssue: BudgetInputIssue? { budgetCustomText.flatMap(BudgetInput.issue) }
+
+    /// 시작 전 화면 늘리기 확인(R-421): 고른 칩이 오늘 남은 분보다 길면 모자란 분.
+    var extendNeeded: Int? {
+        guard case .empty(.some(let draft)) = timer else { return nil }
+        return QuantumChip.extendNeeded(chipMin: draft.chipMin, remainingMinutes: budgetCap(for: logicalToday))
+    }
+
+    /// 시안 5번 안내 줄: 상한이 걸렸고 오늘 남은 분이 기본 작업 시간보다 짧을 때. 늘리기 확인 줄이나 실패 줄이 뜨면 숨긴다.
+    var draftCapNote: String? {
+        guard Self.isDraft(timer), extendNeeded == nil, !startFailed, let cap = budgetCap(for: logicalToday),
+            cap >= 1, cap < defaultQuantumMin
+        else { return nil }
+        return BudgetText.capNote(minutes: cap, expired: false)
+    }
+
+    /// 시간 끝 칩 상한: 그 작업 시간을 시작한 하루(`budgetDay`)의 남은 분. 상한이 없으면 nil.
+    var expiredCap: Int? {
+        guard Self.isExpired(timer) else { return nil }
+        return budgetCap(for: budgetDay(at: clock.now()))
+    }
+
+    /// 시간 끝과 오늘 끝이 겹침(R-422). "N분 더"를 끄고 세 버튼의 체크포인트 계기가 `day_end`다.
+    var expiredDayEnd: Bool {
+        NotchMode.expiredDayEnd(timer: timer, budgetDayRecord: budgetRecord(for: budgetDay(at: clock.now())))
+    }
+
+    /// 시안 7번 안내 줄: 상한 때문에 꺼진 프리셋이 있을 때.
+    var expiredCapNote: String? {
+        guard let cap = expiredCap, cap >= 1, let longest = QuantumChip.presets.max(), cap < longest else { return nil }
+        return BudgetText.capNote(minutes: cap, expired: true)
+    }
+
+    /// "N분 더"를 끈 이유(시안 8번, 하루 경계를 넘겼으면 시안 밖 문구).
+    var expiredOffReason: String? {
+        let now = clock.now()
+        guard expiredDayEnd, let record = budgetRecord(for: budgetDay(at: now)) else { return nil }
+        return record.day == logicalToday
+            ? BudgetText.dayEndOff(minutes: record.minutes) : BudgetText.crossDayOff(minutes: record.minutes)
+    }
+
+    var todayBudget: DayBudget? { budgetRecord(for: logicalToday) }
 
     // MARK: 판단 모델(spec 003 data-model §6·§9)
 
@@ -355,6 +425,7 @@ final class AppState {
     /// "직접…"을 누른 뒤 칸이 처음 나타날 때 한 번만 포커스를 준다. 마우스로 다시 펼쳐 칸이 다시 만들어질 때는
     /// 주지 않는다(R-002, SC-003).
     @ObservationIgnored private var customFocus = OneShotRequest()
+    @ObservationIgnored private var budgetFocus = OneShotRequest()
     @ObservationIgnored private var notesFocus = OneShotRequest()
     @ObservationIgnored private let clock: MokaClock
     @ObservationIgnored private let calendar: Calendar
@@ -688,9 +759,14 @@ final class AppState {
     /// 종료(`.quit`)·잠자기(`.sleep`) 체크포인트(R-110, research R12). 도는 중이면 둘 다, 시간 끝이면 종료만(#173)
     /// 빈 두 줄로 남기고 동기로 저장한다.
     /// 할 일 상태와 타이머는 바꾸지 않는다. 종료를 미루지 않는다.
+    /// 도는 중 종료는 남은 초를 돌려준다(spec 005 data-model §11). 잠자기는 돌려주지 않는다.
     func lifecycleCheckpoint(_ trigger: CheckpointTrigger) {
-        guard let repository, let batch = session.lifecycleCheckpoint(trigger, input(at: clock.now())) else { return }
-        _ = write(batch, to: repository)
+        guard let repository else { return }
+        let input = input(at: clock.now())
+        if let batch = session.lifecycleCheckpoint(trigger, input) {
+            _ = write(batch, to: repository)
+        }
+        useBudget(session.lifecycleRefund(trigger, input))
     }
 
     // MARK: - 노치 동작
@@ -722,8 +798,9 @@ final class AppState {
         pickedAt = now
     }
 
+    /// 시작 전 화면과 가용 시간 질문 화면(시안 4번 "+ 새 할 일")에서 연다.
     func beginNewTitle() {
-        guard Self.isDraft(timer) else { return }
+        guard Self.isDraft(timer) || notchMode == .askBudget else { return }
         isPickingOtherTask = false
         isEnteringNewTitle = true
     }
@@ -753,13 +830,20 @@ final class AppState {
                 return .rejected(.storageFailed)
             }
             reloadTasks()
-            session = session.addedTask(task, input(at: now))
+            // 카드·질문·오늘 끝 중에는 저장만 하고 초안으로 띄우지 않는다(spec 005 Edge Cases).
+            if notchMode == .session {
+                session = session.addedTask(task, input(at: now))
+            }
             return .applied
         }
     }
 
     /// 프리셋 칩을 골랐다. 직접 입력을 그만둔다.
+    /// 시간 끝 화면에서는 남은 분보다 긴 값과 오늘 끝과 겹친 칩을 받지 않는다(spec 005 R-421·R-422).
     func chooseQuantum(_ minutes: Int) {
+        if Self.isExpired(timer), expiredDayEnd || expiredCap.map({ minutes > $0 }) ?? false { return }
+        extendFailed = false
+        startFailed = false
         customText = nil
         customFocus.cancel()
         send(.chooseQuantum(minutes))
@@ -769,7 +853,9 @@ final class AppState {
     func beginCustom() {
         switch timer {
         case .empty(.some(let draft)): customText = String(draft.chipMin)
-        case .expired(_, let chipMin, _): customText = String(chipMin)
+        case .expired(_, let chipMin, _):
+            guard !expiredDayEnd else { return }
+            customText = String(chipMin)
         case .empty(nil), .running: return
         }
         customFocus.request()
@@ -782,6 +868,8 @@ final class AppState {
 
     /// 직접 입력 칸이 바뀌었다. 1~180 정수면 칩 값으로 쓴다(R-004).
     func editCustom(_ text: String) {
+        extendFailed = false
+        startFailed = false
         customText = text
         if let minutes = QuantumChip.parseCustom(text) {
             send(.chooseQuantum(minutes))
@@ -791,25 +879,115 @@ final class AppState {
     /// 설정에서 기본 작업 시간을 저장했다. 칩을 직접 고르지 않았고 직접 입력 중이 아니면 칩이 새 값이 된다(R-013).
     func defaultQuantumChanged() {
         defaultQuantumMin = QuantumSettings.readDefault(from: settings)
-        session.timer.applyDefaultQuantumChange(defaultQuantumMin, isEditingCustom: customText != nil)
+        session.timer.applyDefaultQuantumChange(
+            QuantumChip.cap(chipMin: defaultQuantumMin, remainingMinutes: budgetCap(for: logicalToday)),
+            isEditingCustom: customText != nil)
     }
 
     func extendChanged() {
         extendMin = CoreSettings.readExtendMin(from: settings)
-        session.timer.applyExtendChange(extendMin, isEditingCustom: customText != nil)
+        session.timer.applyExtendChange(expiredChipMin(at: clock.now()), isEditingCustom: customText != nil)
     }
 
     /// 시작 전이면 시작, 시간 끝이면 같은 할 일을 고른 칩으로 다시 시작(N분 더, R-107).
+    /// 시작 전 화면에서 늘리기 확인 줄이 열려 있으면 시작하지 않는다(그 줄의 "늘리고 시작"이 시작한다, R-421).
     func start() {
         guard canStart else { return }
+        extendFailed = false
+        startFailed = false
         if case .expired(_, let chipMin, _) = timer {
             let notes = currentNotes
             commit(.start) { session, input throws(SessionError) in
                 try session.restart(notes, quantumMin: chipMin, input)
             }
         } else {
+            guard extendNeeded == nil else { return }
             commit(.start) { session, input throws(SessionError) in try session.start(input) }
         }
+    }
+
+    // MARK: - 가용 시간(spec 005 R-419·R-421·R-422)
+
+    /// 가용 시간 답(선택지·직접 적기). 질문 화면에서만 받는다. 쓰기가 실패하면 질문에 머물고 한 줄을 보인다.
+    /// 답하면 고른다. 행동 로그 줄은 없다(R-416).
+    @discardableResult
+    func answerBudget(_ minutes: Int) -> Bool {
+        guard notchMode == .askBudget else { return false }
+        guard writeBudget(.answered(day: logicalToday, minutes: minutes)) else {
+            budgetAnswerFailedDay = logicalToday
+            return false
+        }
+        budgetAnswerFailedDay = nil
+        budgetCustomText = nil
+        budgetFocus.cancel()
+        pickIfEmpty(at: clock.now())
+        return true
+    }
+
+    func beginBudgetCustom() {
+        guard notchMode == .askBudget, budgetCustomText == nil else { return }
+        budgetCustomText = ""
+        budgetFocus.request()
+    }
+
+    func takeBudgetFocusRequest() -> Bool {
+        budgetFocus.take()
+    }
+
+    func editBudgetCustom(_ text: String) {
+        budgetCustomText = text
+    }
+
+    /// esc: 직접 적기 칸을 닫는다.
+    func cancelBudgetCustom() {
+        budgetCustomText = nil
+        budgetFocus.cancel()
+    }
+
+    /// "정하기"·Enter. 틀리거나 빈 칸이면 답하지 않는다.
+    @discardableResult
+    func submitBudgetCustom() -> Bool {
+        guard let budgetCustomText, case .success(let minutes) = BudgetInput.parse(budgetCustomText) else {
+            return false
+        }
+        return answerBudget(minutes)
+    }
+
+    /// "늘리고 시작"(R-421, data-model §11): 오늘 가용 시간을 모자란 분만큼 늘려 쓰고, 성공하면 그 칩으로 시작한다.
+    /// 시작 커밋만 실패하면 늘린 값은 그대로 두고 한 줄을 보인다. 이제 남은 분이 칩 이상이라 다시 누르면 바로 시작한다.
+    @discardableResult
+    func extendAndStart() -> Bool {
+        guard canStart, let needed = extendNeeded, let record = budgetRecord(for: logicalToday) else { return false }
+        startFailed = false
+        guard writeBudget(record.extended(by: needed)) else {
+            extendFailed = true
+            return false
+        }
+        extendFailed = false
+        guard commit(.start, { session, input throws(SessionError) in try session.start(input) }) else {
+            startFailed = true
+            return false
+        }
+        return true
+    }
+
+    /// "{N}분만 할래요": 칩을 오늘 남은 분으로 되돌린다. 시작하지 않는다.
+    func keepRemaining() {
+        guard let cap = budgetCap(for: logicalToday) else { return }
+        chooseQuantum(cap)
+    }
+
+    /// "더 할래요"(R-422): 그날 상한을 풀고 고른다. 쓰기가 실패하면 오늘 끝에 머물고 한 줄을 보인다.
+    @discardableResult
+    func more() -> Bool {
+        guard notchMode == .dayEnd, let record = budgetRecord(for: logicalToday) else { return false }
+        guard writeBudget(record.withMore()) else {
+            moreFailedDay = logicalToday
+            return false
+        }
+        moreFailedDay = nil
+        pickIfEmpty(at: clock.now())
+        return true
     }
 
     /// 시간 끝이면 적힌 두 줄(비어도 됨)을 체크포인트로 남긴다(R-107).
@@ -1452,27 +1630,75 @@ final class AppState {
                 usable: usableScores(judging), questions: judging.questions,
                 thresholds: judging.questions.thresholds(for: judging.baseModel), today: today)
         }
-        return SessionInput(
-            tasks: tasks, now: now, defaultQuantumMin: defaultQuantumMin, extendMin: extendMin, calendar: calendar,
-            scoring: scoring, today: today, isWarmup: CoreSettings.readLastStartDay(from: settings) != today)
+        var input = SessionInput(
+            tasks: tasks, now: now, defaultQuantumMin: defaultQuantumMin, extendMin: expiredChipMin(at: now),
+            calendar: calendar, scoring: scoring, today: today,
+            isWarmup: CoreSettings.readLastStartDay(from: settings) != today)
+        input.draftChipCap = budgetCap(for: today)
+        var ticked = session.timer
+        _ = ticked.apply(.tick, at: now, defaultQuantumMin: defaultQuantumMin, extendMin: extendMin)
+        input.dayEndExpired = NotchMode.expiredDayEnd(
+            timer: ticked, budgetDayRecord: budgetRecord(for: budgetDay(at: now)))
+        return input
+    }
+
+    /// 저장된 `day_budget` 가운데 `day`의 기록. 앱 DB를 열 수 없으면 없다(R-119).
+    private func budgetRecord(for day: LocalDay) -> DayBudget? {
+        _ = budgetRevision
+        guard repository != nil else { return nil }
+        return DayBudget.record(CoreSettings.readDayBudget(from: settings), for: day)
+    }
+
+    /// `day`의 칩 상한(남은 분). 기록이 없거나 "더 할래요" 뒤면 nil.
+    private func budgetCap(for day: LocalDay) -> Int? {
+        DayBudget.capMinutes(budgetRecord(for: day))
+    }
+
+    /// 작업 시간을 시작한 하루. 도는 중·시간 끝이 아니면 오늘.
+    private func budgetDay(at now: Date) -> LocalDay {
+        session.run?.budgetDay
+            ?? DayBoundary.day(containing: now, dayStart: CoreSettings.readDayStart(from: settings), calendar: calendar)
+    }
+
+    /// 시간 끝 칩 처음 값(R-409): 추가 시간, 시작한 하루의 남은 분이 더 짧으면 그 값.
+    private func expiredChipMin(at now: Date) -> Int {
+        QuantumChip.expiredChip(extendMin: extendMin, remainingMinutes: budgetCap(for: budgetDay(at: now)))
+    }
+
+    private func writeBudget(_ budget: DayBudget) -> Bool {
+        do {
+            try CoreSettings.writeDayBudget(budget, to: settings)
+        } catch {
+            Self.logStorageFailure(error)
+            return false
+        }
+        budgetRevision += 1
+        return true
+    }
+
+    /// 커밋 뒤 쓴 시간을 그 작업 시간의 하루 기록에 반영한다(data-model §11). 그 하루의 기록이 없으면 아무것도 하지 않는다.
+    private func useBudget(_ use: BudgetUse?) {
+        guard let use, let record = budgetRecord(for: use.day) else { return }
+        _ = writeBudget(record.applying(use))
     }
 
     /// 타이머만 바뀌는 이벤트(칩, tick). 저장할 수 없을 때는 빠른 입력·시작·완료도 여기로 온다.
     @discardableResult
     private func send(_ event: TimerEvent) -> TransitionResult {
         transition(event) { session, now in
-            session.timer.apply(event, at: now, defaultQuantumMin: defaultQuantumMin, extendMin: extendMin)
+            session.timer.apply(
+                event, at: now, defaultQuantumMin: defaultQuantumMin, extendMin: expiredChipMin(at: now))
         }
     }
 
     /// 쓰기가 있는 세션 동작: 세션 함수 → `apply` → 성공하면 `tasks()` 다시 읽기 → 세션 교체 → 빈 상태면 고르기.
-    /// 거부되거나 쓰기가 실패하면 세션을 그대로 둔다(R-119).
+    /// 거부되거나 쓰기가 실패하면 세션을 그대로 둔다(R-119). 커밋 → 쓴 시간 반영 → 모드 → 고르기 순이다(data-model §12).
+    @discardableResult
     private func commit(
         _ event: TimerEvent, _ step: (NotchSession, SessionInput) throws(SessionError) -> SessionStep
-    ) {
+    ) -> Bool {
         guard let repository else {
-            send(event)
-            return
+            return send(event) == .applied
         }
         var picked = false
         transition(event) { session, now in
@@ -1490,12 +1716,14 @@ final class AppState {
                 Self.logStorageFailure(error)
                 return .rejected(.storageFailed)
             }
+            useBudget(next.budgetUse)
             picked = true
             return .applied
         }
         if picked {
             pickIfEmpty(at: clock.now())
         }
+        return picked
     }
 
     /// 타이머 전이와 그 뒤 화면 상태(고정, 펼침, 직접 입력, 1초 tick)를 한 곳에서 맞춘다.
@@ -1574,12 +1802,12 @@ final class AppState {
         adoptPick(SessionAssembly.settle(session, input(at: now), schedule: schedule(at: now)), at: now)
     }
 
-    /// 앱의 하루 값. 가용 시간은 아직 묻지 않는다(plan 단위 4).
+    /// 앱의 하루 값: 오늘, 저장된 가용 시간 기록, 아직 판정에 넣지 않은 되돌린 할 일.
     private func schedule(at now: Date) -> SessionAssembly.Schedule {
         SessionAssembly.Schedule(
             today: DayBoundary.day(
                 containing: now, dayStart: CoreSettings.readDayStart(from: settings), calendar: calendar),
-            budget: nil, revertedIDs: pendingRevertedIDs, asksBudget: false)
+            budget: CoreSettings.readDayBudget(from: settings), revertedIDs: pendingRevertedIDs)
     }
 
     private func adoptPick(_ next: NotchSession, at now: Date) {
