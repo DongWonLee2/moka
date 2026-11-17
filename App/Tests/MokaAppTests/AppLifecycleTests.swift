@@ -132,8 +132,13 @@ final class AppLifecycleTests: XCTestCase {
             try repository.inner.tasks().map(\.status), [.todo, .todo, .active],
             "다음 활성화에서 복구를 다시 하고, 지금 도는 할 일은 되돌리지 않는다")
         guard case .running = state.timer else { return XCTFail("타이머는 그대로: \(state.timer)") }
+        var later = try repository.inner.tasks()[1]
+        later.status = .active
+        try repository.inner.apply(StoreBatch(updatedTasks: [later]))
         state.activate()
-        XCTAssertEqual(try repository.inner.tasks().map(\.status), [.todo, .todo, .active], "복구는 한 번만 한다")
+        XCTAssertEqual(
+            try repository.inner.tasks().map(\.status), [.todo, .active, .active],
+            "복구는 한 번만 한다: 그 뒤 활성화는 노치 밖 진행 중 할 일도 되돌리지 않는다")
     }
 
     func test_FR07_R111_issue71_failedRecoveryWriteRetriesAtNextActivation() throws {
@@ -169,6 +174,23 @@ final class AppLifecycleTests: XCTestCase {
         state.start()
 
         XCTAssertEqual(state.lastRejectReason, .storageFailed)
+    }
+
+    func test_issue71_successfulTransitionClearsRejectReason() throws {
+        let repository = FailingAfterStartRepository()
+        _ = try repository.inner.insertTask(
+            NewTask(title: "가짜 할 일 1", deadline: nil, estMin: nil, recurrence: .none, weekday: nil), cycleDay: nil,
+            at: Self.noon)
+        let state = makeState(repository)
+        state.launch()
+        repository.failsApply = true
+        state.start()
+        XCTAssertEqual(state.lastRejectReason, .storageFailed)
+
+        repository.failsApply = false
+        state.start()
+
+        XCTAssertNil(state.lastRejectReason, "적용된 전이는 지난 거부 이유를 지운다")
     }
 
     func test_issue71_failedQuickEntryInsertIsLoggedAsStorageFailure() {
