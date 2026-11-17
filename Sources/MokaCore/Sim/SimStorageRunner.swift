@@ -1,9 +1,8 @@
 import Foundation
 
 /// storage 모드(contracts/moka-sim-v1-additions.md, spec 003 덧붙임은 moka-sim-v1-additions-003.md, spec 005 덧붙임은
-/// moka-sim-v1-additions-005.md). 앱과 같은 MokaCore 함수(`NotchSession`, `SchedulerPick`, `RecurrenceReset`,
-/// `LaunchRecovery`, `CarryJudgment`, `CarryAnswer`, `DayBudget`, `NotchMode`, `TaskWriteRules`, `SessionCommit`,
-/// `ScoreRules`)만 부르고 저장은 메모리 저장소다.
+/// moka-sim-v1-additions-005.md). 앱과 같은 MokaCore 함수(`NotchSession`, `SessionAssembly`, `SchedulerPick`,
+/// `CarryAnswer`, `DayBudget`, `NotchMode`, `TaskWriteRules`, `ScoreRules`)만 부르고 저장은 메모리 저장소다.
 extension SimRunner {
     /// 가짜 공급자 `fake`의 기준 모델 ID. 질문 파일 `models`를 거치지 않고 직접 받는다(spec 006 research R14).
     public static let fakeBaseModel = "jev-1.13.0"
@@ -294,9 +293,7 @@ private struct StorageEvent {
             return try launch()
 
         case .activate:
-            try judgeDay()
-            try judgeCarry()
-            return try settle(session)
+            return try activate(session)
 
         case .judge(let judge):
             try save(judge)
@@ -380,53 +377,42 @@ private struct StorageEvent {
         DayBoundary.day(containing: event.at, dayStart: dayStart, calendar: calendar)
     }
 
-    /// 앱 시작: 메모리 상태를 버리고 R-111 복구 → 하루 판정 → 이월 판정 → 모드 → 고르기(data-model §15).
+    /// 앱 시작: 메모리 상태를 버리고 R-111 복구 → 활성화(하루 판정 → 이월 판정 → 모드 → 고르기, data-model §15).
     private mutating func launch() throws(SimError) -> NotchSession {
-        let reverted = LaunchRecovery.revert(try tasks())
-        try apply(StoreBatch(updatedTasks: reverted))
-        day.revertedIDs = Set(reverted.map(\.id))
-        try judgeDay()
-        try judgeCarry()
-        return try settle(.initial)
+        day.revertedIDs = try SimRunner.storing(seq: event.seq) {
+            try SessionAssembly.recover(try repository.tasks(), keeping: nil, in: repository, reload: repository.tasks)
+        }
+        return try activate(.initial)
     }
 
-    /// 하루 판정(R-113).
-    private func judgeDay() throws(SimError) {
-        let reset = RecurrenceReset.reset(try tasks(), now: event.at, dayStart: dayStart, calendar: calendar)
-        try apply(StoreBatch(updatedTasks: reset))
+    private mutating func activate(_ session: NotchSession) throws(SimError) -> NotchSession {
+        let input = try input(session)
+        let activated = try SimRunner.storing(seq: event.seq) {
+            try SessionAssembly.activate(
+                session, input, dayStart: dayStart, schedule: schedule, in: repository, reload: repository.tasks)
+        }
+        if let schedule = activated.schedule {
+            day.carryJudgedAt = schedule.carryJudgedAt
+            day.revertedIDs = schedule.revertedIDs
+        }
+        return activated.session
     }
 
-    /// 이월 판정(R-412). 표시와 판정 시각을 함께 쓰고, 쓰기가 끝나면 되돌린 할 일 기억을 비운다.
-    private mutating func judgeCarry() throws(SimError) {
-        guard day.scheduled,
-            CarryJudgment.needsRun(
-                lastJudgedAt: day.carryJudgedAt, now: event.at, dayStart: dayStart, calendar: calendar)
-        else { return }
-        let tasks = try tasks()
-        let targets = CarryJudgment.targets(
-            CarryJudgmentInput(
-                tasks: tasks, checkpoints: try SimRunner.storing(seq: event.seq) { try repository.checkpoints() },
-                decisions: try SimRunner.storing(seq: event.seq) { try repository.decisions() },
-                lastJudgedAt: day.carryJudgedAt, revertedIDs: day.revertedIDs, now: event.at, dayStart: dayStart,
-                calendar: calendar))
-        try apply(CarryJudgment.marking(targets, in: tasks))
-        day.carryJudgedAt = event.at
-        day.revertedIDs = []
+    private var schedule: SessionAssembly.Schedule? {
+        guard day.scheduled else { return nil }
+        return SessionAssembly.Schedule(
+            today: today, budget: day.budget, carryJudgedAt: day.carryJudgedAt, revertedIDs: day.revertedIDs)
     }
 
     /// 꺼짐이면 늘 세션. 켜짐이면 data-model §12 표.
     private func mode(_ session: NotchSession?) throws(SimError) -> NotchMode {
-        guard day.scheduled else { return .session }
-        return NotchMode.of(
-            storageAvailable: true, timer: session?.timer ?? .empty(draft: nil), tasks: try tasks(), budget: day.budget,
-            today: today)
+        guard let schedule else { return .session }
+        return SessionAssembly.mode(session?.timer ?? .empty(draft: nil), tasks: try tasks(), schedule: schedule)
     }
 
     /// 버튼 처리 뒤: 모드 판정 → 카드·질문·오늘 끝이면 초안을 비우고, 세션이면 빈 상태에서 고른다(data-model §12).
     private func settle(_ session: NotchSession) throws(SimError) -> NotchSession {
-        let mode = try mode(session)
-        if mode.clearsDraft { return session.clearingDraft() }
-        return session.picked(try input(session))
+        SessionAssembly.settle(session, try input(session), schedule: schedule)
     }
 
     /// 작업 시간을 시작한 하루. 도는 중·시간 끝이 아니면 오늘.
@@ -471,7 +457,9 @@ private struct StorageEvent {
         } catch {
             throw SimRunner.notAllowed(event)
         }
-        let next = try SimRunner.storing(seq: event.seq) { try SessionCommit.commit(step, to: repository) }
+        let next = try SimRunner.storing(seq: event.seq) {
+            try SessionAssembly.commit(step, in: repository, reload: repository.tasks)
+        }
         use(step.budgetUse)
         return next
     }
