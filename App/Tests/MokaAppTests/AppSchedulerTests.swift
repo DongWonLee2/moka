@@ -233,7 +233,7 @@ final class AppSchedulerTests: XCTestCase {
                 weekday: nil),
             cycleDay: nil, at: AppTestFixture.at(2027, 1, 12, 12, 0))
         clock.advanceToNextDay(hour: 7)
-        XCTAssertTrue(state.judgeCarryIfNeeded())
+        state.activate()
 
         XCTAssertEqual(
             try repository.tasks().map(\.dueDecision), [false, false, false, false, true],
@@ -241,20 +241,20 @@ final class AppSchedulerTests: XCTestCase {
         XCTAssertEqual(try repository.lastCarryJudgment(), AppTestFixture.at(2027, 1, 14, 7, 0))
         XCTAssertNil(state.ranks[other.id], "이월 답 대기는 순위에서 빠진다")
         XCTAssertFalse(state.otherTaskItems.contains { $0.id == other.id }, "다른 할 일 목록에서도 빠진다")
-        XCTAssertTrue(state.judgeCarryIfNeeded(), "같은 하루에 다시 부르면 돌지 않고 실패도 아니다")
+        state.activate()
         XCTAssertEqual(try repository.lastCarryJudgment(), AppTestFixture.at(2027, 1, 14, 7, 0))
     }
 
     func test_FR08_R415_R416_answerCarryWritesTaskAndLogLine() throws {
         let repository = try Self.withOverdue()
         let state = makeState(repository)
-        XCTAssertTrue(state.judgeCarryIfNeeded())
-        XCTAssertEqual(try repository.tasks().map(\.dueDecision), [true, false, false, false])
         state.launch()
+        XCTAssertEqual(try repository.tasks().map(\.dueDecision), [true, false, false, false])
 
         XCTAssertFalse(state.answerCarry(.move(LocalDay(text: "2027-01-13")!), for: 1), "날짜는 내일부터")
         XCTAssertTrue(try repository.decisions().isEmpty)
         XCTAssertFalse(state.answerCarry(.today, for: 2), "카드에 오르지 않은 할 일에는 답하지 않는다")
+        XCTAssertFalse(state.carryAnswerFailed, "거부는 쓰기 실패가 아니라 한 줄을 띄우지 않는다")
 
         XCTAssertTrue(state.answerCarry(.today, for: 1))
         let task = try XCTUnwrap(try repository.tasks().first)

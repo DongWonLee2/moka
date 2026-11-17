@@ -54,3 +54,19 @@ func carryEarLabel() {
     #expect(NotchStatus.carryLabel(pickingDate: false) == "오늘 정하기")
     #expect(NotchStatus.carryLabel(pickingDate: true) == "날짜 바꾸기")
 }
+
+@Test("FR-08 R-415: 달력은 고른 날의 달을 보이고, 다음 달로 넘긴 뒤 날짜를 골라도 그 달에 남는다")
+func carryMonthPageStaysOnPick() {
+    var page = CarryMonthPage(selected: day("2026-11-17"), today: day("2026-11-16"))
+    #expect(page.month == CalendarMonth(year: 2026, month: 11))
+    #expect(!page.canGoBack, "내일이 든 달보다 앞으로는 가지 않는다")
+    page.next()
+    #expect(page.month == CalendarMonth(year: 2026, month: 12))
+    #expect(page.canGoBack)
+    page.pick(day("2026-12-03"))
+    #expect(page.month == CalendarMonth(year: 2026, month: 12))
+    page.pick(day("2026-11-18"))
+    #expect(page.month == CalendarMonth(year: 2026, month: 11), "빠른 날짜가 다른 달이면 그 달로 간다")
+    page.previous()
+    #expect(page.month == CalendarMonth(year: 2026, month: 11), "내일이 든 달에서 앞으로 가지 않는다")
+}

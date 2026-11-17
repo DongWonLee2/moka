@@ -243,6 +243,40 @@ final class AppCarryTests: XCTestCase {
         XCTAssertNotNil(state.session.taskID, "카드가 없으면 다음 할 일을 고른다")
     }
 
+    func test_FR08_R417_US2_6b_runningTaskSwitchShowsCard() throws {
+        let (state, repository, clock) = try Self.beforeBoundary(hour: 5, minute: 50)
+        let running = try XCTUnwrap(state.session.taskID)
+        state.start()
+        clock.advance(minutes: 15)
+        state.setHovering(true)
+
+        state.beginSetAside(.switch)
+        state.setAsideWithoutNotes()
+
+        XCTAssertEqual(try XCTUnwrap(try repository.tasks().first { $0.id == running }).status, .todo)
+        XCTAssertEqual(state.notchMode, .carryCard(taskID: running, left: 1, reason: .touched))
+        XCTAssertEqual(state.timer, .empty(draft: nil))
+    }
+
+    func test_FR08_R417_markedRunningTaskRevertedOnSameDayRelaunchShowsCard() throws {
+        let (state, repository, clock) = try Self.beforeBoundary(hour: 5, minute: 50)
+        let running = try XCTUnwrap(state.session.taskID)
+        state.start()
+        clock.advance(minutes: 15)  // 06:05
+        state.setHovering(true)
+        state.lifecycleCheckpoint(.quit)
+        XCTAssertTrue(try XCTUnwrap(try repository.tasks().first { $0.id == running }).dueDecision)
+
+        clock.advance(minutes: 5)
+        let relaunched = makeState(repository, clock: clock)
+        relaunched.launch()
+
+        let task = try XCTUnwrap(try repository.tasks().first { $0.id == running })
+        XCTAssertEqual(task.status, .todo, "R-111이 진행 중을 대기로 되돌림")
+        XCTAssertTrue(task.dueDecision, "표시가 남아 있다")
+        XCTAssertEqual(relaunched.notchMode, .carryCard(taskID: running, left: 1, reason: .touched))
+    }
+
     func test_FR08_R417_US2_6c_expiredTaskRestartsThenSkipShowsCard() throws {
         let (state, repository, clock) = try Self.beforeBoundary(hour: 5, minute: 30)
         let expired = try XCTUnwrap(state.session.taskID)
@@ -449,8 +483,13 @@ final class AppCarryTests: XCTestCase {
         XCTAssertEqual(try repository.tasks().first?.carryCount, 0)
 
         state.beginCarryMove()
+        XCTAssertFalse(state.carryAnswerFailed, "달력을 열면 한 줄을 지운다")
         XCTAssertFalse(state.confirmCarryMove())
         XCTAssertNotNil(state.carryMoveDay, "날짜 바꾸기 쓰기가 실패하면 달력에 남는다")
+        XCTAssertTrue(state.carryAnswerFailed)
+        state.cancelCarryMove()
+        XCTAssertFalse(state.carryAnswerFailed, "카드로 돌아가면 한 줄을 지운다")
+        state.beginCarryMove()
 
         repository.failsApply = false
         XCTAssertTrue(state.confirmCarryMove())
@@ -459,6 +498,23 @@ final class AppCarryTests: XCTestCase {
 
     func test_FR08_R414_answerFailedLine() {
         XCTAssertEqual(CarryCardText.answerFailed, "답을 저장하지 못했어요. 다시 해 주세요.", "시안 밖 문구, 사용자 결정 2026-11-17")
+    }
+
+    func test_FR08_R414_failedLineClearsWhenCardTaskChanges() throws {
+        let repository = FailingAfterStartRepository()
+        _ = try Self.insert("가짜 할 일 A", deadline: "2027-01-10", into: repository.inner)
+        _ = try Self.insert("가짜 할 일 B", deadline: "2027-01-11", into: repository.inner)
+        let state = makeState(repository)
+        state.launch()
+        repository.failsApply = true
+        XCTAssertFalse(state.answerCarry(.today, for: 1))
+        XCTAssertTrue(state.carryAnswerFailed)
+        repository.failsApply = false
+
+        XCTAssertTrue(state.dropTask(1))
+
+        XCTAssertEqual(state.carryCardTask?.id, 2)
+        XCTAssertFalse(state.carryAnswerFailed, "카드의 할 일이 바뀌면 한 줄을 지운다")
     }
 
     // MARK: - R-434 남은 글: 기본 탭 하루 시작 시각 안내(시안 13번 마지막 줄)
