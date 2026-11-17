@@ -457,6 +457,10 @@ final class AppCarryTests: XCTestCase {
         XCTAssertFalse(state.carryAnswerFailed, "다음 답이 되면 한 줄을 지운다")
     }
 
+    func test_FR08_R414_answerFailedLine() {
+        XCTAssertEqual(CarryCardText.answerFailed, "답을 저장하지 못했어요. 다시 해 주세요.", "시안 밖 문구, 사용자 결정 2026-11-17")
+    }
+
     // MARK: - R-434 남은 글: 기본 탭 하루 시작 시각 안내(시안 13번 마지막 줄)
 
     func test_R434_dayStartHintMentionsCarry() {

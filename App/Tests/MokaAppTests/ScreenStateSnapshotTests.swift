@@ -289,6 +289,74 @@ final class ScreenStateSnapshotTests: XCTestCase {
         }
     }
 
+    // MARK: - 이월 카드(spec 005 R-414·R-415, 확정 시안 005 1~3·10-1번). 오늘은 2026-11-16(월).
+
+    private static let seoul = GregorianCalendar.make(timeZone: TimeZone(identifier: "Asia/Seoul")!)
+    private static let carryToday = LocalDay(text: "2026-11-16")!
+
+    private static func carry(
+        title: String, firstAction: String? = nil, reason: CarryCardReason, left: Int, answered: Int,
+        failed: Bool = false, move: CarryMoveInput? = nil
+    ) -> CarryCardInput {
+        CarryCardInput(
+            title: title, firstAction: firstAction, reason: CarryText.reason(reason), left: left, answered: answered,
+            failed: failed, move: move)
+    }
+
+    private static func move(deadline: String?) -> CarryMoveInput {
+        CarryMoveInput(
+            selected: LocalDay(text: "2026-11-19")!, today: carryToday,
+            deadline: deadline.flatMap(LocalDay.init(text:)),
+            calendar: seoul)
+    }
+
+    /// 시안 1번: 하다 만 할 일, 이어서 할 일, 남은 3개 가운데 첫째.
+    func test_R414_carryCardTouched() throws {
+        try snapshot(
+            "21-carry-card-touched", timer: .empty(draft: nil), remaining: nil, expanded: true, hovering: true,
+            carry: Self.carry(
+                title: "가짜 할 일 A", firstAction: "가짜 첫 행동", reason: .touched, left: 3, answered: 0))
+    }
+
+    /// 시안 2번: 마감이 지난 할 일(D+2), 이어서 할 일 없음, 긴 제목은 두 줄, 셋 가운데 마지막.
+    func test_R414_carryCardOverdueLast() throws {
+        try snapshot(
+            "21-carry-card-overdue-last", timer: .empty(draft: nil), remaining: nil, expanded: true, hovering: true,
+            carry: Self.carry(
+                title: "가짜 할 일 B, 제목이 길면 두 줄까지 보이고 나머지는 줄여요", reason: .overdue(days: 2), left: 1, answered: 2))
+    }
+
+    /// 답 쓰기 실패 한 줄(시안 밖 문구, 사용자 결정 2026-11-17).
+    func test_R414_carryCardAnswerFailed() throws {
+        try snapshot(
+            "21-carry-card-failed", timer: .empty(draft: nil), remaining: nil, expanded: true, hovering: true,
+            carry: Self.carry(title: "가짜 할 일 A", reason: .touched, left: 3, answered: 0, failed: true))
+    }
+
+    /// 시안 3번: 날짜 고르기, 지금 마감 11월 14일(토), 19일을 고름.
+    func test_R415_datePicker() throws {
+        try snapshot(
+            "22-date-picker", timer: .empty(draft: nil), remaining: nil, expanded: true, hovering: true,
+            carry: Self.carry(
+                title: "가짜 할 일 B", reason: .overdue(days: 2), left: 1, answered: 2,
+                move: Self.move(deadline: "2026-11-14")))
+    }
+
+    /// 마감이 없는 할 일의 날짜 고르기(안내 뒷문장만, 시안 밖 문구, 사용자 결정 2026-11-17).
+    func test_R415_datePickerNoDeadline() throws {
+        try snapshot(
+            "22-date-picker-no-deadline", timer: .empty(draft: nil), remaining: nil, expanded: true, hovering: true,
+            carry: Self.carry(
+                title: "가짜 할 일 A", reason: .touched, left: 3, answered: 0, move: Self.move(deadline: nil)))
+    }
+
+    /// 시안 10-1번: 접힌 노치, 빨간 점과 "정할 일 3개".
+    func test_R414_collapsedCarry() throws {
+        try snapshot(
+            "23-carry-collapsed", timer: .empty(draft: nil), remaining: nil, expanded: false,
+            carry: Self.carry(title: "가짜 할 일 A", reason: .touched, left: 3, answered: 0))
+    }
+
     private static func gate(
         _ phase: GatePhase, text: String, submissions: Int = 0, saveFailed: Bool = false
     ) -> GateInput {
@@ -300,13 +368,13 @@ final class ScreenStateSnapshotTests: XCTestCase {
         style: PanelStyle = .notch, draftInput: DraftInput = DraftInput(), firstAction: String? = nil,
         showsFirstActionCollapsed: Bool = false, collapsedFirstAction: String? = nil, notes: NotesInput = NotesInput(),
         customText: String? = nil, storageUnavailable: Bool = false, reasonLine: String? = nil,
-        gate: GateInput? = nil, keyNotice: Bool = false
+        gate: GateInput? = nil, keyNotice: Bool = false, carry: CarryCardInput? = nil
     ) -> NotchContentView {
         NotchContentView(
             timer: timer, remainingSeconds: remaining, isExpanded: expanded, isHovering: hovering, metrics: metrics,
             style: style, storageUnavailable: storageUnavailable, firstAction: firstAction,
             showsFirstActionCollapsed: showsFirstActionCollapsed, collapsedFirstAction: collapsedFirstAction,
-            reasonLine: reasonLine, gate: gate, keyNotice: keyNotice,
+            reasonLine: reasonLine, gate: gate, keyNotice: keyNotice, carry: carry,
             titleFocusRequest: 0,
             chip: QuantumChipInput(
                 customText: customText, canStart: QuantumChip.startAllowed(customText: customText), onChoose: { _ in },
@@ -322,7 +390,7 @@ final class ScreenStateSnapshotTests: XCTestCase {
         style: PanelStyle = .notch, draftInput: DraftInput = DraftInput(), firstAction: String? = nil,
         showsFirstActionCollapsed: Bool = false, collapsedFirstAction: String? = nil, notes: NotesInput = NotesInput(),
         customText: String? = nil, storageUnavailable: Bool = false, reasonLine: String? = nil,
-        gate: GateInput? = nil, keyNotice: Bool = false
+        gate: GateInput? = nil, keyNotice: Bool = false, carry: CarryCardInput? = nil
     ) throws {
         let metrics = style == .notch ? Self.notchMetrics : Self.floatingMetrics
         let size = NotchLayout.panelSize(metrics: metrics)
@@ -330,7 +398,8 @@ final class ScreenStateSnapshotTests: XCTestCase {
             timer: timer, remaining: remaining, expanded: expanded, hovering: hovering, metrics: metrics, style: style,
             draftInput: draftInput, firstAction: firstAction, showsFirstActionCollapsed: showsFirstActionCollapsed,
             collapsedFirstAction: collapsedFirstAction, notes: notes, customText: customText,
-            storageUnavailable: storageUnavailable, reasonLine: reasonLine, gate: gate, keyNotice: keyNotice)
+            storageUnavailable: storageUnavailable, reasonLine: reasonLine, gate: gate, keyNotice: keyNotice,
+            carry: carry)
 
         let light = try renderPNG(view: content, size: size, appearance: .aqua)
         let dark = try renderPNG(view: content, size: size, appearance: .darkAqua)

@@ -86,6 +86,39 @@ final class SettingsSnapshotTests: XCTestCase {
         }
     }
 
+    /// 확정 시안 005 11번(가짜 예시, "내일"은 단위 6): 이월 답 대기는 "오늘 정할 일"이고 순위·"다음"을 받지 않는다.
+    func test_R413_taskTabDue() throws {
+        let created = Date(timeIntervalSince1970: 1_800_000_000)
+        func task(
+            _ id: TaskID, _ title: String, deadline: String? = nil, estMin: Int?, skipCount: Int = 0, due: Bool = false
+        )
+            -> MokaTask
+        {
+            MokaTask(
+                id: id, title: title, deadline: deadline.flatMap(LocalDay.init(text:)), estMin: estMin,
+                recurrence: .none, weekday: nil, cycleDay: nil, firstAction: nil, status: .todo, skipCount: skipCount,
+                streak: 0, createdAt: created, dueDecision: due)
+        }
+        let rows = [
+            task(1, "가짜 할 일 A", deadline: "2026-11-18", estMin: 50, due: true),
+            task(2, "가짜 할 일 C", deadline: "2026-11-19", estMin: 40),
+            task(3, "가짜 할 일 D", deadline: "2026-11-20", estMin: 60, skipCount: 1),
+            task(4, "가짜 할 일 E", estMin: 30),
+            task(5, "가짜 할 일 F", estMin: nil),
+        ]
+        let content = VStack(spacing: 0) {
+            SettingsTabBar(selection: .constant(.tasks))
+            TaskListTabView(
+                rows: rows, nextMarkID: 2, ranks: [2: 1, 3: 2, 4: 3], scope: .constant(.all),
+                order: .constant(.created),
+                selectedID: .constant(nil), checkedIDs: .constant([]), canEdit: true, onAdd: {}, onEdit: { _ in },
+                onDelete: {})
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(MokaColors.settingsWindow)
+        try write("s28-task-tab-due", content: content, size: CGSize(width: 460, height: 450))
+    }
+
     // MARK: - 기본 탭 키 칸 상태 여섯(spec 003 R-213, SC-210, 시안 v2 1·3~7번). spec 006에서 판단 모델 칸 안으로 옮겼다.
 
     func test_R213_keyFieldNoKey() throws {
