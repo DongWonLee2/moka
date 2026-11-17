@@ -98,6 +98,17 @@ private let decisionRows: [RawRow] = [
 
 private let insertParentTask = taskRow("부모 할 일", allowed: true).sql
 
+/// spec 005 data-model §2: 부모 할 일 줄의 두 열을 고친다.
+private let carryRows: [RawRow] = [
+    ("carry_count 0", "0", "0", true), ("carry_count 3", "3", "0", true), ("carry_count -1", "-1", "0", false),
+    ("due_decision 1", "0", "1", true), ("due_decision 2", "0", "2", false), ("due_decision -1", "0", "-1", false),
+].map { label, count, due, allowed in
+    RawRow(
+        label: label, sql: "UPDATE tasks SET carry_count = \(count), due_decision = \(due) WHERE id = 1",
+        allowed: allowed)
+}
+
+
 private func expectRow(_ row: RawRow) throws {
     let db = try TestDatabase.migratedInMemory()
     try db.write { try $0.execute(sql: insertParentTask) }
@@ -126,6 +137,11 @@ func checkpointsTableChecks(row: RawRow) throws {
 
 @Test("FR-11 R-112: decisions_log 판단 칸 CHECK(공급자 기준)", arguments: decisionRows)
 func decisionsLogTableChecks(row: RawRow) throws {
+    try expectRow(row)
+}
+
+@Test("FR-08 R-412 R-415: tasks 표 carry_count >= 0, due_decision IN (0, 1) CHECK", arguments: carryRows)
+func tasksCarryChecks(row: RawRow) throws {
     try expectRow(row)
 }
 
@@ -177,6 +193,31 @@ func unknownDecisionValuesFailToRead(column: String, schedulerChoice: String, us
     let repo = GRDBTaskRepository(db)
     let value = column == "user_action" ? userAction : schedulerChoice
     #expect(throws: StoreError.unknownValue(column: column, value: value)) { try repo.decisions() }
+}
+
+@Test("FR-08 R-416: 이월 답 값은 읽히고 모르는 carry 값은 unknownValue")
+func carryDecisionValuesRead() throws {
+    let db = try TestDatabase.migratedInMemory()
+    try db.write { db in
+        try db.execute(sql: insertParentTask)
+        for action in ["carry_today", "carry_drop", "carry_move"] {
+            try db.execute(
+                sql: """
+                    INSERT INTO decisions_log(task_id, scheduler_choice, user_action, created_at) VALUES (1, ?, ?, ?)
+                    """,
+                arguments: ["carry_card_v1", action, createdAt])
+        }
+    }
+    let repo = GRDBTaskRepository(db)
+    #expect(try repo.decisions().map(\.userAction) == [.carryToday, .carryDrop, .carryMove])
+    #expect(try repo.decisions().map(\.schedulerChoice) == [.carryCardV1, .carryCardV1, .carryCardV1])
+
+    try db.write {
+        try $0.execute(
+            sql: "INSERT INTO decisions_log(task_id, scheduler_choice, user_action, created_at) VALUES (1, ?, ?, ?)",
+            arguments: ["carry_card_v1", "carry_later", createdAt])
+    }
+    #expect(throws: StoreError.unknownValue(column: "user_action", value: "carry_later")) { try repo.decisions() }
 }
 
 @Test("FR-01 R-101: 형식이 틀린 created_at·deadline이 든 할 일을 읽으면 invalidValue", arguments: ["created_at", "deadline"])

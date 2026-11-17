@@ -93,3 +93,46 @@ SCORES_COLUMNS = {
 def test_scores_columns(db):
     columns = {row[1] for row in db.execute("PRAGMA table_info(scores)")}
     assert columns == SCORES_COLUMNS
+
+
+# spec 005 contracts/storage-values-005.md §1~§3: tasks 두 열과 이월 답 줄.
+
+
+def insert_task(conn, **carry):
+    columns = {
+        "title": "가짜 할 일",
+        "recurrence": "none",
+        "status": "todo",
+        "skip_count": 0,
+        "streak": 0,
+        "created_at": "2026-10-26T07:33:20Z",
+        **carry,
+    }
+    names = ", ".join(columns)
+    marks = ", ".join("?" for _ in columns)
+    conn.execute(f"INSERT INTO tasks({names}) VALUES ({marks})", tuple(columns.values()))
+
+
+def test_tasks_carry_columns_default_to_zero(db):
+    columns = {row[1]: row for row in db.execute("PRAGMA table_info(tasks)")}
+    assert {"carry_count", "due_decision"} <= set(columns)
+    assert columns["carry_count"][4] == "0"
+    assert columns["due_decision"][4] == "0"
+    insert_task(db)
+    assert db.execute("SELECT carry_count, due_decision FROM tasks").fetchone() == (0, 0)
+
+
+@pytest.mark.parametrize("carry", [{"carry_count": -1}, {"due_decision": 2}])
+def test_tasks_carry_checks_reject(db, carry):
+    with pytest.raises(sqlite3.IntegrityError, match="CHECK constraint failed"):
+        insert_task(db, **carry)
+    assert db.execute("SELECT COUNT(*) FROM tasks").fetchone() == (0,)
+
+
+@pytest.mark.parametrize("action", ["carry_today", "carry_drop", "carry_move"])
+def test_carry_answer_rows_are_allowed(db, action):
+    insert_decision(db, provider="fallback", scheduler_choice="carry_card_v1", user_action=action)
+    assert db.execute("SELECT scheduler_choice, user_action FROM decisions_log").fetchone() == (
+        "carry_card_v1",
+        action,
+    )
