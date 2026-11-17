@@ -25,7 +25,7 @@ public final class GRDBTaskRepository: TaskRepository {
             try db.execute(
                 sql: """
                     INSERT INTO tasks(title, deadline, est_min, recurrence, weekday, cycle_day, first_action, status, \
-                    skip_count, streak, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    skip_count, streak, carry_count, due_decision, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                 arguments: Self.columns(of: row) + [UTCTimestamp.format(row.createdAt)])
             return db.lastInsertedRowID
@@ -50,7 +50,8 @@ public final class GRDBTaskRepository: TaskRepository {
                 try db.execute(
                     sql: """
                         UPDATE tasks SET title = ?, deadline = ?, est_min = ?, recurrence = ?, weekday = ?, \
-                        cycle_day = ?, first_action = ?, status = ?, skip_count = ?, streak = ? WHERE id = ?
+                        cycle_day = ?, first_action = ?, status = ?, skip_count = ?, streak = ?, carry_count = ?, \
+                        due_decision = ? WHERE id = ?
                         """,
                     arguments: Self.columns(of: task) + [task.id])
             }
@@ -91,7 +92,8 @@ public final class GRDBTaskRepository: TaskRepository {
     private static func columns(of task: MokaTask) -> StatementArguments {
         [
             task.title, task.deadline?.text, task.estMin, task.recurrence.rawValue, task.weekday?.rawValue,
-            task.cycleDay?.text, task.firstAction, task.status.rawValue, task.skipCount, task.streak,
+            task.cycleDay?.text, task.firstAction, task.status.rawValue, task.skipCount, task.streak, task.carryCount,
+            task.dueDecision,
         ]
     }
 
@@ -107,6 +109,7 @@ public final class GRDBTaskRepository: TaskRepository {
         guard (task.recurrence == .none) == (task.cycleDay == nil) else {
             throw StoreError.invalidValue(column: "cycle_day")
         }
+        guard task.carryCount >= 0 else { throw StoreError.invalidValue(column: "carry_count") }
     }
 
     // MARK: - 읽기
@@ -123,7 +126,8 @@ public final class GRDBTaskRepository: TaskRepository {
             id: row["id"], title: row["title"], deadline: try row.localDay("deadline"), estMin: row["est_min"],
             recurrence: try row.enumValue("recurrence"), weekday: weekday, cycleDay: try row.localDay("cycle_day"),
             firstAction: row["first_action"], status: try row.enumValue("status"), skipCount: row["skip_count"],
-            streak: row["streak"], createdAt: try row.timestamp("created_at"))
+            streak: row["streak"], createdAt: try row.timestamp("created_at"), carryCount: row["carry_count"],
+            dueDecision: row["due_decision"])
     }
 
     private static func checkpoint(_ row: Row) throws -> Checkpoint {

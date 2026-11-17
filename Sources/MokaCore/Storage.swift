@@ -131,6 +131,7 @@ public final class InMemoryTaskRepository: TaskRepository {
         guard (task.recurrence == .none) == (task.cycleDay == nil) else {
             throw StoreError.invalidValue(column: "cycle_day")
         }
+        guard task.carryCount >= 0 else { throw StoreError.invalidValue(column: "carry_count") }
     }
 }
 
