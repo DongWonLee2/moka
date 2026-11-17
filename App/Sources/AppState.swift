@@ -202,6 +202,31 @@ final class AppState {
     /// 할 일 탭 "다음" 표시(R-102). 보기·정렬과 무관하다.
     var nextMarkID: TaskID? { session.nextMark(input(at: clock.now())) }
 
+    // MARK: 이월 카드(spec 005 R-413~R-417, data-model §10·§12)
+
+    /// 노치 모드(data-model §12). 앱은 아직 가용 시간을 묻지 않아 카드 뒤 바로 세션이다(plan 단위 4).
+    var notchMode: NotchMode {
+        guard repository != nil else { return .storageUnavailable }
+        return SessionAssembly.mode(timer, tasks: tasks, schedule: schedule(at: clock.now()))
+    }
+
+    var carryCardTask: MokaTask? {
+        guard case .carryCard(let id, _, _) = notchMode else { return nil }
+        return tasks.first { $0.id == id }
+    }
+
+    /// "날짜 바꿀래요"로 연 달력에서 고른 날. 카드의 할 일이 바뀌면 닫힌다.
+    var carryMoveDay: LocalDay? {
+        guard let carryMove, carryMove.taskID == carryCardTask?.id else { return nil }
+        return carryMove.day
+    }
+    private var carryMove: (taskID: TaskID, day: LocalDay)?
+    /// 이번 카드 묶음에서 답한 수. 카드 위 점에 쓰고, 카드가 모두 없어지면 비운다. 앱을 다시 켜면 0이다.
+    private(set) var carryAnswered = 0
+    /// 카드 답 쓰기가 실패했다. 다음 답이 되거나, 달력을 열고 닫거나, 카드의 할 일이 바뀌면 꺼진다.
+    var carryAnswerFailed: Bool { carryFailedTaskID != nil && carryFailedTaskID == carryCardTask?.id }
+    private var carryFailedTaskID: TaskID?
+
     // MARK: 판단 모델(spec 003 data-model §6·§9)
 
     /// 키가 있는지. 켤 때·키 저장·키 지움 때 `KeyStore.hasKey()`로 읽고, 보내기 직전 키를 읽지 못하면 false로 고친다.
@@ -357,6 +382,7 @@ final class AppState {
     @ObservationIgnored private(set) var lastRejectReason: RejectReason?
     /// 켤 때 복구(R-111)를 아직 끝내지 못함. 읽기나 쓰기가 실패하면 다음 활성화에서 다시 한다(#71).
     @ObservationIgnored private var recoveryPending = false
+    /// R-111이 되돌린 할 일. 이월 판정 쓰기가 성공할 때까지 들고 있다(data-model §9, Q2-A).
     @ObservationIgnored private var pendingRevertedIDs: Set<TaskID> = []
 
     private static let logger = Logger(subsystem: "dev.dongwon.moka", category: "timer")
@@ -402,7 +428,7 @@ final class AppState {
 
     // MARK: - 앱 수명
 
-    /// 앱 시작: 키·판단 결과 읽기 → 재시작 복구(R-111) → 하루 판정 → 고르기. 저장할 수 없으면 할 일은 건드리지 않는다.
+    /// 앱 시작: 키·판단 결과 읽기 → 재시작 복구(R-111) → 활성화. 저장할 수 없으면 할 일은 건드리지 않는다.
     func launch() {
         refreshHasKey()
         reloadScores()
@@ -588,58 +614,75 @@ final class AppState {
     }
 
     /// 활성화 판정(research R11): 앱 시작, 잠자기에서 깨어남, 노치 펼침, 설정 창 열기가 부른다.
-    /// 반복 리셋(R-113)을 적용하고 빈 상태면 고른다(R-104). 같은 하루에 여러 번 돌아도 결과가 같다.
+    /// 켤 때 복구(R-111)가 남았으면 먼저 하고, 반복 리셋(R-113) → 이월 판정(R-412) → 모드 → 빈 상태면 고르기(data-model §15).
+    /// 같은 하루에 여러 번 돌아도 결과가 같다.
     func activate() {
         guard let repository else { return }
         attempted = attempted.filter { !$0.value.failed }
         defer { requestScores() }
         _ = recoverIfPending(repository)
+        reloadTasks()
         let now = clock.now()
         let activated: SessionAssembly.Activated
         do {
             activated = try SessionAssembly.activate(
-                session, input(at: now), dayStart: CoreSettings.readDayStart(from: settings), schedule: nil,
-                in: repository, reload: reloadedTasks)
+                session, input(at: now), dayStart: CoreSettings.readDayStart(from: settings),
+                schedule: schedule(at: now), in: repository, reload: reloadedTasks)
         } catch {
             Self.logStorageFailure(error)
             return
         }
+        if let schedule = activated.schedule {
+            pendingRevertedIDs = schedule.revertedIDs
+        }
         adoptPick(activated.session, at: now)
     }
 
-    /// 이월 판정(spec 005 R-412, data-model §9). 하루에 한 번 표시와 판정 시각을 함께 쓴다. 단위 2는 활성화에 걸지 않는다
-    /// (plan 위험 12, 단위 3이 카드 화면과 함께 건다). 저장할 수 없거나 읽기·쓰기가 실패하면 false.
-    @discardableResult
-    func judgeCarryIfNeeded() -> Bool {
-        guard let repository, reloadTasks() else { return false }
-        do {
-            if try SessionAssembly.judgeCarry(
-                tasks, revertedIDs: pendingRevertedIDs, now: clock.now(),
-                dayStart: CoreSettings.readDayStart(from: settings), calendar: calendar, in: repository,
-                reload: reloadedTasks)
-            {
-                pendingRevertedIDs = []
-            }
-        } catch {
-            Self.logStorageFailure(error)
-            return false
-        }
-        return true
-    }
-
     /// 이월 카드 답 하나(spec 005 R-415·R-416, data-model §10). 카드에 오르지 않은 할 일, 오늘이나 지난 날, 쓰기 실패면
-    /// 아무것도 바꾸지 않고 false. 쓴 뒤 빈 상태면 고른다.
+    /// 아무것도 바꾸지 않고 false. 쓰기 실패는 카드에 한 줄로 알린다. 쓴 뒤 카드가 없으면 고른다.
     @discardableResult
     func answerCarry(_ answer: CarryAnswerKind, for id: TaskID) -> Bool {
         let now = clock.now()
         let input = input(at: now)
         guard let repository, let today = input.today, let task = tasks.first(where: { $0.id == id }),
-            let batch = try? CarryAnswer.apply(answer, task: task, today: today, input: input),
-            write(batch, to: repository)
+            let batch = try? CarryAnswer.apply(answer, task: task, today: today, input: input)
         else { return false }
+        guard write(batch, to: repository) else {
+            carryFailedTaskID = id
+            return false
+        }
+        carryFailedTaskID = nil
+        carryMove = nil
+        carryAnswered += 1
         reloadTasks()
         pickIfEmpty(at: now)
         return true
+    }
+
+    /// "날짜 바꿀래요": 내일을 고른 채 달력을 연다(R-415).
+    func beginCarryMove() {
+        guard let task = carryCardTask else { return }
+        carryFailedTaskID = nil
+        carryMove = (task.id, logicalToday.adding(days: 1, calendar: calendar))
+    }
+
+    /// 달력에서 날을 고른다. 내일부터만 받는다.
+    func pickCarryMoveDay(_ day: LocalDay) {
+        guard let carryMove, logicalToday < day else { return }
+        self.carryMove = (carryMove.taskID, day)
+    }
+
+    /// "돌아가기": 답하지 않고 카드로 돌아간다.
+    func cancelCarryMove() {
+        carryFailedTaskID = nil
+        carryMove = nil
+    }
+
+    /// 고른 날로 마감을 바꾼다. 쓰기가 실패하면 달력에 남는다.
+    @discardableResult
+    func confirmCarryMove() -> Bool {
+        guard let day = carryMoveDay, let task = carryCardTask else { return false }
+        return answerCarry(.move(day), for: task.id)
     }
 
     /// 종료(`.quit`)·잠자기(`.sleep`) 체크포인트(R-110, research R12). 도는 중이면 둘 다, 시간 끝이면 종료만(#173)
@@ -1526,9 +1569,17 @@ final class AppState {
         return false
     }
 
-    /// 빈 상태(초안 없음)면 고른다(R-104). 앱은 이월·가용 시간을 아직 걸지 않아 모드는 늘 세션이다.
+    /// 모드를 보고 카드면 초안을 비우고, 세션이고 빈 상태(초안 없음)면 고른다(R-104, data-model §12).
     private func pickIfEmpty(at now: Date) {
-        adoptPick(SessionAssembly.settle(session, input(at: now), schedule: nil), at: now)
+        adoptPick(SessionAssembly.settle(session, input(at: now), schedule: schedule(at: now)), at: now)
+    }
+
+    /// 앱의 하루 값. 가용 시간은 아직 묻지 않는다(plan 단위 4).
+    private func schedule(at now: Date) -> SessionAssembly.Schedule {
+        SessionAssembly.Schedule(
+            today: DayBoundary.day(
+                containing: now, dayStart: CoreSettings.readDayStart(from: settings), calendar: calendar),
+            budget: nil, revertedIDs: pendingRevertedIDs, asksBudget: false)
     }
 
     private func adoptPick(_ next: NotchSession, at now: Date) {
@@ -1563,6 +1614,9 @@ final class AppState {
         } catch {
             Self.logStorageFailure(error)
             loaded = false
+        }
+        if CarryAnswer.cards(tasks).isEmpty {
+            carryAnswered = 0
         }
         requestScores()
         refreshGate()

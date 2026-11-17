@@ -135,31 +135,32 @@ private final class ReloadCounter {
         let repository = try Self.repository([
             Fake.task(1, deadline: Fake.day("2027-01-10")), Fake.task(2), Fake.task(3),
         ])
-        let schedule = SessionAssembly.Schedule(
-            today: Fake.day("2027-01-13"), budget: nil, carryJudgedAt: nil, revertedIDs: [3])
+        let schedule = SessionAssembly.Schedule(today: Fake.day("2027-01-13"), budget: nil, revertedIDs: [3])
 
         let activated = try SessionAssembly.activate(
             .initial, Fake.input(try repository.tasks()), dayStart: Fake.sixAM, schedule: schedule, in: repository,
             reload: repository.tasks)
 
         #expect(try repository.tasks().map(\.dueDecision) == [true, false, true])
-        #expect(activated.schedule?.carryJudgedAt == Self.noon)
+        #expect(try repository.lastCarryJudgment() == Self.noon)
         #expect(activated.schedule?.revertedIDs == [])
         #expect(activated.session == .initial, "이월 카드가 뜨면 초안을 띄우지 않는다")
     }
 
-    @Test("R-412: 같은 하루에 이미 판정했으면 이월 판정을 돌리지 않고 하루 값을 그대로 돌려준다")
+    @Test("R-412: 저장소에 같은 하루의 판정 시각이 있으면 이월 판정을 돌리지 않고 하루 값을 그대로 돌려준다")
     func activateSkipsCarryAlreadyJudgedToday() throws {
         let repository = try Self.repository([Fake.task(1, deadline: Fake.day("2027-01-10"))])
+        try repository.applyCarryJudgment(.empty, judgedAt: Fake.at(2027, 1, 13, 7, 0))
         let schedule = SessionAssembly.Schedule(
             today: Fake.day("2027-01-13"), budget: .answered(day: Fake.day("2027-01-13"), minutes: 120),
-            carryJudgedAt: Fake.at(2027, 1, 13, 7, 0), revertedIDs: [1])
+            revertedIDs: [1])
 
         let activated = try SessionAssembly.activate(
             .initial, Fake.input(try repository.tasks()), dayStart: Fake.sixAM, schedule: schedule, in: repository,
             reload: repository.tasks)
 
         #expect(try repository.tasks().map(\.dueDecision) == [false])
+        #expect(try repository.lastCarryJudgment() == Fake.at(2027, 1, 13, 7, 0))
         #expect(activated.schedule == schedule)
         #expect(activated.session.taskID == 1)
     }
@@ -172,14 +173,14 @@ private final class ReloadCounter {
             at: Self.noon)
         let schedule = SessionAssembly.Schedule(
             today: Fake.day("2027-01-13"), budget: .answered(day: Fake.day("2027-01-13"), minutes: 120),
-            carryJudgedAt: nil, revertedIDs: [])
+            revertedIDs: [])
 
-        let activated = try SessionAssembly.activate(
+        _ = try SessionAssembly.activate(
             .initial, Fake.input(try repository.tasks(), now: Self.nextMorning), dayStart: Fake.sixAM,
             schedule: schedule, in: repository, reload: repository.tasks)
 
         #expect(try repository.tasks().map(\.dueDecision) == [false])
-        #expect(activated.schedule?.carryJudgedAt == Self.nextMorning)
+        #expect(try repository.lastCarryJudgment() == Self.nextMorning)
     }
 
     @Test("FR-11 R-119: 이월 표시 쓰기가 실패하면 같은 오류를 던진다")
@@ -190,8 +191,7 @@ private final class ReloadCounter {
                 title: "가짜 마감 지난 할 일", deadline: Fake.day("2027-01-10"), estMin: nil, recurrence: .none, weekday: nil),
             cycleDay: nil, at: Self.noon)
         let before = try repository.tasks()
-        let schedule = SessionAssembly.Schedule(
-            today: Fake.day("2027-01-13"), budget: nil, carryJudgedAt: nil, revertedIDs: [])
+        let schedule = SessionAssembly.Schedule(today: Fake.day("2027-01-13"), budget: nil, revertedIDs: [])
 
         #expect(throws: FailingTaskRepository.Failure()) {
             try SessionAssembly.activate(
@@ -199,6 +199,64 @@ private final class ReloadCounter {
                 reload: repository.tasks)
         }
         #expect(try repository.tasks() == before)
+    }
+
+    @Test("FR-08 R-412: 지난 판정 시각은 하루 값이 아니라 저장소에서 읽어 손댄 할 일의 구간 시작으로 쓴다")
+    func activateReadsLastJudgmentFromRepository() throws {
+        let repository = try Self.repository([Fake.task(1), Fake.task(2)])
+        try repository.apply(
+            StoreBatch(newCheckpoints: [
+                NewCheckpoint(
+                    taskID: 1, notes: .empty, trigger: .quantum, elapsedMin: 5, createdAt: Fake.at(2027, 1, 13, 6, 30)),
+                NewCheckpoint(
+                    taskID: 2, notes: .empty, trigger: .quantum, elapsedMin: 5, createdAt: Fake.at(2027, 1, 13, 8, 0)),
+            ]))
+        try repository.applyCarryJudgment(.empty, judgedAt: Fake.at(2027, 1, 13, 7, 0))
+        let schedule = SessionAssembly.Schedule(today: Fake.day("2027-01-14"), budget: nil, revertedIDs: [])
+
+        _ = try SessionAssembly.activate(
+            .initial, Fake.input(try repository.tasks(), now: Self.nextMorning), dayStart: Fake.sixAM,
+            schedule: schedule, in: repository, reload: repository.tasks)
+
+        #expect(try repository.tasks().map(\.dueDecision) == [false, true], "07:00 판정 전 체크포인트는 세지 않는다")
+        #expect(try repository.lastCarryJudgment() == Self.nextMorning)
+    }
+
+    @Test("FR-08 R-412 data-model §13: 지난 판정 시각을 읽지 못하면 판정을 미루고 같은 오류를 던진다")
+    func activateRethrowsJudgmentReadFailure() throws {
+        let repository = JudgmentReadFailingRepository()
+        _ = try repository.inner.insertTask(
+            NewTask(
+                title: "가짜 마감 지난 할 일", deadline: Fake.day("2027-01-10"), estMin: nil, recurrence: .none, weekday: nil),
+            cycleDay: nil, at: Self.noon)
+        let schedule = SessionAssembly.Schedule(today: Fake.day("2027-01-13"), budget: nil, revertedIDs: [])
+
+        #expect(throws: JudgmentReadFailingRepository.Failure()) {
+            try SessionAssembly.activate(
+                .initial, Fake.input(try repository.tasks()), dayStart: Fake.sixAM, schedule: schedule,
+                in: repository, reload: repository.tasks)
+        }
+        #expect(try repository.tasks().map(\.dueDecision) == [false])
+        #expect(try repository.inner.lastCarryJudgment() == nil)
+    }
+
+    @Test("spec 005 plan 단위 3: 가용 시간을 묻지 않는 하루 값이면 카드가 없을 때 세션 모드로 고른다")
+    func settleWithoutBudgetQuestionPicksAfterCards() throws {
+        let tasks = [Fake.task(1), Fake.task(2)]
+        let input = Fake.input(tasks)
+        let schedule = SessionAssembly.Schedule(
+            today: Fake.day("2027-01-13"), budget: nil, revertedIDs: [], asksBudget: false)
+
+        #expect(SessionAssembly.mode(.empty(draft: nil), tasks: tasks, schedule: schedule) == .session)
+        #expect(SessionAssembly.settle(.initial, input, schedule: schedule).taskID == 1)
+
+        var due = tasks
+        due[1].dueDecision = true
+        #expect(
+            SessionAssembly.mode(.empty(draft: nil), tasks: due, schedule: schedule)
+                == .carryCard(taskID: 2, left: 1, reason: .touched))
+        let drafted = NotchSession.initial.picked(input)
+        #expect(SessionAssembly.settle(drafted, Fake.input(due), schedule: schedule) == drafted.clearingDraft())
     }
 
     // MARK: - 버튼 뒤(커밋 → 다시 읽기), 모드 → 고르기
@@ -241,10 +299,28 @@ private final class ReloadCounter {
         #expect(SessionAssembly.settle(.initial, input, schedule: nil).taskID == 1)
 
         let drafted = NotchSession.initial.picked(input)
-        let asking = SessionAssembly.Schedule(
-            today: Fake.day("2027-01-13"), budget: nil, carryJudgedAt: Self.noon, revertedIDs: [])
+        let asking = SessionAssembly.Schedule(today: Fake.day("2027-01-13"), budget: nil, revertedIDs: [])
         #expect(SessionAssembly.mode(drafted.timer, tasks: tasks, schedule: asking) == .askBudget)
         #expect(SessionAssembly.settle(drafted, input, schedule: asking) == drafted.clearingDraft())
         #expect(SessionAssembly.mode(drafted.timer, tasks: tasks, schedule: nil) == .session)
+    }
+}
+
+/// 지난 판정 시각 읽기만 throw하는 가짜 저장소(data-model §13 읽기 오류).
+private final class JudgmentReadFailingRepository: TaskRepository {
+    struct Failure: Error, Equatable {}
+
+    let inner = InMemoryTaskRepository()
+
+    func tasks() throws -> [MokaTask] { try inner.tasks() }
+    func insertTask(_ task: NewTask, cycleDay: LocalDay?, at: Date) throws -> MokaTask {
+        try inner.insertTask(task, cycleDay: cycleDay, at: at)
+    }
+    func checkpoints() throws -> [Checkpoint] { try inner.checkpoints() }
+    func decisions() throws -> [DecisionLogEntry] { try inner.decisions() }
+    func apply(_ batch: StoreBatch) throws { try inner.apply(batch) }
+    func lastCarryJudgment() throws -> Date? { throw Failure() }
+    func applyCarryJudgment(_ batch: StoreBatch, judgedAt: Date) throws {
+        try inner.applyCarryJudgment(batch, judgedAt: judgedAt)
     }
 }

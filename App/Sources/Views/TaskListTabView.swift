@@ -209,7 +209,7 @@ private struct TaskRow: View {
             }
             Spacer(minLength: 0)
             RankBadge(text: TaskRowText.rankBadge(rank: rank, isNext: isNext), isNext: isNext)
-            StatusBadge(status: task.status)
+            StatusBadge(status: task.status, isDue: task.dueDecision && task.status == .todo)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
@@ -262,11 +262,15 @@ private struct StreakBadge: View {
     }
 }
 
+/// 상태 배지. 이월 카드에 아직 답하지 않은 대기 할 일은 "오늘 정할 일"(확정 시안 005 11번, R-413).
 private struct StatusBadge: View {
+    static let dueText = "오늘 정할 일"
+
     let status: TaskStatus
+    var isDue = false
 
     var body: some View {
-        Text(TaskRowText.status(status))
+        Text(isDue ? Self.dueText : TaskRowText.status(status))
             .font(.system(size: 10.5))
             .padding(.horizontal, 7)
             .padding(.vertical, 1)
@@ -275,7 +279,8 @@ private struct StatusBadge: View {
     }
 
     private var foreground: AnyShapeStyle {
-        switch status {
+        if isDue { return AnyShapeStyle(MokaColors.danger) }
+        return switch status {
         case .active: AnyShapeStyle(MokaColors.textOnPrimary)
         case .done: AnyShapeStyle(.secondary)
         case .todo, .dropped: AnyShapeStyle(.primary)
@@ -283,7 +288,8 @@ private struct StatusBadge: View {
     }
 
     private var background: AnyShapeStyle {
-        switch status {
+        if isDue { return AnyShapeStyle(MokaColors.danger.opacity(0.16)) }
+        return switch status {
         case .active: AnyShapeStyle(MokaColors.mocha)
         case .todo, .dropped: AnyShapeStyle(Color(hex: 0x806E5F, opacity: 0.16))
         case .done: AnyShapeStyle(Color.clear)

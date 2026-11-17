@@ -9,15 +9,17 @@ public enum SessionAssembly {
     public struct Schedule: Equatable, Sendable {
         public var today: LocalDay
         public var budget: DayBudget?
-        public var carryJudgedAt: Date?
         /// 이번 앱 시작에서 R-111이 되돌린 할 일. 이월 판정이 돌면 비운다.
         public var revertedIDs: Set<TaskID>
+        /// 가용 시간 질문과 오늘 끝을 쓰는지(data-model §12 4·5). 가용 시간 화면이 없는 앱(plan 단위 4 전)은 false라
+        /// 카드 뒤 바로 세션이다.
+        public var asksBudget: Bool
 
-        public init(today: LocalDay, budget: DayBudget?, carryJudgedAt: Date?, revertedIDs: Set<TaskID>) {
+        public init(today: LocalDay, budget: DayBudget?, revertedIDs: Set<TaskID>, asksBudget: Bool = true) {
             self.today = today
             self.budget = budget
-            self.carryJudgedAt = carryJudgedAt
             self.revertedIDs = revertedIDs
+            self.asksBudget = asksBudget
         }
     }
 
@@ -47,32 +49,15 @@ public enum SessionAssembly {
         input.tasks = try write(StoreBatch(updatedTasks: reset), over: input.tasks, in: repository, reload: reload)
         var schedule = schedule
         if var day = schedule,
-            CarryJudgment.needsRun(
-                lastJudgedAt: day.carryJudgedAt, now: input.now, dayStart: dayStart, calendar: input.calendar)
+            let judged = try judgeIfNeeded(
+                input.tasks, revertedIDs: day.revertedIDs, now: input.now, dayStart: dayStart,
+                calendar: input.calendar, in: repository, reload: reload)
         {
-            input.tasks = try judge(
-                input.tasks, lastJudgedAt: day.carryJudgedAt, revertedIDs: day.revertedIDs, now: input.now,
-                dayStart: dayStart, calendar: input.calendar, in: repository, reload: reload)
-            day.carryJudgedAt = input.now
+            input.tasks = judged
             day.revertedIDs = []
             schedule = day
         }
         return Activated(session: settle(session, input, schedule: schedule), schedule: schedule)
-    }
-
-    /// 이월 판정만(data-model §9). 지난 판정 시각은 할 일 저장소에서 읽는다. 판정이 돌았으면 true이고, 호출자는 그때
-    /// 되돌린 할 일 기억을 비운다. 쓰기가 실패하면 같은 오류를 던지고 표시와 판정 시각이 둘 다 남지 않는다.
-    public static func judgeCarry(
-        _ tasks: [MokaTask], revertedIDs: Set<TaskID>, now: Date, dayStart: DayStart, calendar: Calendar,
-        in repository: any TaskRepository, reload: () throws -> [MokaTask]
-    ) throws -> Bool {
-        let lastJudgedAt = try repository.lastCarryJudgment()
-        guard CarryJudgment.needsRun(lastJudgedAt: lastJudgedAt, now: now, dayStart: dayStart, calendar: calendar)
-        else { return false }
-        _ = try judge(
-            tasks, lastJudgedAt: lastJudgedAt, revertedIDs: revertedIDs, now: now, dayStart: dayStart,
-            calendar: calendar, in: repository, reload: reload)
-        return true
     }
 
     /// 버튼 뒤 쓰기: `SessionCommit` → 시작이면 그 하루를 `last_start_day`로 쓴다(data-model §6) → `tasks()` 다시 읽기.
@@ -100,17 +85,27 @@ public enum SessionAssembly {
         return session.picked(input)
     }
 
-    /// 꺼짐이면 늘 세션. 켜짐이면 data-model §12 표.
+    /// 꺼짐이면 늘 세션. 켜짐이면 data-model §12 표이고, 가용 시간을 묻지 않으면 질문·오늘 끝 대신 세션이다.
     public static func mode(_ timer: NotchTimer, tasks: [MokaTask], schedule: Schedule?) -> NotchMode {
         guard let schedule else { return .session }
-        return NotchMode.of(
+        let mode = NotchMode.of(
             storageAvailable: true, timer: timer, tasks: tasks, budget: schedule.budget, today: schedule.today)
+        guard !schedule.asksBudget else { return mode }
+        switch mode {
+        case .askBudget, .dayEnd: return .session
+        case .storageUnavailable, .session, .carryCard: return mode
+        }
     }
 
-    private static func judge(
-        _ tasks: [MokaTask], lastJudgedAt: Date?, revertedIDs: Set<TaskID>, now: Date, dayStart: DayStart,
-        calendar: Calendar, in repository: any TaskRepository, reload: () throws -> [MokaTask]
-    ) throws -> [MokaTask] {
+    /// 지난 판정 시각을 할 일 저장소에서 읽어 하루가 바뀌었으면 판정하고 다시 읽은 목록을, 아니면 nil을 돌려준다.
+    /// 읽기가 실패하면 판정을 미루고 같은 오류를 던진다(data-model §13의 `carry_judged_at` 읽기 오류 예외).
+    private static func judgeIfNeeded(
+        _ tasks: [MokaTask], revertedIDs: Set<TaskID>, now: Date, dayStart: DayStart, calendar: Calendar,
+        in repository: any TaskRepository, reload: () throws -> [MokaTask]
+    ) throws -> [MokaTask]? {
+        let lastJudgedAt = try repository.lastCarryJudgment()
+        guard CarryJudgment.needsRun(lastJudgedAt: lastJudgedAt, now: now, dayStart: dayStart, calendar: calendar)
+        else { return nil }
         let targets = CarryJudgment.targets(
             CarryJudgmentInput(
                 tasks: tasks, checkpoints: try repository.checkpoints(), decisions: try repository.decisions(),

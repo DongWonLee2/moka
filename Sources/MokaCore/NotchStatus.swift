@@ -23,6 +23,11 @@ public enum NotchStatus {
         }
     }
 
+    /// 이월 카드의 오른쪽 귀(확정 시안 005 1~3번).
+    public static func carryLabel(pickingDate: Bool) -> String {
+        pickingDate ? "날짜 바꾸기" : "오늘 정하기"
+    }
+
     public static func elapsed(minutes: Int) -> String {
         "\(minutes)분 했어요"
     }

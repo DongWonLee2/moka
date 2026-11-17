@@ -8,6 +8,8 @@ import XCTest
 final class AppLifecycleTests: XCTestCase {
     private static let seoul = AppTestFixture.seoul
     private static let noon = AppTestFixture.noon
+    /// 오늘(2027-01-13) 이미 이월 판정을 한 시각. 켤 때 판정이 끼어들지 않게 해 복구·고르기만 본다.
+    private static let judgedToday = AppTestFixture.at(2027, 1, 13, 7, 0)
 
     private static func at(_ year: Int, _ month: Int, _ day: Int, _ hour: Int, _ minute: Int) -> Date {
         AppTestFixture.at(year, month, day, hour, minute)
@@ -86,6 +88,7 @@ final class AppLifecycleTests: XCTestCase {
         var active = try repository.tasks()[1]
         active.status = .active
         try repository.apply(StoreBatch(updatedTasks: [active]))
+        try repository.applyCarryJudgment(.empty, judgedAt: Self.judgedToday)
         let state = makeState(repository)
 
         state.launch()
@@ -149,6 +152,7 @@ final class AppLifecycleTests: XCTestCase {
         var stale = try repository.inner.tasks()[0]
         stale.status = .active
         try repository.inner.apply(StoreBatch(updatedTasks: [stale]))
+        try repository.inner.applyCarryJudgment(.empty, judgedAt: Self.judgedToday)
         let state = makeState(repository)
         repository.failsApply = true
         state.launch()
@@ -168,6 +172,7 @@ final class AppLifecycleTests: XCTestCase {
         _ = try repository.inner.insertTask(
             NewTask(title: "가짜 할 일 1", deadline: nil, estMin: nil, recurrence: .none, weekday: nil), cycleDay: nil,
             at: Self.noon)
+        try repository.inner.applyCarryJudgment(.empty, judgedAt: Self.judgedToday)
         let state = makeState(repository)
         state.launch()
 
