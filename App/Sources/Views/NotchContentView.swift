@@ -28,6 +28,8 @@ struct NotchContentView: View {
     var reasonLine: String?
     var gate: GateInput?
     var keyNotice = false
+    /// 이월 카드(spec 005 R-414). 펼치면 카드, 접히면 빨간 점과 남은 수.
+    var carry: CarryCardInput?
     var onOpenKeySettings: () -> Void = {}
     let titleFocusRequest: Int
     let chip: QuantumChipInput
@@ -45,11 +47,11 @@ struct NotchContentView: View {
         let collapsedLine = showsFirstActionCollapsed ? (collapsedFirstAction ?? firstAction) : nil
         let sides = NotchLayout.collapsedSideWidths(
             timer: timer, remainingSeconds: remainingSeconds, style: style,
-            showsFirstAction: collapsedLine != nil)
+            showsFirstAction: collapsedLine != nil, showsCarry: carry != nil)
         ZStack(alignment: .top) {
             HStack(spacing: 0) {
                 if !isExpanded {
-                    CollapsedLeadingView(timer: timer, firstAction: collapsedLine)
+                    CollapsedLeadingView(timer: timer, firstAction: collapsedLine, carryLeft: carry?.left)
                         .frame(width: sides.leading, height: metrics.height)
                         .transition(sideTransition(towardHole: .trailing))
                 }
@@ -66,7 +68,8 @@ struct NotchContentView: View {
                     storageUnavailable: storageUnavailable, firstAction: firstAction,
                     titleFocusRequest: titleFocusRequest, chip: chip,
                     onEnterTitle: onEnterTitle, draftInput: draftInput, notes: notes, reasonLine: reasonLine,
-                    gate: gate, keyNotice: keyNotice, onOpenKeySettings: onOpenKeySettings, onStart: onStart,
+                    gate: gate, keyNotice: keyNotice, onOpenKeySettings: onOpenKeySettings, carry: carry,
+                    onStart: onStart,
                     onComplete: onComplete
                 )
                 .transition(reduceMotion ? .opacity : .notchEntry(scaleY: 0.6, anchor: .top))
@@ -100,7 +103,7 @@ struct NotchContentView: View {
         .offset(
             x: NotchLayout.horizontalOffset(
                 timer: timer, remainingSeconds: remainingSeconds, isExpanded: isExpanded, style: style,
-                showsFirstAction: collapsedFirstAction != nil))
+                showsFirstAction: collapsedFirstAction != nil, showsCarry: carry != nil))
     }
 
     /// 시안 v3.5: 노치는 위쪽 오목 곡선 + 아래 둥근 모서리(접힘 10pt·펼침 18pt),

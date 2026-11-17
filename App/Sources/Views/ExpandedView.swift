@@ -28,6 +28,8 @@ struct ExpandedView: View {
     /// 키 확인 한 줄(spec 004 R-316). 빈 상태·시작 전·도는 중 맨 아래.
     var keyNotice = false
     var onOpenKeySettings: () -> Void = {}
+    /// 이월 카드(spec 005 R-414). 있으면 단계 내용 대신 카드를 보인다.
+    var carry: CarryCardInput?
     let onStart: () -> Void
     let onComplete: () -> Void
     @Environment(\.colorSchemeContrast) private var contrast
@@ -61,7 +63,7 @@ struct ExpandedView: View {
             }
             .frame(width: 64, alignment: .leading)
             Spacer(minLength: 0)
-            Text(NotchStatus.label(for: timer, pending: notes.pending))
+            Text(earLabel)
                 .font(.system(size: 10.5, weight: isExpired ? .semibold : .regular))
                 .monospacedDigit()
                 .lineLimit(1)
@@ -72,8 +74,22 @@ struct ExpandedView: View {
         .frame(height: metrics.height)
     }
 
+    private var earLabel: String {
+        if let carry { return NotchStatus.carryLabel(pickingDate: carry.move != nil) }
+        return NotchStatus.label(for: timer, pending: notes.pending)
+    }
+
     @ViewBuilder
     private var stage: some View {
+        if let carry {
+            CarryCardView(input: carry)
+        } else {
+            timerStage
+        }
+    }
+
+    @ViewBuilder
+    private var timerStage: some View {
         switch timer {
         case .empty(nil):
             TitleEntryRow(focusRequest: titleFocusRequest, onSubmit: onEnterTitle)
@@ -307,7 +323,7 @@ private struct TitleBlock: View {
     }
 }
 
-private struct FirstActionLine: View {
+struct FirstActionLine: View {
     let text: String
 
     @Environment(\.colorSchemeContrast) private var contrast
@@ -363,20 +379,24 @@ struct NotchButtonStyle: ButtonStyle {
         case primary
         case secondary
         case ghost
+        /// 버리는 답(시안 005 `.b.ghost.dz`).
+        case ghostDanger
     }
 
     let kind: Kind
+    /// 작은 버튼(시안 005 날짜 고르기 `.quick .b`): 높이 22, 글자 11.5, 옆 여백 9.
+    var compact = false
 
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.panelPalette) private var palette
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 12, weight: kind == .primary && isEnabled ? .semibold : .medium))
+            .font(.system(size: compact ? 11.5 : 12, weight: kind == .primary && isEnabled ? .semibold : .medium))
             .lineLimit(1)
             .foregroundStyle(foreground)
-            .padding(.horizontal, kind == .ghost ? 6 : 12)
-            .frame(height: 24)
+            .padding(.horizontal, isGhost ? 6 : (compact ? 9 : 12))
+            .frame(height: compact ? 22 : 24)
             .background { background }
             .opacity(configuration.isPressed ? 0.8 : 1)
             .contentShape(.rect)
@@ -388,13 +408,16 @@ struct NotchButtonStyle: ButtonStyle {
         case .primary: return MokaColors.textOnPrimary
         case .secondary: return palette.foreground
         case .ghost: return palette.muted
+        case .ghostDanger: return palette.dropText
         }
     }
+
+    private var isGhost: Bool { kind == .ghost || kind == .ghostDanger }
 
     @ViewBuilder
     private var background: some View {
         let shape = RoundedRectangle(cornerRadius: ExpandedView.controlRadius)
-        if kind == .ghost {
+        if isGhost {
             Color.clear
         } else if !isEnabled {
             shape.fill(palette.controlDisabled)

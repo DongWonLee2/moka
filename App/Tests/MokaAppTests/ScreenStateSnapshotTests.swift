@@ -350,6 +350,18 @@ final class ScreenStateSnapshotTests: XCTestCase {
                 title: "가짜 할 일 A", reason: .touched, left: 3, answered: 0, move: Self.move(deadline: nil)))
     }
 
+    /// 여섯 주인 달(2026년 8월)도 판 안에 들어간다.
+    func test_R415_datePickerSixWeeks() throws {
+        let move = CarryMoveInput(
+            selected: LocalDay(text: "2026-08-01")!, today: LocalDay(text: "2026-07-30")!,
+            deadline: LocalDay(text: "2026-07-28"), calendar: Self.seoul)
+        try snapshot(
+            "22-date-picker-six-weeks", timer: .empty(draft: nil), remaining: nil, expanded: true, hovering: true,
+            carry: Self.carry(
+                title: "가짜 할 일 B, 제목이 길면 두 줄까지 보이고 나머지는 줄여요", reason: .overdue(days: 2), left: 5, answered: 0,
+                move: move))
+    }
+
     /// 시안 10-1번: 접힌 노치, 빨간 점과 "정할 일 3개".
     func test_R414_collapsedCarry() throws {
         try snapshot(

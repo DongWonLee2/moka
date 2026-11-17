@@ -202,11 +202,13 @@ struct NotchPanelRoot: View {
     var onLayoutChange: (PanelContentLayout) -> Void = { _ in }
 
     @Environment(\.openSettings) private var openSettings
+    private let calendar = GregorianCalendar.make(timeZone: .autoupdatingCurrent)
 
     var body: some View {
+        let carry = carryInput
         let offsetX = NotchLayout.horizontalOffset(
             timer: appState.timer, remainingSeconds: appState.remainingSeconds, isExpanded: appState.isExpanded,
-            style: style)
+            style: style, showsCarry: carry != nil)
         NotchContentView(
             timer: appState.timer,
             remainingSeconds: appState.remainingSeconds,
@@ -223,6 +225,7 @@ struct NotchPanelRoot: View {
             reasonLine: appState.reasonLine,
             gate: gateInput,
             keyNotice: appState.showsKeyNotice,
+            carry: carry,
             onOpenKeySettings: {
                 appState.requestKeySettings()
                 SettingsWindowRaiser.open(with: openSettings)
@@ -264,6 +267,24 @@ struct NotchPanelRoot: View {
             onLayoutChange($0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    /// 이월 카드 모드일 때만(spec 005 data-model §12).
+    private var carryInput: CarryCardInput? {
+        guard case .carryCard(_, let left, let reason) = appState.notchMode, let task = appState.carryCardTask else {
+            return nil
+        }
+        let move = appState.carryMoveDay.map { day in
+            CarryMoveInput(
+                selected: day, today: appState.logicalToday, deadline: task.deadline, calendar: calendar,
+                onPick: { appState.pickCarryMoveDay($0) }, onCancel: { appState.cancelCarryMove() },
+                onConfirm: { appState.confirmCarryMove() })
+        }
+        return CarryCardInput(
+            title: task.title, firstAction: task.firstAction, reason: CarryText.reason(reason), left: left,
+            answered: appState.carryAnswered, failed: appState.carryAnswerFailed, move: move,
+            onToday: { appState.answerCarry(.today, for: task.id) },
+            onDrop: { appState.answerCarry(.drop, for: task.id) }, onBeginMove: { appState.beginCarryMove() })
     }
 
     /// 게이트가 닫혀 있으면 넘기지 않는다.

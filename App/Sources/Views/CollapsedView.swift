@@ -2,10 +2,11 @@ import MokaCore
 import SwiftUI
 
 /// 접힌 판 왼쪽 칸: 빈 상태는 회색 점(R-001), 초안은 회색 점·회색 제목(R-104), 도는 중·시간 끝은 점·제목(넘치면 끝 "…", R-006).
-/// 초안을 고른 뒤 3초는 점·제목 대신 "이어서 · <첫 행동>"(R-109).
+/// 초안을 고른 뒤 3초는 점·제목 대신 "이어서 · <첫 행동>"(R-109). 이월 카드를 기다리면 빨간 점과 남은 수(spec 005 R-414).
 struct CollapsedLeadingView: View {
     let timer: NotchTimer
     var firstAction: String?
+    var carryLeft: Int?
 
     @Environment(\.panelPalette) private var palette
 
@@ -21,7 +22,9 @@ struct CollapsedLeadingView: View {
 
     @ViewBuilder
     private var content: some View {
-        if let firstAction, case .empty(.some) = timer {
+        if let carryLeft {
+            CollapsedCarryView(left: carryLeft)
+        } else if let firstAction, case .empty(.some) = timer {
             HStack(spacing: 6) {
                 Text("이어서 ·")
                     .font(.system(size: 10.5))

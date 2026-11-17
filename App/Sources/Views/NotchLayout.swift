@@ -23,9 +23,12 @@ enum NotchLayout {
     /// 접힌 판의 구멍 왼쪽·오른쪽 칸 폭(시안 v3.5). 빈 상태는 점 하나 자리 28pt씩,
     /// 할 일이 있으면 노치는 양쪽 64pt(R-006), 떠 있는 창은 왼쪽 104pt·오른쪽 "18:42" 52pt·"1:04:59" 64pt.
     /// 초안을 고른 뒤 3초 "이어서 · <첫 행동>"을 보이는 동안 노치는 양쪽 104pt(R-109, 사용자 결정 2026-11-04).
+    /// 이월 카드를 기다리면 왼쪽 104pt·오른쪽 28pt(spec 005 시안 10-1번).
     static func collapsedSideWidths(
-        timer: NotchTimer, remainingSeconds: Int?, style: PanelStyle, showsFirstAction: Bool = false
+        timer: NotchTimer, remainingSeconds: Int?, style: PanelStyle, showsFirstAction: Bool = false,
+        showsCarry: Bool = false
     ) -> (leading: CGFloat, trailing: CGFloat) {
+        if showsCarry { return (104, 28) }
         if case .empty(.some) = timer {
             if style == .floating { return (104, 28) }
             return showsFirstAction ? (104, 104) : (64, 64)
@@ -43,11 +46,13 @@ enum NotchLayout {
     /// 구멍 가운데가 판 자리 가운데(노치 가운데)에 오게 민다. 펼친 판은 대칭이라 0.
     /// 떠 있는 창은 맞출 노치가 없으므로 판 자체를 가운데에 둔다(0).
     static func horizontalOffset(
-        timer: NotchTimer, remainingSeconds: Int?, isExpanded: Bool, style: PanelStyle, showsFirstAction: Bool = false
+        timer: NotchTimer, remainingSeconds: Int?, isExpanded: Bool, style: PanelStyle, showsFirstAction: Bool = false,
+        showsCarry: Bool = false
     ) -> CGFloat {
         guard !isExpanded, style == .notch else { return 0 }
         let sides = collapsedSideWidths(
-            timer: timer, remainingSeconds: remainingSeconds, style: style, showsFirstAction: showsFirstAction)
+            timer: timer, remainingSeconds: remainingSeconds, style: style, showsFirstAction: showsFirstAction,
+            showsCarry: showsCarry)
         return (sides.trailing - sides.leading) / 2
     }
 
@@ -65,8 +70,8 @@ enum NotchLayout {
         let collapsedWidth = metrics.holeWidth + 2 * 104
         let width = max(collapsedWidth, ExpandedView.width) + 2 * NotchShape.earRadius + 2 * overshoot
         // 폭을 짝수로 둬야 노치 가운데에 놓을 때 왼쪽 끝이 반 포인트로 떨어지지 않는다.
-        // 높이: 가장 긴 펼친 판(시간 끝: 제목 + 두 칸 + 칩 + 직접 입력 칸 + 버튼 줄 + 이유 줄, 노치 아래 약 280pt)에 스프링 여유.
-        return CGSize(width: (width / 2).rounded(.up) * 2, height: metrics.height + 308)
+        // 높이: 가장 긴 펼친 판(여섯 주인 달의 날짜 고르기, 긴 제목, 노치 아래 약 320pt, spec 005 시안 3번)에 스프링 여유.
+        return CGSize(width: (width / 2).rounded(.up) * 2, height: metrics.height + 340)
     }
 }
 
