@@ -26,7 +26,7 @@ description: "spec 006 판단 공급자 고르기와 키 넣기 작업 목록"
 
 - 테스트 표시 이름은 R-ID로 시작한다(ADR-0003): MokaCore·앱 규칙은 `ADR-0011 R-6xx`, 온보딩 R-624~R-626은 `FR-21 R-62x`, 할 일 탭 키 확인 R-627은 `FR-14 R-627`. MokaCore는 Swift Testing, 앱 시험 번들(`MokaAppTests`)은 XCTest.
 - 타입과 함수 이름, 모양은 data-model §1·§6·§8·§9를 따른다. 거기 없는 작은 이름은 구현 PR에서 정하고 PR "가정"에 적는다.
-- 실제 판단 API를 시험·CI·`moka-sim`에서 부르지 않는다. `FakeDecisionProvider`, `InMemoryKeyStore`, `InMemoryScoreStore`만 쓴다. 실제 Keychain과 앱 DB를 시험에서 열지 않는다. 에이전트는 Keychain 값을 조회하지 않는다. `HTTPDecisionProvider`·`KeychainKeyStore`는 앱 시험 번들이 컴파일하지 않는다.
+- 실제 판단 API를 시험·CI·`moka-sim`에서 부르지 않는다. `FakeDecisionProvider`, `InMemoryKeyStore`, `InMemoryScoreStore`만 쓴다. 실제 Keychain과 앱 DB를 시험에서 열지 않는다. 에이전트는 Keychain 값을 조회하지 않는다. `KeychainKeyStore`는 앱 시험 번들이 컴파일하지 않는다. `HTTPDecisionProvider`는 ADR-0013에 따라 `MokaAppTests`만 가짜 URLProtocol 세션으로 컴파일·시험하고 실제 API는 부르지 않는다.
 - 가짜 할 일, 가짜 키, 가짜 주소만 쓴다(예: "가짜 할 일 A", `fake-key-a`, `https://example-resource.invalid`).
 - 바꾸지 않는 것: `schema/moka-schema.sql`과 스키마 계약 pytest, `moka-sim` 형식과 golden 기대 출력, `UserAction`·`SchedulerChoice` 값, `Package.swift`, CI. `@unchecked Sendable`을 쓰지 않는다.
 - 바뀐 시그니처(research R12) 때문에 기존 시험 호출을 고칠 때 기대값은 바꾸지 않는다. 기대값이 바뀌어야 통과하면 멈추고 원인을 본다.

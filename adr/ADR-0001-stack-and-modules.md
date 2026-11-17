@@ -26,7 +26,7 @@
 
 B를 추천한다(추천안 토론 3:0).
 - Package 하나: `MokaCore`(의존성 없음: 점수, 스케줄러, 상태 전이, 체크포인트, 타이머 상태기계, 긴급 규칙, DecisionProvider 프로토콜, 요청 조립과 응답 해석, 가짜 공급자, 서킷브레이커, 금지 필드 검사), `MokaStore`(GRDB 마이그레이션과 저장소, `MokaCore`에 의존), `moka-sim`(실행 파일, 위 둘에만 의존).
-- URLSession으로 실제 decision API를 부르는 공급자는 앱 타깃에만 둔다. 테스트 타깃과 `moka-sim`은 그것을 링크하지 않으므로 헌법 VIII을 빌드 구조가 지킨다.
+- URLSession으로 실제 decision API를 부르는 공급자는 앱 타깃에만 둔다. 테스트 타깃과 `moka-sim`은 그것을 링크하지 않으므로 헌법 VIII을 빌드 구조가 지킨다. (정정: 이 줄은 [ADR-0013](ADR-0013-provider-connection-tests.md)이 좁힌다(2026-11-16). `MokaAppTests`만 가짜 URLProtocol 세션으로 공급자를 컴파일한다.)
 - 앱 타깃(노치 UI, Keychain, GRDB 연결)은 얇게 둔다. 프로젝트 파일은 XcodeGen `project.yml`로 생성하고 `.pbxproj`는 커밋하지 않는다.
 - `swift-tools-version: 6.0`. Package 타깃은 Swift 6 언어 모드(엄격한 동시성).
 - 앱 타깃도 Swift 6 모드로 시작한다. DynamicNotchKit 등 (정정: DynamicNotchKit은 ADR-0008로 제외)으로 동시성 오류가 나면 **첫 실패에서** 앱 타깃만 `SWIFT_VERSION: 5.0`으로 내리고 이 ADR에 적는다(같은 원인 2회 실패로 멈추는 일을 피한다). 나중에 6으로 올리는 diff는 크므로 처음부터 6으로 둔다.
@@ -38,7 +38,7 @@ Agent 추천안 채택. 판단 이유: 사용자 위임(토론 채택안 "전부
 
 ## 포기하는 것·운영 영향
 
-- 트레이드오프: 실제 네트워크 전송 코드는 자동 시험하지 않는다. 실제 호출 확인은 사람이 자기 키로 앱을 켜서 한다.
+- 트레이드오프: 실제 네트워크 전송 코드는 자동 시험하지 않는다. 실제 호출 확인은 사람이 자기 키로 앱을 켜서 한다. (정정: 이 줄은 [ADR-0013](ADR-0013-provider-connection-tests.md)이 좁힌다(2026-11-16). 연결부는 가짜 URLProtocol로 자동 시험한다.)
 - 되돌리기: Package 안 파일 이동이라 쉽다. 언어 모드는 타깃마다 한 줄.
 
 ## 결정 검증

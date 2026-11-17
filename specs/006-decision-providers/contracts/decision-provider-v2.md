@@ -18,7 +18,7 @@ public protocol DecisionProvider: Sendable {
   - `DecisionRequest.model`은 보낼 모델 이름이다. Microsoft는 사용자가 넣은 배포 이름이고, 나머지는 질문 파일 `models`의 기준 모델 ID다. 별칭은 보내지 않는다.
 - 키는 지금처럼 별도 인자로 받는다. 요청·본문·로그에 넣지 않고 인증 헤더에만 넣는다.
 - 요청 조립, 응답 해석, 상태 코드 표는 MokaCore 순수 함수다. `SystemOneCodec`(spec 003 `TypeSafeCodec`의 새 이름, 내용 그대로)과 `OpenAIDecisionsCodec` 둘이고, `DecisionWire`가 요청 모양으로 고른다.
-- 시험·CI·`moka-sim`은 `FakeDecisionProvider`만 쓴다. 실제 공급자 `HTTPDecisionProvider`는 앱 타깃에만 있어 링크되지 않는다(ADR-0001).
+- SwiftPM 시험·`core-test`·`moka-sim`은 `FakeDecisionProvider`만 쓴다. `MokaAppTests`만 ADR-0013에 따라 가짜 URLProtocol 세션으로 `HTTPDecisionProvider`를 시험하고 실제 API는 부르지 않는다(ADR-0001, ADR-0013).
 
 ## 공급자 표
 
