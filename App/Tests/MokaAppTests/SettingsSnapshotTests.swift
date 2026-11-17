@@ -119,6 +119,52 @@ final class SettingsSnapshotTests: XCTestCase {
         try write("s28-task-tab-due", content: content, size: CGSize(width: 460, height: 450))
     }
 
+    /// 확정 시안 005 11번(가짜 예시): 가용 시간 2시간에서 노치 순서대로 쌓아 넘는 E·F에 "내일"(R-423).
+    func test_R423_taskTabTomorrow() throws {
+        let created = Date(timeIntervalSince1970: 1_800_000_000)
+        func task(
+            _ id: TaskID, _ title: String, deadline: String? = nil, estMin: Int?, skipCount: Int = 0, due: Bool = false
+        )
+            -> MokaTask
+        {
+            MokaTask(
+                id: id, title: title, deadline: deadline.flatMap(LocalDay.init(text:)), estMin: estMin,
+                recurrence: .none, weekday: nil, cycleDay: nil, firstAction: nil, status: .todo, skipCount: skipCount,
+                streak: 0, createdAt: created, dueDecision: due)
+        }
+        let rows = [
+            task(1, "가짜 할 일 A", deadline: "2026-11-18", estMin: 50, due: true),
+            task(2, "가짜 할 일 C", deadline: "2026-11-19", estMin: 40),
+            task(3, "가짜 할 일 D", deadline: "2026-11-20", estMin: 60, skipCount: 1),
+            task(4, "가짜 할 일 E", estMin: 30),
+            task(5, "가짜 할 일 F", estMin: nil),
+        ]
+        let candidates = rows.filter(PriorityOrder.isCandidate)
+        let tomorrow = TomorrowMark.ids(order: candidates, remainingMinutes: 120, defaultQuantumMin: 25)
+        XCTAssertEqual(tomorrow, [4, 5])
+        let content = VStack(spacing: 0) {
+            SettingsTabBar(selection: .constant(.tasks))
+            TaskListTabView(
+                rows: rows, nextMarkID: 2, ranks: [2: 1, 3: 2, 4: 3], tomorrowIDs: tomorrow, scope: .constant(.all),
+                order: .constant(.created),
+                selectedID: .constant(nil), checkedIDs: .constant([]), canEdit: true, onAdd: {}, onEdit: { _ in },
+                onDelete: {})
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(MokaColors.settingsWindow)
+        try write("s29-task-tab-tomorrow", content: content, size: CGSize(width: 460, height: 450))
+    }
+
+    /// 확정 시안 005 12번: 하루 시작 시각 아래 "3초 뒤 자동 시작" 칸(기본 꺼짐, R-410).
+    func test_R410_basicTabAutoStart() throws {
+        try snapshot("s30-basic-auto-start")
+    }
+
+    /// 켠 모습. 시안 12번은 꺼짐만 그리므로 켠 스위치는 시스템 모양이다.
+    func test_R410_basicTabAutoStartOn() throws {
+        try snapshot("s30-basic-auto-start-on", autoStart: true)
+    }
+
     // MARK: - 기본 탭 키 칸 상태 여섯(spec 003 R-213, SC-210, 시안 v2 1·3~7번). spec 006에서 판단 모델 칸 안으로 옮겼다.
 
     func test_R213_keyFieldNoKey() throws {
@@ -584,13 +630,15 @@ final class SettingsSnapshotTests: XCTestCase {
     private func snapshot(
         _ name: String, quantumText: String = "25", extendText: String = "10",
         decision: DecisionFieldInput = SettingsSnapshotTests.typeSafe(.noKey),
-        start: DecisionFieldStart = DecisionFieldStart(), height: CGFloat = SettingsSnapshotTests.basicHeight
+        start: DecisionFieldStart = DecisionFieldStart(), height: CGFloat = SettingsSnapshotTests.basicHeight,
+        autoStart: Bool = false
     ) throws {
         let calendar = GregorianCalendar.make(timeZone: try XCTUnwrap(TimeZone(identifier: "Asia/Seoul")))
         let tab = BasicTabView(
             quantum: Self.input(quantumText, range: Defaults.quantumMinRange),
             extend: Self.input(extendText, range: Defaults.extendMinRange),
-            dayStart: .constant(Defaults.dayStart.date(calendar: calendar)), decision: decision, decisionStart: start
+            dayStart: .constant(Defaults.dayStart.date(calendar: calendar)), autoStart: .constant(autoStart),
+            decision: decision, decisionStart: start
         )
         .environment(\.timeZone, calendar.timeZone)
         let content = VStack(spacing: 0) {

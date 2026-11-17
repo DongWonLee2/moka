@@ -537,4 +537,47 @@ final class AppGateTests: XCTestCase {
         XCTAssertEqual(relaunched.gatePhase, .asking, "기록은 메모리에만 있다")
         XCTAssertTrue(relaunched.gateRecords.isEmpty)
     }
+
+    // MARK: - 3초 뒤 자동 시작(spec 005 R-410)
+
+    func test_FR05_R410_gateAskingHoldsAutoStartUntilSkip() async throws {
+        let h = await launched(try harness(count: 1))
+        XCTAssertTrue(h.state.setAutoStart(true))
+        XCTAssertEqual(h.state.gatePhase, .asking)
+
+        h.clock.advance(seconds: 60)
+        h.state.autoStartIfDue()
+        guard case .empty(.some) = h.state.timer else { return XCTFail("게이트가 묻는 중에는 시작하지 않는다") }
+
+        h.state.skipGate()
+        h.clock.advance(seconds: 2.9)
+        h.state.autoStartIfDue()
+        guard case .empty(.some) = h.state.timer else { return XCTFail("넘긴 뒤 다시 3초를 센다") }
+        h.clock.advance(seconds: 0.1)
+        h.state.autoStartIfDue()
+        guard case .running = h.state.timer else { return XCTFail("넘긴 뒤 3초가 지나면 시작한다: \(h.state.timer)") }
+    }
+
+    func test_FR05_R410_gateCheckingHoldsAutoStart() async throws {
+        let h = await launched(try harness(count: 1))
+        XCTAssertTrue(h.state.setAutoStart(true))
+        await h.provider.setAnswer(.success(Self.answer(concrete: 0.8)), for: 1)
+        await h.provider.hold()
+        XCTAssertTrue(h.state.submitFirstAction("가짜 첫 행동"))
+        let runner = try XCTUnwrap(h.state.requestScores())
+        await h.provider.waitForHeld(count: 1)
+        XCTAssertEqual(h.state.gatePhase, .checking)
+
+        h.clock.advance(seconds: 60)
+        h.state.autoStartIfDue()
+        guard case .empty(.some) = h.state.timer else { return XCTFail("게이트가 확인하는 중에는 시작하지 않는다") }
+
+        await h.provider.releaseAll()
+        await runner.value
+        XCTAssertEqual(h.state.gatePhase, .closed)
+        h.state.autoStartIfDue()
+        guard case .running = h.state.timer else {
+            return XCTFail("통과해 닫히면 마지막 입력에서 3초가 지났으므로 시작한다: \(h.state.timer)")
+        }
+    }
 }
