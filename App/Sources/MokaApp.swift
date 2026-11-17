@@ -80,7 +80,9 @@ enum AppSettings {
         return DecisionSetup(
             bind: { ready in
                 DecisionBinding(
-                    provider: HTTPDecisionProvider(config: ready.config, url: ready.url), baseModel: ready.baseModel,
+                    provider: HTTPDecisionProvider(
+                        config: ready.config, url: ready.url, session: HTTPDecisionProvider.liveSession),
+                    baseModel: ready.baseModel,
                     requestModel: ready.requestModel)
             },
             keyStore: { KeychainKeyStore(account: $0.rawValue) }, questions: questions)

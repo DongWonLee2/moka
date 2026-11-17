@@ -3,23 +3,28 @@ import MokaCore
 import os
 
 /// HTTP 판단 공급자(spec 006 contracts/decision-provider-v2.md). 공급자 표의 줄 하나와 보낼 주소로 만든다.
-/// 앱 타깃에만 있고 시험·CI는 링크하지 않는다(SC-207). 받은 키는 인증 헤더에만 넣는다. 상태 코드와 본문은
+/// 앱 타깃과 macOS 앱 시험 번들만 컴파일한다(ADR-0013). 세션은 만드는 쪽이 넘긴다: 앱은 `liveSession`,
+/// 시험은 가짜 URLProtocol만 쓰는 세션이다. 받은 키는 인증 헤더에만 넣는다. 상태 코드와 본문은
 /// `DecisionWire.decode`가 해석하고, 시간 초과와 연결 실패만 여기서 `timeout`·`network`로 바꾼다. 세션의 자원 시간 한도가
 /// `Defaults.decisionTimeout`이라 어떤 경우에도 그 안에 답 또는 오류로 돌아온다(단일 실행기가 멈추지 않게).
 /// 리디렉트는 따라가지 않는다(research R7). 따라가지 않은 3xx는 그대로 `server(status)`가 된다.
 struct HTTPDecisionProvider: DecisionProvider {
     let config: ProviderConfig
     let url: URL
+    let session: URLSession
 
     var name: String { config.id.rawValue }
 
-    private static let session: URLSession = {
-        let configuration = URLSessionConfiguration.ephemeral
+    /// 앱이 실제 판단 API로 보낼 때 쓰는 세션.
+    static let liveSession = makeSession(.ephemeral)
+
+    /// 시간 한도와 리디렉트 거부 대리자를 붙인 세션.
+    static func makeSession(_ configuration: URLSessionConfiguration) -> URLSession {
         configuration.timeoutIntervalForRequest = Defaults.decisionTimeout
         configuration.timeoutIntervalForResource = Defaults.decisionTimeout
         configuration.urlCache = nil
         return URLSession(configuration: configuration, delegate: RedirectRefusal(), delegateQueue: nil)
-    }()
+    }
     private static let logger = Logger(subsystem: "dev.dongwon.moka", category: "decision")
 
     func decide(_ request: DecisionRequest, key: String) async throws(DecisionError) -> DecisionResponse {
@@ -36,7 +41,7 @@ struct HTTPDecisionProvider: DecisionProvider {
         let data: Data
         let response: URLResponse
         do {
-            (data, response) = try await Self.session.data(for: http)
+            (data, response) = try await session.data(for: http)
         } catch let error as URLError where error.code == .timedOut {
             throw Self.failed(.timeout)
         } catch {
