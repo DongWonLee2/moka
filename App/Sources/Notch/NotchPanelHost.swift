@@ -81,6 +81,10 @@ final class NotchPanelHost: NSObject, NSWindowDelegate {
                     self?.appState.complete()
                     self?.giveUpKey()
                 },
+                onExtendStart: { [weak self] in
+                    // 쓰기가 실패하면 확인 줄에 남아 다시 누를 수 있게 key를 둔다.
+                    if self?.appState.extendAndStart() == true { self?.giveUpKey() }
+                },
                 onBeginSetAside: { [weak self] action in
                     guard let self else { return }
                     appState.beginSetAside(action)
@@ -197,6 +201,7 @@ struct NotchPanelRoot: View {
     var style: PanelStyle = .notch
     var onStart: () -> Void = {}
     var onComplete: () -> Void = {}
+    var onExtendStart: () -> Void = {}
     var onBeginSetAside: (PendingAction) -> Void = { _ in }
     var onSetAside: (_ withNotes: Bool) -> Void = { _ in }
     var onLayoutChange: (PanelContentLayout) -> Void = { _ in }
@@ -303,6 +308,7 @@ struct NotchPanelRoot: View {
                     failed: appState.budgetAnswerFailed, onChoose: { appState.answerBudget($0) },
                     onBeginCustom: { appState.beginBudgetCustom() }, onEditCustom: { appState.editBudgetCustom($0) },
                     onSubmitCustom: { appState.submitBudgetCustom() },
+                    onCancelCustom: { appState.cancelBudgetCustom() },
                     takeFocusRequest: { appState.takeBudgetFocusRequest() }))
         case .dayEnd:
             guard let record = appState.todayBudget else { return nil }
@@ -325,7 +331,7 @@ struct NotchPanelRoot: View {
                 title: BudgetText.extendTitle(extra: needed, chip: draft.chipMin),
                 detail: BudgetText.extendDetail(remaining: remaining, newTotal: record.minutes + needed),
                 keep: BudgetText.keepRemaining(minutes: remaining), failed: appState.extendFailed,
-                onKeep: { appState.keepRemaining() }, onExtend: { appState.extendAndStart() })
+                canStart: appState.canStart, onKeep: { appState.keepRemaining() }, onExtend: onExtendStart)
         }
         return DraftBudgetInput(capNote: appState.draftCapNote, extend: extend, startFailed: appState.startFailed)
     }

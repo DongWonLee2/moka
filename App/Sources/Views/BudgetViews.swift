@@ -23,6 +23,26 @@ enum BudgetViewText {
     static let collapsedDayEnd = "오늘 끝"
 }
 
+/// 늘리기 확인 줄의 Enter 규칙(data-model §11). 확인 줄이 열린 동안 Enter는 "늘리고 시작"이다.
+enum BudgetDisplay {
+    enum CustomEnter: Equatable { case none, start, extend }
+
+    /// 시작 버튼과 같은 뗌 규칙에 더해, 직접 입력 칸이 열려 있으면 그 칸의 Enter가 늘리고 시작을 맡으므로 뗀다.
+    static func detachesExtendShortcut(
+        isEnteringTitle: Bool, gatePhase: GatePhase?, isCustomEditing: Bool, isIllustration: Bool = false
+    ) -> Bool {
+        isCustomEditing
+            || GateDisplay.detachesStartShortcut(
+                isEnteringTitle: isEnteringTitle, gatePhase: gatePhase, isIllustration: isIllustration)
+    }
+
+    /// 시작 전 "직접…" 분 칸의 Enter.
+    static func customEnter(canStart: Bool, gatePhase: GatePhase?, extendOpen: Bool) -> CustomEnter {
+        guard GateDisplay.customEnterStarts(canStart: canStart, gatePhase: gatePhase) else { return .none }
+        return extendOpen ? .extend : .start
+    }
+}
+
 /// 노치가 할 일 대신 보이는 가용 시간 화면(data-model §12 4·5).
 enum BudgetScreenInput {
     case ask(AskBudgetInput)
@@ -38,6 +58,7 @@ struct AskBudgetInput {
     var onBeginCustom: () -> Void = {}
     var onEditCustom: (String) -> Void = { _ in }
     var onSubmitCustom: () -> Void = {}
+    var onCancelCustom: () -> Void = {}
     var takeFocusRequest: () -> Bool = { false }
 }
 
@@ -61,6 +82,8 @@ struct ExtendInput {
     var detail: String
     var keep: String
     var failed = false
+    /// 직접 입력이 틀리면 꺼진다(R-004).
+    var canStart = true
     var onKeep: () -> Void = {}
     var onExtend: () -> Void = {}
 }
@@ -133,7 +156,8 @@ struct AskBudgetView<TitleRow: View>: View {
         HStack(spacing: 6) {
             BudgetHoursField(
                 text: input.customText ?? "", invalid: input.issue.map { $0 != .empty } ?? false,
-                takeFocusRequest: input.takeFocusRequest, onEdit: input.onEditCustom, onSubmit: submit)
+                takeFocusRequest: input.takeFocusRequest, onEdit: input.onEditCustom, onSubmit: submit,
+                onCancel: input.onCancelCustom)
             Text(BudgetViewText.hoursUnit)
                 .font(.system(size: 11))
                 .foregroundStyle(palette.muted)
@@ -197,6 +221,7 @@ private struct BudgetHoursField: View {
     let takeFocusRequest: () -> Bool
     let onEdit: (String) -> Void
     let onSubmit: () -> Void
+    let onCancel: () -> Void
 
     @State private var editing = ""
     @FocusState private var focused: Bool
@@ -224,6 +249,7 @@ private struct BudgetHoursField: View {
             .onChange(of: editing) { _, newValue in
                 if newValue != text { onEdit(newValue) }
             }
+            .onExitCommand(perform: onCancel)
     }
 
     private var borderColor: Color {
@@ -266,6 +292,7 @@ struct DayEndView: View {
         }
         .font(.system(size: 11))
         .foregroundStyle(palette.muted)
+        .accessibilityElement(children: .combine)
         HStack {
             Spacer(minLength: 0)
             Button(BudgetViewText.more, action: input.onMore)
@@ -281,6 +308,8 @@ struct DayEndView: View {
 /// 시안 6번: 시작 버튼 자리의 늘리기 확인(구체화 게이트와 같은 모양). Enter는 "늘리고 시작"이다.
 struct ExtendConfirmView: View {
     let input: ExtendInput
+    /// 제목 칸·게이트 칸·직접 입력 칸이 Enter를 맡으면 뗀다(`BudgetDisplay.detachesExtendShortcut`).
+    var detachesShortcut = false
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.panelPalette) private var palette
@@ -307,10 +336,13 @@ struct ExtendConfirmView: View {
                     .buttonStyle(NotchButtonStyle(kind: .secondary))
                     .illustrationUnfocusable()
                 Spacer(minLength: 0)
-                Button(action: input.onExtend) { ButtonLabel(text: BudgetViewText.extendStart, shortcut: "↵") }
-                    .buttonStyle(NotchButtonStyle(kind: .primary))
-                    .keyboardShortcut(isIllustration ? nil : .defaultAction)
-                    .illustrationUnfocusable()
+                Button(action: input.onExtend) {
+                    ButtonLabel(text: BudgetViewText.extendStart, shortcut: detachesShortcut ? nil : "↵")
+                }
+                .buttonStyle(NotchButtonStyle(kind: .primary))
+                .keyboardShortcut(detachesShortcut ? nil : .defaultAction)
+                .disabled(!input.canStart)
+                .illustrationUnfocusable()
             }
             .padding(.top, 6)
         }

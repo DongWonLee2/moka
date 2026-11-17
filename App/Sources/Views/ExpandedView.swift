@@ -176,7 +176,11 @@ struct ExpandedView: View {
             chipMin: draft.chipMin, customText: chip.customText,
             onChoose: chip.onChoose, onBeginCustom: chip.onBeginCustom, onEditCustom: chip.onEditCustom)
         if let extend = draftBudget.extend {
-            ExtendConfirmView(input: extend)
+            ExtendConfirmView(
+                input: extend,
+                detachesShortcut: BudgetDisplay.detachesExtendShortcut(
+                    isEnteringTitle: draftInput.isEnteringTitle, gatePhase: gate?.phase,
+                    isCustomEditing: chip.customText != nil, isIllustration: isIllustration))
         } else if let note = draftBudget.capNote {
             BudgetNoteText(text: note)
         }
@@ -185,7 +189,13 @@ struct ExpandedView: View {
                 CustomMinutesField(
                     text: customText, takeFocusRequest: chip.takeFocusRequest, onEdit: chip.onEditCustom
                 ) {
-                    if GateDisplay.customEnterStarts(canStart: chip.canStart, gatePhase: gate?.phase) { onStart() }
+                    switch BudgetDisplay.customEnter(
+                        canStart: chip.canStart, gatePhase: gate?.phase, extendOpen: draftBudget.extend != nil)
+                    {
+                    case .start: onStart()
+                    case .extend: draftBudget.extend?.onExtend()
+                    case .none: break
+                    }
                 }
             } else {
                 Button(NotchText.otherTask, action: draftInput.onBeginOther)

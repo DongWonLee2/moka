@@ -157,8 +157,10 @@ final class AppState {
     /// 직접 입력 값이 1~180 정수가 아니면 시작을 막는다(R-004). 시간 끝 화면은 가용 시간의 남은 분보다 긴 값과
     /// 오늘 끝과 겹친 "N분 더"도 막는다(spec 005 R-421·R-422).
     var canStart: Bool {
-        guard Self.isExpired(timer) else { return QuantumChip.startAllowed(customText: customText) }
-        return !expiredDayEnd && QuantumChip.startAllowed(customText: customText, remainingMinutes: expiredCap)
+        guard case .expired(_, let chipMin, _) = timer else { return QuantumChip.startAllowed(customText: customText) }
+        if expiredDayEnd { return false }
+        if let cap = expiredCap, chipMin > cap { return false }
+        return QuantumChip.startAllowed(customText: customText, remainingMinutes: expiredCap)
     }
 
     /// 펼침 여부. 바뀔 때는 `updateExpansion()` 한 곳에서 `withAnimation`으로 바꾼다.
@@ -240,12 +242,17 @@ final class AppState {
     private(set) var budgetRevision = 0
     /// 직접 적기 칸 글자(R-419). nil이면 칸이 닫혀 있다.
     private(set) var budgetCustomText: String?
-    private(set) var budgetAnswerFailed = false
+    /// 답 쓰기가 실패한 하루. 질문 화면이 아니거나 하루가 바뀌면 실패 줄을 보이지 않는다.
+    private var budgetAnswerFailedDay: LocalDay?
     /// 늘리기 쓰기가 실패했다. 칩·버튼을 누르거나 노치 할 일이 바뀌면 꺼진다.
     private(set) var extendFailed = false
     /// 늘린 뒤 시작 커밋이 실패했다(data-model §11). 칩·버튼을 누르거나 노치 할 일이 바뀌면 꺼진다.
     private(set) var startFailed = false
-    private(set) var moreFailed = false
+    /// "더 할래요" 쓰기가 실패한 하루. 오늘 끝 화면이 아니거나 하루가 바뀌면 실패 줄을 보이지 않는다.
+    private var moreFailedDay: LocalDay?
+
+    var budgetAnswerFailed: Bool { budgetAnswerFailedDay == logicalToday && notchMode == .askBudget }
+    var moreFailed: Bool { moreFailedDay == logicalToday && notchMode == .dayEnd }
 
     var budgetCustomIssue: BudgetInputIssue? { budgetCustomText.flatMap(BudgetInput.issue) }
 
@@ -271,8 +278,7 @@ final class AppState {
 
     /// 시간 끝과 오늘 끝이 겹침(R-422). "N분 더"를 끄고 세 버튼의 체크포인트 계기가 `day_end`다.
     var expiredDayEnd: Bool {
-        _ = budgetRevision
-        return NotchMode.expiredDayEnd(timer: timer, budgetDayRecord: budgetRecord(for: budgetDay(at: clock.now())))
+        NotchMode.expiredDayEnd(timer: timer, budgetDayRecord: budgetRecord(for: budgetDay(at: clock.now())))
     }
 
     /// 시안 7번 안내 줄: 상한 때문에 꺼진 프리셋이 있을 때.
@@ -289,10 +295,7 @@ final class AppState {
             ? BudgetText.dayEndOff(minutes: record.minutes) : BudgetText.crossDayOff(minutes: record.minutes)
     }
 
-    var todayBudget: DayBudget? {
-        _ = budgetRevision
-        return budgetRecord(for: logicalToday)
-    }
+    var todayBudget: DayBudget? { budgetRecord(for: logicalToday) }
 
     // MARK: 판단 모델(spec 003 data-model §6·§9)
 
@@ -836,7 +839,9 @@ final class AppState {
     }
 
     /// 프리셋 칩을 골랐다. 직접 입력을 그만둔다.
+    /// 시간 끝 화면에서는 남은 분보다 긴 값과 오늘 끝과 겹친 칩을 받지 않는다(spec 005 R-421·R-422).
     func chooseQuantum(_ minutes: Int) {
+        if Self.isExpired(timer), expiredDayEnd || expiredCap.map({ minutes > $0 }) ?? false { return }
         extendFailed = false
         startFailed = false
         customText = nil
@@ -909,10 +914,10 @@ final class AppState {
     func answerBudget(_ minutes: Int) -> Bool {
         guard notchMode == .askBudget else { return false }
         guard writeBudget(.answered(day: logicalToday, minutes: minutes)) else {
-            budgetAnswerFailed = true
+            budgetAnswerFailedDay = logicalToday
             return false
         }
-        budgetAnswerFailed = false
+        budgetAnswerFailedDay = nil
         budgetCustomText = nil
         budgetFocus.cancel()
         pickIfEmpty(at: clock.now())
@@ -933,6 +938,12 @@ final class AppState {
         budgetCustomText = text
     }
 
+    /// esc: 직접 적기 칸을 닫는다.
+    func cancelBudgetCustom() {
+        budgetCustomText = nil
+        budgetFocus.cancel()
+    }
+
     /// "정하기"·Enter. 틀리거나 빈 칸이면 답하지 않는다.
     @discardableResult
     func submitBudgetCustom() -> Bool {
@@ -946,7 +957,7 @@ final class AppState {
     /// 시작 커밋만 실패하면 늘린 값은 그대로 두고 한 줄을 보인다. 이제 남은 분이 칩 이상이라 다시 누르면 바로 시작한다.
     @discardableResult
     func extendAndStart() -> Bool {
-        guard let needed = extendNeeded, let record = budgetRecord(for: logicalToday) else { return false }
+        guard canStart, let needed = extendNeeded, let record = budgetRecord(for: logicalToday) else { return false }
         startFailed = false
         guard writeBudget(record.extended(by: needed)) else {
             extendFailed = true
@@ -971,10 +982,10 @@ final class AppState {
     func more() -> Bool {
         guard notchMode == .dayEnd, let record = budgetRecord(for: logicalToday) else { return false }
         guard writeBudget(record.withMore()) else {
-            moreFailed = true
+            moreFailedDay = logicalToday
             return false
         }
-        moreFailed = false
+        moreFailedDay = nil
         pickIfEmpty(at: clock.now())
         return true
     }
@@ -1633,6 +1644,7 @@ final class AppState {
 
     /// 저장된 `day_budget` 가운데 `day`의 기록. 앱 DB를 열 수 없으면 없다(R-119).
     private func budgetRecord(for day: LocalDay) -> DayBudget? {
+        _ = budgetRevision
         guard repository != nil else { return nil }
         return DayBudget.record(CoreSettings.readDayBudget(from: settings), for: day)
     }
