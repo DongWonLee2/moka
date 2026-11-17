@@ -237,8 +237,6 @@ func decisionProviderWriteFailureThrows() throws {
     #expect(throws: (any Error).self) { try CoreSettings.writeMicrosoftDeployment("fake-deploy", to: failing) }
 }
 
-// MARK: - last_start_day(spec 005 data-model §6·§13)
-
 @Test("FR-05 R-406: 마지막 시작 하루 키 이름은 last_start_day이고, 쓴 하루를 그대로 읽는다")
 func lastStartDayRoundTrip() throws {
     #expect(CoreSettings.lastStartDayKey == "last_start_day")

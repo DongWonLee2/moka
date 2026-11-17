@@ -55,7 +55,6 @@ public final class GRDBTaskRepository: TaskRepository {
         return text.flatMap(UTCTimestamp.parse)
     }
 
-    /// 표시 묶음과 `settings` 표의 판정 시각을 한 `write`로 쓴다.
     public func applyCarryJudgment(_ batch: StoreBatch, judgedAt: Date) throws {
         try db.write { db in
             try Self.write(batch, db)
@@ -71,45 +70,45 @@ public final class GRDBTaskRepository: TaskRepository {
     // MARK: - 쓰기
 
     private static func write(_ batch: StoreBatch, _ db: Database) throws {
-            for task in batch.updatedTasks {
-                guard try Self.taskExists(task.id, db) else { throw StoreError.taskNotFound(task.id) }
-                try Self.check(task)
-                try db.execute(
-                    sql: """
-                        UPDATE tasks SET title = ?, deadline = ?, est_min = ?, recurrence = ?, weekday = ?, \
-                        cycle_day = ?, first_action = ?, status = ?, skip_count = ?, streak = ?, carry_count = ?, \
-                        due_decision = ? WHERE id = ?
-                        """,
-                    arguments: Self.columns(of: task) + [task.id])
+        for task in batch.updatedTasks {
+            guard try Self.taskExists(task.id, db) else { throw StoreError.taskNotFound(task.id) }
+            try Self.check(task)
+            try db.execute(
+                sql: """
+                    UPDATE tasks SET title = ?, deadline = ?, est_min = ?, recurrence = ?, weekday = ?, \
+                    cycle_day = ?, first_action = ?, status = ?, skip_count = ?, streak = ?, carry_count = ?, \
+                    due_decision = ? WHERE id = ?
+                    """,
+                arguments: Self.columns(of: task) + [task.id])
+        }
+        for new in batch.newCheckpoints {
+            guard try Self.taskExists(new.taskID, db) else { throw StoreError.taskNotFound(new.taskID) }
+            try db.execute(
+                sql: """
+                    INSERT INTO checkpoints(task_id, done_note, next_note, trigger, elapsed_min, created_at) \
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                arguments: [
+                    new.taskID, new.notes.doneNote, new.notes.nextNote, new.trigger.rawValue, new.elapsedMin,
+                    UTCTimestamp.format(new.createdAt),
+                ])
+        }
+        for new in batch.newDecisions {
+            guard try Self.taskExists(new.taskID, db) else { throw StoreError.taskNotFound(new.taskID) }
+            if new.judgment == nil, new.modelSnapshot != nil {
+                throw StoreError.invalidValue(column: "model_snapshot")
             }
-            for new in batch.newCheckpoints {
-                guard try Self.taskExists(new.taskID, db) else { throw StoreError.taskNotFound(new.taskID) }
-                try db.execute(
-                    sql: """
-                        INSERT INTO checkpoints(task_id, done_note, next_note, trigger, elapsed_min, created_at) \
-                        VALUES (?, ?, ?, ?, ?, ?)
-                        """,
-                    arguments: [
-                        new.taskID, new.notes.doneNote, new.notes.nextNote, new.trigger.rawValue, new.elapsedMin,
-                        UTCTimestamp.format(new.createdAt),
-                    ])
-            }
-            for new in batch.newDecisions {
-                guard try Self.taskExists(new.taskID, db) else { throw StoreError.taskNotFound(new.taskID) }
-                if new.judgment == nil, new.modelSnapshot != nil {
-                    throw StoreError.invalidValue(column: "model_snapshot")
-                }
-                try db.execute(
-                    sql: """
-                        INSERT INTO decisions_log(task_id, question_version, provider, probs_json, state_hash, \
-                        model_snapshot, scheduler_choice, user_action, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """,
-                    arguments: [
-                        new.taskID, new.judgment?.questionVersion, new.judgment?.provider, new.judgment?.probsJSON,
-                        new.judgment?.stateHash, new.modelSnapshot, new.schedulerChoice.rawValue,
-                        new.userAction.rawValue, UTCTimestamp.format(new.createdAt),
-                    ])
-            }
+            try db.execute(
+                sql: """
+                    INSERT INTO decisions_log(task_id, question_version, provider, probs_json, state_hash, \
+                    model_snapshot, scheduler_choice, user_action, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                arguments: [
+                    new.taskID, new.judgment?.questionVersion, new.judgment?.provider, new.judgment?.probsJSON,
+                    new.judgment?.stateHash, new.modelSnapshot, new.schedulerChoice.rawValue,
+                    new.userAction.rawValue, UTCTimestamp.format(new.createdAt),
+                ])
+        }
     }
 
     /// `created_at`을 뺀 `tasks` 열(INSERT와 UPDATE가 같은 순서로 쓴다).

@@ -176,9 +176,7 @@ extension SimRunner {
     }
 }
 
-/// 이벤트 사이에 남는 스케줄러 값. 앱에서는 설정 키 `day_budget`과 실행 메모리(`revertedIDs`)다(data-model §9·§13).
-/// quit·relaunch를 넘어 남고, `revertedIDs`만 시작마다 새로 채운다. 이월 판정 시각은 할 일 저장소, 마지막 시작 하루는
-/// 설정 저장소에 앱과 같은 `SessionAssembly` 경계로 쓴다.
+/// 이벤트 사이에 남는 스케줄러 값.
 private struct SimDayState {
     /// 새 이벤트(`carry`·`budget`·`more`)가 있어 이월·가용 시간이 켜졌다(Q3-C).
     let scheduled: Bool

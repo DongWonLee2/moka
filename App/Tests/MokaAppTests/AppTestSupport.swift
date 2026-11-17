@@ -48,7 +48,6 @@ final class TestClock: Sendable {
         current.withLock { $0 += seconds }
     }
 
-    /// 서울 달력으로 다음 날 `hour`시 `minute`분으로 옮긴다. 하루 시작(06:00) 경계를 넘기는 시험이 쓴다.
     func advanceToNextDay(hour: Int, minute: Int = 0) {
         let calendar = AppTestFixture.seoul
         current.withLock { now in

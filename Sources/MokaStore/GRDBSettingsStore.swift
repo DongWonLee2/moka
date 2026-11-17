@@ -11,7 +11,9 @@ public final class GRDBSettingsStore: SettingsStore {
 
     public func value(for key: String) throws -> String? {
         guard key != CarryJudgmentStorage.settingsKey else { throw StoreError.invalidValue(column: "key") }
-        return try db.read { try String.fetchOne($0, sql: "SELECT value FROM settings WHERE key = ?", arguments: [key]) }
+        return try db.read {
+            try String.fetchOne($0, sql: "SELECT value FROM settings WHERE key = ?", arguments: [key])
+        }
     }
 
     public func setValue(_ value: String, for key: String) throws {

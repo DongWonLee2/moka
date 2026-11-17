@@ -58,8 +58,7 @@ enum Fake {
     }
 }
 
-/// `apply`가 늘 throw하는 가짜 저장소. 이월 판정 쓰기는 표시가 있을 때 throw하고, 표시 없는 판정 시각만은 안쪽에 쓴다.
-/// 읽기는 안쪽 메모리 저장소를 그대로 보인다.
+/// `apply`가 늘 throw하는 가짜 저장소. 읽기는 안쪽 메모리 저장소를 그대로 보인다.
 final class FailingTaskRepository: TaskRepository {
     struct Failure: Error, Equatable {}
 
@@ -74,7 +73,7 @@ final class FailingTaskRepository: TaskRepository {
     func apply(_ batch: StoreBatch) throws { throw Failure() }
     func lastCarryJudgment() throws -> Date? { try inner.lastCarryJudgment() }
     func applyCarryJudgment(_ batch: StoreBatch, judgedAt: Date) throws {
-        guard batch == .empty else { throw Failure() }
+        if batch != .empty { try apply(batch) }
         try inner.applyCarryJudgment(batch, judgedAt: judgedAt)
     }
 }

@@ -2,9 +2,6 @@ import Foundation
 import MokaCore
 import Testing
 
-// spec 005 단위 2: 조립 순서(SessionAssembly)를 거치는 저장. 이월 판정은 `TaskRepository`의 판정 경계로(data-model §9),
-// 시작 커밋의 마지막 시작 하루는 설정 키 `last_start_day`로(data-model §6). 가짜 할 일만 쓴다.
-
 private final class WriteFailingSettings: SettingsStore {
     struct Failure: Error, Equatable {}
     func value(for key: String) throws -> String? { nil }

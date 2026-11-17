@@ -357,7 +357,6 @@ final class AppState {
     @ObservationIgnored private(set) var lastRejectReason: RejectReason?
     /// 켤 때 복구(R-111)를 아직 끝내지 못함. 읽기나 쓰기가 실패하면 다음 활성화에서 다시 한다(#71).
     @ObservationIgnored private var recoveryPending = false
-    /// 이번 실행에서 R-111이 되돌린 할 일. 이월 판정 쓰기가 성공할 때 비운다(spec 005 data-model §9, Q2-A). 저장하지 않는다.
     @ObservationIgnored private var pendingRevertedIDs: Set<TaskID> = []
 
     private static let logger = Logger(subsystem: "dev.dongwon.moka", category: "timer")

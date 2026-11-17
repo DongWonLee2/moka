@@ -107,7 +107,6 @@ public enum SessionAssembly {
             storageAvailable: true, timer: timer, tasks: tasks, budget: schedule.budget, today: schedule.today)
     }
 
-    /// 대상을 계산해 표시와 판정 시각을 한 번에 쓰고(Q1-B) 다시 읽는다. 대상이 없어도 판정 시각은 쓴다.
     private static func judge(
         _ tasks: [MokaTask], lastJudgedAt: Date?, revertedIDs: Set<TaskID>, now: Date, dayStart: DayStart,
         calendar: Calendar, in repository: any TaskRepository, reload: () throws -> [MokaTask]

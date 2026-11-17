@@ -98,7 +98,6 @@ private let decisionRows: [RawRow] = [
 
 private let insertParentTask = taskRow("부모 할 일", allowed: true).sql
 
-/// spec 005 data-model §2: 부모 할 일 줄의 두 열을 고친다.
 private let carryRows: [RawRow] = [
     ("carry_count 0", "0", "0", true), ("carry_count 3", "3", "0", true), ("carry_count -1", "-1", "0", false),
     ("due_decision 1", "0", "1", true), ("due_decision 2", "0", "2", false), ("due_decision -1", "0", "-1", false),
@@ -107,7 +106,6 @@ private let carryRows: [RawRow] = [
         label: label, sql: "UPDATE tasks SET carry_count = \(count), due_decision = \(due) WHERE id = 1",
         allowed: allowed)
 }
-
 
 private func expectRow(_ row: RawRow) throws {
     let db = try TestDatabase.migratedInMemory()

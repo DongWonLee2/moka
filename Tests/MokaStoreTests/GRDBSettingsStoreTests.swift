@@ -61,7 +61,9 @@ func outOfRangeKeepsPreviousValue() throws {
 func settingsStoreRejectsCarryJudgedAt() throws {
     let db = try TestDatabase.migratedInMemory()
     let settings = GRDBSettingsStore(db)
-    #expect(throws: StoreError.invalidValue(column: "key")) { try settings.setValue("2026-10-26T07:33:20Z", for: "carry_judged_at") }
+    #expect(throws: StoreError.invalidValue(column: "key")) {
+        try settings.setValue("2026-10-26T07:33:20Z", for: "carry_judged_at")
+    }
     #expect(try settingsRowCount(db) == 0, "거부한 쓰기는 아무것도 남기지 않는다")
 
     try GRDBTaskRepository(db).applyCarryJudgment(.empty, judgedAt: Date(timeIntervalSince1970: 1_793_000_000))

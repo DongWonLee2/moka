@@ -14,7 +14,6 @@ enum TestDatabase {
         return db
     }
 
-    /// 이름이 `last`인 마이그레이션까지만 돌린 메모리 DB(업그레이드 시험).
     static func migratedInMemory(upTo last: String) throws -> DatabaseQueue {
         let db = try MokaDatabase.inMemory()
         try MokaMigrations.migrator.migrate(db, upTo: last)

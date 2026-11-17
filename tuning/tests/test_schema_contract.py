@@ -95,9 +95,6 @@ def test_scores_columns(db):
     assert columns == SCORES_COLUMNS
 
 
-# spec 005 contracts/storage-values-005.md §1~§3: tasks 두 열과 이월 답 줄.
-
-
 def insert_task(conn, **carry):
     columns = {
         "title": "가짜 할 일",

@@ -3,8 +3,7 @@ import MokaCore
 import XCTest
 
 /// spec 005 단위 1: 앱 노치 순서(T043). 단위 1은 앱 코드를 바꾸지 않고 `NotchSession`의 고르기만 바꾼다.
-/// 단위 2(T022): 점수 있는 순환, 워밍업과 `last_start_day`, "다음" 표시, 순위, 이월 판정·답 함수(활성화에는 걸지 않음).
-/// 키 없음 또는 가짜 공급자·메모리 키 보관함·미리 넣은 판단 결과, 메모리 저장소, 주입한 시계만 쓴다. 가짜 할 일만 쓴다.
+/// 키 없음(판단 설정 없음), 메모리 저장소, 주입한 시계만 쓴다. 가짜 할 일만 쓴다.
 @MainActor
 final class AppSchedulerTests: XCTestCase {
     /// 마감 순 A(1)·B(2)·C(3)·D(4).
@@ -67,11 +66,8 @@ final class AppSchedulerTests: XCTestCase {
         XCTAssertEqual(state.session.taskID, 2)
     }
 
-    // MARK: - 단위 2(T022)
-
     private static let questions = try! QuestionSet.bundled()
 
-    /// 키가 있고 판단 결과를 미리 넣은 상태. 공급자는 늘 시간 초과라 미리 넣은 결과를 덮지 않는다.
     private struct Scored {
         let repository: InMemoryTaskRepository
         let scores: InMemoryScoreStore
@@ -87,13 +83,13 @@ final class AppSchedulerTests: XCTestCase {
         }
     }
 
-    /// `rows`의 (urgency 0~1, 예상 분) 순서로 할 일을 넣는다. 마감 없음, 중요도 0, concrete 0.9, avoiding 0.
     private static func scored(_ rows: [(urgency: Double, estMin: Int?)]) throws -> Scored {
         let repository = InMemoryTaskRepository()
         let scores = InMemoryScoreStore(tasks: repository)
         for (index, row) in rows.enumerated() {
             let task = try repository.insertTask(
-                NewTask(title: "가짜 할 일 \(index + 1)", deadline: nil, estMin: row.estMin, recurrence: .none, weekday: nil),
+                NewTask(
+                    title: "가짜 할 일 \(index + 1)", deadline: nil, estMin: row.estMin, recurrence: .none, weekday: nil),
                 cycleDay: nil, at: AppTestFixture.noon)
             try scores.upsertScore(
                 TaskScore(
@@ -113,7 +109,6 @@ final class AppSchedulerTests: XCTestCase {
         return state
     }
 
-    /// 시작하고 1분 뒤 바꾸기(두 줄 없이). 바꾸기는 미룬 횟수를 올리지 않아 priority가 그대로다.
     private static func startThenSwitch(_ state: AppState, _ clock: TestClock) {
         state.start()
         clock.advance(minutes: 1)
@@ -144,7 +139,6 @@ final class AppSchedulerTests: XCTestCase {
     }
 
     func test_FR05_R406_firstPickOfDayIsWarmupAndSameDayRelaunchIsNot() async throws {
-        // 1: 급하지만 60분, 2: 덜 급하지만 20분(워밍업 후보).
         let h = try Self.scored([(1.0, 60), (0.5, 20)])
         let first = await Self.launched(h.state())
         XCTAssertEqual(first.session.taskID, 2, "하루 첫 고르기는 짧고 구체적인 할 일")
@@ -209,9 +203,6 @@ final class AppSchedulerTests: XCTestCase {
         XCTAssertEqual(state.session.taskID, predicted, "완료 뒤 실제 고르기와 같다")
     }
 
-    // MARK: - 이월 판정·답 함수(단위 2는 활성화에 걸지 않음, plan 위험 12)
-
-    /// 1: 마감 지남(2027-01-10), 2~4: 마감 순.
     private static func withOverdue() throws -> InMemoryTaskRepository {
         let repository = InMemoryTaskRepository()
         for (index, day) in ["2027-01-10", "2027-01-20", "2027-01-21", "2027-01-22"].enumerated() {

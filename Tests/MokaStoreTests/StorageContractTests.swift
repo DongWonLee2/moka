@@ -300,8 +300,6 @@ func judgmentColumnsNeedProvider(kind: StoreKind) throws {
     #expect(try repo.decisions().map(\.judgment) == [fallback])
 }
 
-// MARK: - 이월 두 열과 이월 답 줄(spec 005 data-model §1·§2·§16)
-
 @Test("FR-08 R-412 R-415: 이월 횟수와 이월 답 대기를 덮어쓰면 그대로 돌아오고, 새 할 일은 0과 거짓이다", arguments: StoreKind.allCases)
 func carryColumnsRoundTrip(kind: StoreKind) throws {
     let repo = try kind.makeStores().tasks
@@ -335,7 +333,9 @@ func negativeCarryCountIsRejected(kind: StoreKind) throws {
     #expect(try repo.decisions().isEmpty)
 }
 
-@Test("FR-08 R-416: 이월 답 줄 셋(carry_today·carry_drop·carry_move, carry_card_v1)은 모든 칸이 돌아온다", arguments: StoreKind.allCases)
+@Test(
+    "FR-08 R-416: 이월 답 줄 셋(carry_today·carry_drop·carry_move, carry_card_v1)은 모든 칸이 돌아온다", arguments: StoreKind.allCases
+)
 func carryAnswerRowsRoundTrip(kind: StoreKind) throws {
     let repo = try kind.makeStores().tasks
     let task = try repo.insertTask(newTask("가짜 할 일 A"), cycleDay: nil, at: base)
@@ -354,8 +354,6 @@ func carryAnswerRowsRoundTrip(kind: StoreKind) throws {
     #expect(rows.map(\.judgment) == [fallback, fallback, fallback])
 }
 
-// MARK: - 이월 판정 저장 경계(spec 005 data-model §9, Q1-B)
-
 private func marked(_ task: MokaTask) -> MokaTask {
     var marked = task
     marked.dueDecision = true
@@ -370,7 +368,8 @@ func carryJudgmentWritesMarksAndTime(kind: StoreKind) throws {
     let c = try repo.insertTask(newTask("가짜 할 일 C"), cycleDay: nil, at: base)
     #expect(try repo.lastCarryJudgment() == nil, "처음에는 판정 시각이 없다")
 
-    try repo.applyCarryJudgment(StoreBatch(updatedTasks: [marked(a), marked(c)]), judgedAt: base.addingTimeInterval(0.7))
+    try repo.applyCarryJudgment(
+        StoreBatch(updatedTasks: [marked(a), marked(c)]), judgedAt: base.addingTimeInterval(0.7))
 
     #expect(try repo.tasks().map(\.dueDecision) == [true, false, true])
     #expect(try repo.tasks()[1] == b)

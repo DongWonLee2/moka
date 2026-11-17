@@ -2,19 +2,16 @@ import Foundation
 import MokaCore
 import Testing
 
-/// spec 005 data-model §9(Q1-B): 이월 판정 시각 키는 `TaskRepository` 구현(GRDB·메모리)만 읽고 쓴다.
-/// 설정 저장소는 이 키를 거부하고, 소스에서 키 글자는 할 일 저장소 구현 밖에 없다. 주석 줄은 보지 않는다.
 struct CarryJudgmentBoundaryTests {
     private static let root = URL(fileURLWithPath: #filePath)
-        .deletingLastPathComponent()  // MokaCoreTests
-        .deletingLastPathComponent()  // Tests
-        .deletingLastPathComponent()  // 저장소 루트
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
 
     /// 금지 글자를 이 파일에 그대로 두면 소스 검색이 자기 자신을 잡지 않도록 이어 붙여 만든다.
     private static let keyLiteral = "\"carry_" + "judged_at\""
     private static let keyConstant = "CarryJudgmentStorage" + ".settingsKey"
 
-    /// `Sources/`와 `App/Sources/` 아래 Swift 파일의 주석이 아닌 줄에서 `needle`이 든 파일(저장소 루트 기준 경로).
     private static func files(containing needle: String) throws -> Set<String> {
         var found: Set<String> = []
         var scanned = 0
@@ -58,7 +55,6 @@ struct CarryJudgmentBoundaryTests {
         #expect(try Self.files(containing: Self.keyLiteral) == ["Sources/MokaCore/Storage.swift"])
     }
 
-    /// 메모리 할 일 저장소는 판정 시각을 키 없이 들고, 키 글자는 정의한 `Storage.swift`에만 있다.
     @Test("FR-08 R-412: 키 상수는 GRDB 할 일 저장소와 키를 거부하는 설정 저장소 두 구현만 쓴다")
     func keyConstantUsedOnlyAtBoundary() throws {
         #expect(

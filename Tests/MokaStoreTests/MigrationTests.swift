@@ -16,7 +16,9 @@ func migrationNamesAreFixed() {
 func tasksCarryColumns() throws {
     let db = try TestDatabase.migratedInMemory()
     let columns = try db.read { db in
-        try Row.fetchAll(db, sql: "PRAGMA table_info(tasks)").map { ($0["name"] as String, $0["dflt_value"] as String?) }
+        try Row.fetchAll(db, sql: "PRAGMA table_info(tasks)").map {
+            ($0["name"] as String, $0["dflt_value"] as String?)
+        }
     }
     #expect(columns.suffix(2).map(\.0) == ["carry_count", "due_decision"])
     #expect(columns.suffix(2).map(\.1) == ["0", "0"])

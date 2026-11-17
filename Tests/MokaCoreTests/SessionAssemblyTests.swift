@@ -210,7 +210,8 @@ private final class ReloadCounter {
         let drafted = NotchSession.initial.picked(Fake.input(try repository.tasks()))
         let step = try drafted.start(Fake.input(try repository.tasks()))
 
-        let session = try SessionAssembly.commit(step, in: repository, settings: InMemorySettingsStore(), reload: counter.reload)
+        let session = try SessionAssembly.commit(
+            step, in: repository, settings: InMemorySettingsStore(), reload: counter.reload)
 
         #expect(session == step.session)
         #expect(try repository.tasks().map(\.status) == [.active, .todo])
