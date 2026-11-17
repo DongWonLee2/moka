@@ -2,8 +2,8 @@ import Foundation
 import MokaCore
 import XCTest
 
-/// #72: 켤 때·활성화·버튼 뒤 순서를 `SessionAssembly`로 옮기기 전후에 같은지 고정한다. 쓰기가 실패하면 고르지 않고,
-/// 앱은 이월 판정을 아직 돌리지 않는다(spec 005 plan 단위 3 전). 가짜 할 일만 쓴다(ADR-0006).
+/// #72: 켤 때·활성화·버튼 뒤 순서를 `SessionAssembly`로 옮기기 전후에 같은지 고정한다. 쓰기가 실패하면 고르지 않는다.
+/// 가짜 할 일만 쓴다(ADR-0006).
 @MainActor
 final class AppAssemblyTests: XCTestCase {
     private static let noon = AppTestFixture.noon
@@ -74,23 +74,5 @@ final class AppAssemblyTests: XCTestCase {
         XCTAssertEqual(state.pickedAt, pickedAt)
         XCTAssertEqual(state.lastRejectReason, .storageFailed)
         XCTAssertEqual(try repository.inner.tasks().map(\.status), [.active, .todo])
-    }
-
-    func test_FR07_issue72_launchAndActivateDoNotRunCarryJudgment() throws {
-        let repository = InMemoryTaskRepository()
-        _ = try Self.insert("가짜 마감 지난 할 일", deadline: LocalDay(text: "2027-01-10"), into: repository)
-        var reverted = try Self.insert("가짜 진행 중 할 일", into: repository)
-        reverted.status = .active
-        try repository.apply(StoreBatch(updatedTasks: [reverted]))
-        let clock = TestClock(Self.noon)
-        let state = makeState(repository, clock: clock)
-
-        state.launch()
-        XCTAssertEqual(try repository.tasks().map(\.dueDecision), [false, false], "켤 때 이월 판정을 돌리지 않는다")
-
-        clock.advance(minutes: 24 * 60)
-        state.activate()
-        XCTAssertEqual(try repository.tasks().map(\.dueDecision), [false, false], "활성화에서 이월 판정을 돌리지 않는다")
-        XCTAssertEqual(state.tasks.map(\.dueDecision), [false, false])
     }
 }
