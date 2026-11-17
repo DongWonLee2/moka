@@ -70,15 +70,18 @@ final class HTTPDecisionProviderTests: XCTestCase {
     }
 
     func test_ADR0011_failureLogHasNoAddressOrKey() async throws {
+        // 다른 시험(500·3xx)의 로그와 가르려고 이 시험만 503으로 답한다.
+        FakeDecisionURLProtocol.reset(status: 503, headers: [:])
         let start = Date().addingTimeInterval(-1)
-        _ = try await decide(.typesafe)
+        let error = try await decide(.typesafe)
+        XCTAssertEqual(error, .server(status: 503))
 
         let store = try OSLogStore(scope: .currentProcessIdentifier)
         let messages = try store.getEntries(
             at: store.position(date: start),
             matching: NSPredicate(format: "subsystem == %@ AND category == %@", "dev.dongwon.moka", "decision")
         ).map(\.composedMessage)
-        XCTAssertFalse(messages.isEmpty, "실패 로그를 찾지 못하면 검사가 빈 통과가 된다")
+        XCTAssertTrue(messages.contains { $0.contains("상태 503") }, "이번 호출의 실패 로그를 찾지 못하면 검사가 빈 통과가 된다")
         for message in messages {
             for secret in [Self.key, Self.url.absoluteString, "example-resource.invalid", "/v1/systemone"] {
                 XCTAssertFalse(message.contains(secret), "로그에 \(secret)이 있다: \(message)")
