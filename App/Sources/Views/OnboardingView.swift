@@ -62,7 +62,6 @@ struct OnboardingSteps: Equatable {
     private let pages: [Page]
     private(set) var step: Int
 
-    /// `initialStep`이 범위 밖이면 첫 쪽이나 마지막 쪽으로 맞춘다(#146).
     init(hasGuide: Bool, hasKeyStep: Bool, initialStep: Int) {
         let guides = hasGuide ? GuideCard.allCases.map(Page.guide) : []
         pages = guides + (hasKeyStep ? [.key] : []) + [.context, .defaults]

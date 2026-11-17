@@ -354,7 +354,6 @@ final class AppState {
     @ObservationIgnored private var attempted: [TaskID: Attempt] = [:]
     /// 질의 실행기. 최대 하나다.
     @ObservationIgnored private var queryRunner: Task<Void, Never>?
-    /// 마지막으로 거부된 노치 동작의 로그 이유(#71). 저장 실패와 단계 거부를 나눠 본다.
     @ObservationIgnored private(set) var lastRejectReason: RejectReason?
     /// 켤 때 복구(R-111)를 아직 끝내지 못함. 읽기나 쓰기가 실패하면 다음 활성화에서 다시 한다(#71).
     @ObservationIgnored private var recoveryPending = false
@@ -1500,7 +1499,6 @@ final class AppState {
         requestScores()
     }
 
-    /// 읽기에 실패하면 이전 목록을 두고 false.
     @discardableResult
     private func reloadTasks() -> Bool {
         guard let repository else { return false }
