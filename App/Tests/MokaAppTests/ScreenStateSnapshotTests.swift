@@ -482,6 +482,32 @@ final class ScreenStateSnapshotTests: XCTestCase {
             budget: .dayEnd(DayEndInput(minutes: 120, usedSeconds: 7200, fraction: 1, failed: true)))
     }
 
+    /// 판 높이(노치 아래 340pt) 안에 새 화면이 들어가는지. 펼친 판의 맞춤 높이를 잰다.
+    func test_R433_budgetScreensFitPanelHeight() {
+        let size = NotchLayout.panelSize(metrics: Self.notchMetrics)
+        let screens: [(String, NotchContentView)] = [
+            ("ask-custom-invalid", Self.content(
+                timer: .empty(draft: nil), remaining: nil, expanded: true, metrics: Self.notchMetrics,
+                budget: Self.ask(customText: "2.3", failed: true))),
+            ("extend-failed", Self.content(
+                timer: .empty(draft: Draft(title: "가짜 할 일 C, 제목이 길면 두 줄까지 보이고 나머지는 줄여요", chipMin: 25)),
+                remaining: nil, expanded: true, metrics: Self.notchMetrics, reasonLine: Self.budgetReason,
+                draftBudget: DraftBudgetInput(extend: Self.extend(failed: true), startFailed: true))),
+            ("expired-day-end", Self.content(
+                timer: .expired(title: "가짜 할 일 C", chipMin: 10), remaining: 0, expanded: true,
+                metrics: Self.notchMetrics,
+                expiredBudget: ExpiredBudgetInput(offReason: BudgetText.dayEndOff(minutes: 135)))),
+            ("day-end-more-failed", Self.content(
+                timer: .empty(draft: nil), remaining: nil, expanded: true, metrics: Self.notchMetrics,
+                budget: .dayEnd(DayEndInput(minutes: 135, usedSeconds: 8100, fraction: 1, failed: true)))),
+        ]
+        for (name, view) in screens {
+            let height = NSHostingView(rootView: view.fixedSize()).fittingSize.height
+            print("판 높이 \(name): \(height)pt / 패널 \(size.height)pt")
+            XCTAssertLessThanOrEqual(height, size.height, name)
+        }
+    }
+
     /// 시안 10-2번: 접힌 노치, 가용 시간 질문을 기다림.
     func test_R419_collapsedAskBudget() throws {
         try snapshot(

@@ -430,11 +430,109 @@ final class AppBudgetTests: XCTestCase {
 
         h.state.beginSetAside(.skip)
         XCTAssertEqual(try h.repository.checkpoints().last?.trigger, .dayEnd)
-        switch h.state.notchMode {
-        case .carryCard, .askBudget: break
-        default: XCTFail("버튼 뒤 새 하루의 이월 카드나 가용 시간 질문이어야 한다: \(h.state.notchMode)")
-        }
+        let id = try XCTUnwrap(try h.repository.tasks().first { $0.skipCount == 1 }?.id)
+        XCTAssertEqual(
+            h.state.notchMode, .carryCard(taskID: id, left: 1, reason: .touched),
+            "켤 때 돈 판정이 표시를 붙여 버튼 뒤 새 하루의 이월 카드가 먼저 뜬다(data-model §12)")
         XCTAssertEqual(h.state.timer, .empty(draft: nil))
+    }
+
+    func test_FR10_R420_earlyFinishAfterBoundaryRefundsStartDay() throws {
+        for action in ["complete", "quit"] {
+            let h = try Self.launched(budget: Self.record(120, used: 0), at: AppTestFixture.at(2027, 1, 14, 5, 50))
+            h.state.start()
+            XCTAssertEqual(h.stored?.usedSeconds, 25 * 60, action)
+            h.clock.advance(minutes: 15)
+            XCTAssertEqual(h.state.logicalToday, Self.jan14, action)
+            if action == "complete" { h.state.complete() } else { h.state.lifecycleCheckpoint(.quit) }
+            XCTAssertEqual(h.stored?.day, Self.jan13, "\(action): 시작한 하루의 기록에 돌려준다")
+            XCTAssertEqual(h.stored?.usedSeconds, 15 * 60, "\(action): 남은 10분을 돌려받는다")
+        }
+    }
+
+    func test_FR10_R421_usingUpExtendedTimeEndsDayAgain() throws {
+        let h = try Self.launched(budget: Self.record(120, used: 110 * 60))
+        h.state.chooseQuantum(25)
+        XCTAssertTrue(h.state.extendAndStart())
+        h.clock.advance(minutes: 25)
+        h.state.tick()
+        XCTAssertTrue(h.state.expiredDayEnd, "늘린 분만큼만 커지고 상한은 그대로다")
+        h.state.complete()
+        XCTAssertEqual(h.state.notchMode, .dayEnd, "늘린 시간을 다 쓰면 다시 오늘 끝")
+    }
+
+    // MARK: - 리뷰 반영(#186)
+
+    func test_FR10_R421_R004_extendAndStartRespectsCustomValidation() throws {
+        for invalid in ["40a", ""] {
+            let h = try Self.launched(budget: Self.record(120, used: 110 * 60))
+            h.state.beginCustom()
+            h.state.editCustom("40")
+            XCTAssertEqual(h.state.extendNeeded, 30)
+            h.state.editCustom(invalid)
+            XCTAssertFalse(h.state.canStart, invalid)
+            XCTAssertFalse(h.state.extendAndStart(), "\(invalid): 직접 입력이 틀리면 늘리고 시작하지 않는다(R-004)")
+            XCTAssertEqual(h.stored?.minutes, 120, invalid)
+            XCTAssertNotNil(Self.draftChip(h.state), invalid)
+        }
+    }
+
+    func test_FR10_R421_extendConfirmEnterFollowsStartShortcutRule() {
+        XCTAssertTrue(BudgetDisplay.detachesExtendShortcut(isEnteringTitle: true, gatePhase: nil, isCustomEditing: false))
+        XCTAssertTrue(BudgetDisplay.detachesExtendShortcut(isEnteringTitle: false, gatePhase: .asking, isCustomEditing: false))
+        XCTAssertTrue(
+            BudgetDisplay.detachesExtendShortcut(isEnteringTitle: false, gatePhase: nil, isCustomEditing: true),
+            "직접 입력 칸이 열려 있으면 그 칸의 Enter가 늘리고 시작을 맡는다")
+        XCTAssertFalse(BudgetDisplay.detachesExtendShortcut(isEnteringTitle: false, gatePhase: nil, isCustomEditing: false))
+        XCTAssertTrue(
+            BudgetDisplay.detachesExtendShortcut(
+                isEnteringTitle: false, gatePhase: nil, isCustomEditing: false, isIllustration: true))
+    }
+
+    func test_FR10_R421_customEnterExtendsWhileConfirmOpen() {
+        XCTAssertEqual(BudgetDisplay.customEnter(canStart: true, gatePhase: nil, extendOpen: true), .extend)
+        XCTAssertEqual(BudgetDisplay.customEnter(canStart: true, gatePhase: nil, extendOpen: false), .start)
+        XCTAssertEqual(BudgetDisplay.customEnter(canStart: false, gatePhase: nil, extendOpen: true), .none)
+        XCTAssertEqual(BudgetDisplay.customEnter(canStart: true, gatePhase: .asking, extendOpen: true), .none)
+    }
+
+    func test_FR10_R419_R422_failureLinesClearWhenModeOrDayChanges() throws {
+        let h = try Self.launched()
+        h.settings.failsBudgetWrite = true
+        XCTAssertFalse(h.state.answerBudget(120))
+        XCTAssertTrue(h.state.budgetAnswerFailed)
+        h.clock.advanceToNextDay(hour: 7)
+        h.state.activate()
+        XCTAssertFalse(h.state.budgetAnswerFailed, "하루가 바뀌면 지운다")
+
+        let ended = try Self.launched(budget: Self.record(60, used: 60 * 60))
+        ended.settings.failsBudgetWrite = true
+        XCTAssertFalse(ended.state.more())
+        XCTAssertTrue(ended.state.moreFailed)
+        ended.clock.advanceToNextDay(hour: 7)
+        ended.state.activate()
+        XCTAssertNotEqual(ended.state.notchMode, .dayEnd)
+        XCTAssertFalse(ended.state.moreFailed, "모드가 바뀌면 지운다")
+    }
+
+    func test_FR10_R421_expiredChooseQuantumCannotExceedCap() throws {
+        let h = try Self.launched(budget: Self.record(120, used: 90 * 60))
+        h.state.start()
+        h.clock.advance(minutes: 25)
+        h.state.tick()
+        XCTAssertEqual(h.state.expiredCap, 5)
+        h.state.chooseQuantum(15)
+        XCTAssertEqual(Self.expiredChip(h.state), 5, "남은 분보다 긴 프리셋은 상태에서도 받지 않는다")
+        XCTAssertTrue(h.state.canStart)
+    }
+
+    func test_FR10_R419_escClosesBudgetCustom() throws {
+        let h = try Self.launched()
+        h.state.beginBudgetCustom()
+        h.state.editBudgetCustom("2.3")
+        h.state.cancelBudgetCustom()
+        XCTAssertNil(h.state.budgetCustomText)
+        XCTAssertEqual(h.state.notchMode, .askBudget)
     }
 
     func test_FR10_R421_R10_noCapAfterBoundaryWhenStartDayHadMore() throws {
