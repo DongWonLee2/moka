@@ -48,8 +48,14 @@ private struct ThrowingSettingsStore: SettingsStore {
     func usage() {
         #expect(BudgetText.used(seconds: 7170) == "2시간")
         #expect(BudgetText.used(seconds: 7140) == "1시간 59분")
-        #expect(BudgetText.usedFraction(DayBudget(day: Fake.day("2027-01-13"), minutes: 120, extendedMinutes: 0, usedSeconds: 3600, more: false)) == 0.5)
-        #expect(BudgetText.usedFraction(DayBudget(day: Fake.day("2027-01-13"), minutes: 120, extendedMinutes: 0, usedSeconds: 9000, more: false)) == 1)
+        #expect(
+            BudgetText.usedFraction(
+                DayBudget(day: Fake.day("2027-01-13"), minutes: 120, extendedMinutes: 0, usedSeconds: 3600, more: false)
+            ) == 0.5)
+        #expect(
+            BudgetText.usedFraction(
+                DayBudget(day: Fake.day("2027-01-13"), minutes: 120, extendedMinutes: 0, usedSeconds: 9000, more: false)
+            ) == 1)
     }
 
     @Test("FR-10 R-419 R-422: 노치 귀 글자")
@@ -60,7 +66,8 @@ private struct ThrowingSettingsStore: SettingsStore {
 }
 
 @Suite struct DayBudgetSettingsTests {
-    private let value = DayBudget(day: Fake.day("2027-01-13"), minutes: 135, extendedMinutes: 15, usedSeconds: 60, more: false)
+    private let value = DayBudget(
+        day: Fake.day("2027-01-13"), minutes: 135, extendedMinutes: 15, usedSeconds: 60, more: false)
 
     @Test("FR-10 R-419: 설정 키 이름은 day_budget(승인 5)")
     func key() {

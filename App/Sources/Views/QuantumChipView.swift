@@ -34,7 +34,9 @@ struct QuantumChipView: View {
     }
 
     private var segments: [QuantumChipSegment] {
-        off ? QuantumChip.offSegments() : QuantumChip.segments(chipMin: chipMin, customText: customText, maxMinutes: maxMinutes)
+        off
+            ? QuantumChip.offSegments()
+            : QuantumChip.segments(chipMin: chipMin, customText: customText, maxMinutes: maxMinutes)
     }
 
     private func segment(_ label: String, selected: Bool, enabled: Bool, action: @escaping () -> Void) -> some View {
@@ -44,7 +46,8 @@ struct QuantumChipView: View {
                 .monospacedDigit()
                 .lineLimit(1)
                 .foregroundStyle(
-                    selected ? MokaColors.textOnPrimary : (enabled ? palette.segmentText : palette.textDisabled))
+                    selected ? MokaColors.textOnPrimary : (enabled ? palette.segmentText : palette.textDisabled)
+                )
                 .frame(maxWidth: .infinity)
                 .frame(height: 22)
                 .background {

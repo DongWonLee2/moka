@@ -66,7 +66,9 @@ struct ExpiredView: View {
             .buttonStyle(NotchButtonStyle(kind: .primary))
             .keyboardShortcut(completeIsDefault && !isIllustration ? .defaultAction : nil)
         }
-        if let message = QuantumChip.customIssueMessage(customText: chip.customText, remainingMinutes: budget.maxMinutes) {
+        if let message = QuantumChip.customIssueMessage(
+            customText: chip.customText, remainingMinutes: budget.maxMinutes)
+        {
             CustomIssueText(message: message)
         }
     }

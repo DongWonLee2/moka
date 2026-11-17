@@ -1674,7 +1674,8 @@ final class AppState {
     @discardableResult
     private func send(_ event: TimerEvent) -> TransitionResult {
         transition(event) { session, now in
-            session.timer.apply(event, at: now, defaultQuantumMin: defaultQuantumMin, extendMin: expiredChipMin(at: now))
+            session.timer.apply(
+                event, at: now, defaultQuantumMin: defaultQuantumMin, extendMin: expiredChipMin(at: now))
         }
     }
 

@@ -56,9 +56,10 @@ struct NotchContentView: View {
             HStack(spacing: 0) {
                 if !isExpanded {
                     CollapsedLeadingView(
-                        timer: timer, firstAction: collapsedLine, carryLeft: carry?.left, budget: budget)
-                        .frame(width: sides.leading, height: metrics.height)
-                        .transition(sideTransition(towardHole: .trailing))
+                        timer: timer, firstAction: collapsedLine, carryLeft: carry?.left, budget: budget
+                    )
+                    .frame(width: sides.leading, height: metrics.height)
+                    .transition(sideTransition(towardHole: .trailing))
                 }
                 Color.clear.frame(width: metrics.holeWidth, height: metrics.height)
                 if !isExpanded {
