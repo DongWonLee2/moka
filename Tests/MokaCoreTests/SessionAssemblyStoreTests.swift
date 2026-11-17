@@ -34,7 +34,7 @@ private final class WriteFailingSettings: SettingsStore {
     @Test("FR-08 R-412 SC-406: 활성화의 이월 판정은 표시와 판정 시각을 할 일 저장소에 함께 쓴다")
     func activateWritesJudgmentThroughRepository() throws {
         let repository = try Self.repository([Self.task("가짜 마감 지난 할 일", deadline: "2027-01-10"), Self.task("가짜 할 일 B")])
-        let schedule = SessionAssembly.Schedule(today: Self.today, budget: nil, carryJudgedAt: nil, revertedIDs: [])
+        let schedule = SessionAssembly.Schedule(today: Self.today, budget: nil, revertedIDs: [])
 
         _ = try SessionAssembly.activate(
             .initial, Fake.input(try repository.tasks()), dayStart: Fake.sixAM, schedule: schedule, in: repository,
