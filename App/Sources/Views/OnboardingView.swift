@@ -342,7 +342,7 @@ struct OnboardingView: View {
                     .labelsHidden()
                     .accessibilityLabel(title)
                     .multilineTextAlignment(.trailing)
-                    .frame(width: 52)
+                    .frame(width: BasicTabView.minutesFieldWidth)
                 Text("분")
                     .font(.system(size: 12))
             }

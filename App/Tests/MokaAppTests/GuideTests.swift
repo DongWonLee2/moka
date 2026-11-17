@@ -175,6 +175,11 @@ final class GuideTests: XCTestCase {
         XCTAssertFalse(GateDisplay.showsEditableField(phase: .closed, isIllustration: false))
     }
 
+    func test_R710_illustrationButtonsTakeNoKeyboardFocus() {
+        XCTAssertTrue(GateDisplay.removesButtonFocus(isIllustration: true))
+        XCTAssertFalse(GateDisplay.removesButtonFocus(isIllustration: false))
+    }
+
     func test_R713_sheetStartsAtFirstOfThree() {
         let state = GuideSheetState()
         XCTAssertEqual(state.index, 1)

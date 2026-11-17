@@ -34,6 +34,15 @@ final class SnapshotSanityTests: XCTestCase {
         XCTAssertNil(SnapshotSanity.notchBoardIssue(light: light, dark: dark, board: Self.board))
     }
 
+    func test_notchBoardIssue_ignoresDrawingOutsideBoard() throws {
+        let (light, dark) = try render(
+            VStack(spacing: 20) {
+                Color.black.frame(width: 120, height: 32)
+                Circle().fill(Color(red: 1, green: 0.5, blue: 0)).frame(width: 8, height: 8)
+            })
+        XCTAssertNotNil(SnapshotSanity.notchBoardIssue(light: light, dark: dark, board: Self.board))
+    }
+
     /// 판 색이 테마와 무관하면(떠 있는 창인데 늘 검정) 떠 있는 창 단언이 걸린다.
     func test_floatingBoardIssue_rejectsThemeIndependentBoard() throws {
         let (light, dark) = try render(Color.black.frame(width: 120, height: 32))

@@ -145,16 +145,19 @@ struct ExpandedView: View {
             } else {
                 Button(NotchText.otherTask, action: draftInput.onBeginOther)
                     .buttonStyle(NotchButtonStyle(kind: .ghost))
+                    .illustrationUnfocusable()
                 Button(NotchText.newTask, action: draftInput.onBeginNewTitle)
                     .buttonStyle(NotchButtonStyle(kind: .ghost))
                     .disabled(draftInput.isEnteringTitle)
                     .accessibilityLabel("새 할 일")
+                    .illustrationUnfocusable()
             }
             Spacer(minLength: 0)
             Button(action: onStart) {
                 ButtonLabel(text: NotchText.start, shortcut: GateDisplay.startShortcutMark(gatePhase: gate?.phase))
             }
             .buttonStyle(NotchButtonStyle(kind: .primary))
+            .illustrationUnfocusable()
             // 제목 칸이나 게이트 칸이 열려 있으면 Enter는 그 칸의 것이다. 시작까지 함께 부르지 않게 단축키를 뗀다.
             .keyboardShortcut(
                 GateDisplay.detachesStartShortcut(
@@ -346,7 +349,8 @@ struct ButtonLabel: View {
 
     var body: some View {
         HStack(spacing: 5) {
-            Text(text)
+            // "N분 더"처럼 숫자가 든 이름이 숫자마다 폭이 달라지지 않게 한다(PR #60 리뷰).
+            Text(text).monospacedDigit()
             if let shortcut {
                 Text(shortcut).font(.system(size: 10)).opacity(0.7)
             }

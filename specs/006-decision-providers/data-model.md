@@ -84,6 +84,20 @@
 | `https://example-resource.invalid/openai` | `path`(Microsoft) |
 | `example-resource.invalid` | `unparseable` |
 
+경계값(#149). 지금 동작을 기대 동작으로 정하고 `EndpointRuleTests`에 고정한다.
+
+| 입력 | 결과 | 보내는 곳 |
+|---|---|---|
+| `https://[FE80::1]:8443/` | 받음, `https://[fe80::1]:8443` | `fe80::1`(`host(of:)`와 같은 소문자) |
+| `https://example%2Dresource.invalid` | 받음, `https://example%2dresource.invalid` | `example-resource.invalid` |
+| `https://EXAMPLE%2dresource.invalid` | 받음, 위와 같은 주소 | `example-resource.invalid` |
+| `http://[fe80::1%25en0]:8080` | `scheme`(link-local은 loopback이 아님) | - |
+| `http://[::1%25lo0]:8080` | `scheme`(zone id가 붙으면 loopback 목록과 맞지 않음) | - |
+| `https://[FE80::1%25EN0]:8080` | 받음, `https://[fe80::1%25en0]:8080` | `fe80::1%en0`(zone id까지 보임) |
+
+- 퍼센트 인코딩의 16진수는 대소문자가 같은 글자를 뜻하므로(RFC 3986 2.1) 소문자로 바꿔도 같은 주소다.
+- zone id는 ASCII 소문자로 바뀐다. macOS 인터페이스 이름은 소문자라 같은 곳을 가리킨다.
+
 ## 5. 질문 파일 v2
 
 형식과 읽기 규칙은 contracts/questions-json-v2.md. 읽은 값:
