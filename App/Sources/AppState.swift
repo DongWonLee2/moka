@@ -1433,8 +1433,12 @@ final class AppState {
         isPinnedOpen = pinnedOpenAfter(event, result: result, from: previous, to: timer, wasPinned: isPinnedOpen)
         updateExpansion()
 
+        lastRejectReason =
+            switch result {
+            case .applied: nil
+            case .rejected(let reason): reason
+            }
         if case .rejected(let reason) = result {
-            lastRejectReason = reason
             Self.logger.notice(
                 "거부 \(Self.eventName(event), privacy: .public) in \(after, privacy: .public): \(String(describing: reason), privacy: .public)"
             )
