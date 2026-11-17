@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import MokaCore
 import XCTest
@@ -117,6 +118,70 @@ final class AppAutoStartTests: XCTestCase {
 
         Self.wait(h, 3)
         XCTAssertEqual(Self.runningQuantum(h.state), 25, "닫은 뒤 3초가 지나면 시작한다")
+    }
+
+    func test_FR05_R410_wakeRestartsCount() throws {
+        let center = NotificationCenter()
+        let repository = FailingAfterStartRepository()
+        _ = try repository.insertTask(
+            NewTask(title: "가짜 할 일 1", deadline: nil, estMin: nil, recurrence: .none, weekday: nil), cycleDay: nil,
+            at: Self.created)
+        let settings = BudgetWriteFailingSettings()
+        try CoreSettings.writeAutoStart(true, to: settings)
+        let clock = TestClock(AppTestFixture.noon)
+        let state = makeState(repository, settings: settings, clock: clock, workspaceCenter: center)
+        state.launch()
+        let h = Harness(state: state, repository: repository, settings: settings, clock: clock, budget: nil)
+
+        h.clock.advance(seconds: 2)
+        center.post(name: NSWorkspace.didWakeNotification, object: nil)
+        Self.wait(h, 2.9)
+        XCTAssertNotNil(Self.draftChip(state), "깨어나면 다시 3초를 센다")
+        Self.wait(h, 0.1)
+        XCTAssertEqual(Self.runningQuantum(state), 25)
+    }
+
+    func test_FR05_R410_defaultQuantumChangeRestartsCount() throws {
+        let h = try Self.launched()
+        Self.wait(h, 2)
+        try QuantumSettings.writeDefault(15, to: h.settings)
+        h.state.defaultQuantumChanged()
+        Self.wait(h, 2.9)
+        XCTAssertNotNil(Self.draftChip(h.state), "설정에서 기본 작업 시간을 바꾸면 다시 3초를 센다")
+        Self.wait(h, 0.1)
+        XCTAssertNotNil(Self.runningQuantum(h.state))
+    }
+
+    // MARK: - 일정(autoStartDue)
+
+    func test_FR05_R410_dueIsDraftShownPlusDelayAndRearmsOnInput() throws {
+        let h = try Self.launched()
+        XCTAssertEqual(h.state.autoStartDue, AppTestFixture.noon.addingTimeInterval(3), "초안이 뜬 시각 + 3초")
+        h.clock.advance(seconds: 1)
+        h.state.chooseQuantum(15)
+        XCTAssertEqual(h.state.autoStartDue, AppTestFixture.noon.addingTimeInterval(4), "입력하면 다시 건다")
+    }
+
+    func test_FR05_R410_dueIsNilWhileConfirmOrFailedOrTried() throws {
+        let h = try Self.launched(budget: Self.record(60, used: 50 * 60))
+        XCTAssertNotNil(h.state.autoStartDue)
+        h.state.chooseQuantum(25)
+        XCTAssertNil(h.state.autoStartDue, "늘리기 확인 줄이 열리면 걸지 않는다")
+
+        h.repository.failsApply = true
+        XCTAssertFalse(h.state.extendAndStart())
+        XCTAssertNil(h.state.autoStartDue, "시작 실패 문구가 떠 있으면 걸지 않는다")
+
+        h.state.chooseQuantum(25)
+        XCTAssertNotNil(h.state.autoStartDue)
+        Self.wait(h, 3)
+        XCTAssertNotNil(Self.draftChip(h.state), "시작 커밋이 실패해 초안에 머문다")
+        XCTAssertNil(h.state.autoStartDue, "이미 시도했으면 입력이 있을 때까지 걸지 않는다")
+    }
+
+    func test_FR05_R410_dueIsNilWhenOff() throws {
+        let h = try Self.launched(autoStart: false)
+        XCTAssertNil(h.state.autoStartDue)
     }
 
     // MARK: - 모드: 카드·질문·오늘 끝
