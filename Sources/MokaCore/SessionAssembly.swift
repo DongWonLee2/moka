@@ -75,7 +75,7 @@ public enum SessionAssembly {
         return true
     }
 
-    /// 버튼 뒤 쓰기: `SessionCommit` → `tasks()` 다시 읽기 → 시작이면 그 하루를 `last_start_day`로 쓴다(data-model §6).
+    /// 버튼 뒤 쓰기: `SessionCommit` → 시작이면 그 하루를 `last_start_day`로 쓴다(data-model §6) → `tasks()` 다시 읽기.
     /// 설정 쓰기가 실패해도 워밍업이 한 번 더 걸릴 뿐이라 던지지 않고 `settingsFailed`로 알린다.
     /// 고르기(`settle`)는 호출자가 화면 전이를 맞춘 뒤 부른다.
     public static func commit(
@@ -83,7 +83,6 @@ public enum SessionAssembly {
         reload: () throws -> [MokaTask], settingsFailed: (any Error) -> Void = { _ in }
     ) throws -> NotchSession {
         let session = try SessionCommit.commit(step, to: repository)
-        _ = try reload()
         if let day = step.startDay {
             do {
                 try CoreSettings.writeLastStartDay(day, to: settings)
@@ -91,6 +90,7 @@ public enum SessionAssembly {
                 settingsFailed(error)
             }
         }
+        _ = try reload()
         return session
     }
 

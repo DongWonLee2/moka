@@ -166,7 +166,7 @@ final class AppSchedulerTests: XCTestCase {
         XCTAssertEqual(state.session.memory.pickedBy, .warmupV1)
     }
 
-    func test_FR05_R407_US1_8_expiredKeepsButtonsWithoutOtherTask() throws {
+    func test_FR05_R407_US1_8_expiredKeepsSameTaskAndRestartWithoutOtherTaskPicker() throws {
         let clock = TestClock(AppTestFixture.noon)
         let state = makeState(try Self.seeded(), clock: clock)
         state.launch()
@@ -174,6 +174,7 @@ final class AppSchedulerTests: XCTestCase {
         clock.advance(minutes: 30)
         state.tick()
         guard case .expired = state.session.timer else { return XCTFail("시간 끝이 아니다: \(state.session.timer)") }
+        XCTAssertTrue(state.canStart, "시간 끝 화면의 \"N분 더\"는 그대로 누를 수 있다")
         state.beginOtherTask()
         XCTAssertFalse(state.isPickingOtherTask, "시간 끝 화면에는 다른 할 일 고르기가 없다")
         XCTAssertEqual(state.session.taskID, 1, "시간 끝에는 고르지 않고 같은 할 일")
@@ -242,7 +243,9 @@ final class AppSchedulerTests: XCTestCase {
         clock.advanceToNextDay(hour: 7)
         XCTAssertTrue(state.judgeCarryIfNeeded())
 
-        XCTAssertEqual(try repository.tasks().first { $0.id == other.id }?.dueDecision, true)
+        XCTAssertEqual(
+            try repository.tasks().map(\.dueDecision), [false, false, false, false, true],
+            "마감 지난 대기 할 일만 표시하고, 완료한 할 일과 마감 전 할 일은 그대로")
         XCTAssertEqual(try repository.lastCarryJudgment(), AppTestFixture.at(2027, 1, 14, 7, 0))
         XCTAssertNil(state.ranks[other.id], "이월 답 대기는 순위에서 빠진다")
         XCTAssertFalse(state.otherTaskItems.contains { $0.id == other.id }, "다른 할 일 목록에서도 빠진다")
