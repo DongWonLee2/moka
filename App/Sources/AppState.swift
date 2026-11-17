@@ -272,7 +272,6 @@ final class AppState {
     /// 시간 끝과 오늘 끝이 겹침(R-422). "N분 더"를 끄고 세 버튼의 체크포인트 계기가 `day_end`다.
     var expiredDayEnd: Bool {
         _ = budgetRevision
-        guard repository != nil else { return false }
         return NotchMode.expiredDayEnd(timer: timer, budgetDayRecord: budgetRecord(for: budgetDay(at: clock.now())))
     }
 
@@ -290,7 +289,6 @@ final class AppState {
             ? BudgetText.dayEndOff(minutes: record.minutes) : BudgetText.crossDayOff(minutes: record.minutes)
     }
 
-    /// 오늘 기록(오늘 끝 화면).
     var todayBudget: DayBudget? {
         _ = budgetRevision
         return budgetRecord(for: logicalToday)
@@ -1628,9 +1626,8 @@ final class AppState {
         input.draftChipCap = budgetCap(for: today)
         var ticked = session.timer
         _ = ticked.apply(.tick, at: now, defaultQuantumMin: defaultQuantumMin, extendMin: extendMin)
-        input.dayEndExpired =
-            repository != nil
-            && NotchMode.expiredDayEnd(timer: ticked, budgetDayRecord: budgetRecord(for: budgetDay(at: now)))
+        input.dayEndExpired = NotchMode.expiredDayEnd(
+            timer: ticked, budgetDayRecord: budgetRecord(for: budgetDay(at: now)))
         return input
     }
 

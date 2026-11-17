@@ -48,7 +48,7 @@ public enum BudgetText {
 
     /// 오늘 쓴 시간. 가까운 분으로 반올림한다.
     public static func used(seconds: Int) -> String {
-        duration(minutes: (max(0, seconds) + 30) / 60)
+        duration(minutes: (seconds + 30) / 60)
     }
 
     /// 오늘 쓴 시간 막대의 채움(0~1).
