@@ -23,6 +23,17 @@ private final class WriteFailingSettings: SettingsStore {
         NewTask(title: title, deadline: deadline.map(Fake.day), estMin: nil, recurrence: .none, weekday: nil)
     }
 
+    /// 하루 값을 켠 활성화. 하루는 `now`가 속한 하루다.
+    private static func activate(
+        _ repository: any TaskRepository, now: Date, revertedIDs: Set<TaskID>
+    ) throws -> SessionAssembly.Activated {
+        let today = DayBoundary.day(containing: now, dayStart: Fake.sixAM, calendar: Fake.seoul)
+        return try SessionAssembly.activate(
+            .initial, Fake.input(try repository.tasks(), now: now), dayStart: Fake.sixAM,
+            schedule: SessionAssembly.Schedule(today: today, budget: nil, revertedIDs: revertedIDs),
+            in: repository, reload: repository.tasks)
+    }
+
     private static func dayInput(_ tasks: [MokaTask], now: Date = noon, today: LocalDay = today) -> SessionInput {
         var input = Fake.input(tasks, now: now)
         input.today = today
@@ -49,17 +60,13 @@ private final class WriteFailingSettings: SettingsStore {
         let repository = try Self.repository([Self.task("가짜 마감 지난 할 일", deadline: "2027-01-10")])
         try repository.applyCarryJudgment(.empty, judgedAt: Fake.at(2027, 1, 13, 7, 0))
 
-        let sameDay = try SessionAssembly.judgeCarry(
-            try repository.tasks(), revertedIDs: [], now: Self.noon, dayStart: Fake.sixAM, calendar: Fake.seoul,
-            in: repository, reload: repository.tasks)
-        #expect(sameDay == false)
+        let sameDay = try Self.activate(repository, now: Self.noon, revertedIDs: [1])
+        #expect(sameDay.schedule?.revertedIDs == [1], "판정이 돌지 않으면 되돌린 할 일 기억을 비우지 않는다")
         #expect(try repository.tasks().map(\.dueDecision) == [false])
         #expect(try repository.lastCarryJudgment() == Fake.at(2027, 1, 13, 7, 0))
 
-        let nextDay = try SessionAssembly.judgeCarry(
-            try repository.tasks(), revertedIDs: [], now: Self.nextMorning, dayStart: Fake.sixAM,
-            calendar: Fake.seoul, in: repository, reload: repository.tasks)
-        #expect(nextDay == true)
+        let nextDay = try Self.activate(repository, now: Self.nextMorning, revertedIDs: [1])
+        #expect(nextDay.schedule?.revertedIDs == [], "판정이 돌면 비운다")
         #expect(try repository.tasks().map(\.dueDecision) == [true])
         #expect(try repository.lastCarryJudgment() == Self.nextMorning)
     }
@@ -67,10 +74,8 @@ private final class WriteFailingSettings: SettingsStore {
     @Test("FR-08 R-412: 판정은 이번 앱 시작에서 되돌린 할 일을 손댄 할 일로 센다")
     func judgeCarryCountsRevertedTasks() throws {
         let repository = try Self.repository([Self.task("가짜 할 일 A"), Self.task("가짜 할 일 B")])
-        let ran = try SessionAssembly.judgeCarry(
-            try repository.tasks(), revertedIDs: [2], now: Self.noon, dayStart: Fake.sixAM, calendar: Fake.seoul,
-            in: repository, reload: repository.tasks)
-        #expect(ran)
+        let ran = try Self.activate(repository, now: Self.noon, revertedIDs: [2])
+        #expect(ran.schedule?.revertedIDs == [])
         #expect(try repository.tasks().map(\.dueDecision) == [false, true])
     }
 
@@ -81,9 +86,7 @@ private final class WriteFailingSettings: SettingsStore {
             Self.task("가짜 마감 지난 할 일", deadline: "2027-01-10"), cycleDay: nil, at: Fake.at(2027, 1, 12, 12, 0))
 
         #expect(throws: FailingTaskRepository.Failure()) {
-            try SessionAssembly.judgeCarry(
-                try repository.tasks(), revertedIDs: [], now: Self.noon, dayStart: Fake.sixAM, calendar: Fake.seoul,
-                in: repository, reload: repository.tasks)
+            try Self.activate(repository, now: Self.noon, revertedIDs: [])
         }
         #expect(try repository.tasks().map(\.dueDecision) == [false])
         #expect(try repository.lastCarryJudgment() == nil)

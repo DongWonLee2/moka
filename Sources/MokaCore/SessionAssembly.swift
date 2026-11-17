@@ -60,17 +60,6 @@ public enum SessionAssembly {
         return Activated(session: settle(session, input, schedule: schedule), schedule: schedule)
     }
 
-    /// 이월 판정만(data-model §9). 판정이 돌았으면 true이고, 호출자는 그때 되돌린 할 일 기억을 비운다.
-    /// 쓰기가 실패하면 같은 오류를 던지고 표시와 판정 시각이 둘 다 남지 않는다.
-    public static func judgeCarry(
-        _ tasks: [MokaTask], revertedIDs: Set<TaskID>, now: Date, dayStart: DayStart, calendar: Calendar,
-        in repository: any TaskRepository, reload: () throws -> [MokaTask]
-    ) throws -> Bool {
-        try judgeIfNeeded(
-            tasks, revertedIDs: revertedIDs, now: now, dayStart: dayStart, calendar: calendar, in: repository,
-            reload: reload) != nil
-    }
-
     /// 버튼 뒤 쓰기: `SessionCommit` → 시작이면 그 하루를 `last_start_day`로 쓴다(data-model §6) → `tasks()` 다시 읽기.
     /// 설정 쓰기가 실패해도 워밍업이 한 번 더 걸릴 뿐이라 던지지 않고 `settingsFailed`로 알린다.
     /// 고르기(`settle`)는 호출자가 화면 전이를 맞춘 뒤 부른다.
