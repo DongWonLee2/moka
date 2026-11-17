@@ -60,7 +60,7 @@ public enum ConcreteGate {
         judge(facts).phase
     }
 
-    /// 그 할 일의 첫 판단 결과를 기다리는 중이다(spec 005 R-410, spec 004 R-306). 초안이고 통과 전이고 물을 수 있고
+    /// 그 할 일의 지금 판단 입력에 대한 판단 결과를 기다리는 중이다(spec 005 R-410, spec 004 R-306). 초안이고 통과 전이고 물을 수 있고
     /// 임계값이 있는데, 지금 해시의 판단 결과가 없고 그 해시가 실패로 적히지 않았다. 다시 물을 집합
     /// (`ScoringPlan.needsQuery`)과 같은 뜻이다. 단계(`phase`)는 바꾸지 않는다.
     public static func awaitsJudgment(_ facts: Facts) -> Bool {

@@ -451,7 +451,7 @@ final class AppState {
     private(set) var gatePhase: GatePhase = .closed {
         didSet { rearmAutoStart() }
     }
-    /// 노치 초안 할 일의 첫 판단 결과를 기다리는 중(`ConcreteGate.awaitsJudgment`). `refreshGate()`에서만 바꾼다.
+    /// 노치 초안 할 일의 지금 판단 입력에 대한 판단 결과를 기다리는 중(`ConcreteGate.awaitsJudgment`). `refreshGate()`에서만 바꾼다.
     private(set) var awaitingFirstJudgment = false {
         didSet { if awaitingFirstJudgment != oldValue { rearmAutoStart() } }
     }
@@ -488,7 +488,7 @@ final class AppState {
     /// 바인딩을 다시 만들 때마다 오른다. 다른 세대의 답은 받지 않는다(spec 006 research R6).
     @ObservationIgnored private var providerGeneration = 0
     @ObservationIgnored private let scoreStore: (any ScoreStore)?
-    /// 보내기 장부(data-model §6). 메모리에만 둔다. 실패 표시가 첫 판단 결과 기다림에 들어가므로 바뀌면 게이트를 다시 본다.
+    /// 보내기 장부(data-model §6). 메모리에만 둔다. 실패 표시가 판단 결과 기다림에 들어가므로 바뀌면 게이트를 다시 본다.
     @ObservationIgnored private var attempted: [TaskID: Attempt] = [:] {
         didSet { refreshGate() }
     }
@@ -1006,7 +1006,7 @@ final class AppState {
             gateBusy: autoStartGateBusy, extendNeeded: extendNeeded, startFailed: startFailed)
     }
 
-    /// 게이트가 묻거나 확인하는 중, 또는 첫 판단 결과를 기다려 게이트를 열지 아직 모름(R-306).
+    /// 게이트가 묻거나 확인하는 중, 또는 지금 판단 입력에 대한 판단 결과를 기다려 게이트를 열지 아직 모름(R-306).
     private var autoStartGateBusy: Bool { gatePhase != .closed || awaitingFirstJudgment }
 
     /// 걸어 둔 일정의 시각(주입한 시계 기준). 일정이 없으면 nil. 시험이 일정이 실제로 걸렸는지 본다.
@@ -1383,7 +1383,6 @@ final class AppState {
         keyActionFailure = nil
         microsoftKeyCleared = false
         refreshHasKey()
-        refreshGate()
         requestScores()
     }
 
@@ -1728,7 +1727,6 @@ final class AppState {
             attempted[outcome.taskID]?.failed = true
         }
         Self.decisionLogger.error("판단 실패: \(kind, privacy: .public)")
-        refreshGate()
     }
 
     private func refreshHasKey() {
