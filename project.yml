@@ -41,6 +41,7 @@ targets:
       - App/Sources/AppState.swift
       - App/Sources/AppWindows.swift
       - App/Sources/Settings/SettingsView.swift
+      - App/Sources/Decision/HTTPDecisionProvider.swift
       - App/Tests/MokaAppTests
     dependencies:
       - package: Moka
