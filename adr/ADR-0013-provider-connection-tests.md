@@ -23,10 +23,10 @@
    - URLProtocol 가짜: 요청을 기록하고 정해 둔 상태 코드로 답한다. 네트워크로 나가지 않는다.
    - `.invalid` 호스트: 시험 주소는 `.invalid`만 쓴다(RFC 2606). 가짜는 `.invalid`가 아닌 호스트의 요청을 실패시킨다.
 4. ADR-0011 "리디렉트 거부" 줄은 이렇게 바뀐다. 대리자 연결(3xx를 따라가지 않고 `server(status)`, 두 번째 요청 없음)은 앱 시험 번들 자동 시험이 본다. 첫 실제 호출과 loopback 서버 확인은 사람이 한다. "로그에 주소 없음" 줄(82번째 줄)도 이 자동 시험(실패 로그에 키·주소가 없음)이 덮는다. PR 리뷰의 로그 호출 확인은 그대로 둔다.
-6. 공개 계약 decision-provider-v2 21번째 줄과 spec 006 tasks 공통 규칙을 위 1·2에 맞춰 고친다.
 5. 헌법 VIII 본문은 그대로다. 시험은 실제 decision API를 부르지 않는다.
+6. 공개 계약 decision-provider-v2 21번째 줄과 spec 006 tasks 공통 규칙을 위 1·2에 맞춰 고친다.
 
-시험(`App/Tests/MokaAppTests/HTTPDecisionProviderTests.swift`): Bearer 공급자는 키를 `Authorization`에만, `api-key` 공급자는 `api-key`에만 넣는다. 301·302·307·308을 따라가지 않는다. 실패 로그에 키·주소·호스트·경로가 없다(`OSLogStore`, 로그가 0건이면 실패해 빈 통과를 막음).
+시험(`App/Tests/MokaAppTests/HTTPDecisionProviderTests.swift`): Bearer 공급자는 키를 `Authorization`에만, `api-key` 공급자는 `api-key`에만 넣는다. 301·302·307·308을 따라가지 않는다. 실패 로그에 키·주소·호스트·경로가 없다(`OSLogStore`, 이번 호출의 상태 503 로그가 없으면 실패해 빈 통과를 막음).
 
 고장 낸 코드로 확인한 Red(2026-11-17, 한 번만, 커밋하지 않음): 세션 대리자를 빼면 리디렉트 시험이 실패한다(`network`, 리디렉트 대상으로 두 번째 요청이 생김). `Authorization`과 `api-key`를 서로 바꾸면 헤더 시험 둘이 실패한다.
 
