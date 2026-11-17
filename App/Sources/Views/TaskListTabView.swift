@@ -35,6 +35,8 @@ struct TaskListTabView: View {
     let nextMarkID: TaskID?
     /// 노치 후보 순서의 앞 세 대기 할 일과 순위(spec 003 R-215, data-model §10).
     var ranks: [TaskID: Int] = [:]
+    /// 오늘 남은 시간을 넘어 "내일" 표시를 붙일 할 일(spec 005 R-423).
+    var tomorrowIDs: Set<TaskID> = []
     @Binding var scope: TaskListScope
     @Binding var order: TaskListOrder
     @Binding var selectedID: TaskID?
@@ -95,15 +97,18 @@ struct TaskListTabView: View {
                                     label: task.title
                                 )
                                 .padding(.leading, 10)
-                                TaskRow(task: task, rank: ranks[task.id], isNext: task.id == nextMarkID)
-                                    .contentShape(Rectangle())
-                                    // 두 번 클릭을 동시에 들어야 한 번 클릭이 더블 클릭 간격을 기다리지 않는다.
-                                    .onTapGesture { selectedID = task.id }
-                                    .simultaneousGesture(
-                                        TapGesture(count: 2).onEnded { if canEdit { onEdit(task.id) } }
-                                    )
-                                    .accessibilityAddTraits(.isButton)
-                                    .accessibilityAddTraits(task.id == selectedID ? .isSelected : [])
+                                TaskRow(
+                                    task: task, rank: ranks[task.id], isNext: task.id == nextMarkID,
+                                    isTomorrow: tomorrowIDs.contains(task.id)
+                                )
+                                .contentShape(Rectangle())
+                                // 두 번 클릭을 동시에 들어야 한 번 클릭이 더블 클릭 간격을 기다리지 않는다.
+                                .onTapGesture { selectedID = task.id }
+                                .simultaneousGesture(
+                                    TapGesture(count: 2).onEnded { if canEdit { onEdit(task.id) } }
+                                )
+                                .accessibilityAddTraits(.isButton)
+                                .accessibilityAddTraits(task.id == selectedID ? .isSelected : [])
                             }
                             .background(task.id == selectedID ? MokaColors.mocha.opacity(0.22) : Color.clear)
                             .accessibilityAction(named: "고치기") { if canEdit { onEdit(task.id) } }
@@ -186,6 +191,7 @@ private struct TaskRow: View {
     let task: MokaTask
     let rank: Int?
     let isNext: Bool
+    let isTomorrow: Bool
 
     private var isDone: Bool { task.status == .done }
 
@@ -209,6 +215,9 @@ private struct TaskRow: View {
             }
             Spacer(minLength: 0)
             RankBadge(text: TaskRowText.rankBadge(rank: rank, isNext: isNext), isNext: isNext)
+            if isTomorrow {
+                TomorrowBadge()
+            }
             StatusBadge(status: task.status, isDue: task.dueDecision && task.status == .todo)
         }
         .padding(.horizontal, 10)
@@ -241,6 +250,25 @@ struct RankBadge: View {
                 .foregroundStyle(colorScheme == .dark ? MokaColors.crema : MokaColors.mocha)
                 .frame(width: 40, alignment: .trailing)
         }
+    }
+}
+
+/// "내일" 표시(확정 시안 005 11번, R-423). 점선 테두리와 흐린 글자.
+private struct TomorrowBadge: View {
+    static let text = "내일"
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        let tint = colorScheme == .dark ? Color(hex: 0xA89C91) : Color(hex: 0x74695F)
+        Text(Self.text)
+            .font(.system(size: 10, weight: .semibold))
+            .lineLimit(1)
+            .fixedSize()
+            .padding(.horizontal, 6)
+            .foregroundStyle(tint)
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .strokeBorder(tint, style: StrokeStyle(lineWidth: 1, dash: [2, 2])))
     }
 }
 

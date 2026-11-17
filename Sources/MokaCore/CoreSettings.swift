@@ -4,7 +4,8 @@ public enum CoreSettingsError: Error, Equatable {
     case outOfRange
 }
 
-/// `default_extend_min`·`day_start`·`onboarding_done` 읽기·쓰기 규칙(data-model §6)과 spec 005 `last_start_day`·`day_budget`.
+/// `default_extend_min`·`day_start`·`onboarding_done` 읽기·쓰기 규칙(data-model §6)과 spec 005 `last_start_day`·`day_budget`·
+/// `auto_start`.
 /// `default_quantum_min`은 `QuantumSettings`.
 public enum CoreSettings {
     public static let extendMinKey = "default_extend_min"
@@ -15,6 +16,7 @@ public enum CoreSettings {
     public static let microsoftDeploymentKey = "microsoft_deployment"
     public static let lastStartDayKey = "last_start_day"
     public static let dayBudgetKey = "day_budget"
+    public static let autoStartKey = "auto_start"
 
     /// 없거나 읽기 실패·정수 아님·1~180 밖이면 10.
     public static func readExtendMin(from store: some SettingsStore) -> Int {
@@ -103,6 +105,16 @@ public enum CoreSettings {
 
     public static func writeDayBudget(_ budget: DayBudget, to store: some SettingsStore) throws {
         try store.setValue(budget.json, for: dayBudgetKey)
+    }
+
+    /// 3초 뒤 자동 시작(spec 005 R-410). 값이 정확히 `true`일 때만 켜짐이고, 그 밖(없음, 읽기 실패 포함)이면 꺼짐.
+    public static func isAutoStartOn(in store: some SettingsStore) -> Bool {
+        (try? store.value(for: autoStartKey)) == "true"
+    }
+
+    /// 끄면 `false`를 쓴다. 저장소에 키를 지우는 길이 없고, 읽을 때 `true`가 아니면 꺼짐이다.
+    public static func writeAutoStart(_ on: Bool, to store: some SettingsStore) throws {
+        try store.setValue(on ? "true" : "false", for: autoStartKey)
     }
 
     /// 앞뒤 공백·줄바꿈을 지워 쓴다.

@@ -196,7 +196,7 @@ final class SettingsSnapshotTests: XCTestCase {
     func test_ADR0011_R620_providerListOpen() throws {
         try snapshot(
             "s25-provider-list", decision: Self.typeSafe(.saved, canRetry: true),
-            start: DecisionFieldStart(listOpen: true), height: 580)
+            start: DecisionFieldStart(listOpen: true), height: 640)
     }
 
     func test_ADR0011_R621_provisionalProvider() throws {
@@ -678,8 +678,8 @@ final class SettingsSnapshotTests: XCTestCase {
         MicrosoftFieldInput(savedEndpoint: nil, savedDeployment: nil, showsKeyResetNotice: false, keyCleared: false),
         host: nil, offNote: DecisionFieldText.offNote(.needsEndpoint), keyState: .noKey)
 
-    private static let basicHeight: CGFloat = 440
-    private static let microsoftHeight: CGFloat = 540
+    private static let basicHeight: CGFloat = 500
+    private static let microsoftHeight: CGFloat = 600
 
     private static func input(_ text: String, range: ClosedRange<Int>) -> MinutesFieldInput {
         MinutesFieldInput(
