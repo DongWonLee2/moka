@@ -4,7 +4,6 @@ import Testing
 
 // #72 조립 순서(SessionAssembly). 앱과 moka-sim이 같이 부르는 켤 때 복구, 활성화, 버튼 뒤 순서. 가짜 할 일만 쓴다.
 
-/// 쓴 뒤 다시 읽은 횟수를 세는 `reload`.
 private final class ReloadCounter {
     let repository: any TaskRepository
     var count = 0

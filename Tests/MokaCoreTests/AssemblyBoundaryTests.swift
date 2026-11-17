@@ -2,7 +2,7 @@ import Foundation
 import Testing
 
 /// #72: 앱은 켤 때 복구·하루 판정·버튼 뒤 커밋을 `SessionAssembly`로만 부른다. 앱 시험은 macOS에서만 돌므로 필수
-/// `core-test`에서 `AppState.swift` 소스를 읽어 확인한다. 이월 판정은 spec 005 단위 3 전까지 앱에 걸지 않는다. 주석 줄은 보지 않는다.
+/// `core-test`에서 `AppState.swift` 소스를 읽어 확인한다. 주석 줄은 보지 않는다.
 struct AssemblyBoundaryTests {
     private static let appStateURL = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()  // MokaCoreTests

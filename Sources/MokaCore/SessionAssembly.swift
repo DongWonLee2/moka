@@ -5,7 +5,6 @@ import Foundation
 /// 그대로 둔다(R-119). 빈 묶음은 쓰지 않는다. `reload`는 쓴 뒤 `tasks()`를 다시 읽는 호출자의 길이다.
 public enum SessionAssembly {
     /// 이월·가용 시간이 켜졌을 때의 하루 값(spec 005 data-model §9·§13). nil이면 꺼짐이고 모드는 늘 세션이다.
-    /// 앱은 spec 005 단위 3 전까지 nil을 넘긴다(plan.md 단위 2).
     public struct Schedule: Equatable, Sendable {
         public var today: LocalDay
         public var budget: DayBudget?

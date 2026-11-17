@@ -386,7 +386,6 @@ private struct StorageEvent {
         return try activate(.initial)
     }
 
-    /// 활성화(`SessionAssembly.activate`). 이월 판정이 돌면 판정 시각과 되돌린 할 일 기억을 받아 둔다.
     private mutating func activate(_ session: NotchSession) throws(SimError) -> NotchSession {
         let input = try input(session)
         let activated = try SimRunner.storing(seq: event.seq) {
@@ -400,7 +399,6 @@ private struct StorageEvent {
         return activated.session
     }
 
-    /// 켜짐일 때만 하루 값을 넘긴다.
     private var schedule: SessionAssembly.Schedule? {
         guard day.scheduled else { return nil }
         return SessionAssembly.Schedule(

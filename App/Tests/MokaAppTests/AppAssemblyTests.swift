@@ -76,7 +76,6 @@ final class AppAssemblyTests: XCTestCase {
         XCTAssertEqual(try repository.inner.tasks().map(\.status), [.active, .todo])
     }
 
-    /// 이월 대상이 될 할 일(마감 지남, 켤 때 되돌림)을 두고 켜고 다음 날 활성화해도 표시가 붙지 않는다(plan.md 단위 2·3).
     func test_FR07_issue72_launchAndActivateDoNotRunCarryJudgment() throws {
         let repository = InMemoryTaskRepository()
         _ = try Self.insert("가짜 마감 지난 할 일", deadline: LocalDay(text: "2027-01-10"), into: repository)

@@ -1492,7 +1492,6 @@ final class AppState {
         adoptPick(SessionAssembly.settle(session, input(at: now), schedule: nil), at: now)
     }
 
-    /// 고른 세션을 받는다. 새로 고르면 `pickedAt`을 그 시각으로 둔다.
     private func adoptPick(_ next: NotchSession, at now: Date) {
         guard next != session else { return }
         session = next
