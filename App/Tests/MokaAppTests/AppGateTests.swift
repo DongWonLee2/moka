@@ -682,4 +682,47 @@ final class AppGateTests: XCTestCase {
         await h.provider.releaseAll()
         await runner?.value
     }
+
+    /// 키를 다시 저장하면 실패 표시가 지워져 다시 첫 판단 결과를 기다린다(#187 세 번째 리뷰). 일정도 내려온다.
+    func test_FR05_R410_R306_savingKeyAfterFailureAwaitsAgain() async throws {
+        for useOnboarding in [false, true] {
+            let h = await launched(try harness(count: 1, provider: FakeDecisionProvider(answer: .failure(.timeout))))
+            XCTAssertTrue(h.state.setAutoStart(true))
+            XCTAssertFalse(h.state.awaitingFirstJudgment)
+            XCTAssertNotNil(h.state.autoStartFireDate, "실패로 끝나 일정이 걸려 있다")
+
+            await h.provider.hold()
+            let saved = useOnboarding ? h.state.saveOnboardingKey("fake-key") : h.state.saveKey("fake-key")
+            XCTAssertTrue(saved)
+            XCTAssertTrue(h.state.awaitingFirstJudgment, "onboarding \(useOnboarding): 다시 묻는 동안 기다린다")
+            XCTAssertNil(h.state.autoStartFireDate, "onboarding \(useOnboarding): 일정이 내려온다")
+            let runner = h.state.requestScores()
+            await h.provider.releaseAll()
+            await runner?.value
+        }
+    }
+
+    /// 일정을 더하면 모든 할 일의 판단 입력이 바뀌어 다시 기다리고, 답이 오면 일정이 다시 걸린다(#187 세 번째 리뷰).
+    func test_FR05_R410_R306_contextChangeAwaitsNewJudgment() async throws {
+        let h = await launched(try harness(count: 1, provider: Self.provider(concrete: 0.8)))
+        XCTAssertTrue(h.state.setAutoStart(true))
+        XCTAssertFalse(h.state.awaitingFirstJudgment)
+        XCTAssertNotNil(h.state.autoStartFireDate, "지금 해시 점수가 있어 3초 일정이 걸려 있다")
+
+        await h.provider.hold()
+        XCTAssertTrue(
+            h.state.addContext(NewContext(name: "가짜 일정", date: try XCTUnwrap(LocalDay(text: "2027-01-14")), impact: .high)))
+        XCTAssertTrue(h.state.awaitingFirstJudgment, "일정이 바뀌면 지금 판단 입력의 결과를 기다린다")
+        XCTAssertNil(h.state.autoStartFireDate)
+
+        let runner = try XCTUnwrap(h.state.requestScores())
+        await h.provider.waitForHeld(count: 1)
+        h.clock.advance(seconds: 1)
+        h.state.chooseQuantum(25)
+        await h.provider.releaseAll()
+        await runner.value
+        XCTAssertFalse(h.state.awaitingFirstJudgment)
+        XCTAssertEqual(h.state.autoStartDue, AppTestFixture.noon.addingTimeInterval(4))
+        XCTAssertEqual(h.state.autoStartFireDate, h.state.autoStartDue, "답이 오면 일정이 다시 걸린다")
+    }
 }
