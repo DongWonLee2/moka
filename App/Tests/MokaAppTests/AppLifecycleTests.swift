@@ -106,6 +106,111 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertNil(state.pickedAt)
     }
 
+    func test_FR07_R111_issue71_failedLaunchReadRetriesRecoveryAtNextActivation() throws {
+        let repository = FlakyReadRepository()
+        for index in 1...2 {
+            _ = try repository.inner.insertTask(
+                NewTask(title: "가짜 할 일 \(index)", deadline: nil, estMin: nil, recurrence: .none, weekday: nil),
+                cycleDay: nil, at: Self.noon)
+        }
+        var stale = try repository.inner.tasks()[0]
+        stale.status = .active
+        try repository.inner.apply(StoreBatch(updatedTasks: [stale]))
+        let state = makeState(repository)
+        repository.failsRead = true
+        state.launch()
+        XCTAssertEqual(try repository.inner.tasks().map(\.status), [.active, .todo], "읽기가 실패하면 되돌릴 수 없다")
+
+        repository.failsRead = false
+        state.enterTitle("가짜 할 일 3")
+        state.start()
+        XCTAssertEqual(try repository.inner.tasks().map(\.status), [.active, .todo, .active])
+
+        state.activate()
+
+        XCTAssertEqual(
+            try repository.inner.tasks().map(\.status), [.todo, .todo, .active],
+            "다음 활성화에서 복구를 다시 하고, 지금 도는 할 일은 되돌리지 않는다")
+        guard case .running = state.timer else { return XCTFail("타이머는 그대로: \(state.timer)") }
+        var later = try repository.inner.tasks()[1]
+        later.status = .active
+        try repository.inner.apply(StoreBatch(updatedTasks: [later]))
+        state.activate()
+        XCTAssertEqual(
+            try repository.inner.tasks().map(\.status), [.todo, .active, .active],
+            "복구는 한 번만 한다: 그 뒤 활성화는 노치 밖 진행 중 할 일도 되돌리지 않는다")
+    }
+
+    func test_FR07_R111_issue71_failedRecoveryWriteRetriesAtNextActivation() throws {
+        let repository = FailingAfterStartRepository()
+        _ = try repository.inner.insertTask(
+            NewTask(title: "가짜 할 일 1", deadline: nil, estMin: nil, recurrence: .none, weekday: nil), cycleDay: nil,
+            at: Self.noon)
+        var stale = try repository.inner.tasks()[0]
+        stale.status = .active
+        try repository.inner.apply(StoreBatch(updatedTasks: [stale]))
+        let state = makeState(repository)
+        repository.failsApply = true
+        state.launch()
+        XCTAssertEqual(try repository.inner.tasks().map(\.status), [.active])
+
+        repository.failsApply = false
+        state.activate()
+
+        XCTAssertEqual(try repository.inner.tasks().map(\.status), [.todo])
+        XCTAssertEqual(state.session.taskID, 1, "되돌린 뒤 고른다")
+    }
+
+    // MARK: - #71 저장 실패 로그 이유
+
+    func test_issue71_failedCommitIsLoggedAsStorageFailure() throws {
+        let repository = ApplyFailingRepository()
+        _ = try repository.inner.insertTask(
+            NewTask(title: "가짜 할 일 1", deadline: nil, estMin: nil, recurrence: .none, weekday: nil), cycleDay: nil,
+            at: Self.noon)
+        let state = makeState(repository)
+        state.launch()
+
+        state.start()
+
+        XCTAssertEqual(state.lastRejectReason, .storageFailed)
+    }
+
+    func test_issue71_successfulTransitionClearsRejectReason() throws {
+        let repository = FailingAfterStartRepository()
+        _ = try repository.inner.insertTask(
+            NewTask(title: "가짜 할 일 1", deadline: nil, estMin: nil, recurrence: .none, weekday: nil), cycleDay: nil,
+            at: Self.noon)
+        let state = makeState(repository)
+        state.launch()
+        repository.failsApply = true
+        state.start()
+        XCTAssertEqual(state.lastRejectReason, .storageFailed)
+
+        repository.failsApply = false
+        state.start()
+
+        XCTAssertNil(state.lastRejectReason, "적용된 전이는 지난 거부 이유를 지운다")
+    }
+
+    func test_issue71_failedQuickEntryInsertIsLoggedAsStorageFailure() {
+        let state = makeState(InsertFailingRepository())
+        state.launch()
+
+        state.enterTitle("가짜 할 일 A")
+
+        XCTAssertEqual(state.lastRejectReason, .storageFailed)
+    }
+
+    func test_issue71_phaseRejectionStaysNotAllowedInPhase() {
+        let state = makeState(InMemoryTaskRepository())
+        state.launch()
+
+        state.start()
+
+        XCTAssertEqual(state.lastRejectReason, .notAllowedInPhase, "초안이 없을 때 시작은 단계 거부다")
+    }
+
     // MARK: - R-113 활성화 판정
 
     func test_FR09_R113_launchActivationResetsDailyTaskDoneYesterday() throws {
@@ -270,6 +375,30 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertEqual(checkpoint.notes, .empty)
         XCTAssertEqual(try repository.tasks().map(\.status), [.active], "종료는 상태를 바꾸지 않는다")
         guard case .running = state.timer else { return XCTFail("타이머는 그대로: \(state.timer)") }
+    }
+
+    func test_FR07_R110_issue173_quitWhileExpiredSavesCheckpointAndRelaunchReverts() throws {
+        let repository = try Self.seeded(1)
+        let clock = TestClock(Self.noon)
+        let state = makeState(repository, clock: clock)
+        state.launch()
+        state.start()
+        clock.advance(minutes: 40)
+        state.tick()
+        guard case .expired = state.timer else { return XCTFail("시간 끝이어야 한다: \(state.timer)") }
+
+        state.lifecycleCheckpoint(.quit)
+
+        let checkpoints = try repository.checkpoints()
+        XCTAssertEqual(checkpoints.map(\.trigger), [.quit])
+        XCTAssertEqual(checkpoints.map(\.elapsedMin), [25], "고른 분")
+        XCTAssertEqual(checkpoints.map(\.notes), [.empty], "칸 값을 읽지 않는다")
+        XCTAssertEqual(try repository.tasks().map(\.status), [.active], "종료는 상태를 바꾸지 않는다")
+
+        let relaunched = makeState(repository, clock: clock)
+        relaunched.launch()
+        XCTAssertEqual(try repository.tasks().map(\.status), [.todo], "다시 켜면 R-111이 대기로 되돌린다")
+        XCTAssertEqual(try repository.checkpoints().map(\.trigger), [.quit], "체크포인트는 남는다")
     }
 
     func test_FR07_R110_sleepWhileRunningSavesSleepCheckpoint() throws {
@@ -1315,4 +1444,23 @@ private final class CountingSettingsStore: SettingsStore {
     func setValue(_ value: String, for key: String) throws {
         try inner.setValue(value, for: key)
     }
+}
+
+/// `tasks()` 읽기만 실패시킬 수 있는 가짜 저장소(#71). 쓰기와 넣기는 안쪽 메모리 저장소를 쓴다.
+private final class FlakyReadRepository: TaskRepository {
+    struct Failure: Error {}
+
+    let inner = InMemoryTaskRepository()
+    var failsRead = false
+
+    func tasks() throws -> [MokaTask] {
+        if failsRead { throw Failure() }
+        return try inner.tasks()
+    }
+    func insertTask(_ task: NewTask, cycleDay: LocalDay?, at: Date) throws -> MokaTask {
+        try inner.insertTask(task, cycleDay: cycleDay, at: at)
+    }
+    func checkpoints() throws -> [Checkpoint] { try inner.checkpoints() }
+    func decisions() throws -> [DecisionLogEntry] { try inner.decisions() }
+    func apply(_ batch: StoreBatch) throws { try inner.apply(batch) }
 }

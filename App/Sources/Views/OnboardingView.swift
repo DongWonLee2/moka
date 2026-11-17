@@ -65,7 +65,7 @@ struct OnboardingSteps: Equatable {
     init(hasGuide: Bool, hasKeyStep: Bool, initialStep: Int) {
         let guides = hasGuide ? GuideCard.allCases.map(Page.guide) : []
         pages = guides + (hasKeyStep ? [.key] : []) + [.context, .defaults]
-        step = initialStep
+        step = min(max(initialStep, 1), pages.count)
     }
 
     var total: Int { pages.count }

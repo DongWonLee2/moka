@@ -106,6 +106,16 @@ final class OnboardingKeyStepTests: XCTestCase {
         XCTAssertEqual(steps.page, .context)
     }
 
+    func test_issue146_initialStepOutOfRangeIsClampedToFirstOrLast() {
+        let below = OnboardingSteps(hasGuide: false, hasKeyStep: true, initialStep: 0)
+        XCTAssertEqual(below.step, 1, "1보다 작으면 첫 쪽")
+        XCTAssertEqual(below.page, .key)
+
+        let above = OnboardingSteps(hasGuide: false, hasKeyStep: false, initialStep: 9)
+        XCTAssertEqual(above.step, 2, "단계 수보다 크면 마지막 쪽")
+        XCTAssertEqual(above.page, .defaults)
+    }
+
     func test_FR21_R116_twoStepsWithoutKeyStep() {
         var steps = OnboardingSteps(hasGuide: false, hasKeyStep: false, initialStep: 1)
         XCTAssertEqual(steps.total, 2)

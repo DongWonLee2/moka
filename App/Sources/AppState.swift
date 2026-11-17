@@ -354,6 +354,9 @@ final class AppState {
     @ObservationIgnored private var attempted: [TaskID: Attempt] = [:]
     /// 질의 실행기. 최대 하나다.
     @ObservationIgnored private var queryRunner: Task<Void, Never>?
+    @ObservationIgnored private(set) var lastRejectReason: RejectReason?
+    /// 켤 때 복구(R-111)를 아직 끝내지 못함. 읽기나 쓰기가 실패하면 다음 활성화에서 다시 한다(#71).
+    @ObservationIgnored private var recoveryPending = false
 
     private static let logger = Logger(subsystem: "dev.dongwon.moka", category: "timer")
     private static let storageLogger = Logger(subsystem: "dev.dongwon.moka", category: "storage")
@@ -404,13 +407,23 @@ final class AppState {
         reloadScores()
         reloadContexts()
         guard let repository else { return }
-        reloadTasks()
-        let reverted = LaunchRecovery.revert(tasks)
+        recoveryPending = true
+        guard recoverIfPending(repository) else { return }
+        activate()
+    }
+
+    /// 켤 때 복구(R-111). 읽기나 쓰기가 실패하면 남겨 두고 다음 활성화에서 다시 한다(#71). 노치에 띄운 할 일은
+    /// 되돌리지 않는다. 쓰기가 실패하면 false.
+    private func recoverIfPending(_ repository: any TaskRepository) -> Bool {
+        guard recoveryPending else { return true }
+        guard reloadTasks() else { return true }
+        let reverted = LaunchRecovery.revert(tasks.filter { $0.id != session.taskID })
         if !reverted.isEmpty {
-            guard write(StoreBatch(updatedTasks: reverted), to: repository) else { return }
+            guard write(StoreBatch(updatedTasks: reverted), to: repository) else { return false }
             reloadTasks()
         }
-        activate()
+        recoveryPending = false
+        return true
     }
 
     /// 설정 창 할 일 추가(R-101, #70): 검증·채움 → 넣기 → `tasks()` 다시 읽기 → 빈 상태일 때만 고르기.
@@ -577,6 +590,7 @@ final class AppState {
         guard let repository else { return }
         attempted = attempted.filter { !$0.value.failed }
         defer { requestScores() }
+        _ = recoverIfPending(repository)
         let now = clock.now()
         let changed = RecurrenceReset.reset(
             tasks, now: now, dayStart: CoreSettings.readDayStart(from: settings), calendar: calendar)
@@ -587,7 +601,8 @@ final class AppState {
         pickIfEmpty(at: now)
     }
 
-    /// 종료(`.quit`)·잠자기(`.sleep`) 체크포인트(R-110, research R12). 도는 중일 때만 빈 두 줄로 남기고 동기로 저장한다.
+    /// 종료(`.quit`)·잠자기(`.sleep`) 체크포인트(R-110, research R12). 도는 중이면 둘 다, 시간 끝이면 종료만(#173)
+    /// 빈 두 줄로 남기고 동기로 저장한다.
     /// 할 일 상태와 타이머는 바꾸지 않는다. 종료를 미루지 않는다.
     func lifecycleCheckpoint(_ trigger: CheckpointTrigger) {
         guard let repository, let batch = session.lifecycleCheckpoint(trigger, input(at: clock.now())) else { return }
@@ -651,7 +666,7 @@ final class AppState {
                 task = try repository.insertTask(prepared.task, cycleDay: prepared.cycleDay, at: now)
             } catch {
                 Self.logStorageFailure(error)
-                return .rejected(.notAllowedInPhase)
+                return .rejected(.storageFailed)
             }
             reloadTasks()
             session = session.addedTask(task, input(at: now))
@@ -1387,7 +1402,7 @@ final class AppState {
                 session = try SessionCommit.commit(next, to: repository)
             } catch {
                 Self.logStorageFailure(error)
-                return .rejected(.notAllowedInPhase)
+                return .rejected(.storageFailed)
             }
             reloadTasks()
             picked = true
@@ -1418,6 +1433,11 @@ final class AppState {
         isPinnedOpen = pinnedOpenAfter(event, result: result, from: previous, to: timer, wasPinned: isPinnedOpen)
         updateExpansion()
 
+        lastRejectReason =
+            switch result {
+            case .applied: nil
+            case .rejected(let reason): reason
+            }
         if case .rejected(let reason) = result {
             Self.logger.notice(
                 "거부 \(Self.eventName(event), privacy: .public) in \(after, privacy: .public): \(String(describing: reason), privacy: .public)"
@@ -1483,15 +1503,19 @@ final class AppState {
         requestScores()
     }
 
-    private func reloadTasks() {
-        guard let repository else { return }
+    @discardableResult
+    private func reloadTasks() -> Bool {
+        guard let repository else { return false }
+        var loaded = true
         do {
             tasks = try repository.tasks()
         } catch {
             Self.logStorageFailure(error)
+            loaded = false
         }
         requestScores()
         refreshGate()
+        return loaded
     }
 
     /// 동기로 적용한다. 실패하면 오류 종류만 로그에 남기고 false.

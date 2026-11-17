@@ -31,6 +31,8 @@ public enum RejectReason: Equatable, Sendable {
     case notAllowedInPhase
     case emptyTitle
     case quantumOutOfRange
+    /// 저장소 쓰기·넣기 실패(#71). 타이머는 내지 않고, 저장소를 잇는 호출자(앱)가 단계 거부와 나눠 로그에 남긴다.
+    case storageFailed
 }
 
 public enum TransitionResult: Equatable, Sendable {

@@ -48,7 +48,7 @@ aging = (skipCount + Defaults.carryAgingWeight × carryCount) × (avoiding ≥ �
 - **후보** = `status == .todo` && `!dueDecision`. 오늘 끝(§12)인 동안은 후보 목록을 쓰지 않는다(고르기 자체를 하지 않는다).
 - `PriorityOrder.order(...)`가 후보만 늘어놓는다. 순서 규칙(점수 있는 할 일 priority 순, 동점은 `TaskListView.deadlineFirst`, 그 뒤 점수 없는 할 일 마감일 순)은 그대로다.
 - 이 순서를 쓰는 곳 셋이 모두 이월 답 대기를 뺀다: 고르기(§5), 할 일 탭 순위(`AppState.ranks`, 앞 셋), "다른 할 일" 목록(`OtherTaskList.rows`에 `!dueDecision` 거르기).
-- "다음" 표시(`nextMark`): 초안이면 그 할 일, 도는 중·시간 끝이면 **지금 상태에서 다음 고르기를 돌렸을 때 고를 할 일**(§5의 `SchedulerPick.pick`을 상태를 바꾸지 않고 부름, 현재 할 일은 `excluded`). 이월 카드·가용 시간 질문·오늘 끝 중에는 없음(nil). 빈 상태는 다음 고르기 결과(R-434).
+- "다음" 표시(`nextMark`): 초안이면 그 할 일, 도는 중·시간 끝이면 **지금 상태에서 다음 고르기를 돌렸을 때 고를 할 일**(§5의 `SchedulerPick.pick`을 상태를 바꾸지 않고 부름, 현재 할 일은 `excluded`). 이월 카드·가용 시간 질문·오늘 끝 중에는 없음(nil). 빈 상태는 다음 고르기 결과(R-434). 알려진 한계: 미루기·바꾸기 직후, 그리고 판단 결과가 바뀐 경우에는 실제 다음 고르기와 다를 수 있다. 완료 뒤에는 같다(도는 중 할 일은 후보가 아니므로, `PriorityOrder.isCandidate`)(#174).
 
 ## §5 고르기 (`SchedulerPick`, R-403~R-406, R-408)
 
@@ -235,7 +235,7 @@ struct DayBudget: Codable, Equatable {   // 설정 키 day_budget의 JSON
 | 5 | `capActive && remainingMinutes < 1` | `.dayEnd` | 없음 |
 | 6 | 그 밖 | `.session`(빈 상태면 고르기, 초안이면 그대로) | §5 |
 
-- 3·4·5가 되면 초안을 비운다(R-413 Edge Case, 잃는 것은 칩 값뿐). 빠른 입력으로 넣은 할 일은 저장만 하고 초안으로 띄우지 않는다(spec Edge Cases).
+- 3·4·5가 되면 초안을 비운다(R-413 Edge Case). 잃는 것은 칩 값과 그 고르기의 몫 빼기(§5-4)다. 몫 빼기는 되돌리지 않는다. 앱에서는 초안이 하루 경계 뒤에만 비워지고, 다음 고르기 전에 몫 상태가 비워지므로(§8 `memory.on(today)`) 영향이 없다(debate 3:0, 2026-11-16, #179). 같은 하루 안에 초안을 비우는 길(#171 긴급·일시 중지)이 생기면, 비울 때 고르기 전 스케줄러 메모리 전체로 되돌려야 한다. 빠른 입력으로 넣은 할 일은 저장만 하고 초안으로 띄우지 않는다(spec Edge Cases).
 - 2에서 시간 끝이고 그 작업 시간의 `budgetDay`가 `capActive`이고 그 기록의 `remainingMinutes < 1`이면 "N분 더"를 끄고 이유 한 줄을 보인다(`ExpiredDayEnd`). 직접 입력 칸은 열 수 없다. 이때 완료·미루기·바꾸기의 체크포인트 계기는 `day_end`다(research R11). 버튼 처리 뒤 모드는 `budgetDay == today`면 5, 하루 경계를 넘긴 작업 시간이면 새 하루의 표(보통 3이나 4)다.
 - 오늘 끝 판정은 고르기보다 먼저다. 버튼 처리 순서를 못박는다: (1) 버튼의 `StoreBatch` 커밋 → (2) 남은 초 돌려주기(§11, `day_budget` 쓰기) → (3) 모드 판정(§12 표) → (4) 모드가 6일 때만 `pickIfEmpty`의 고르기. (2)를 (3) 뒤에 하면 일찍 끝내 돌려받을 시간이 있는데도 오늘 끝이 뜰 수 있다(SC-405).
 - "더 할래요": `more = true`를 쓰고 모드 6으로 고른다. 쓰기가 실패하면 모드 5에 머물고 다시 해 달라는 한 줄을 보인다.
