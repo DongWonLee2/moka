@@ -47,6 +47,15 @@ final class TestClock: Sendable {
     func advance(seconds: TimeInterval) {
         current.withLock { $0 += seconds }
     }
+
+    /// 서울 달력으로 다음 날 `hour`시 `minute`분으로 옮긴다. 하루 시작(06:00) 경계를 넘기는 시험이 쓴다.
+    func advanceToNextDay(hour: Int, minute: Int = 0) {
+        let calendar = AppTestFixture.seoul
+        current.withLock { now in
+            let nextDay = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now))!
+            now = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: nextDay)!
+        }
+    }
 }
 
 /// `apply`가 늘 throw하는 가짜 저장소. 읽기와 넣기는 안쪽 메모리 저장소를 쓴다.
