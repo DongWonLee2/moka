@@ -300,7 +300,7 @@ struct DayBudget: Codable, Equatable {   // 설정 키 day_budget의 JSON
 
 ## §17 3초 뒤 자동 시작 (R-410)
 
-`AutoStart.shouldStart(enabled:mode:draftShownAt:lastInputAt:gateBusy:extendNeeded:startFailed:now:) -> Bool`: 켜짐 && 모드가 §12-6의 초안 && 게이트가 묻거나 확인하는 중이 아님(그 할 일의 첫 판단 결과를 기다리는 동안은 시작하지 않는다(R-306). 기다림은 `ConcreteGate.awaitsJudgment`: 초안이고 통과 전이고 물을 수 있고 임계값이 있는데 지금 해시의 판단 결과가 없고 그 해시가 실패로 적히지 않음, `gateBusy`에 함께 넣는다) && 늘리기 확인 줄이 닫혀 있음(`extendNeeded == nil`, 곧 칩 ≤ 남은 분이거나 상한이 없음, §11 "늘리기") && 시작 실패 문구("시작하지 못했어요. 다시 해 주세요.", §11)가 떠 있지 않음(`startFailed == false`, 메인 세션 가정: 실패를 사람이 보고 직접 누르게 하려고 자동 시작은 다시 시도하지 않는다. 사용자가 칩·버튼을 누르면 문구가 사라지고 다시 3초를 센다) && `now - max(draftShownAt, lastInputAt) ≥ Defaults.autoStartDelay`. 남은 10분에서 25분 칩을 고르면 확인 줄이 열려 자동 시작하지 않는다. 늘리기는 사용자가 눌러야 한다. 앱은 초안이 뜰 때 한 번 일정을 걸고, 입력이 있으면 다시 건다. 시간은 주입한 시계로 시험한다.
+`AutoStart.shouldStart(enabled:mode:draftShownAt:lastInputAt:gateBusy:extendNeeded:startFailed:now:) -> Bool`: 켜짐 && 모드가 §12-6의 초안 && 게이트가 묻거나 확인하는 중이 아님(그 할 일의 지금 판단 입력에 대한 판단 결과를 기다리는 동안은 시작하지 않는다(R-306). 기다림은 `ConcreteGate.awaitsJudgment`: 초안이고 통과 전이고 물을 수 있고 임계값이 있는데 지금 해시의 판단 결과가 없고 그 해시가 실패로 적히지 않음, `gateBusy`에 함께 넣는다) && 늘리기 확인 줄이 닫혀 있음(`extendNeeded == nil`, 곧 칩 ≤ 남은 분이거나 상한이 없음, §11 "늘리기") && 시작 실패 문구("시작하지 못했어요. 다시 해 주세요.", §11)가 떠 있지 않음(`startFailed == false`, 메인 세션 가정: 실패를 사람이 보고 직접 누르게 하려고 자동 시작은 다시 시도하지 않는다. 사용자가 칩·버튼을 누르면 문구가 사라지고 다시 3초를 센다) && `now - max(draftShownAt, lastInputAt) ≥ Defaults.autoStartDelay`. 남은 10분에서 25분 칩을 고르면 확인 줄이 열려 자동 시작하지 않는다. 늘리기는 사용자가 눌러야 한다. 앱은 초안이 뜰 때 한 번 일정을 걸고, 입력이 있으면 다시 건다. 시간은 주입한 시계로 시험한다.
 
 ## §18 "내일" 표시 (R-423)
 

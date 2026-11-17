@@ -141,8 +141,10 @@ final class AppState {
     var timer: NotchTimer { session.timer }
     /// 저장소 `tasks()`의 지금 목록. 쓰기 뒤 다시 읽는다.
     private(set) var tasks: [MokaTask] = []
-    /// 일정(R-115), 날짜순. 쓰기 뒤 다시 읽는다.
-    private(set) var contexts: [MokaContext] = []
+    /// 일정(R-115), 날짜순. 쓰기 뒤 다시 읽는다. 판단 입력 해시에 들어가므로 바뀌면 게이트를 다시 본다.
+    private(set) var contexts: [MokaContext] = [] {
+        didSet { refreshGate() }
+    }
     /// 노치가 지금 할 일을 고른 시각(이어서 할 일 접힘 표시 3초, data-model §5.5).
     private(set) var pickedAt: Date? {
         didSet { scheduleFirstActionRedraw() }
@@ -478,14 +480,18 @@ final class AppState {
     @ObservationIgnored private var observations: [NotificationObservation] = []
     @ObservationIgnored private let decision: DecisionSetup?
     /// 지금 판단 설정. 꺼져 있으면 nil이다. 공급자를 바꾸거나 Microsoft 칸을 저장할 때 다시 만든다.
-    @ObservationIgnored private var binding: DecisionBinding?
+    @ObservationIgnored private var binding: DecisionBinding? {
+        didSet { refreshGate() }
+    }
     /// 지금 바인딩이 보내는 주소. `binding`과 함께 바뀐다.
     @ObservationIgnored private var boundURL: URL?
     /// 바인딩을 다시 만들 때마다 오른다. 다른 세대의 답은 받지 않는다(spec 006 research R6).
     @ObservationIgnored private var providerGeneration = 0
     @ObservationIgnored private let scoreStore: (any ScoreStore)?
-    /// 보내기 장부(data-model §6). 메모리에만 둔다.
-    @ObservationIgnored private var attempted: [TaskID: Attempt] = [:]
+    /// 보내기 장부(data-model §6). 메모리에만 둔다. 실패 표시가 첫 판단 결과 기다림에 들어가므로 바뀌면 게이트를 다시 본다.
+    @ObservationIgnored private var attempted: [TaskID: Attempt] = [:] {
+        didSet { refreshGate() }
+    }
     /// 질의 실행기. 최대 하나다.
     @ObservationIgnored private var queryRunner: Task<Void, Never>?
     @ObservationIgnored private(set) var lastRejectReason: RejectReason?
@@ -1434,7 +1440,6 @@ final class AppState {
     func retryScores() -> Task<Void, Never>? {
         guard canRetryScores else { return nil }
         attempted = [:]
-        refreshGate()
         return requestScores()
     }
 
