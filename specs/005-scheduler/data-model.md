@@ -248,7 +248,7 @@ struct DayBudget: Codable, Equatable {   // 설정 키 day_budget의 JSON
 
 | 키 | 값 | 기본 | 쓰는 곳 |
 |---|---|---|---|
-| `auto_start` | `"true"` / 없음 | 꺼짐 | 기본 탭(R-410) |
+| `auto_start` | `"true"` / `"false"` / 없음(정확히 `"true"`일 때만 켜짐, 끄면 `"false"`를 씀) | 꺼짐 | 기본 탭(R-410) |
 | `carry_judged_at` | `UTCTimestamp` 글자 | 없음(처음 판정) | 판정 쓰기(§9). `TaskRepository`만 다룸, `SettingsStore`는 거부 |
 | `day_budget` | §11 JSON(가용 시간은 분, 늘린 분 따로) | 없음 | 가용 시간 답(직접 적기 포함), 늘리기, 쓴 시간, "더 할래요" |
 | `last_start_day` | `LocalDay` 글자 | 없음 | 시작 커밋(§6) |

@@ -43,10 +43,12 @@ struct BasicTabView: View {
             GridRow {
                 Text(BasicTabText.autoStart)
                     .fixedSize()
+                    .accessibilityHidden(true)
                 Toggle(BasicTabText.autoStart, isOn: autoStart)
                     .toggleStyle(.switch)
                     .controlSize(.mini)
                     .tint(MokaColors.mocha)
+                    .accessibilityHint(BasicTabText.autoStartHint)
                     .labelsHidden()
             }
             GridRow {

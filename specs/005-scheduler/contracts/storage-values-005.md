@@ -42,4 +42,4 @@ DB에는 값 CHECK가 없다(지금 그대로). 앱은 `UserAction` 열거형으
 
 ## 5. `settings` 키 (승인 항목 5)
 
-data-model §13 표가 원본이다. `day_budget` JSON은 `{"day","extended_min","minutes","more","used_s"}`이고(data-model §11), 직접 적기와 늘리기(사용자 결정 2026-11-16)로 가용 시간을 분으로 둔다. 키 이름: `auto_start`, `carry_judged_at`, `day_budget`, `last_start_day`. `carry_judged_at`은 `TaskRepository`만 읽고 쓰고 `SettingsStore`는 이 키를 거부한다(Q1-B). 튜닝 스크립트는 `settings`를 읽지 않는다.
+data-model §13 표가 원본이다. `day_budget` JSON은 `{"day","extended_min","minutes","more","used_s"}`이고(data-model §11), 직접 적기와 늘리기(사용자 결정 2026-11-16)로 가용 시간을 분으로 둔다. 키 이름: `auto_start`, `carry_judged_at`, `day_budget`, `last_start_day`. `carry_judged_at`은 `TaskRepository`만 읽고 쓰고 `SettingsStore`는 이 키를 거부한다(Q1-B). `auto_start` 값은 `"true"` / `"false"` / 없음이고 정확히 `"true"`일 때만 켜짐이다. `SettingsStore`에 키를 지우는 길이 없어 끄면 `"false"`를 쓴다. 튜닝 스크립트는 `settings`를 읽지 않는다.

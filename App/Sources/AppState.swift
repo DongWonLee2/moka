@@ -515,6 +515,7 @@ final class AppState {
             NotificationObservation(center: workspaceCenter, name: NSWorkspace.didWakeNotification) { [weak self] in
                 self?.tick()
                 self?.activate()
+                self?.noteInput()
             },
             NotificationObservation(center: workspaceCenter, name: NSWorkspace.willSleepNotification) {
                 [weak self] in
@@ -919,6 +920,7 @@ final class AppState {
 
     /// 설정에서 기본 작업 시간을 저장했다. 칩을 직접 고르지 않았고 직접 입력 중이 아니면 칩이 새 값이 된다(R-013).
     func defaultQuantumChanged() {
+        noteInput()
         defaultQuantumMin = QuantumSettings.readDefault(from: settings)
         session.timer.applyDefaultQuantumChange(
             QuantumChip.cap(chipMin: defaultQuantumMin, remainingMinutes: budgetCap(for: logicalToday)),
@@ -974,7 +976,7 @@ final class AppState {
         guard
             AutoStart.shouldStart(
                 enabled: autoStartOn, mode: notchMode, draftShownAt: draftShownAt, lastInputAt: lastInputAt,
-                gateBusy: gatePhase != .closed, extendNeeded: extendNeeded, startFailed: startFailed,
+                gateBusy: autoStartGateBusy, extendNeeded: extendNeeded, startFailed: startFailed,
                 now: clock.now())
         else {
             rearmAutoStart(at: due)
@@ -985,12 +987,21 @@ final class AppState {
         if !Self.isDraft(timer) { onAutoStart?() }
     }
 
-    /// 새 할 일 칸이나 다른 할 일 목록이 열린 동안은 입력 중으로 보고 걸지 않는다.
-    private var autoStartDue: Date? {
+    /// 자동 시작을 걸 시각. 새 할 일 칸이나 다른 할 일 목록이 열린 동안은 입력 중으로 보고 걸지 않는다.
+    var autoStartDue: Date? {
         guard !autoStartTried, !isEnteringNewTitle, !isPickingOtherTask else { return nil }
         return AutoStart.dueAt(
             enabled: autoStartOn, mode: notchMode, draftShownAt: draftShownAt, lastInputAt: lastInputAt,
-            gateBusy: gatePhase != .closed, extendNeeded: extendNeeded, startFailed: startFailed)
+            gateBusy: autoStartGateBusy, extendNeeded: extendNeeded, startFailed: startFailed)
+    }
+
+    /// 게이트가 묻거나 확인하는 중, 또는 초안 할 일의 판단 질의가 나가 있고 결과가 없어 게이트를 열지 아직 모름(R-306).
+    private var autoStartGateBusy: Bool {
+        if gatePhase != .closed { return true }
+        guard let queryable, let id = session.taskID, Self.isDraft(timer), let attempt = attempted[id],
+            !attempt.failed, attempt.hash == currentJudgmentHash(id)
+        else { return false }
+        return usableScores(queryable)[id] == nil
     }
 
     private func draftShown(_ isDraft: Bool) {
@@ -1652,6 +1663,7 @@ final class AppState {
     /// 공급자를 바꾸기 전에 떠난 답은 성공이든 실패든 아무것도 바꾸지 않는다(spec 006 research R6).
     private func receive(_ outcome: QueryOutcome) {
         guard outcome.generation == providerGeneration else { return }
+        defer { rearmAutoStart() }
         let response: DecisionResponse
         switch outcome.result {
         case .success(let value):
