@@ -149,7 +149,7 @@ final class AppAutoStartTests: XCTestCase {
         Self.wait(h, 2.9)
         XCTAssertNotNil(Self.draftChip(h.state), "설정에서 기본 작업 시간을 바꾸면 다시 3초를 센다")
         Self.wait(h, 0.1)
-        XCTAssertNotNil(Self.runningQuantum(h.state))
+        XCTAssertEqual(Self.runningQuantum(h.state), 15)
     }
 
     // MARK: - 일정(autoStartDue)

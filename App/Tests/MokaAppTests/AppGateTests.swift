@@ -581,7 +581,8 @@ final class AppGateTests: XCTestCase {
         }
     }
 
-    /// 판단 결과를 기다리는 동안은 게이트를 열지 정하기 전이라 자동 시작하지 않는다(R-306 취지, #187 리뷰).
+    /// 첫 판단 결과를 기다리는 동안은 게이트를 열지 정하기 전이라 자동 시작하지 않는다(R-306, #187 리뷰).
+    /// 일정이 실제로 걸렸는지는 `autoStartFireDate`가 `autoStartDue`와 같은지로 본다.
     func test_FR05_R410_R306_pendingJudgmentHoldsAutoStart() async throws {
         let h = try harness(count: 1, provider: Self.provider(concrete: 0.8))
         await h.provider.hold()
@@ -590,26 +591,88 @@ final class AppGateTests: XCTestCase {
         let runner = try XCTUnwrap(h.state.requestScores())
         await h.provider.waitForHeld(count: 1)
         XCTAssertEqual(h.state.gatePhase, .closed, "점수가 없어 게이트는 아직 닫혀 있다")
+        XCTAssertTrue(h.state.awaitingFirstJudgment)
+        XCTAssertNil(h.state.autoStartDue)
+        XCTAssertNil(h.state.autoStartFireDate)
 
         h.clock.advance(seconds: 60)
         h.state.autoStartIfDue()
         guard case .empty(.some) = h.state.timer else { return XCTFail("판단 결과를 기다리는 동안 시작하지 않는다") }
-        XCTAssertNil(h.state.autoStartDue)
 
         await h.provider.releaseAll()
         await runner.value
-        XCTAssertEqual(h.state.gatePhase, .closed, "0.8이면 게이트를 열지 않는다")
+        XCTAssertFalse(h.state.awaitingFirstJudgment)
+        XCTAssertNotNil(h.state.autoStartDue)
+        XCTAssertEqual(h.state.autoStartFireDate, h.state.autoStartDue, "결과가 오면 일정이 다시 걸린다")
         h.state.autoStartIfDue()
         guard case .running = h.state.timer else { return XCTFail("결과가 오면 시작한다: \(h.state.timer)") }
     }
 
-    /// 질의가 실패로 끝나면 기다리지 않는다(키 없음·공급자 실패는 지금대로).
-    func test_FR05_R410_R306_failedJudgmentDoesNotHoldAutoStart() async throws {
-        let h = await launched(try harness(count: 1, provider: FakeDecisionProvider(answer: .failure(.timeout))))
+    /// 줄에 선 초안 질의(동시 4개 상한)도 기다린다. 앞 넷을 풀어도 초안 답이 오기 전에는 시작하지 않는다.
+    func test_FR05_R410_R306_queuedDraftJudgmentHoldsAutoStart() async throws {
+        let h = try harness(count: 5, provider: Self.provider(concrete: 0.8))
+        await h.provider.hold()
+        h.state.launch()
+        let runner = try XCTUnwrap(h.state.requestScores())
+        await h.provider.waitForHeld(count: 4)
+        h.state.chooseOtherTask(5)
+        XCTAssertEqual(h.state.session.taskID, 5)
         XCTAssertTrue(h.state.setAutoStart(true))
-        XCTAssertEqual(h.state.gatePhase, .closed)
+        XCTAssertTrue(h.state.awaitingFirstJudgment, "아직 보내지 않은 초안 질의도 기다린다")
+
+        h.clock.advance(seconds: 60)
+        h.state.autoStartIfDue()
+        guard case .empty(.some) = h.state.timer else { return XCTFail("앞 넷을 풀기 전에는 시작하지 않는다") }
+
+        for id in 1...4 { await h.provider.release(taskID: TaskID(id)) }
+        await h.provider.waitForHeld(count: 1)
+        h.state.autoStartIfDue()
+        guard case .empty(.some) = h.state.timer else { return XCTFail("초안 답이 오기 전에는 시작하지 않는다") }
+
+        await h.provider.releaseAll()
+        await runner.value
+        XCTAssertEqual(h.state.autoStartFireDate, h.state.autoStartDue)
+        h.state.autoStartIfDue()
+        guard case .running = h.state.timer else { return XCTFail("초안 답이 오면 시작한다: \(h.state.timer)") }
+    }
+
+    /// 질의가 실패로 끝나면(timeout은 실패 표시, unauthorized는 키 확인 필요) 기다리지 않는다. 키가 없으면 처음부터 기다리지 않는다.
+    func test_FR05_R410_R306_failedOrNoKeyDoesNotHoldAutoStart() async throws {
+        for error in [DecisionError.timeout, .unauthorized] {
+            let h = await launched(try harness(count: 1, provider: FakeDecisionProvider(answer: .failure(error))))
+            XCTAssertTrue(h.state.setAutoStart(true))
+            XCTAssertEqual(h.state.gatePhase, .closed, "\(error)")
+            XCTAssertFalse(h.state.awaitingFirstJudgment, "\(error)")
+            h.clock.advance(seconds: 3)
+            h.state.autoStartIfDue()
+            guard case .running = h.state.timer else { return XCTFail("\(error): 실패로 끝나면 시작한다: \(h.state.timer)") }
+        }
+
+        let noKey = await launched(try harness(count: 1, key: nil))
+        XCTAssertTrue(noKey.state.setAutoStart(true))
+        XCTAssertFalse(noKey.state.awaitingFirstJudgment, "키가 없으면 기다리지 않는다")
+        noKey.clock.advance(seconds: 3)
+        noKey.state.autoStartIfDue()
+        guard case .running = noKey.state.timer else { return XCTFail("키가 없으면 3초 뒤 시작한다") }
+    }
+
+    /// 게이트를 이미 통과한 할 일은 판단 입력이 바뀌어 점수가 옛 해시여도 기다리지 않는다.
+    func test_FR05_R410_R306_passedRecordDoesNotHoldAutoStart() async throws {
+        let h = await launched(try harness(count: 1))
+        XCTAssertEqual(h.state.gatePhase, .asking)
+        h.state.skipGate()
+        XCTAssertEqual(h.state.gateRecords[1]?.passed, true)
+
+        await h.provider.hold()
+        XCTAssertTrue(h.state.editTask(1, TaskEdit(title: "가짜 할 일 1 고침")))
+        let runner = h.state.requestScores()
+        await h.provider.waitForHeld(count: 1)
+        XCTAssertTrue(h.state.setAutoStart(true))
+        XCTAssertFalse(h.state.awaitingFirstJudgment, "통과했으면 점수가 없어도 기다리지 않는다")
         h.clock.advance(seconds: 3)
         h.state.autoStartIfDue()
-        guard case .running = h.state.timer else { return XCTFail("실패로 끝난 질의는 기다리지 않는다: \(h.state.timer)") }
+        guard case .running = h.state.timer else { return XCTFail("통과한 할 일은 3초 뒤 시작한다: \(h.state.timer)") }
+        await h.provider.releaseAll()
+        await runner?.value
     }
 }

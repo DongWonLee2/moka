@@ -147,3 +147,46 @@ private struct Case {
         #expect(!CoreSettings.isAutoStartOn(in: store))
     }
 }
+
+@Suite struct ConcreteGateAwaitsJudgmentTests {
+    private static let hash = "00000000000000aa"
+    private static let otherHash = "00000000000000bb"
+
+    private static func score(hash: String) -> TaskScore {
+        TaskScore(
+            taskID: 1, questionVersion: "v1", provider: "fake", modelSnapshot: "jev-1.13.0", urgency: 0.5, impact: 0.5,
+            concrete: 0.8, avoiding: 0.3, probsJSON: "{}", stateHash: hash, scoredAt: Fake.noon)
+    }
+
+    private static func facts(
+        isDraft: Bool = true, canQuery: Bool = true, score: TaskScore? = nil, failedHash: String? = nil,
+        threshold: Double? = 0.5, record: GateRecord = GateRecord()
+    ) -> ConcreteGate.Facts {
+        ConcreteGate.Facts(
+            isDraft: isDraft, canQuery: canQuery, score: score, currentHash: hash, failedHash: failedHash,
+            threshold: threshold, record: record, waiting: false)
+    }
+
+    @Test("FR-05 R-410 R-306: 초안이고 물을 수 있는데 지금 해시의 점수가 없으면 첫 판단 결과를 기다리는 중")
+    func awaitsWithoutCurrentScore() {
+        #expect(ConcreteGate.awaitsJudgment(Self.facts()))
+        #expect(
+            ConcreteGate.awaitsJudgment(Self.facts(score: Self.score(hash: Self.otherHash))), "옛 해시 점수는 없음으로 본다")
+        #expect(ConcreteGate.phase(Self.facts()) == .closed, "게이트 단계는 그대로 닫힘이다")
+    }
+
+    @Test("FR-05 R-410 R-306: 지금 해시의 점수가 있거나 그 해시가 실패로 적혔으면 기다리지 않는다")
+    func doneWhenScoredOrFailed() {
+        #expect(!ConcreteGate.awaitsJudgment(Self.facts(score: Self.score(hash: Self.hash))))
+        #expect(!ConcreteGate.awaitsJudgment(Self.facts(failedHash: Self.hash)))
+        #expect(ConcreteGate.awaitsJudgment(Self.facts(failedHash: Self.otherHash)), "다른 해시의 실패는 끝난 것이 아니다")
+    }
+
+    @Test("FR-05 R-410 R-306: 초안이 아님·이미 통과·물을 수 없음·임계값 없음이면 기다리지 않는다")
+    func notAwaiting() {
+        #expect(!ConcreteGate.awaitsJudgment(Self.facts(isDraft: false)))
+        #expect(!ConcreteGate.awaitsJudgment(Self.facts(record: GateRecord(submissions: 0, passed: true))))
+        #expect(!ConcreteGate.awaitsJudgment(Self.facts(canQuery: false)))
+        #expect(!ConcreteGate.awaitsJudgment(Self.facts(threshold: nil)))
+    }
+}
