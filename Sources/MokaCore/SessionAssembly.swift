@@ -6,7 +6,6 @@ import Foundation
 /// 그대로 둔다(R-119). 빈 묶음은 쓰지 않는다. `reload`는 쓴 뒤 `tasks()`를 다시 읽는 호출자의 길이다.
 public enum SessionAssembly {
     /// 이월·가용 시간이 켜졌을 때의 하루 값(spec 005 data-model §9·§13). nil이면 꺼짐이고 모드는 늘 세션이다.
-    /// 지난 이월 판정 시각은 여기 두지 않고 활성화가 할 일 저장소에서 읽는다(Q1-B).
     public struct Schedule: Equatable, Sendable {
         public var today: LocalDay
         public var budget: DayBudget?
@@ -110,7 +109,7 @@ public enum SessionAssembly {
     }
 
     /// 지난 판정 시각을 할 일 저장소에서 읽어 하루가 바뀌었으면 판정하고 다시 읽은 목록을, 아니면 nil을 돌려준다.
-    /// 읽기가 실패하면 판정을 미루고 같은 오류를 던진다(data-model §13).
+    /// 읽기가 실패하면 판정을 미루고 같은 오류를 던진다(data-model §13의 `carry_judged_at` 읽기 오류 예외).
     private static func judgeIfNeeded(
         _ tasks: [MokaTask], revertedIDs: Set<TaskID>, now: Date, dayStart: DayStart, calendar: Calendar,
         in repository: any TaskRepository, reload: () throws -> [MokaTask]

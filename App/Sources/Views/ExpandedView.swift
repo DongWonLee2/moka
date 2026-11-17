@@ -384,7 +384,7 @@ struct NotchButtonStyle: ButtonStyle {
     }
 
     let kind: Kind
-    /// 작은 버튼(시안 005 날짜 고르기 `.quick .b`): 높이 22, 글자 11.5, 옆 여백 9.
+    /// 작은 버튼(시안 005 날짜 고르기 `.quick .b`).
     var compact = false
 
     @Environment(\.isEnabled) private var isEnabled

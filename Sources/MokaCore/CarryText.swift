@@ -38,3 +38,31 @@ public enum CarryText {
         return [1, 2, untilMonday == 0 ? 7 : untilMonday].map { today.adding(days: $0, calendar: calendar) }
     }
 }
+
+/// 날짜 고르기 달력이 보이는 달. 처음엔 고른 날의 달이고, 내일이 든 달보다 앞으로는 가지 않는다.
+public struct CarryMonthPage: Equatable, Sendable {
+    public private(set) var month: CalendarMonth
+    private let firstMonth: CalendarMonth
+
+    public init(selected: LocalDay, today: LocalDay, calendar: Calendar) {
+        month = CalendarMonth(containing: selected)
+        firstMonth = CalendarMonth(containing: today.adding(days: 1, calendar: calendar))
+    }
+
+    public var canGoBack: Bool { Self.index(month) > Self.index(firstMonth) }
+
+    public mutating func previous() {
+        if canGoBack { month = month.adding(months: -1) }
+    }
+
+    public mutating func next() {
+        month = month.adding(months: 1)
+    }
+
+    /// 고른 날이 든 달을 보인다. 보이는 달의 칸을 누르면 그대로다.
+    public mutating func pick(_ day: LocalDay) {
+        month = CalendarMonth(containing: day)
+    }
+
+    private static func index(_ month: CalendarMonth) -> Int { month.year * 12 + month.month }
+}

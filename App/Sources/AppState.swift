@@ -223,8 +223,9 @@ final class AppState {
     private var carryMove: (taskID: TaskID, day: LocalDay)?
     /// 이번 카드 묶음에서 답한 수. 카드 위 점에 쓰고, 카드가 모두 없어지면 비운다. 앱을 다시 켜면 0이다.
     private(set) var carryAnswered = 0
-    /// 카드 답 쓰기가 실패했다. 다음 답이 되면 꺼진다.
-    private(set) var carryAnswerFailed = false
+    /// 카드 답 쓰기가 실패했다. 다음 답이 되거나, 달력을 열고 닫거나, 카드의 할 일이 바뀌면 꺼진다.
+    var carryAnswerFailed: Bool { carryFailedTaskID != nil && carryFailedTaskID == carryCardTask?.id }
+    private var carryFailedTaskID: TaskID?
 
     // MARK: 판단 모델(spec 003 data-model §6·§9)
 
@@ -620,6 +621,7 @@ final class AppState {
         attempted = attempted.filter { !$0.value.failed }
         defer { requestScores() }
         _ = recoverIfPending(repository)
+        reloadTasks()
         let now = clock.now()
         let activated: SessionAssembly.Activated
         do {
@@ -636,26 +638,6 @@ final class AppState {
         adoptPick(activated.session, at: now)
     }
 
-    /// 이월 판정만 따로(spec 005 R-412, data-model §9). 활성화는 `SessionAssembly.activate` 안에서 같은 판정을 한다.
-    /// 저장할 수 없거나 읽기·쓰기가 실패하면 false.
-    @discardableResult
-    func judgeCarryIfNeeded() -> Bool {
-        guard let repository, reloadTasks() else { return false }
-        do {
-            if try SessionAssembly.judgeCarry(
-                tasks, revertedIDs: pendingRevertedIDs, now: clock.now(),
-                dayStart: CoreSettings.readDayStart(from: settings), calendar: calendar, in: repository,
-                reload: reloadedTasks)
-            {
-                pendingRevertedIDs = []
-            }
-        } catch {
-            Self.logStorageFailure(error)
-            return false
-        }
-        return true
-    }
-
     /// 이월 카드 답 하나(spec 005 R-415·R-416, data-model §10). 카드에 오르지 않은 할 일, 오늘이나 지난 날, 쓰기 실패면
     /// 아무것도 바꾸지 않고 false. 쓰기 실패는 카드에 한 줄로 알린다. 쓴 뒤 카드가 없으면 고른다.
     @discardableResult
@@ -666,10 +648,10 @@ final class AppState {
             let batch = try? CarryAnswer.apply(answer, task: task, today: today, input: input)
         else { return false }
         guard write(batch, to: repository) else {
-            carryAnswerFailed = true
+            carryFailedTaskID = id
             return false
         }
-        carryAnswerFailed = false
+        carryFailedTaskID = nil
         carryMove = nil
         carryAnswered += 1
         reloadTasks()
@@ -680,6 +662,7 @@ final class AppState {
     /// "날짜 바꿀래요": 내일을 고른 채 달력을 연다(R-415).
     func beginCarryMove() {
         guard let task = carryCardTask else { return }
+        carryFailedTaskID = nil
         carryMove = (task.id, logicalToday.adding(days: 1, calendar: calendar))
     }
 
@@ -691,6 +674,7 @@ final class AppState {
 
     /// "돌아가기": 답하지 않고 카드로 돌아간다.
     func cancelCarryMove() {
+        carryFailedTaskID = nil
         carryMove = nil
     }
 

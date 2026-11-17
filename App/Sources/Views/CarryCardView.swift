@@ -129,14 +129,26 @@ private struct CarryMoveView: View {
     let failed: Bool
     let input: CarryMoveInput
 
-    @State private var monthOffset = 0
+    @State private var shownPage: CarryMonthPage?
     @Environment(\.panelPalette) private var palette
 
     private static let weekdayNames = ["일", "월", "화", "수", "목", "금", "토"]
 
-    private var tomorrow: LocalDay { input.today.adding(days: 1, calendar: input.calendar) }
-    private var firstMonth: CalendarMonth { CalendarMonth(containing: tomorrow) }
-    private var month: CalendarMonth { CalendarMonth(containing: input.selected).adding(months: monthOffset) }
+    private var page: CarryMonthPage {
+        shownPage ?? CarryMonthPage(selected: input.selected, today: input.today, calendar: input.calendar)
+    }
+    private var month: CalendarMonth { page.month }
+
+    private func turn(_ change: (inout CarryMonthPage) -> Void) {
+        var next = page
+        change(&next)
+        shownPage = next
+    }
+
+    private func pick(_ day: LocalDay) {
+        turn { $0.pick(day) }
+        input.onPick(day)
+    }
 
     var body: some View {
         CarryHeader(left: left) {
@@ -154,11 +166,8 @@ private struct CarryMoveView: View {
                 Array(zip([CarryCardText.tomorrow, CarryCardText.dayAfter, CarryCardText.nextMonday], quick)),
                 id: \.0
             ) { label, day in
-                Button(label) {
-                    monthOffset = 0
-                    input.onPick(day)
-                }
-                .buttonStyle(NotchButtonStyle(kind: .secondary, compact: true))
+                Button(label) { pick(day) }
+                    .buttonStyle(NotchButtonStyle(kind: .secondary, compact: true))
             }
         }
         VStack(spacing: 6) {
@@ -166,10 +175,10 @@ private struct CarryMoveView: View {
                 Text("\(String(month.year))년 \(month.month)월")
                     .font(.system(size: 12, weight: .semibold))
                 Spacer(minLength: 0)
-                Button("‹") { monthOffset -= 1 }
-                    .disabled(month.year * 12 + month.month <= firstMonth.year * 12 + firstMonth.month)
+                Button("‹") { turn { $0.previous() } }
+                    .disabled(!page.canGoBack)
                     .accessibilityLabel("이전 달")
-                Button("›") { monthOffset += 1 }
+                Button("›") { turn { $0.next() } }
                     .accessibilityLabel("다음 달")
             }
             .buttonStyle(CalendarArrowStyle())
@@ -190,7 +199,7 @@ private struct CarryMoveView: View {
                                 CarryDayCell(
                                     day: day, isPickable: input.today < day, isToday: day == input.today,
                                     isDeadline: day == input.deadline, isSelected: day == input.selected
-                                ) { input.onPick(day) }
+                                ) { pick(day) }
                             } else {
                                 Color.clear.frame(maxWidth: .infinity, maxHeight: 1)
                             }
@@ -255,7 +264,12 @@ private struct CarryDayCell: View {
         .buttonStyle(.plain)
         .disabled(!isPickable)
         .accessibilityLabel("\(day.month)월 \(day.day)일")
+        .accessibilityValue(accessibilityNote)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private var accessibilityNote: String {
+        [isDeadline ? "지금 마감" : nil, isToday ? "오늘" : nil].compactMap { $0 }.joined(separator: ", ")
     }
 
     private var foreground: Color {

@@ -350,7 +350,7 @@ final class ScreenStateSnapshotTests: XCTestCase {
                 title: "가짜 할 일 A", reason: .touched, left: 3, answered: 0, move: Self.move(deadline: nil)))
     }
 
-    /// 여섯 주인 달(2026년 8월)도 판 안에 들어간다.
+    /// 여섯 주인 달(2026년 8월)의 날짜 고르기.
     func test_R415_datePickerSixWeeks() throws {
         let move = CarryMoveInput(
             selected: LocalDay(text: "2026-08-01")!, today: LocalDay(text: "2026-07-30")!,

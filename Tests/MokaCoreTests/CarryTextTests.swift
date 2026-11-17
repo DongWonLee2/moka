@@ -57,7 +57,7 @@ func carryEarLabel() {
 
 @Test("FR-08 R-415: 달력은 고른 날의 달을 보이고, 다음 달로 넘긴 뒤 날짜를 골라도 그 달에 남는다")
 func carryMonthPageStaysOnPick() {
-    var page = CarryMonthPage(selected: day("2026-11-17"), today: day("2026-11-16"))
+    var page = CarryMonthPage(selected: day("2026-11-17"), today: day("2026-11-16"), calendar: seoul)
     #expect(page.month == CalendarMonth(year: 2026, month: 11))
     #expect(!page.canGoBack, "내일이 든 달보다 앞으로는 가지 않는다")
     page.next()
