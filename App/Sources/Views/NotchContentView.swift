@@ -30,6 +30,10 @@ struct NotchContentView: View {
     var keyNotice = false
     /// 이월 카드(spec 005 R-414). 펼치면 카드, 접히면 빨간 점과 남은 수.
     var carry: CarryCardInput?
+    /// 가용 시간 질문·오늘 끝(spec 005 R-419·R-422). 펼치면 그 화면, 접히면 회색 점과 글자.
+    var budget: BudgetScreenInput?
+    var draftBudget = DraftBudgetInput()
+    var expiredBudget = ExpiredBudgetInput()
     var onOpenKeySettings: () -> Void = {}
     let titleFocusRequest: Int
     let chip: QuantumChipInput
@@ -47,11 +51,12 @@ struct NotchContentView: View {
         let collapsedLine = showsFirstActionCollapsed ? (collapsedFirstAction ?? firstAction) : nil
         let sides = NotchLayout.collapsedSideWidths(
             timer: timer, remainingSeconds: remainingSeconds, style: style,
-            showsFirstAction: collapsedLine != nil, showsCarry: carry != nil)
+            showsFirstAction: collapsedLine != nil, showsCarry: carry != nil || budget != nil)
         ZStack(alignment: .top) {
             HStack(spacing: 0) {
                 if !isExpanded {
-                    CollapsedLeadingView(timer: timer, firstAction: collapsedLine, carryLeft: carry?.left)
+                    CollapsedLeadingView(
+                        timer: timer, firstAction: collapsedLine, carryLeft: carry?.left, budget: budget)
                         .frame(width: sides.leading, height: metrics.height)
                         .transition(sideTransition(towardHole: .trailing))
                 }
@@ -69,7 +74,7 @@ struct NotchContentView: View {
                     titleFocusRequest: titleFocusRequest, chip: chip,
                     onEnterTitle: onEnterTitle, draftInput: draftInput, notes: notes, reasonLine: reasonLine,
                     gate: gate, keyNotice: keyNotice, onOpenKeySettings: onOpenKeySettings, carry: carry,
-                    onStart: onStart,
+                    budget: budget, draftBudget: draftBudget, expiredBudget: expiredBudget, onStart: onStart,
                     onComplete: onComplete
                 )
                 .transition(reduceMotion ? .opacity : .notchEntry(scaleY: 0.6, anchor: .top))
@@ -103,7 +108,7 @@ struct NotchContentView: View {
         .offset(
             x: NotchLayout.horizontalOffset(
                 timer: timer, remainingSeconds: remainingSeconds, isExpanded: isExpanded, style: style,
-                showsFirstAction: collapsedFirstAction != nil, showsCarry: carry != nil))
+                showsFirstAction: collapsedFirstAction != nil, showsCarry: carry != nil || budget != nil))
     }
 
     /// 시안 v3.5: 노치는 위쪽 오목 곡선 + 아래 둥근 모서리(접힘 10pt·펼침 18pt),

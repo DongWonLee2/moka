@@ -11,15 +11,11 @@ public enum SessionAssembly {
         public var budget: DayBudget?
         /// 이번 앱 시작에서 R-111이 되돌린 할 일. 이월 판정이 돌면 비운다.
         public var revertedIDs: Set<TaskID>
-        /// 가용 시간 질문과 오늘 끝을 쓰는지(data-model §12 4·5). 가용 시간 화면이 없는 앱(plan 단위 4 전)은 false라
-        /// 카드 뒤 바로 세션이다.
-        public var asksBudget: Bool
 
-        public init(today: LocalDay, budget: DayBudget?, revertedIDs: Set<TaskID>, asksBudget: Bool = true) {
+        public init(today: LocalDay, budget: DayBudget?, revertedIDs: Set<TaskID>) {
             self.today = today
             self.budget = budget
             self.revertedIDs = revertedIDs
-            self.asksBudget = asksBudget
         }
     }
 
@@ -85,16 +81,11 @@ public enum SessionAssembly {
         return session.picked(input)
     }
 
-    /// 꺼짐이면 늘 세션. 켜짐이면 data-model §12 표이고, 가용 시간을 묻지 않으면 질문·오늘 끝 대신 세션이다.
+    /// 꺼짐이면 늘 세션. 켜짐이면 data-model §12 표.
     public static func mode(_ timer: NotchTimer, tasks: [MokaTask], schedule: Schedule?) -> NotchMode {
         guard let schedule else { return .session }
-        let mode = NotchMode.of(
+        return NotchMode.of(
             storageAvailable: true, timer: timer, tasks: tasks, budget: schedule.budget, today: schedule.today)
-        guard !schedule.asksBudget else { return mode }
-        switch mode {
-        case .askBudget, .dayEnd: return .session
-        case .storageUnavailable, .session, .carryCard: return mode
-        }
     }
 
     /// 지난 판정 시각을 할 일 저장소에서 읽어 하루가 바뀌었으면 판정하고 다시 읽은 목록을, 아니면 nil을 돌려준다.

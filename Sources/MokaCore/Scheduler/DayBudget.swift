@@ -136,6 +136,12 @@ public enum BudgetInputIssue: Equatable, Sendable, Error {
 }
 
 public enum BudgetInput {
+    /// 받지 않는 이유. 받는 값이면 nil.
+    public static func issue(_ text: String) -> BudgetInputIssue? {
+        if case .failure(let issue) = parse(text) { return issue }
+        return nil
+    }
+
     /// 시간 단위 글자를 분으로. 앞뒤 공백은 빼고, 쉼표 소수점은 받지 않는다.
     public static func parse(_ text: String) -> Result<Int, BudgetInputIssue> {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)

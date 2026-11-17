@@ -30,6 +30,10 @@ struct ExpandedView: View {
     var onOpenKeySettings: () -> Void = {}
     /// 이월 카드(spec 005 R-414). 있으면 단계 내용 대신 카드를 보인다.
     var carry: CarryCardInput?
+    /// 가용 시간 질문·오늘 끝(spec 005 R-419·R-422). 있으면 단계 내용 대신 그 화면을 보인다.
+    var budget: BudgetScreenInput?
+    var draftBudget = DraftBudgetInput()
+    var expiredBudget = ExpiredBudgetInput()
     let onStart: () -> Void
     let onComplete: () -> Void
     @Environment(\.colorSchemeContrast) private var contrast
@@ -76,6 +80,11 @@ struct ExpandedView: View {
 
     private var earLabel: String {
         if let carry { return NotchStatus.carryLabel(pickingDate: carry.move != nil) }
+        switch budget {
+        case .ask: return NotchStatus.askBudgetLabel
+        case .dayEnd: return NotchStatus.dayEndLabel
+        case nil: break
+        }
         return NotchStatus.label(for: timer, pending: notes.pending)
     }
 
@@ -83,6 +92,20 @@ struct ExpandedView: View {
     private var stage: some View {
         if let carry {
             CarryCardView(input: carry)
+        } else if let budget {
+            switch budget {
+            case .ask(let input):
+                AskBudgetView(
+                    input: input, isEnteringTitle: draftInput.isEnteringTitle,
+                    onBeginNewTitle: draftInput.onBeginNewTitle
+                ) {
+                    TitleEntryRow(
+                        focusRequest: titleFocusRequest, focusesOnAppear: true,
+                        onCancel: draftInput.onCancelNewTitle, onSubmit: onEnterTitle)
+                }
+            case .dayEnd(let input):
+                DayEndView(input: input)
+            }
         } else {
             timerStage
         }
@@ -128,7 +151,8 @@ struct ExpandedView: View {
             }
         case .expired(let title, let chipMin, _):
             ExpiredView(
-                title: title, chipMin: chipMin, chip: chip, notes: notes, onStart: onStart, onComplete: onComplete)
+                title: title, chipMin: chipMin, chip: chip, budget: expiredBudget, notes: notes, onStart: onStart,
+                onComplete: onComplete)
         }
     }
 
@@ -151,6 +175,11 @@ struct ExpandedView: View {
         QuantumChipView(
             chipMin: draft.chipMin, customText: chip.customText,
             onChoose: chip.onChoose, onBeginCustom: chip.onBeginCustom, onEditCustom: chip.onEditCustom)
+        if let extend = draftBudget.extend {
+            ExtendConfirmView(input: extend)
+        } else if let note = draftBudget.capNote {
+            BudgetNoteText(text: note)
+        }
         HStack(spacing: 6) {
             if let customText = chip.customText {
                 CustomMinutesField(
@@ -169,21 +198,29 @@ struct ExpandedView: View {
                     .illustrationUnfocusable()
             }
             Spacer(minLength: 0)
-            Button(action: onStart) {
-                ButtonLabel(text: NotchText.start, shortcut: GateDisplay.startShortcutMark(gatePhase: gate?.phase))
+            // 늘리기 확인 줄이 뜨면 시작 버튼 자리를 그 줄이 맡는다(시안 6번).
+            if draftBudget.extend == nil {
+                Button(action: onStart) {
+                    ButtonLabel(
+                        text: NotchText.start, shortcut: GateDisplay.startShortcutMark(gatePhase: gate?.phase))
+                }
+                .buttonStyle(NotchButtonStyle(kind: .primary))
+                .illustrationUnfocusable()
+                // 제목 칸이나 게이트 칸이 열려 있으면 Enter는 그 칸의 것이다. 시작까지 함께 부르지 않게 단축키를 뗀다.
+                .keyboardShortcut(
+                    GateDisplay.detachesStartShortcut(
+                        isEnteringTitle: draftInput.isEnteringTitle, gatePhase: gate?.phase,
+                        isIllustration: isIllustration)
+                        ? nil : .defaultAction
+                )
+                .disabled(!chip.canStart)
             }
-            .buttonStyle(NotchButtonStyle(kind: .primary))
-            .illustrationUnfocusable()
-            // 제목 칸이나 게이트 칸이 열려 있으면 Enter는 그 칸의 것이다. 시작까지 함께 부르지 않게 단축키를 뗀다.
-            .keyboardShortcut(
-                GateDisplay.detachesStartShortcut(
-                    isEnteringTitle: draftInput.isEnteringTitle, gatePhase: gate?.phase, isIllustration: isIllustration)
-                    ? nil : .defaultAction
-            )
-            .disabled(!chip.canStart)
         }
         if let message = QuantumChip.customIssueMessage(customText: chip.customText) {
             CustomIssueText(message: message)
+        }
+        if draftBudget.startFailed {
+            CustomIssueText(message: BudgetViewText.startFailed)
         }
     }
 
@@ -218,7 +255,7 @@ extension VerticalAlignment {
 }
 
 /// 빈 상태 입력 줄. 앞뒤 공백을 뺀 제목이 비면 Enter·다음으로 넘어가지 않는다(R-002).
-private struct TitleEntryRow: View {
+struct TitleEntryRow: View {
     let focusRequest: Int
     var focusesOnAppear = false
     var onCancel: (() -> Void)?

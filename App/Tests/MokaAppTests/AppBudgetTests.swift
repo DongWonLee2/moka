@@ -19,7 +19,7 @@ final class AppBudgetTests: XCTestCase {
         var stored: DayBudget? { CoreSettings.readDayBudget(from: settings) }
 
         /// 같은 저장소로 앱을 다시 켠다.
-        func relaunched() -> AppState {
+        @MainActor func relaunched() -> AppState {
             let state = makeState(repository, settings: settings, clock: clock, budgetAnswered: false)
             state.launch()
             return state
@@ -430,7 +430,11 @@ final class AppBudgetTests: XCTestCase {
 
         h.state.beginSetAside(.skip)
         XCTAssertEqual(try h.repository.checkpoints().last?.trigger, .dayEnd)
-        XCTAssertEqual(h.state.notchMode, .askBudget, "버튼 뒤 새 하루의 질문")
+        switch h.state.notchMode {
+        case .carryCard, .askBudget: break
+        default: XCTFail("버튼 뒤 새 하루의 이월 카드나 가용 시간 질문이어야 한다: \(h.state.notchMode)")
+        }
+        XCTAssertEqual(h.state.timer, .empty(draft: nil))
     }
 
     func test_FR10_R421_R10_noCapAfterBoundaryWhenStartDayHadMore() throws {

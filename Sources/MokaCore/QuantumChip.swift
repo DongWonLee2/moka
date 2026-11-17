@@ -52,6 +52,12 @@ public enum QuantumChip {
         return presetSegments + [QuantumChipSegment(kind: .custom, label: customLabel, selected: isCustom)]
     }
 
+    /// 시간 끝과 오늘 끝이 겹침(spec 005 R-422, 시안 8번): 모든 칸을 끄고 고른 칸도 두지 않는다.
+    public static func offSegments() -> [QuantumChipSegment] {
+        presets.map { QuantumChipSegment(kind: .preset($0), label: "\($0)분", selected: false, enabled: false) }
+            + [QuantumChipSegment(kind: .custom, label: "직접…", selected: false, enabled: false)]
+    }
+
     /// `Int(text)`가 1...180이면 값, 아니면 nil(시작 불가).
     public static func parseCustom(_ text: String) -> Int? {
         guard let minutes = Int(text), Defaults.quantumMinRange.contains(minutes) else { return nil }

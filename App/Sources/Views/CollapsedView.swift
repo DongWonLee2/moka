@@ -7,6 +7,8 @@ struct CollapsedLeadingView: View {
     let timer: NotchTimer
     var firstAction: String?
     var carryLeft: Int?
+    /// 가용 시간 질문·오늘 끝(spec 005 시안 10-2·10-3번).
+    var budget: BudgetScreenInput?
 
     @Environment(\.panelPalette) private var palette
 
@@ -24,6 +26,8 @@ struct CollapsedLeadingView: View {
     private var content: some View {
         if let carryLeft {
             CollapsedCarryView(left: carryLeft)
+        } else if let budget {
+            CollapsedBudgetView(screen: budget)
         } else if let firstAction, case .empty(.some) = timer {
             HStack(spacing: 6) {
                 Text("이어서 ·")

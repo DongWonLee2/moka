@@ -20,6 +20,8 @@ struct ExpiredView: View {
     let title: String
     let chipMin: Int
     let chip: QuantumChipInput
+    /// 가용 시간 상한(spec 005 R-409·R-421·R-422, 시안 7·8번).
+    var budget = ExpiredBudgetInput()
     let notes: NotesInput
     let onStart: () -> Void
     let onComplete: () -> Void
@@ -36,12 +38,15 @@ struct ExpiredView: View {
             draft: notes.draft, onEdit: notes.onEdit, donePlaceholder: "비워 둬도 돼요", focus: $notesFocus,
             onSubmitNext: {})
         QuantumChipView(
-            chipMin: chipMin, customText: chip.customText,
+            chipMin: chipMin, customText: chip.customText, maxMinutes: budget.maxMinutes, off: budget.offReason != nil,
             onChoose: chip.onChoose, onBeginCustom: chip.onBeginCustom, onEditCustom: chip.onEditCustom)
-        if let customText = chip.customText {
+        if let customText = chip.customText, budget.offReason == nil {
             CustomMinutesField(
                 text: customText, takeFocusRequest: chip.takeFocusRequest, onEdit: chip.onEditCustom,
                 onSubmit: submitCustom)
+        }
+        if let note = budget.offReason ?? budget.note {
+            BudgetNoteText(text: note)
         }
         HStack(spacing: 6) {
             Button(NotchText.skip) { notes.onBegin(.skip) }
@@ -54,27 +59,27 @@ struct ExpiredView: View {
             }
             .buttonStyle(NotchButtonStyle(kind: .secondary))
             .keyboardShortcut(againIsDefault && !isIllustration ? .defaultAction : nil)
-            .disabled(!chip.canStart)
+            .disabled(!chip.canStart || budget.offReason != nil)
             Button(action: onComplete) {
                 ButtonLabel(text: NotchText.complete, shortcut: completeIsDefault ? "↵" : nil)
             }
             .buttonStyle(NotchButtonStyle(kind: .primary))
             .keyboardShortcut(completeIsDefault && !isIllustration ? .defaultAction : nil)
         }
-        if let message = QuantumChip.customIssueMessage(customText: chip.customText) {
+        if let message = QuantumChip.customIssueMessage(customText: chip.customText, remainingMinutes: budget.maxMinutes) {
             CustomIssueText(message: message)
         }
     }
 
     /// 두 줄 칸에 포커스가 있으면 Enter는 칸의 몫이라 기본 버튼을 두지 않는다.
-    private var againIsDefault: Bool { chip.customText != nil && notesFocus == nil }
-    private var completeIsDefault: Bool { chip.customText == nil && notesFocus == nil }
+    private var againIsDefault: Bool { chip.customText != nil && notesFocus == nil && budget.offReason == nil }
+    private var completeIsDefault: Bool { !againIsDefault && notesFocus == nil }
 
     private var againLabel: String {
         QuantumChip.againLabel(chipMin: chipMin, customText: chip.customText)
     }
 
     private func submitCustom() {
-        if chip.canStart { onStart() }
+        if chip.canStart, budget.offReason == nil { onStart() }
     }
 }
