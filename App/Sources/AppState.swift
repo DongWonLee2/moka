@@ -210,7 +210,6 @@ final class AppState {
         return SessionAssembly.mode(timer, tasks: tasks, schedule: schedule(at: clock.now()))
     }
 
-    /// 지금 이월 카드에 오른 할 일.
     var carryCardTask: MokaTask? {
         guard case .carryCard(let id, _, _) = notchMode else { return nil }
         return tasks.first { $0.id == id }
