@@ -716,6 +716,7 @@ final class AppProviderTests: XCTestCase {
         XCTAssertEqual(h.state.providerActionFailure, .saveMicrosoft)
         XCTAssertEqual(h.state.sendingHost, "example-resource.invalid", "바인딩은 옛 주소 그대로")
         XCTAssertFalse(h.state.hasKey, "이미 지운 키는 키 없음으로 보인다")
+        XCTAssertTrue(h.state.microsoftKeyCleared, "#138: 저장 실패 문구와 키를 지웠다는 문구를 함께 보인다(지금 동작)")
         XCTAssertNil(h.state.requestScores(), "키가 없어 옛 주소로도 묻지 않는다")
     }
 
