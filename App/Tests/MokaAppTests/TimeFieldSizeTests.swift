@@ -40,6 +40,7 @@ final class TimeFieldSizeTests: XCTestCase {
                 hosting.frame = CGRect(x: 0, y: 0, width: 100, height: 40)
                 hosting.layoutSubtreeIfNeeded()
                 let picker = try XCTUnwrap(Self.firstDatePicker(in: hosting))
+                XCTAssertGreaterThan(picker.intrinsicContentSize.width, 0, "\(identifier) \(hour):\(minute)")
                 XCTAssertLessThanOrEqual(
                     picker.intrinsicContentSize.width, TimeField.width, "\(identifier) \(hour):\(minute)")
             }
