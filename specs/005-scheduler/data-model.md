@@ -173,6 +173,8 @@ R-119(앱 DB를 열 수 없음): `AppStorage.repository == nil`이면 판정을 
 
 ## §11 가용 시간과 쓴 시간 (`DayBudget`, R-419~R-421)
 
+spec 008이 대체(멈춘 채 끝난 작업 시간은 저장한 남은 초를, 이어 돈 뒤 끝나면 다시 정한 끝 시각까지 남은 초를 돌려주고, 도는 중 설정 창에서 지워도 남은 초를 돌려주며, 긴급 칩도 늘리기를 쓴다, R-805·R-811·R-833, plan P4)
+
 ```swift
 struct DayBudget: Codable, Equatable {   // 설정 키 day_budget의 JSON
     var day: LocalDay
@@ -224,6 +226,8 @@ struct DayBudget: Codable, Equatable {   // 설정 키 day_budget의 JSON
 
 ## §12 노치 모드와 오늘 끝 (R-413, R-414, R-419, R-422)
 
+spec 008이 대체(모드 순서에 일시 중지를 더한다, R-831)
+
 화면은 아래 순서의 첫 조건으로 정한다. `NotchMode.of(...)` 순수 함수.
 
 | 순서 | 조건 | 모드 | 고르기 |
@@ -243,6 +247,8 @@ struct DayBudget: Codable, Equatable {   // 설정 키 day_budget의 JSON
 - 하루 경계를 지난 활성화에서 2이면(도는 중) 판정은 돌고(§9, 진행 중 할 일에 표시) 화면은 그대로다. 버튼으로 빈 상태가 되면 3부터 본다(R-417).
 
 ## §13 설정 키 (승인 항목 5)
+
+spec 008이 대체(설정 키 `default_pause_min`을 더한다, R-808)
 
 기존 `settings(key, value)` 표에 더한다. 읽기 실패와 형식 오류는 기본값으로 본다(`CoreSettings` 무늬). 예외: `carry_judged_at` 읽기 오류(DB 읽기 실패)는 기본값으로 보지 않고 판정을 미룬다(R-412). 형식 오류만 없음(처음 판정)으로 본다.
 
@@ -299,6 +305,8 @@ struct DayBudget: Codable, Equatable {   // 설정 키 day_budget의 JSON
 `ValueTypeTests`의 `allCases` 단언은 새 값을 끝에 더하는 것으로 고친다(값을 빼지 않는다, 계약 덧붙이기).
 
 ## §17 3초 뒤 자동 시작 (R-410)
+
+spec 008이 대체(일시 중지 끝과 앱을 다시 켠 뒤 첫 초안은 사용자 입력 전까지 자동 시작하지 않는다, R-832)
 
 `AutoStart.shouldStart(enabled:mode:draftShownAt:lastInputAt:gateBusy:extendNeeded:startFailed:now:) -> Bool`: 켜짐 && 모드가 §12-6의 초안 && 게이트가 묻거나 확인하는 중이 아님(그 할 일의 지금 판단 입력에 대한 판단 결과를 기다리는 동안은 시작하지 않는다(R-306). 기다림은 `ConcreteGate.awaitsJudgment`: 초안이고 통과 전이고 물을 수 있고 임계값이 있는데 지금 해시의 판단 결과가 없고 그 해시가 실패로 적히지 않음, `gateBusy`에 함께 넣는다) && 늘리기 확인 줄이 닫혀 있음(`extendNeeded == nil`, 곧 칩 ≤ 남은 분이거나 상한이 없음, §11 "늘리기") && 시작 실패 문구("시작하지 못했어요. 다시 해 주세요.", §11)가 떠 있지 않음(`startFailed == false`, 메인 세션 가정: 실패를 사람이 보고 직접 누르게 하려고 자동 시작은 다시 시도하지 않는다. 사용자가 칩·버튼을 누르면 문구가 사라지고 다시 3초를 센다) && `now - max(draftShownAt, lastInputAt) ≥ Defaults.autoStartDelay`. 남은 10분에서 25분 칩을 고르면 확인 줄이 열려 자동 시작하지 않는다. 늘리기는 사용자가 눌러야 한다. 앱은 초안이 뜰 때 한 번 일정을 걸고, 입력이 있으면 다시 건다. 시간은 주입한 시계로 시험한다.
 
