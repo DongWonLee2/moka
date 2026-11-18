@@ -1,8 +1,6 @@
 # 계약: `moka-sim` 덧붙임 (spec 008)
 
-spec 001 `contracts/moka-sim-v1.md`, spec 002 `contracts/moka-sim-v1-additions.md`, spec 003 `contracts/moka-sim-v1-additions-003.md`, spec 005 `contracts/moka-sim-v1-additions-005.md`에 덧붙인다. 근거: spec R-834, data-model §1~§10. 승인 항목 4(헌법 I).
-
-**상태: 초안.** 일시 중지 입력 모양은 research P8이 정해지면 아래 "입력 덧붙임" 표를 확정한다. 나머지 절은 P8과 상관없다.
+spec 001 `contracts/moka-sim-v1.md`, spec 002 `contracts/moka-sim-v1-additions.md`, spec 003 `contracts/moka-sim-v1-additions-003.md`, spec 005 `contracts/moka-sim-v1-additions-005.md`에 덧붙인다. 근거: spec R-834, data-model §1~§10. 승인 항목 4(헌법 I). 입력 모양은 research P8 A(토론 3:0, 2026-11-18)다.
 
 ## 켜는 법
 
@@ -10,27 +8,20 @@ spec 001 `contracts/moka-sim-v1.md`, spec 002 `contracts/moka-sim-v1-additions.m
 
 ## 입력 덧붙임 (storage 모드에서만)
 
-공통 이벤트:
-
 | 이벤트 | 필드 | 규칙 |
 |---|---|---|
+| `pause` | `length`(정수 분 1~180 또는 문자열 `"until_morning"`), `done_note`·`next_note`(문자열, 생략하면 안 적기) | 도는 중이나 초안에서 받는다. 누름과 제출이 같은 시각이다. 초안에서 두 줄 필드가 있으면 종료 코드 2 |
 | `resume` | 없음 | "다시 시작". 일시 중지 중이 아니면 종료 코드 2 |
-| `urgent` | `title`(문자열), `quantum_min`(정수 1~180), `done_note`·`next_note`(문자열, 생략하면 안 적기), `extend`(불리언, 생략하면 `false`) | 도는 중에만 받는다. 칩이 남은 분보다 긴데 `extend`가 없거나 `false`면 종료 코드 2. 남은 분이 0일 때는 research P2, 입력 동안 모자라는 경우는 research P9가 정한다 |
+| `urgent` | `title`(문자열), `quantum_min`(정수 1~180), `done_note`·`next_note`(문자열, 생략하면 안 적기), `extend`(불리언, 생략하면 `false`) | 도는 중에만 받는다. 칩이 남은 분보다 길거나 남은 분이 0인데 `extend`가 없거나 `false`면 종료 코드 2. 이벤트 시각 하나로 남은 초를 계산한다(data-model §8) |
 
-일시 중지 입력(research P8에서 하나를 고른다). 어느 안이든 `length`는 정수 분 1~180 또는 문자열 `"until_morning"`이고, 초안에서 멈출 때 두 줄 필드가 있으면 종료 코드 2다.
-
-| 안 | 이벤트 | 필드 |
-|---|---|---|
-| A | `pause` | `length`, `done_note`, `next_note` |
-| B | `pause_begin` / `pause_commit` / `pause_cancel` | 없음 / `length`, `done_note`, `next_note` / 없음 |
-| C | `pause` | `pressed_at`, `length`, `done_note`, `next_note` |
-
-- 시간 끝, 빈 상태, 이월 카드, 가용 시간 질문, 오늘 끝에서 일시 중지 입력이면 종료 코드 2(R-801).
+- 시간 끝, 빈 상태, 이월 카드, 가용 시간 질문, 오늘 끝에서 `pause`이면 종료 코드 2(R-801).
 - 멈춘 동안 `complete`, `skip`, `switch`, `urgent`, `start`, `choose_quantum`은 종료 코드 2(R-803).
 - 기존 `add_task`는 멈춘 동안 저장만 하고 초안을 바꾸지 않는다.
 - 기존 `quit`은 멈춘 채면 `quit` 체크포인트와 저장한 남은 초 돌려주기를 한다. 기존 `activate`와 `resume`은 하루 경계를 넘겼으면 data-model §4를 한다.
 - 기존 `tick`은 정한 길이가 끝났는지 본다. 초안에서 멈췄으면 그 시각에 일시 중지가 끝난다.
 - 오류 픽스처는 `Tests/MokaCoreTests/Fixtures/sim/errors/`에 하나씩 더하고 `SimScenarioTests` 표에 넣는다.
+
+시뮬레이터로 재현하지 않는 경우(누른 시각의 남은 초, 돌아가기, 두 줄을 적는 동안 하루 경계, 입력 중 활성화)는 단위 시험이 맡는다(data-model §12).
 
 ## 출력 덧붙임
 
@@ -38,11 +29,11 @@ spec 001 `contracts/moka-sim-v1.md`, spec 002 `contracts/moka-sim-v1-additions.m
 
 | 키 | 규칙 |
 |---|---|
-| `pause` | 일시 중지 중이 아니면 `null`. 중이면 `{"origin":"run"\|"draft","stage":"choosing"\|"notes"\|"holding"\|"waiting","left_s":N\|null,"frozen_s":N\|null}` |
+| `pause` | 일시 중지 중이 아니면 `null`. 중이면 `{"origin":"run"\|"draft","stage":"holding"\|"waiting","left_s":N\|null,"frozen_s":N\|null}` |
 | `urgent_pin` | 긴급 고정된 할 일 id, 없으면 `null` |
 | `return_task` | 복귀 제안을 기다리는 끊긴 할 일 id, 없으면 `null` |
 
-- `left_s`는 남은 일시 중지 초(올림)이고, 길이가 정해지기 전이거나 0 이하이면 `null`이다. `stage`의 `waiting`은 `holding`이고 끝 시각이 지난 때다.
+- `left_s`는 남은 일시 중지 초(올림)이고, 0 이하이면 `null`이다. `stage`의 `waiting`은 끝 시각이 지난 때다.
 - `frozen_s`는 멈춘 작업 시간의 남은 초(올림)이고, 초안에서 멈췄으면 `null`이다.
 
 기존 키에 더해지는 값:
@@ -58,7 +49,7 @@ spec 001 `contracts/moka-sim-v1.md`, spec 002 `contracts/moka-sim-v1-additions.m
 | `decision.scheduler_choice` | `urgent_pin_v1`, `urgent_return_v1` |
 | `checkpoint.trigger` | `pause`, `urgent` |
 
-`timer_state: "paused"`는 research P1의 어느 안이든 같은 출력이다. 출력에 할 일 제목과 두 줄 본문을 내지 않는다(ASCII만).
+출력에 할 일 제목과 두 줄 본문을 내지 않는다(ASCII만).
 
 ## 새 불변식 (종료 코드 1)
 
@@ -73,16 +64,18 @@ spec 001 `contracts/moka-sim-v1.md`, spec 002 `contracts/moka-sim-v1-additions.m
 
 ## 예
 
-입력(가짜, 일시 중지 입력은 P8이 정해진 뒤 확정):
+입력(가짜):
 
 ```json
 {"version":1,"timezone":"Asia/Seoul","storage":true,"events":[
  {"at":"2026-11-18T01:00:00Z","type":"add_task","title":"가짜 할 일 A"},
  {"at":"2026-11-18T01:00:05Z","type":"budget","minutes":120},
  {"at":"2026-11-18T01:00:10Z","type":"start"},
- {"at":"2026-11-18T01:10:10Z","type":"urgent","title":"가짜 긴급 일 U","quantum_min":15},
- {"at":"2026-11-18T01:20:10Z","type":"complete"}
+ {"at":"2026-11-18T01:05:10Z","type":"pause","length":30,"next_note":"가짜 다음 줄"},
+ {"at":"2026-11-18T01:15:10Z","type":"resume"},
+ {"at":"2026-11-18T01:20:10Z","type":"urgent","title":"가짜 긴급 일 U","quantum_min":15},
+ {"at":"2026-11-18T01:30:10Z","type":"complete"}
 ]}
 ```
 
-읽는 법: A를 25분으로 시작하고 10분 뒤 U를 넣는다. A는 대기가 되고 계기 `urgent` 체크포인트(경과 10분)와 로그 줄 `urgent`가 남으며 쓴 시간에서 15분을 돌려받는다. U가 15분으로 돌고 `urgent_pin`은 U, `return_task`는 A다. U를 완료하면 `notch_task`가 A이고 `notch_rule`은 `urgent_return_v1`이다. 정확한 출력 바이트는 단위 2의 첫 Red 커밋에서 golden으로 둔다.
+읽는 법: A를 25분으로 시작하고 5분 뒤 멈춘다. `timer_state`는 `paused`, `frozen_s`는 1200이고 체크포인트 `pause`(경과 5분)와 로그 줄 `pause`가 남는다. 10분 뒤 이어 돌면 로그 줄 `resume`이 남고 `remaining_s`는 1200이다. 5분 더 돌고 U를 넣으면 A는 대기가 되고 계기 `urgent` 체크포인트(경과 10분)와 로그 줄 `urgent`가 남으며 쓴 시간에서 15분을 돌려받는다. U가 15분으로 돌고 `urgent_pin`은 U, `return_task`는 A다. U를 완료하면 `notch_task`가 A이고 `notch_rule`은 `urgent_return_v1`이다. 정확한 출력 바이트는 단위 1·2의 첫 Red 커밋에서 golden으로 둔다.
