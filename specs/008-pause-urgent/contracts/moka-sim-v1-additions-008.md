@@ -15,11 +15,14 @@ spec 001 `contracts/moka-sim-v1.md`, spec 002 `contracts/moka-sim-v1-additions.m
 | `urgent` | `title`(문자열), `quantum_min`(정수 1~180), `done_note`·`next_note`(문자열, 생략하면 안 적기), `extend`(불리언, 생략하면 `false`) | 도는 중에만 받는다. 칩이 남은 분보다 길거나 남은 분이 0인데 `extend`가 없거나 `false`면 종료 코드 2. 이벤트 시각 하나로 남은 초를 계산한다(data-model §8) |
 
 - 시간 끝, 빈 상태, 이월 카드, 가용 시간 질문, 오늘 끝에서 `pause`이면 종료 코드 2(R-801).
-- 멈춘 동안 `complete`, `skip`, `switch`, `urgent`, `start`, `choose_quantum`은 종료 코드 2(R-803).
-- 기존 `add_task`는 멈춘 동안 저장만 하고 초안을 바꾸지 않는다.
+- 멈춘 동안 `pause`, `complete`, `skip`, `switch`, `urgent`, `start`, `choose_quantum`은 종료 코드 2(R-803). 초안에서 멈춘 동안 다시 `pause`도 같다.
+- 기존 `add_task`와 `enter_title`은 멈춘 동안(타이머 `paused` 포함) 저장만 하고 초안을 바꾸지 않는다. 제목이 비면 지금처럼 종료 코드 2다.
+- 기존 `set_default_quantum`은 멈춘 동안 설정만 바꾸고 타이머와 초안 칩은 그대로 둔다(research R15).
 - 기존 `quit`은 멈춘 채면 `quit` 체크포인트와 저장한 남은 초 돌려주기를 한다. 기존 `activate`와 `resume`은 하루 경계를 넘겼으면 data-model §4를 한다.
-- 기존 `tick`은 정한 길이가 끝났는지 본다. 초안에서 멈췄으면 그 시각에 일시 중지가 끝난다.
-- 오류 픽스처는 `Tests/MokaCoreTests/Fixtures/sim/errors/`에 하나씩 더하고 `SimScenarioTests` 표에 넣는다.
+- 모든 이벤트는 처리하기 전에 그 `at`으로 암묵 tick과 함께 정한 길이의 끝을 판정한다. 출력은 지금처럼 입력 이벤트마다 한 줄이다.
+- 끝 시각을 처음 지난 이벤트(`tick` 포함)는 그 이벤트를 처리하기 전에 활성화 차례를 한 번 돈다(R-804의 펼침). 초안에서 멈췄으면 일시 중지가 끝나고, 도는 중에서 멈췄으면 `stage`가 `waiting`이 되며, 하루 경계를 넘겼으면 data-model §4를 한다.
+- `tick` 없이 끝 시각을 지난 이벤트도 같다. 그 판정 뒤의 상태로 이벤트를 처리한다. 예: 초안 멈춤의 끝을 지난 `start`는 시작하고, `resume`은 일시 중지가 이미 끝났으므로 종료 코드 2다.
+- 오류 픽스처는 `Tests/MokaCoreTests/Fixtures/sim/errors/`에 하나씩 더하고 `SimScenarioTests` 표에 넣는다. 기존 `unknown-type.json`은 `pause`를 모르는 값으로 쓰므로 단위 1에서 예약되지 않은 이름으로 바꾸고, storage 없이 `pause`를 쓴 `storageOnly` 픽스처를 더한다.
 
 시뮬레이터로 재현하지 않는 경우(누른 시각의 남은 초, 돌아가기, 두 줄을 적는 동안 하루 경계, 입력 중 활성화)는 단위 시험이 맡는다(data-model §12).
 
@@ -30,11 +33,12 @@ spec 001 `contracts/moka-sim-v1.md`, spec 002 `contracts/moka-sim-v1-additions.m
 | 키 | 규칙 |
 |---|---|
 | `pause` | 일시 중지 중이 아니면 `null`. 중이면 `{"origin":"run"\|"draft","stage":"holding"\|"waiting","left_s":N\|null,"frozen_s":N\|null}` |
-| `urgent_pin` | 긴급 고정된 할 일 id, 없으면 `null` |
-| `return_task` | 복귀 제안을 기다리는 끊긴 할 일 id, 없으면 `null` |
+| `urgent_pin` | 긴급 고정된 할 일 id, 없으면 `null`. 단위 1부터 `null`로 낸다 |
+| `return_task` | 복귀 제안을 기다리는 끊긴 할 일 id, 없으면 `null`. 단위 1부터 `null`로 낸다 |
 
 - `left_s`는 남은 일시 중지 초(올림)이고, 0 이하이면 `null`이다. `stage`의 `waiting`은 끝 시각이 지난 때다.
 - `frozen_s`는 멈춘 작업 시간의 남은 초(올림)이고, 초안에서 멈췄으면 `null`이다.
+- 세 키는 단위 1에서 함께 넣어, 단위 2가 긴급을 더해도 긴급 이벤트가 없는 golden의 바이트가 바뀌지 않게 한다.
 
 기존 키에 더해지는 값:
 
@@ -59,7 +63,7 @@ spec 001 `contracts/moka-sim-v1.md`, spec 002 `contracts/moka-sim-v1-additions.m
 - `timer_state`가 `paused`이면 `notch_task`가 `active`다.
 - 이어 돈 줄의 `remaining_s`는 직전 줄의 `frozen_s`와 같다(같은 시각일 때).
 - `urgent` 이벤트 한 번에 `decision`이 정확히 하나이고 `user_action`이 `urgent`이며, 그 줄의 `task_id`는 끊긴 할 일이다(R-815).
-- `urgent_pin`이 대기 할 일이면 `order`가 있을 때 그 맨 앞이다(R-813).
+- `urgent_pin`이 후보이면 `order`가 있을 때 그 맨 앞이다(R-813). 하루 경계로 대기가 되어 이월 답 대기인 할 일은 후보가 아니라 `order`에 없다.
 - 어느 하루의 기록이든 `more == false`인 동안 `used_s ≤ min × 60`이다(spec 005 불변식을 긴급 시작까지 그대로 적용, SC-806).
 
 ## 예
