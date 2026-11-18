@@ -12,17 +12,18 @@ spec 001 `contracts/moka-sim-v1.md`, spec 002 `contracts/moka-sim-v1-additions.m
 |---|---|---|
 | `pause` | `length`(정수 분 1~180 또는 문자열 `"until_morning"`), `done_note`·`next_note`(문자열, 생략하면 안 적기) | 도는 중이나 초안에서 받는다. 누름과 제출이 같은 시각이다. 초안에서 두 줄 필드가 있으면 종료 코드 2 |
 | `resume` | 없음 | "다시 시작". 일시 중지 중이 아니면 종료 코드 2 |
-| `urgent` | `title`(문자열), `quantum_min`(정수 1~180), `done_note`·`next_note`(문자열, 생략하면 안 적기), `extend`(불리언, 생략하면 `false`) | 도는 중에만 받는다. 칩이 남은 분보다 길거나 남은 분이 0인데 `extend`가 없거나 `false`면 종료 코드 2. 이벤트 시각 하나로 남은 초를 계산한다(data-model §8) |
+| `urgent` | `title`(문자열), `quantum_min`(정수 1~180), `done_note`·`next_note`(문자열, 생략하면 안 적기), `extend`(불리언, 생략하면 `false`) | 도는 중에만 받는다. 이벤트 시각 하나로 남은 초를 계산한다(data-model §8). `extend: true`는 두 줄 뒤 늘리기 확인의 수락이다. 칩이 남은 분보다 긴데 `extend`가 없거나 `false`면 종료 코드 2. 늘릴 필요가 없을 때, 오늘 기록이 없을 때, "더 할래요" 뒤에 `extend: true`도 종료 코드 2. 확인의 "N분만 할래요"는 `quantum_min`을 남은 분으로 적어 나타낸다 |
 
 - 시간 끝, 빈 상태, 이월 카드, 가용 시간 질문, 오늘 끝에서 `pause`이면 종료 코드 2(R-801).
 - 멈춘 동안 `pause`, `complete`, `skip`, `switch`, `urgent`, `start`, `choose_quantum`은 종료 코드 2(R-803). 초안에서 멈춘 동안 다시 `pause`도 같다.
 - 기존 `add_task`와 `enter_title`은 멈춘 동안(타이머 `paused` 포함) 저장만 하고 초안을 바꾸지 않는다. 제목이 비면 지금처럼 종료 코드 2다.
 - 기존 `set_default_quantum`은 멈춘 동안 설정만 바꾸고 타이머와 초안 칩은 그대로 둔다(research R15).
-- 기존 `quit`은 멈춘 채면 `quit` 체크포인트와 저장한 남은 초 돌려주기를 한다. 기존 `activate`와 `resume`은 하루 경계를 넘겼으면 data-model §4를 한다.
+- 기존 `quit`은 멈춘 채면 `quit` 체크포인트와 저장한 남은 초 돌려주기를 한다. 기존 `activate`와 `resume`은 끝 시각 전이거나 이미 `waiting`일 때 하루 경계를 넘겼으면 data-model §4를 한다.
 - 모든 이벤트는 처리하기 전에 그 `at`으로 암묵 tick과 함께 정한 길이의 끝을 판정한다. 출력은 지금처럼 입력 이벤트마다 한 줄이다.
 - 끝 시각을 처음 지난 이벤트(`tick` 포함)는 그 이벤트를 처리하기 전에 활성화 차례를 한 번 돈다(R-804의 펼침). 초안에서 멈췄으면 일시 중지가 끝나고, 도는 중에서 멈췄으면 `stage`가 `waiting`이 되며, 하루 경계를 넘겼으면 data-model §4를 한다.
 - `tick` 없이 끝 시각을 지난 이벤트도 같다. 그 판정 뒤의 상태로 이벤트를 처리한다. 예: 초안 멈춤의 끝을 지난 `start`는 시작하고, `resume`은 일시 중지가 이미 끝났으므로 종료 코드 2다.
-- 오류 픽스처는 `Tests/MokaCoreTests/Fixtures/sim/errors/`에 하나씩 더하고 `SimScenarioTests` 표에 넣는다. 기존 `unknown-type.json`은 `pause`를 모르는 값으로 쓰므로 단위 1에서 예약되지 않은 이름으로 바꾸고, storage 없이 `pause`를 쓴 `storageOnly` 픽스처를 더한다.
+- 끝 시각과 하루 경계를 모두 지난 첫 이벤트가 `resume`이면, 처리 전 활성화가 data-model §4로 일시 중지를 끝내므로 `resume`은 종료 코드 2다. US1-9(05:20에 30분으로 멈춤, 06:30에 다시 시작)를 재현하려면 05:50에 `tick`을 두어 먼저 `waiting`으로 만든다.
+- 오류 픽스처는 `Tests/MokaCoreTests/Fixtures/sim/errors/`에 하나씩 더하고 `SimScenarioTests` 표에 넣는다. 기존 `unknown-type.json`은 `pause`를 모르는 값으로 쓰므로 단위 1에서 예약되지 않은 이름으로 바꾸고, storage 없이 `pause`를 쓴 `storageOnly` 픽스처를 더한다. `urgent`의 `extend` 거부는 `storage-008-urgent-extend-not-needed`, `storage-008-urgent-extend-no-cap`, `storage-008-urgent-extend-after-more`, 수락 없이 긴 칩은 `storage-008-urgent-extend-missing`으로 둔다(`storage-005-extend-*` 무늬).
 
 시뮬레이터로 재현하지 않는 경우(누른 시각의 남은 초, 돌아가기, 두 줄을 적는 동안 하루 경계, 입력 중 활성화)는 단위 시험이 맡는다(data-model §12).
 
