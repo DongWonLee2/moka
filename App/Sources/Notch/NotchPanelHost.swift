@@ -36,6 +36,7 @@ final class NotchPanelHost: NSObject, NSWindowDelegate {
         panel.isMovable = false
         panel.delegate = self
         panel.onLeftMouseDown = { [weak self] in self?.panelClicked() }
+        appState.onAutoStart = { [weak self] in self?.giveUpKey() }
 
         hostingView.sizingOptions = []
         hostingView.autoresizingMask = [.width, .height]

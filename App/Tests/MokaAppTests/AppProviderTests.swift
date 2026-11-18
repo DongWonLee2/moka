@@ -1000,6 +1000,34 @@ final class AppProviderTests: XCTestCase {
         XCTAssertNil(h.state.settingsTabRequest, "한 번 바꾸면 비운다")
         XCTAssertNil(h.state.takeSettingsTabRequest())
     }
+
+    // MARK: - 3초 뒤 자동 시작(spec 005 R-410, #187 리뷰)
+
+    /// 초안 질의를 붙잡은 채 키 없는 공급자로 바꾸면 기다림이 끝나 일정이 다시 걸리고 시작한다.
+    func test_FR05_R410_R306_switchToKeylessProviderRearmsAutoStart() async throws {
+        let providers = Providers(keys: [.typesafe: "fake-key-a"])
+        let first = providers.provider(.typesafe)
+        await first.hold()
+        let h = try harness(count: 1, providers: providers)
+        h.state.launch()
+        let runner = try XCTUnwrap(h.state.requestScores())
+        await first.waitForHeld(count: 1)
+        XCTAssertTrue(h.state.setAutoStart(true))
+        XCTAssertTrue(h.state.awaitingFirstJudgment)
+        XCTAssertNil(h.state.autoStartFireDate)
+
+        h.clock.advance(seconds: 60)
+        h.state.selectProvider(.liquid)
+        XCTAssertFalse(h.state.hasKey)
+        XCTAssertFalse(h.state.awaitingFirstJudgment, "키가 없는 공급자면 기다리지 않는다")
+        XCTAssertNotNil(h.state.autoStartDue)
+        XCTAssertEqual(h.state.autoStartFireDate, h.state.autoStartDue, "일정이 다시 걸린다")
+        h.state.autoStartIfDue()
+        guard case .running = h.state.timer else { return XCTFail("바꾼 뒤 시작한다: \(h.state.timer)") }
+
+        await first.releaseAll()
+        await runner.value
+    }
 }
 
 /// 정한 키의 쓰기만 던지는 설정 저장소. 쓴 값을 기록한다.

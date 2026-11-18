@@ -121,13 +121,19 @@ final class AppState {
             }
             if session.taskID != oldValue.taskID || Self.isDraft(session.timer) != Self.isDraft(oldValue.timer) {
                 refreshGate()
+                draftShown(Self.isDraft(session.timer))
             }
+            rearmAutoStart()
         }
     }
     /// 시작 전 화면에서 "+ 새 할 일"로 제목 칸을 연 상태(R-103). 노치의 할 일이 바뀌거나 초안이 아니게 되면 닫힌다.
-    private(set) var isEnteringNewTitle = false
+    private(set) var isEnteringNewTitle = false {
+        didSet { rearmAutoStart() }
+    }
     /// 시작 전 화면에서 "다른 할 일" 목록을 연 상태(R-104). 닫히는 조건은 새 할 일 칸과 같다.
-    private(set) var isPickingOtherTask = false
+    private(set) var isPickingOtherTask = false {
+        didSet { rearmAutoStart() }
+    }
     /// 도는 중 미루기·바꾸기를 눌러 두 줄 입력 중인 동작(R-106). 도는 중이 아니게 되면 nil.
     private(set) var pendingAction: PendingAction?
     private(set) var notesDraft = NotesDraft()
@@ -135,8 +141,10 @@ final class AppState {
     var timer: NotchTimer { session.timer }
     /// 저장소 `tasks()`의 지금 목록. 쓰기 뒤 다시 읽는다.
     private(set) var tasks: [MokaTask] = []
-    /// 일정(R-115), 날짜순. 쓰기 뒤 다시 읽는다.
-    private(set) var contexts: [MokaContext] = []
+    /// 일정(R-115), 날짜순. 쓰기 뒤 다시 읽는다. 판단 입력 해시에 들어가므로 바뀌면 게이트를 다시 본다.
+    private(set) var contexts: [MokaContext] = [] {
+        didSet { refreshGate() }
+    }
     /// 노치가 지금 할 일을 고른 시각(이어서 할 일 접힘 표시 3초, data-model §5.5).
     private(set) var pickedAt: Date? {
         didSet { scheduleFirstActionRedraw() }
@@ -247,7 +255,9 @@ final class AppState {
     /// 늘리기 쓰기가 실패했다. 칩·버튼을 누르거나 노치 할 일이 바뀌면 꺼진다.
     private(set) var extendFailed = false
     /// 늘린 뒤 시작 커밋이 실패했다(data-model §11). 칩·버튼을 누르거나 노치 할 일이 바뀌면 꺼진다.
-    private(set) var startFailed = false
+    private(set) var startFailed = false {
+        didSet { rearmAutoStart() }
+    }
     /// "더 할래요" 쓰기가 실패한 하루. 오늘 끝 화면이 아니거나 하루가 바뀌면 실패 줄을 보이지 않는다.
     private var moreFailedDay: LocalDay?
 
@@ -296,6 +306,30 @@ final class AppState {
     }
 
     var todayBudget: DayBudget? { budgetRecord(for: logicalToday) }
+
+    /// 할 일 탭 "내일" 표시(R-423): 노치 후보 순서대로 쌓아 오늘 남은 분을 넘는 할 일. 상한이 없으면 비어 있다.
+    var tomorrowIDs: Set<TaskID> {
+        TomorrowMark.ids(
+            order: PriorityOrder.order(input(at: clock.now())), remainingMinutes: budgetCap(for: logicalToday),
+            defaultQuantumMin: defaultQuantumMin)
+    }
+
+    // MARK: 3초 뒤 자동 시작(spec 005 R-410, data-model §17)
+
+    /// 설정 키 `auto_start`. 기본 꺼짐.
+    private(set) var autoStartOn: Bool {
+        didSet { rearmAutoStart() }
+    }
+    /// 지금 초안이 뜬 시각. 초안이 아니면 nil.
+    @ObservationIgnored private var draftShownAt: Date?
+    /// 시작 전 화면의 마지막 사용자 입력. 초안이 새로 뜨면 지운다.
+    @ObservationIgnored private var lastInputAt: Date?
+    /// 이번 초안·입력에서 자동 시작을 이미 시도했다. 시작 커밋이 실패해도 입력이 있을 때까지 다시 시도하지 않는다.
+    @ObservationIgnored private var autoStartTried = false
+    @ObservationIgnored private var autoStartTimer: Timer?
+    @ObservationIgnored private var scheduledAutoStart: Date?
+    /// 자동 시작이 시작한 뒤 부른다. 노치 패널이 key를 내려놓는다(손으로 시작할 때와 같게).
+    @ObservationIgnored var onAutoStart: (() -> Void)?
 
     // MARK: 판단 모델(spec 003 data-model §6·§9)
 
@@ -414,7 +448,13 @@ final class AppState {
     /// 제출 뒤 판정을 기다리는 할 일.
     private(set) var gateWaitingTaskID: TaskID?
     /// 노치에 보일 게이트 단계. `refreshGate()`만 판정 시점에 바꾼다.
-    private(set) var gatePhase: GatePhase = .closed
+    private(set) var gatePhase: GatePhase = .closed {
+        didSet { rearmAutoStart() }
+    }
+    /// 노치 초안 할 일의 지금 판단 입력에 대한 판단 결과를 기다리는 중(`ConcreteGate.awaitsJudgment`). `refreshGate()`에서만 바꾼다.
+    private(set) var awaitingFirstJudgment = false {
+        didSet { if awaitingFirstJudgment != oldValue { rearmAutoStart() } }
+    }
     /// 게이트 입력 칸의 글자. 제출하면 그 줄이 남아 다시 묻는 중으로 돌아올 때 보인다.
     var gateDraftText = ""
     /// `gateDraftText`가 어느 할 일의 칸인지. 다시 묻는 중으로 판정한 할 일과 다르면 그 할 일의 마지막 줄로 채운다.
@@ -440,14 +480,18 @@ final class AppState {
     @ObservationIgnored private var observations: [NotificationObservation] = []
     @ObservationIgnored private let decision: DecisionSetup?
     /// 지금 판단 설정. 꺼져 있으면 nil이다. 공급자를 바꾸거나 Microsoft 칸을 저장할 때 다시 만든다.
-    @ObservationIgnored private var binding: DecisionBinding?
+    @ObservationIgnored private var binding: DecisionBinding? {
+        didSet { refreshGate() }
+    }
     /// 지금 바인딩이 보내는 주소. `binding`과 함께 바뀐다.
     @ObservationIgnored private var boundURL: URL?
     /// 바인딩을 다시 만들 때마다 오른다. 다른 세대의 답은 받지 않는다(spec 006 research R6).
     @ObservationIgnored private var providerGeneration = 0
     @ObservationIgnored private let scoreStore: (any ScoreStore)?
-    /// 보내기 장부(data-model §6). 메모리에만 둔다.
-    @ObservationIgnored private var attempted: [TaskID: Attempt] = [:]
+    /// 보내기 장부(data-model §6). 메모리에만 둔다. 실패 표시가 판단 결과 기다림에 들어가므로 바뀌면 게이트를 다시 본다.
+    @ObservationIgnored private var attempted: [TaskID: Attempt] = [:] {
+        didSet { refreshGate() }
+    }
     /// 질의 실행기. 최대 하나다.
     @ObservationIgnored private var queryRunner: Task<Void, Never>?
     @ObservationIgnored private(set) var lastRejectReason: RejectReason?
@@ -477,10 +521,12 @@ final class AppState {
         storageUnavailable = storage.isUnavailable
         defaultQuantumMin = QuantumSettings.readDefault(from: storage.settings)
         extendMin = CoreSettings.readExtendMin(from: storage.settings)
+        autoStartOn = CoreSettings.isAutoStartOn(in: storage.settings)
         observations = [
             NotificationObservation(center: workspaceCenter, name: NSWorkspace.didWakeNotification) { [weak self] in
                 self?.tick()
                 self?.activate()
+                self?.noteInput()
             },
             NotificationObservation(center: workspaceCenter, name: NSWorkspace.willSleepNotification) {
                 [weak self] in
@@ -786,11 +832,13 @@ final class AppState {
     }
 
     func cancelOtherTask() {
+        noteInput()
         isPickingOtherTask = false
     }
 
     /// 목록에서 고른 할 일로 초안을 바꾼다(R-104). 칩은 그대로, 기록은 없다.
     func chooseOtherTask(_ id: TaskID) {
+        noteInput()
         let now = clock.now()
         let next = session.chosenDraft(id, input(at: now))
         guard next != session else { return }
@@ -806,11 +854,13 @@ final class AppState {
     }
 
     func cancelNewTitle() {
+        noteInput()
         isEnteringNewTitle = false
     }
 
     /// 빠른 입력(R-103). 저장할 수 있으면 할 일을 만들어 그 할 일로 초안을 바꾼다. 아니면 spec 001 타이머만.
     func enterTitle(_ text: String) {
+        noteInput()
         guard let repository else {
             if send(.enterTitle(text)) == .applied { isEnteringNewTitle = false }
             return
@@ -842,6 +892,7 @@ final class AppState {
     /// 시간 끝 화면에서는 남은 분보다 긴 값과 오늘 끝과 겹친 칩을 받지 않는다(spec 005 R-421·R-422).
     func chooseQuantum(_ minutes: Int) {
         if Self.isExpired(timer), expiredDayEnd || expiredCap.map({ minutes > $0 }) ?? false { return }
+        noteInput()
         extendFailed = false
         startFailed = false
         customText = nil
@@ -851,6 +902,7 @@ final class AppState {
 
     /// "직접…"을 골랐다. 칸은 지금 칩 값으로 시작한다.
     func beginCustom() {
+        noteInput()
         switch timer {
         case .empty(.some(let draft)): customText = String(draft.chipMin)
         case .expired(_, let chipMin, _):
@@ -868,6 +920,7 @@ final class AppState {
 
     /// 직접 입력 칸이 바뀌었다. 1~180 정수면 칩 값으로 쓴다(R-004).
     func editCustom(_ text: String) {
+        noteInput()
         extendFailed = false
         startFailed = false
         customText = text
@@ -878,6 +931,7 @@ final class AppState {
 
     /// 설정에서 기본 작업 시간을 저장했다. 칩을 직접 고르지 않았고 직접 입력 중이 아니면 칩이 새 값이 된다(R-013).
     func defaultQuantumChanged() {
+        noteInput()
         defaultQuantumMin = QuantumSettings.readDefault(from: settings)
         session.timer.applyDefaultQuantumChange(
             QuantumChip.cap(chipMin: defaultQuantumMin, remainingMinutes: budgetCap(for: logicalToday)),
@@ -892,6 +946,11 @@ final class AppState {
     /// 시작 전이면 시작, 시간 끝이면 같은 할 일을 고른 칩으로 다시 시작(N분 더, R-107).
     /// 시작 전 화면에서 늘리기 확인 줄이 열려 있으면 시작하지 않는다(그 줄의 "늘리고 시작"이 시작한다, R-421).
     func start() {
+        noteInput()
+        startNow()
+    }
+
+    private func startNow() {
         guard canStart else { return }
         extendFailed = false
         startFailed = false
@@ -904,6 +963,83 @@ final class AppState {
             guard extendNeeded == nil else { return }
             commit(.start) { session, input throws(SessionError) in try session.start(input) }
         }
+    }
+
+    // MARK: - 3초 뒤 자동 시작(spec 005 R-410)
+
+    /// 설정 창 기본 탭 스위치. 켜거나 끈 것도 입력으로 센다. 쓰기가 실패하면 바꾸지 않고 false.
+    @discardableResult
+    func setAutoStart(_ on: Bool) -> Bool {
+        do {
+            try CoreSettings.writeAutoStart(on, to: settings)
+        } catch {
+            Self.logStorageFailure(error)
+            return false
+        }
+        noteInput()
+        autoStartOn = on
+        return true
+    }
+
+    /// 자동 시작 일정이 부른다. 시험은 주입한 시계를 돌린 뒤 직접 부른다. 때가 아니면 남은 시간만큼 다시 건다.
+    func autoStartIfDue() {
+        guard let due = autoStartDue else { return }
+        guard
+            AutoStart.shouldStart(
+                enabled: autoStartOn, mode: notchMode, draftShownAt: draftShownAt, lastInputAt: lastInputAt,
+                gateBusy: autoStartGateBusy, extendNeeded: extendNeeded, startFailed: startFailed,
+                now: clock.now())
+        else {
+            rearmAutoStart(at: due)
+            return
+        }
+        autoStartTried = true
+        startNow()
+        if !Self.isDraft(timer) { onAutoStart?() }
+    }
+
+    /// 자동 시작을 걸 시각. 새 할 일 칸이나 다른 할 일 목록이 열린 동안은 입력 중으로 보고 걸지 않는다.
+    var autoStartDue: Date? {
+        guard !autoStartTried, !isEnteringNewTitle, !isPickingOtherTask else { return nil }
+        return AutoStart.dueAt(
+            enabled: autoStartOn, mode: notchMode, draftShownAt: draftShownAt, lastInputAt: lastInputAt,
+            gateBusy: autoStartGateBusy, extendNeeded: extendNeeded, startFailed: startFailed)
+    }
+
+    /// 게이트가 묻거나 확인하는 중, 또는 지금 판단 입력에 대한 판단 결과를 기다려 게이트를 열지 아직 모름(R-306).
+    private var autoStartGateBusy: Bool { gatePhase != .closed || awaitingFirstJudgment }
+
+    /// 걸어 둔 일정의 시각(주입한 시계 기준). 일정이 없으면 nil. 시험이 일정이 실제로 걸렸는지 본다.
+    var autoStartFireDate: Date? { autoStartTimer?.isValid == true ? scheduledAutoStart : nil }
+
+    private func draftShown(_ isDraft: Bool) {
+        draftShownAt = isDraft ? clock.now() : nil
+        lastInputAt = nil
+        autoStartTried = false
+    }
+
+    /// 시작 전 화면의 사용자 입력. 3초를 다시 센다.
+    private func noteInput() {
+        lastInputAt = clock.now()
+        autoStartTried = false
+        rearmAutoStart()
+    }
+
+    private func rearmAutoStart() {
+        rearmAutoStart(at: autoStartDue)
+    }
+
+    private func rearmAutoStart(at due: Date?) {
+        autoStartTimer?.invalidate()
+        autoStartTimer = nil
+        scheduledAutoStart = nil
+        guard let due else { return }
+        let timer = Timer(timeInterval: max(0, due.timeIntervalSince(clock.now())), repeats: false) { [weak self] _ in
+            MainActor.assumeIsolated { self?.autoStartIfDue() }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        autoStartTimer = timer
+        scheduledAutoStart = due
     }
 
     // MARK: - 가용 시간(spec 005 R-419·R-421·R-422)
@@ -957,6 +1093,7 @@ final class AppState {
     /// 시작 커밋만 실패하면 늘린 값은 그대로 두고 한 줄을 보인다. 이제 남은 분이 칩 이상이라 다시 누르면 바로 시작한다.
     @discardableResult
     func extendAndStart() -> Bool {
+        noteInput()
         guard canStart, let needed = extendNeeded, let record = budgetRecord(for: logicalToday) else { return false }
         startFailed = false
         guard writeBudget(record.extended(by: needed)) else {
@@ -1064,6 +1201,7 @@ final class AppState {
 
     /// 펼친 판을 클릭했다. 빈 상태면 제목 칸에 포커스를 준다(data-model §6).
     func panelClicked() {
+        noteInput()
         if case .empty(nil) = timer {
             titleFocusRequest += 1
         }
@@ -1245,7 +1383,6 @@ final class AppState {
         keyActionFailure = nil
         microsoftKeyCleared = false
         refreshHasKey()
-        refreshGate()
         requestScores()
     }
 
@@ -1320,6 +1457,7 @@ final class AppState {
     /// 다시 읽기가 `requestScores()`를 불러 바뀐 해시로 다시 묻는다. 비었거나 묻는 중이 아니거나 저장에 실패하면 false.
     @discardableResult
     func submitFirstAction(_ text: String) -> Bool {
+        noteInput()
         let line = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard gatePhase == .asking, !line.isEmpty, let repository, let id = session.taskID,
             var task = tasks.first(where: { $0.id == id })
@@ -1340,6 +1478,7 @@ final class AppState {
 
     /// "지금은 넘기기": 통과로 보고 닫는다. 첫 행동과 질의는 그대로다.
     func skipGate() {
+        noteInput()
         guard gatePhase != .closed, let id = session.taskID else { return }
         gateRecords[id, default: GateRecord()].passed = true
         gateWaitingTaskID = nil
@@ -1353,6 +1492,7 @@ final class AppState {
             let currentHash = currentJudgmentHash(id)
         else {
             setGate(.closed)
+            awaitingFirstJudgment = false
             return
         }
         let record = gateRecords[id] ?? GateRecord()
@@ -1375,6 +1515,9 @@ final class AppState {
             gateDraftTaskID = id
         }
         setGate(phase)
+        var afterAnswer = facts
+        afterAnswer.record = updated
+        awaitingFirstJudgment = ConcreteGate.awaitsJudgment(afterAnswer)
     }
 
     /// 기다림은 `checking`일 때만 이어진다.
@@ -1584,7 +1727,6 @@ final class AppState {
             attempted[outcome.taskID]?.failed = true
         }
         Self.decisionLogger.error("판단 실패: \(kind, privacy: .public)")
-        refreshGate()
     }
 
     private func refreshHasKey() {

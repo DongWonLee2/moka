@@ -8,6 +8,8 @@ struct BasicTabView: View {
     let quantum: MinutesFieldInput
     let extend: MinutesFieldInput
     @Binding var dayStart: Date
+    /// 3초 뒤 자동 시작(확정 시안 005 12번, spec 005 R-410). 기본 꺼짐.
+    var autoStart: Binding<Bool> = .constant(false)
     var decision = DecisionFieldInput()
     var decisionStart = DecisionFieldStart()
 
@@ -37,6 +39,21 @@ struct BasicTabView: View {
             GridRow {
                 Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])
                 HintText(text: BasicTabText.dayStartHint, isIssue: false)
+            }
+            GridRow {
+                Text(BasicTabText.autoStart)
+                    .fixedSize()
+                    .accessibilityHidden(true)
+                Toggle(BasicTabText.autoStart, isOn: autoStart)
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
+                    .tint(MokaColors.mocha)
+                    .accessibilityHint(BasicTabText.autoStartHint)
+                    .labelsHidden()
+            }
+            GridRow {
+                Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])
+                HintText(text: BasicTabText.autoStartHint, isIssue: false, wraps: true)
             }
         }
     }
@@ -161,12 +178,14 @@ struct KeyFieldBox: View {
 private struct HintText: View {
     let text: String
     let isIssue: Bool
+    /// 칸 폭을 넘으면 줄을 바꾼다. 아니면 한 줄로 둔다.
+    var wraps = false
 
     var body: some View {
         Text(text)
             .font(.caption)
             .foregroundStyle(isIssue ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
-            .fixedSize()
+            .fixedSize(horizontal: !wraps, vertical: true)
             .padding(.bottom, 6)
     }
 }
@@ -217,7 +236,9 @@ struct TimeField: NSViewRepresentable {
     }
 }
 
-/// 기본 탭 고정 안내(확정 시안 005 13번 마지막 줄, R-434).
+/// 기본 탭 고정 글자(확정 시안 005 12번, 13번 마지막 줄, R-410·R-434).
 enum BasicTabText {
     static let dayStartHint = "이 시각이 지나면 반복 할 일이 다시 대기로 돌아오고, 남은 할 일을 오늘 할지 물어요."
+    static let autoStart = "3초 뒤 자동 시작"
+    static let autoStartHint = "켜면 노치에 할 일이 뜬 뒤 3초 동안 아무것도 누르지 않을 때 고른 시간으로 시작해요."
 }

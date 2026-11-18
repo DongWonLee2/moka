@@ -49,12 +49,13 @@ struct SettingsView: View {
                         onCommit: { applyExtend(CoreSettings.commitExtendField(extendText, to: store)) },
                         onStep: { applyExtend(CoreSettings.saveExtendField($0, to: store)) }),
                     dayStart: Binding(get: { dayStart }, set: { saveDayStart($0) }),
+                    autoStart: Binding(get: { appState.autoStartOn }, set: { appState.setAutoStart($0) }),
                     decision: appState.decisionField
                 )
             case .tasks:
                 TaskListTabView(
                     rows: appState.taskListRows, nextMarkID: appState.nextMarkID, ranks: appState.ranks,
-                    scope: $appState.taskListScope,
+                    tomorrowIDs: appState.tomorrowIDs, scope: $appState.taskListScope,
                     order: $appState.taskListOrder, selectedID: $selectedTaskID, checkedIDs: $checkedTaskIDs,
                     canEdit: !appState.storageUnavailable,
                     onAdd: { isAddingTask = true }, onEdit: { editing = request(for: $0) },
