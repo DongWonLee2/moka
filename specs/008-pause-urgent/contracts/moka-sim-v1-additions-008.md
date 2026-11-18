@@ -25,7 +25,7 @@ spec 001 `contracts/moka-sim-v1.md`, spec 002 `contracts/moka-sim-v1-additions.m
 - 끝 시각과 하루 경계를 모두 지난 첫 이벤트가 `resume`이면, 처리 전 활성화가 data-model §4로 일시 중지를 끝내므로 `resume`은 종료 코드 2다. US1-9(05:20에 30분으로 멈춤, 06:30에 다시 시작)를 재현하려면 05:50에 `tick`을 두어 먼저 `waiting`으로 만든다.
 - 오류 픽스처는 `Tests/MokaCoreTests/Fixtures/sim/errors/`에 하나씩 더하고 `SimScenarioTests` 표에 넣는다. 기존 `unknown-type.json`은 `pause`를 모르는 값으로 쓰므로 단위 1에서 예약되지 않은 이름으로 바꾸고, storage 없이 `pause`를 쓴 `storageOnly` 픽스처를 더한다. `urgent`의 `extend` 거부는 `storage-008-urgent-extend-not-needed`, `storage-008-urgent-extend-no-cap`, `storage-008-urgent-extend-after-more`, 수락 없이 긴 칩은 `storage-008-urgent-extend-missing`으로 둔다(`storage-005-extend-*` 무늬).
 
-시뮬레이터로 재현하지 않는 경우(누른 시각의 남은 초, 돌아가기, 두 줄을 적는 동안 하루 경계, 입력 중 활성화)는 단위 시험이 맡는다(data-model §12).
+시뮬레이터로 재현하지 않는 경우(누른 시각의 남은 초, 돌아가기, 두 줄을 적는 동안 하루 경계, 입력 중 활성화, 긴급 입력 중 시간 끝이 온 제출, 확인 줄의 재계산·키·거절 동작, 제출 때 거부)는 단위 시험이 맡는다(data-model §12). `urgent`는 입력부터 수락까지를 이벤트 시각 하나로 나타낸다.
 
 ## 출력 덧붙임
 
