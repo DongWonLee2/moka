@@ -1,4 +1,4 @@
-# Specification Quality Checklist: 일시 중지, 급한 일 끼워 넣기, 쉬는 요일
+# Specification Quality Checklist: 일시 중지와 급한 일 끼워 넣기
 
 **Purpose**: plan으로 넘어가기 전에 명세가 완전하고 품질이 맞는지 확인한다
 **Created**: 2026-11-18
@@ -13,13 +13,13 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
 - [x] All acceptance scenarios are defined
 - [x] Edge cases are identified
-- [ ] Scope is clearly bounded
+- [x] Scope is clearly bounded
 - [x] Dependencies and assumptions identified
 
 ## Feature Readiness
@@ -31,7 +31,7 @@
 
 ## Notes
 
-- [NEEDS CLARIFICATION]은 확인 질문 Q1~Q15에 묶여 있다. 질문과 선택지는 초안 PR "사람이 볼 결정"에 있다. 답을 받으면 해당 요구와 시나리오를 고치고 이 항목을 다시 본다.
-- 범위 항목은 Q1(쉬는 요일을 넣을지)과 Q15(도움말)가 정해지기 전에는 닫지 않는다.
+- 확인 질문 Q1~Q15는 2026-11-18에 정했다(기록 `.audit/debate/20261118-spec008-clarify.md`, 커밋 안 함). 3:0 항목은 채택했고, Q3은 PRD 문장을 바꿔 사람이 확인했고(사용자 확인 2026-11-17·18), 2:1 셋(Q5 범위, Q6, Q7 펼침)은 사람이 골랐다(사용자 결정 2026-11-18). 답은 spec 결정 이력과 요구 줄에 있다.
+- 범위: Q1 B로 FR-17 쉬는 요일을 Non-Goals로 옮겼다. Q15 B로 도움말은 기존 (1) 노치 항목 설명만 고친다.
 - 구현 내용 항목의 판정 근거: spec 005와 같은 기준으로, 앞 spec이 정한 이름(`SessionAssembly`, `NotchMode`, `CheckpointTrigger`, 설정 키, 선택 규칙 이름)만 적었다. 구현 방법은 plan에 둔다.
 - 금지 기호(em dash, 화살표)는 0건이다.
